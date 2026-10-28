@@ -27,7 +27,6 @@ import { ContentApprovalTab } from "@/components/campaign-tabs/content-approval-
 import { ScriptApprovalTab } from "@/components/campaign-tabs/script-approval-tab";
 import { ContractsTab } from "@/components/campaign-tabs/contracts-tab";
 import { MetricsTab } from "@/components/campaign-tabs/metrics-tab";
-import { PricingTab } from "@/components/campaign-tabs/pricing-tab";
 import { GroupsTab } from "@/components/campaign-tabs/groups-tab";
 import { ShareCampaignModal } from "@/components/share-campaign-modal";
 import { Modal } from "@/components/ui/modal";
@@ -100,11 +99,6 @@ const CAMPAIGN_TAB_DEFS: Array<{
       id: "metrics",
       label: "Métricas e conteúdos",
       visible: (p) => p.campaigns_read,
-    },
-    {
-      id: "pricing",
-      label: "Pricing (HYPE)",
-      visible: (p) => p.financial_read,
     },
   ];
 
@@ -454,7 +448,7 @@ function RouteComponent() {
   >(undefined);
 
   const dtabsRef = useRef<HTMLElement>(null);
-  const topTabKey = activeTab === "dashboard" ? "overview" : ["groups", "contracts", "pricing", "metrics"].includes(activeTab) ? "gest" : "manage";
+  const topTabKey = activeTab === "dashboard" ? "overview" : ["groups", "contracts", "metrics"].includes(activeTab) ? "gest" : "manage";
   useLayoutEffect(() => {
     const root = dtabsRef.current;
     if (!root) return;
@@ -703,8 +697,6 @@ function RouteComponent() {
             tabAnalyticsLoading={tabAnalyticsLoading}
           />
         );
-      case "pricing":
-        return <PricingTab />;
       default:
         return null;
     }
@@ -720,11 +712,10 @@ function RouteComponent() {
     "shipment",
     "approval",
   ];
-  const GEST_IDS = ["groups", "contracts", "pricing", "metrics"];
+  const GEST_IDS = ["groups", "contracts", "metrics"];
   const GEST_LABEL: Record<string, string> = {
     groups: "Grupo",
     contracts: "Contratos",
-    pricing: "Pricing (HYPE)",
     metrics: "Métricas e conteúdos",
   };
   const visibleIds = new Set(visibleTabs.map((t) => t.id));
