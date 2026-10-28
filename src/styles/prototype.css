@@ -184,7 +184,7 @@
 .pv .cols { grid-template-columns: 5fr 7fr; align-items: stretch; }
 .pv .tkcard { display: flex; flex-direction: column; }
 .pv .tks { flex: 1; }
-.pv .tks .tk { flex: 1; }
+.pv .tks .tk { flex: none; }
 .pv .tks .empty { flex: 1; justify-content: center; }
 .pv .tkcard { background: var(--ink); color: #fff; border-radius: 32px; padding: 28px; position: relative; overflow: hidden; }
 .pv .tkcard h2 { margin: 0; font-size: 22px; letter-spacing: -.03em; font-weight: 600; }
