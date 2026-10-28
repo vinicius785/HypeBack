@@ -314,6 +314,7 @@ export function ManagementTab({
       campaignId: String(campaignId),
       influencerId: String(inf.user_id),
       name: inf.name,
+      avatar: inf.avatar || undefined,
     });
   };
 

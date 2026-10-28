@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
+import { useQueries } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { Av, I } from "@/components/prototype/ui";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useInfluencerMessages, useSendMessage } from "@/hooks/use-campaign-chat";
 import { useMarkChatNotificationsAsRead, useNotifications } from "@/hooks/use-notifications";
+import { useWorkspaceQueryKey, withWorkspaceKey } from "@/hooks/use-workspace-query-key";
+import { getCampaignUsers } from "@/shared/services/campaign-users";
 import type { Notification } from "@/shared/services/notifications";
 
 const CLOSE_MS = 300;
@@ -16,6 +19,7 @@ interface Conversation {
   campaignId: string;
   influencerId: string;
   name: string;
+  avatar?: string;
   campaign: string;
   preview: string;
   unread: number;
@@ -29,6 +33,7 @@ export interface OpenChatRequest {
   /** ID do usuário da plataforma (mesmo `influencer_id` das notificações de chat). */
   influencerId: string;
   name: string;
+  avatar?: string;
   campaign?: string;
 }
 
@@ -136,7 +141,7 @@ function Thread({ conv, onBack, onOpenCampaign }: { conv: Conversation; onBack: 
         <button type="button" className="round ch-bk" onClick={onBack} aria-label="Voltar às conversas">
           <I n="back" cls="sm" />
         </button>
-        <Av name={conv.name} size={46} />
+        <Av name={conv.name} src={conv.avatar} size={46} />
         <div>
           <b>{conv.name}</b>
           <small>{conv.campaign || "Conversa da campanha"}</small>
@@ -168,7 +173,7 @@ function Thread({ conv, onBack, onOpenCampaign }: { conv: Conversation; onBack: 
                   <div className="cm-d"><span>{day}</span></div>
                 )}
                 <div className={`cm ${mine ? "me" : "them"}`}>
-                  {!mine && <Av name={m.sender_name || conv.name} src={m.sender_avatar ?? undefined} size={28} />}
+                  {!mine && <Av name={m.sender_name || conv.name} src={m.sender_avatar || conv.avatar || undefined} size={28} />}
                   <div className="cm-w">
                     <div className="cm-b">{m.message}</div>
                     <small className="cm-t">
@@ -219,11 +224,36 @@ export function ChatDrawerButton() {
 
   const [extra, setExtra] = useState<Conversation | null>(null);
 
+  const workspaceId = useWorkspaceQueryKey();
+  const campaignIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const c of buildConversations(notifications)) ids.add(c.campaignId);
+    return [...ids];
+  }, [notifications]);
+  const usersByCampaign = useQueries({
+    queries: campaignIds.map((id) => ({
+      queryKey: withWorkspaceKey(["campaigns", id, "users"], workspaceId),
+      queryFn: () => getCampaignUsers(id),
+      enabled: open && !!workspaceId,
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+  const avatars = useMemo(() => {
+    const map = new Map<string, string>();
+    campaignIds.forEach((cid, i) => {
+      for (const u of usersByCampaign[i]?.data ?? []) {
+        if (u.user_id != null && u.avatar) map.set(`${cid}:${u.user_id}`, u.avatar);
+      }
+    });
+    return map;
+  }, [campaignIds, usersByCampaign]);
+
   const convs = useMemo(() => {
     const base = buildConversations(notifications);
-    if (extra && !base.some((c) => c.id === extra.id)) return [extra, ...base];
-    return base;
-  }, [notifications, extra]);
+    const withAv = (c: Conversation) => ({ ...c, avatar: c.avatar || avatars.get(c.id) });
+    if (extra && !base.some((c) => c.id === extra.id)) return [extra, ...base].map(withAv);
+    return base.map(withAv);
+  }, [notifications, extra, avatars]);
   const totalUnread = convs.reduce((a, c) => a + c.unread, 0);
 
   const requestClose = useCallback(() => {
@@ -249,6 +279,7 @@ export function ChatDrawerButton() {
         campaignId: r.campaignId,
         influencerId: r.influencerId,
         name: r.name,
+        avatar: r.avatar,
         campaign: r.campaign ?? "",
         preview: "",
         unread: 0,
@@ -341,7 +372,7 @@ export function ChatDrawerButton() {
                   className={`ch-c${sel === c.id ? " on" : ""}${c.unread ? " un" : ""}`}
                   onClick={() => setSel(c.id)}
                 >
-                  <Av name={c.name} size={44} />
+                  <Av name={c.name} src={c.avatar} size={44} />
                   <div>
                     <div className="ch-nr">
                       <b>{c.name}</b>
