@@ -1,11 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  listCampaignGroups,
-  type CampaignCommunityGroup,
-} from "@/shared/services/campaign-groups";
 import {
   DndContext,
   DragOverlay,
@@ -67,16 +62,12 @@ import {
   getTransitionNote,
 } from "./management-status-transitions";
 import { useUpdateInfluencerStatus } from "@/hooks/use-campaign-influencers";
-import { useChat } from "@/hooks/use-chat";
-import { useCampaignUsers } from "@/hooks/use-campaign-users";
-import { useCurrentUser } from "@/hooks/use-current-user";
+import { openChatDrawer } from "@/components/chat-drawer";
 import { useNiches } from "@/hooks/use-niches";
-import { useMarkChatNotificationsAsRead } from "@/hooks/use-notifications";
 import { resolveNicheDisplayName } from "@/shared/utils/niche-display";
 import { getNetworkLabel } from "@/shared/constants/network-labels";
 import { PriceNegotiationSection } from "./shared/price-negotiation-section";
 import { reconcileSelectedById } from "./shared/reconcile-selected";
-import { uploadChatAttachment } from "@/shared/services/chat";
 
 interface ManagementTabProps {
   participants: CampaignManagementParticipant[];
@@ -311,8 +302,20 @@ export function ManagementTab({
   const [selectedInfluencer, setSelectedInfluencer] =
     useState<ExtendedInfluencer | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const openChatHandledKeyRef = useRef<string | null>(null);
+
+  /** Abre a gaveta de mensagens do topo já na conversa deste criador. */
+  const openChat = (inf: ExtendedInfluencer) => {
+    if (inf.user_id == null || String(inf.user_id).trim() === "") {
+      toast.error("Este criador ainda não tem conversa disponível.");
+      return;
+    }
+    openChatDrawer({
+      campaignId: String(campaignId),
+      influencerId: String(inf.user_id),
+      name: inf.name,
+    });
+  };
 
   // Abrir chat automaticamente quando openChatInfluencerId for fornecido (vindo de notificação)
   useEffect(() => {
@@ -373,8 +376,7 @@ export function ManagementTab({
     }
 
     if (influencerToOpen) {
-      setSelectedInfluencer(influencerToOpen);
-      setIsChatModalOpen(true);
+      openChat(influencerToOpen);
     }
     finish();
   }, [openChatInfluencerId, influencersState, participants, isLoading, onOpenChatConsumed]);
@@ -1088,8 +1090,7 @@ export function ManagementTab({
                         type="button"
                         className="btn out"
                         onClick={() => {
-                          setSelectedInfluencer(panelInfluencer);
-                          setIsChatModalOpen(true);
+                          openChat(panelInfluencer);
                         }}
                       >
                         <I n="msg" cls="sm" />
@@ -1190,8 +1191,7 @@ export function ManagementTab({
                           type="button"
                           className="rm"
                           onClick={() => {
-                            setSelectedInfluencer(inf);
-                            setIsChatModalOpen(true);
+                            openChat(inf);
                           }}
                         >
                           Cobrar
@@ -1429,7 +1429,7 @@ export function ManagementTab({
                 className="flex-1"
                 onClick={() => {
                   setIsModalOpen(false);
-                  setIsChatModalOpen(true);
+                  if (selectedInfluencer) openChat(selectedInfluencer);
                 }}
               >
                 <div className="flex items-center gap-2">
@@ -1471,16 +1471,6 @@ export function ManagementTab({
         </Modal>
       )}
 
-      {/* Modal de Chat */}
-      {selectedInfluencer && isChatModalOpen && (
-        <ChatModal
-          influencer={selectedInfluencer}
-          onClose={() => {
-            setIsChatModalOpen(false);
-            setSelectedInfluencer(null);
-          }}
-        />
-      )}
 
       {/* Modal de Rejeição */}
       {selectedInfluencer && isRejectModalOpen && (
@@ -1555,478 +1545,5 @@ export function ManagementTab({
         </Modal>
       )}
     </>
-  );
-}
-
-// Componente de Chat
-function ChatModal({
-  influencer,
-  onClose,
-}: {
-  influencer: ExtendedInfluencer;
-  onClose: () => void;
-}) {
-  const { campaignId } = useParams({
-    from: "/(private)/(app)/campaigns/$campaignId",
-  });
-
-  const { user: currentUser } = useCurrentUser();
-  const currentUserId = currentUser?.id ? String(currentUser.id) : null;
-
-  /** `GET /management`: `id` = campaign_users.id */
-  const campaignUserIdNum = useMemo(() => {
-    const n = Number.parseInt(String(influencer.id), 10);
-    return Number.isFinite(n) ? n : 0;
-  }, [influencer.id]);
-
-  const platformUserFromParticipant = useMemo(() => {
-    if (influencer.user_id == null || String(influencer.user_id).trim() === "")
-      return null;
-    const n = Number.parseInt(String(influencer.user_id), 10);
-    return Number.isFinite(n) ? n : null;
-  }, [influencer.user_id]);
-
-  const needsUserLookup = platformUserFromParticipant == null;
-
-  const { data: campaignUsers = [], isLoading: isLoadingUsers } =
-    useCampaignUsers(campaignId ?? "", {
-      enabled: !!campaignId && needsUserLookup && campaignUserIdNum > 0,
-    });
-
-  const platformUserId = useMemo(() => {
-    if (platformUserFromParticipant != null) return platformUserFromParticipant;
-    const row = campaignUsers.find(
-      (u) => String(u.id) === String(influencer.id),
-    );
-    if (row?.user_id == null) return null;
-    const n = Number.parseInt(String(row.user_id), 10);
-    return Number.isFinite(n) ? n : null;
-  }, [platformUserFromParticipant, campaignUsers, influencer.id]);
-
-  const loadingChatIdentity = needsUserLookup && isLoadingUsers;
-  const canChat =
-    campaignUserIdNum > 0 && platformUserId != null && platformUserId > 0;
-
-  const {
-    messages,
-    isConnected,
-    isLoading: isLoadingMessages,
-    error: chatError,
-    sendMessage,
-    messagesEndRef,
-  } = useChat({
-    campaignId: campaignId ?? "",
-    influencerId: platformUserId ?? 0,
-    campaignUserId: campaignUserIdNum,
-    enabled: !!campaignId && canChat && !loadingChatIdentity,
-  });
-
-  // #19: abrir a conversa marca as notificações de chat dela como lidas —
-  // sem isso o sino continuava acusando pendência mesmo com a mensagem lida.
-  const markChatRead = useMarkChatNotificationsAsRead();
-  const markedChatReadKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!campaignId || !canChat || platformUserId == null) return;
-    const conversationKey = `${campaignId}:${platformUserId}`;
-    if (markedChatReadKeyRef.current === conversationKey) return;
-    markedChatReadKeyRef.current = conversationKey;
-    markChatRead.mutate(
-      {
-        campaignId,
-        influencerId: platformUserId,
-      },
-      // Best-effort: falha em marcar como lido não pode quebrar o chat.
-      {
-        onError: () => {
-          if (markedChatReadKeyRef.current === conversationKey) {
-            markedChatReadKeyRef.current = null;
-          }
-        },
-      },
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaignId, canChat, platformUserId]);
-
-  const [newMessage, setNewMessage] = useState("");
-  const [attachments, setAttachments] = useState<
-    Array<{ id: string; name: string; file: File }>
-  >([]);
-  const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Grupos da campanha para enviar o link de acesso direto pelo chat (#16).
-  const { data: campaignGroups = [] } = useQuery({
-    queryKey: ["campaigns", campaignId, "community-groups"],
-    queryFn: () => listCampaignGroups(campaignId ?? ""),
-    enabled: !!campaignId,
-  });
-  const [showGroupPicker, setShowGroupPicker] = useState(false);
-
-  const handleInsertGroupLink = (group: CampaignCommunityGroup) => {
-    setShowGroupPicker(false);
-    setNewMessage((prev) => {
-      const prefix = prev.trim().length ? `${prev.trim()}\n` : "";
-      return `${prefix}Acesse o grupo "${group.name}": ${group.share_url}`;
-    });
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      if (attachments.length + files.length > 5) {
-        toast.error("Você pode enviar no máximo 5 anexos por mensagem.");
-        e.target.value = "";
-        return;
-      }
-      const invalid = Array.from(files).find(
-        (file) => file.size > 25 * 1024 * 1024,
-      );
-      if (invalid) {
-        toast.error(`"${invalid.name}" excede o limite de 25 MB.`);
-        e.target.value = "";
-        return;
-      }
-      const newAttachments = Array.from(files).map((file) => ({
-        id: Date.now().toString() + Math.random(),
-        name: file.name,
-        file,
-      }));
-      setAttachments([...attachments, ...newAttachments]);
-    }
-  };
-
-  const handleRemoveAttachment = (id: string) => {
-    setAttachments(attachments.filter((att) => att.id !== id));
-  };
-
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() && attachments.length === 0) return;
-    if (!isConnected) {
-      toast.error("Não conectado ao servidor");
-      return;
-    }
-
-    try {
-      setIsUploadingAttachments(true);
-      const uploaded = await Promise.all(
-        attachments.map((attachment) =>
-          uploadChatAttachment(
-            campaignId ?? "",
-            String(platformUserId),
-            attachment.file,
-          ),
-        ),
-      );
-      sendMessage(
-        newMessage.trim(),
-        uploaded.map((attachment) => attachment.url),
-      );
-
-      setNewMessage("");
-      setAttachments([]);
-      setShowGroupPicker(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível enviar os anexos.",
-      );
-    } finally {
-      setIsUploadingAttachments(false);
-    }
-  };
-
-  // Determinar se mensagem é do influenciador ou do backoffice
-  // Influenciador: sender_id === influencerId (user_id) → ESQUERDA
-  // Backoffice: sender_id === currentUserId → DIREITA
-  const isFromInfluencer = (senderId: string) => {
-    const senderIdStr = String(senderId);
-    if (platformUserId != null && senderIdStr === String(platformUserId)) {
-      return true;
-    }
-    if (currentUserId && senderIdStr === currentUserId) {
-      return false;
-    }
-    return senderIdStr !== currentUserId;
-  };
-
-  return (
-    <Modal title={`Chat com ${influencer.name}`} onClose={onClose}>
-      <div className="flex flex-col h-[600px]">
-        {/* Erro */}
-        {chatError && (
-          <div className="mb-2 px-3 py-1.5 rounded-lg bg-warning-50 text-warning-700 text-xs">
-            ⚠️ {chatError}
-          </div>
-        )}
-
-        {loadingChatIdentity ? (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-neutral-600">
-              Carregando informações do chat...
-            </p>
-          </div>
-        ) : !canChat ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-neutral-600 mb-2">
-                Não foi possível identificar o usuário da plataforma para este
-                vínculo (user_id ausente).
-              </p>
-              <p className="text-xs text-neutral-500">
-                Campaign user id: {String(influencer.id)}
-              </p>
-            </div>
-          </div>
-        ) : isLoadingMessages ? (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-neutral-600">Carregando mensagens...</p>
-          </div>
-        ) : (
-          <div className="flex-1 overflow-y-auto flex flex-col gap-4 mb-4">
-            {messages.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center">
-                <p className="text-neutral-600">
-                  Nenhuma mensagem ainda. Inicie a conversa!
-                </p>
-              </div>
-            ) : (
-              messages.map((msg) => {
-                const fromInfluencer = isFromInfluencer(msg.sender_id);
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex gap-3 items-end ${fromInfluencer ? "justify-start" : "justify-end"
-                      }`}
-                  >
-                    {/* Avatar do influenciador (ESQUERDA) */}
-                    {fromInfluencer && (
-                      <Avatar
-                        src={msg.sender_avatar || influencer.avatar || ""}
-                        alt={msg.sender_name || influencer.name}
-                        size="sm"
-                        className="shrink-0"
-                      />
-                    )}
-
-                    {/* Mensagem */}
-                    <div
-                      className={`max-w-[70%] rounded-2xl p-3 ${fromInfluencer
-                        ? "bg-neutral-100 text-neutral-950 rounded-bl-sm"
-                        : "bg-primary-600 text-neutral-50 rounded-br-sm"
-                        }`}
-                    >
-                      {/* Texto da mensagem */}
-                      {msg.message && (
-                        <ChatMessageText
-                          text={msg.message}
-                          className={`mb-2 text-sm ${fromInfluencer ? "text-neutral-950" : "text-neutral-50"}`}
-                        />
-                      )}
-
-                      {/* Anexos */}
-                      {msg.attachments && msg.attachments.length > 0 && (
-                        <div className="flex flex-col gap-2 mb-2">
-                          {msg.attachments.map(
-                            (attUrl: string, idx: number) => (
-                              <div
-                                key={idx}
-                                className={`flex items-center gap-2 p-2 rounded-lg ${fromInfluencer
-                                  ? "bg-neutral-200"
-                                  : "bg-primary-500"
-                                  }`}
-                              >
-                                <Icon
-                                  name="Paperclip"
-                                  color={fromInfluencer ? "#404040" : "#FAFAFA"}
-                                  size={16}
-                                />
-                                <a
-                                  href={attUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={`text-xs underline truncate flex-1 ${fromInfluencer
-                                    ? "text-neutral-700"
-                                    : "text-neutral-50"
-                                    }`}
-                                >
-                                  Anexo {idx + 1}
-                                </a>
-                              </div>
-                            ),
-                          )}
-                        </div>
-                      )}
-
-                      {/* Timestamp */}
-                      <p
-                        className={`text-xs mt-1 ${fromInfluencer
-                          ? "text-neutral-500"
-                          : "text-neutral-200 opacity-80"
-                          }`}
-                      >
-                        {new Date(msg.created_at).toLocaleString("pt-BR", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-
-                    {/* Avatar do backoffice (DIREITA) */}
-                    {!fromInfluencer && (
-                      <Avatar
-                        src={msg.sender_avatar || ""}
-                        alt={msg.sender_name || "Você"}
-                        size="sm"
-                        className="shrink-0"
-                      />
-                    )}
-                  </div>
-                );
-              })
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
-
-        {/* Anexos selecionados */}
-        {attachments.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-2">
-            {attachments.map((att) => (
-              <div
-                key={att.id}
-                className="flex items-center gap-2 bg-neutral-100 rounded-lg px-2 py-1 text-xs"
-              >
-                <Icon name="File" color="#404040" size={14} />
-                <span className="max-w-[150px] truncate">{att.name}</span>
-                <button
-                  onClick={() => handleRemoveAttachment(att.id)}
-                  className="text-danger-600 hover:text-danger-700"
-                >
-                  <Icon name="X" color="#dc2626" size={14} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,video/mp4,video/quicktime,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            onChange={handleFileSelect}
-            className="hidden"
-            id="file-input"
-          />
-          <label htmlFor="file-input">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Icon name="Paperclip" color="#404040" size={16} />
-            </Button>
-          </label>
-          {campaignGroups.length > 0 && (
-            <div className="relative">
-              <Button
-                type="button"
-                variant="outline"
-                title="Enviar link de um grupo da campanha"
-                onClick={() => setShowGroupPicker((v) => !v)}
-              >
-                <Icon name="Users" color="#404040" size={16} />
-              </Button>
-              {showGroupPicker && (
-                <div className="absolute bottom-full left-0 z-10 mb-2 max-h-56 w-64 overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1 shadow-lg">
-                  <p className="px-3 py-2 text-xs font-medium text-neutral-500">
-                    Enviar link do grupo
-                  </p>
-                  {campaignGroups.map((group) => (
-                    <button
-                      key={group.id}
-                      type="button"
-                      onClick={() => handleInsertGroupLink(group)}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-neutral-800 hover:bg-neutral-100"
-                    >
-                      <Icon name="Users" color="#404040" size={14} />
-                      <span className="truncate">{group.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          <textarea
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                void handleSendMessage();
-              }
-            }}
-            placeholder={
-              isConnected
-                ? "Digite sua mensagem… (Ctrl/⌘ + Enter para enviar)"
-                : "Conectando..."
-            }
-            disabled={!isConnected || !canChat || isUploadingAttachments}
-            rows={3}
-            className="max-h-48 min-h-24 flex-1 resize-y rounded-2xl bg-neutral-100 px-4 py-3 outline-none focus:bg-neutral-200/70 disabled:opacity-50"
-          />
-          <Button
-            onClick={() => void handleSendMessage()}
-            className="w-min"
-            disabled={
-              !isConnected ||
-              !canChat ||
-              isUploadingAttachments ||
-              (!newMessage.trim() && attachments.length === 0)
-            }
-          >
-            <Icon name="Send" color="#FAFAFA" size={16} />
-          </Button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function ChatMessageText({
-  text,
-  className,
-}: {
-  text: string;
-  className: string;
-}) {
-  const parts = text.split(/(https?:\/\/[^\s]+)/g);
-  return (
-    <p className={`${className} whitespace-pre-wrap break-words`}>
-      {parts.map((part, index) => {
-        if (!/^https:\/\//i.test(part)) {
-          return <span key={index}>{part}</span>;
-        }
-        return (
-          <a
-            key={index}
-            href={part}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2"
-          >
-            {part}
-          </a>
-        );
-      })}
-    </p>
   );
 }

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
 
 import { Av, I } from "@/components/prototype/ui";
+import hypeappLogoBranca from "@/assets/images/hypeapp-logo-branca.svg";
 import {
   useWorkspaceContext,
   useWorkspacePermissions,
@@ -142,8 +143,7 @@ export function Sidebar() {
     <div className="pv" style={{ height: "100%" }}>
       <aside className="side" style={{ height: "100%" }}>
         <div className="logo">
-          <i>h</i>
-          <span>hypeapp</span>
+          <img src={hypeappLogoBranca} alt="HypeApp" />
         </div>
 
         <div className={`wsw ${open ? "open" : ""}`} ref={wswRef}>

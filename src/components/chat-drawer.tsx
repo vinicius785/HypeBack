@@ -22,6 +22,21 @@ interface Conversation {
   at: string;
 }
 
+const OPEN_CHAT_EVENT = "hype:open-chat";
+
+export interface OpenChatRequest {
+  campaignId: string;
+  /** ID do usuário da plataforma (mesmo `influencer_id` das notificações de chat). */
+  influencerId: string;
+  name: string;
+  campaign?: string;
+}
+
+/** Abre a gaveta de mensagens já na conversa do criador. */
+export function openChatDrawer(req: OpenChatRequest) {
+  window.dispatchEvent(new CustomEvent<OpenChatRequest>(OPEN_CHAT_EVENT, { detail: req }));
+}
+
 function fmtTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
@@ -202,7 +217,13 @@ export function ChatDrawerButton() {
   const navigate = useNavigate();
   const { data: notifications = [] } = useNotifications();
 
-  const convs = useMemo(() => buildConversations(notifications), [notifications]);
+  const [extra, setExtra] = useState<Conversation | null>(null);
+
+  const convs = useMemo(() => {
+    const base = buildConversations(notifications);
+    if (extra && !base.some((c) => c.id === extra.id)) return [extra, ...base];
+    return base;
+  }, [notifications, extra]);
   const totalUnread = convs.reduce((a, c) => a + c.unread, 0);
 
   const requestClose = useCallback(() => {
@@ -216,6 +237,29 @@ export function ChatDrawerButton() {
       setQ("");
       setFilter("all");
     }, CLOSE_MS);
+  }, []);
+
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const r = (e as CustomEvent<OpenChatRequest>).detail;
+      if (!r) return;
+      const id = `${r.campaignId}:${r.influencerId}`;
+      setExtra({
+        id,
+        campaignId: r.campaignId,
+        influencerId: r.influencerId,
+        name: r.name,
+        campaign: r.campaign ?? "",
+        preview: "",
+        unread: 0,
+        at: new Date().toISOString(),
+      });
+      setClosing(false);
+      setSel(id);
+      setOpen(true);
+    };
+    window.addEventListener(OPEN_CHAT_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_CHAT_EVENT, onOpen);
   }, []);
 
   useEffect(() => {
