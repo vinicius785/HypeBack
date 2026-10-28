@@ -181,6 +181,12 @@ export function InfluencerProfileView({
   const activeExtProfile = isExternal && activeTab
     ? preRegisteredProfiles.find((p) => (p.network ?? "").toLowerCase() === activeTab)
     : null;
+  // A API devolve `avatar` vazio; a foto vem do perfil na rede (como na lista).
+  const avatarSrc =
+    activeSN?.photo ||
+    influencer.avatar ||
+    (influencer.social_networks ?? []).find((sn) => sn.photo)?.photo ||
+    undefined;
   const username = activeSN?.username?.replace(/^@/, "") ?? null;
   const profileUrl = username && activeTab
     ? socialNetworkUrl(activeTab, username)
@@ -308,7 +314,7 @@ export function InfluencerProfileView({
   const body = (
       <>
         <div className="pf-hd">
-          <Av name={name} src={influencer.avatar ?? undefined} size={92} />
+          <Av name={name} src={avatarSrc} size={92} />
           <div className="pf-id">
             <h2>
               {name}
@@ -358,7 +364,7 @@ export function InfluencerProfileView({
         ) : null}
 
         <p className="pf-bio" style={{ whiteSpace: "pre-wrap" }}>
-          {influencer.bio ?? "Nenhuma descrição informada."}
+          {influencer.bio || (activeSN as { bio?: string | null } | null | undefined)?.bio || "Nenhuma descrição informada."}
         </p>
 
         {tabs.length > 1 ? (

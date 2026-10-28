@@ -2055,3 +2055,7 @@
 .pv .wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
 /* Muitos workspaces: a lista rola em vez de estourar a tela. */
 .pv .wsl { max-height: calc(100vh - 180px); overflow-y: auto; scrollbar-width: thin; }
+
+/* Recusar no painel lateral: fundo claro pede texto vermelho (a regra .btn.dng genérica deixava o texto branco). */
+.pv .side2 .btn.out.dng, .pv .drw-b .btn.out.dng { background: var(--bg); color: var(--danger); }
+.pv .side2 .btn.out.dng:hover, .pv .drw-b .btn.out.dng:hover { background: var(--danger); color: #fff; }
