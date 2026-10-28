@@ -1,0 +1,23 @@
+/* Admin › Grupos: o CSS base `gpx-*` vem de prototype.css. Aqui só o que não existia no protótipo. */
+.pv .gpx-c .gpx-cvi { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pv .gpx-c .lvx-im.sq { aspect-ratio: 1 / 1; }
+.pv .gpx-cmp { background: var(--bg); border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+.pv .gpx-cmp .cm-ta { background: #fff; }
+.pv .gpx-cmp-r { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.pv .gpx-cmp-r > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pv .gpx-cmp small { color: var(--muted); font-size: 12px; }
+.pv .gpx-cmp .nbtn { height: 40px; font-size: 13px; background: #fff; }
+.pv .gpx-cmp .btn { height: 40px; padding: 0 20px; font-size: 13px; }
+.pv .gpx-cmp .btn:disabled, .pv .gpx-cmp .nbtn:disabled { opacity: .5; cursor: not-allowed; }
+.pv .gpx-att { position: relative; width: fit-content; }
+.pv .gpx-att img, .pv .gpx-att video { max-height: 180px; border-radius: 16px; display: block; background: #000; }
+.pv .gpx-att > button { position: absolute; right: 8px; top: 8px; width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.95); display: grid; place-items: center; }
+.pv .gpx-md { margin: 8px 0 0; max-height: 180px; border-radius: 16px; display: block; background: #000; max-width: 100%; }
+.pv .gpx-md.im { object-fit: cover; background: none; }
+.pv .gpx-add { display: flex; gap: 8px; }
+.pv .gpx-add .cm-in { flex: 1; background: var(--bg); }
+.pv .gpx-add .btn { height: 50px; }
+.pv .gpx-more { display: flex; justify-content: center; margin-top: 14px; }
+.pv .gpx-s0 .lvf-cvc .lvf-dz { aspect-ratio: 1; }
+.pv .gpx-ct { text-align: right; color: var(--muted); font-size: 11.5px; margin-top: 4px; display: block; }
+.pv .gpx-cf { cursor: default; }

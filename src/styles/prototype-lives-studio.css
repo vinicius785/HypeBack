@@ -1,0 +1,36 @@
+/* Estúdio da live (página): CSS base `lvs-*` vem de prototype.css. Aqui só o que o
+   protótipo resolvia com o overlay `.ovd.lvs` e o que não tinha dado real. */
+.pv .lvs-page { display: grid; grid-template-columns: minmax(0, 1fr) 380px; height: min(740px, calc(100vh - 210px)); min-height: 560px; border-radius: 34px; overflow: hidden; background: #fff; margin-top: 20px; animation: pv-ccrise .5s var(--ease) both; }
+.pv .lvs-page.solo { grid-template-columns: minmax(0, 1fr); }
+.pv .lvs-v video, .pv .lvs-v img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.pv .lvs-v video.mir { transform: scaleX(-1); }
+.pv .lvs-v.off { opacity: .15; }
+.pv .lvs-v.vod video { object-fit: contain; background: #000; }
+.pv .lvs-ov { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(5,5,5,.55); color: #fff; font-size: 13.5px; font-weight: 600; text-align: center; padding: 0 24px; }
+.pv .lvs-ov .ico { width: 28px; height: 28px; }
+.pv .lvs-sp { width: 30px; height: 30px; border-radius: 50%; border: 3px solid rgba(255,255,255,.3); border-top-color: #fff; animation: pv-lvspin .8s linear infinite; } @keyframes pv-lvspin { to { transform: rotate(360deg); } }
+.pv .lvs-b.sm-off { opacity: .5; }
+.pv .lvs-mt { position: absolute; left: 14px; right: 14px; bottom: 72px; z-index: 3; height: 4px; border-radius: 99px; background: rgba(255,255,255,.25); overflow: hidden; } .pv .lvs-mt i { display: block; height: 100%; background: #4ade80; transition: width .08s linear; } .pv .lvs-mt.low i { background: rgba(255,255,255,.55); }
+.pv .lvs-set { position: absolute; left: 14px; right: 14px; bottom: 86px; z-index: 4; max-height: 62%; overflow-y: auto; background: #fff; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 40px -20px rgba(5,5,5,.5); animation: pv-n4in .3s var(--ease) both; scrollbar-width: none; }
+.pv .lvs-set h4 { margin: 0; font-size: 14px; letter-spacing: -.02em; }
+.pv .lvs-set label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.pv .lvs-set label.ck { flex-direction: row; align-items: flex-start; gap: 10px; color: var(--ink); }
+.pv .lvs-set label.ck span { display: flex; flex-direction: column; font-size: 13px; font-weight: 600; } .pv .lvs-set label.ck small { font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.pv .lvs-set select { height: 42px; border: 0; outline: 0; border-radius: 14px; background: var(--bg); padding: 0 12px; font: inherit; font-size: 13.5px; color: var(--ink); } .pv .lvs-set select:focus { box-shadow: 0 0 0 2px var(--ink); } .pv .lvs-set select:disabled { opacity: .5; }
+.pv .lvs-set input[type="checkbox"] { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--ink); flex: none; }
+.pv .lvs-set > em { font-style: normal; font-size: 12px; color: var(--muted); }
+.pv .lvs-r { overflow: hidden; }
+.pv .lvs-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; } .pv .lvs-h > div { min-width: 0; } .pv .lvs-h h3 { overflow-wrap: anywhere; }
+.pv .lvs-in input:disabled { opacity: .6; } .pv .lvs-ch .lvs-ms > div { min-width: 0; } .pv .lvs-ch .lvs-ms p { overflow-wrap: anywhere; }
+.pv .lvs-ch .lvs-ms .iav { flex: none; }
+.pv .ch-send:disabled { opacity: .4; cursor: not-allowed; }
+.pv .lvs-ft .lvs-cf { margin-top: 0; }
+.pv .lvs-rt { background: var(--bg); border-radius: 24px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 40%; scrollbar-width: none; }
+.pv .lvs-rt b { font-size: 13.5px; } .pv .lvs-rt small { color: var(--muted); font-size: 12px; line-height: 1.4; }
+.pv .lvs-rt .row { display: flex; gap: 6px; align-items: center; background: #fff; border-radius: 99px; padding: 4px 4px 4px 14px; } .pv .lvs-rt .row input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font: inherit; font-size: 12.5px; }
+.pv .lvs-rt .row .btn { height: 34px; padding: 0 14px; font-size: 12.5px; }
+.pv .lvs-ds { margin: 0; font-size: 13px; line-height: 1.5; color: rgba(5,5,5,.7); white-space: pre-line; overflow-y: auto; max-height: 90px; scrollbar-width: none; }
+.pv .lvs-hd-meta { color: var(--muted); font-size: 14px; margin: 0; }
+.pv .lvs-hd-t { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pv .lvs-hd-t h1 { margin: 0 !important; }
+@media (max-width: 1100px) { .pv .lvs-page { grid-template-columns: 1fr; height: auto; } .pv .lvs-l { min-height: 620px; } .pv .lvs-r { min-height: 520px; } }

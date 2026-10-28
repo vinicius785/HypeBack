@@ -1,0 +1,9 @@
+/* Gerenciar workspace — complementos ao CSS do protótipo (escopo .pv). */
+.pv .wkx-cd .cm-in[disabled], .pv .wkx-cd .cm-ta[disabled] { opacity: .55; cursor: not-allowed; }
+.pv .wkx-note { color: var(--muted); font-size: 12.5px; margin: 0; }
+.pv .wkx-lv .wkx-ph { display: grid; place-items: center; font-size: 56px; font-weight: 700; color: var(--muted); letter-spacing: -.04em; }
+.pv .wkx-fd .wkx-ld { position: absolute; right: 16px; top: 44px; font-size: 12px; color: var(--muted); }
+.pv .wkx-empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+.pv .wkn-hn a { color: var(--ink); font-weight: 600; text-decoration: underline; }
+.pv .wkx-mr .wkx-ma .btn[disabled] { opacity: .4; pointer-events: none; }
+.pv .wkm-pg .lvf-sw small.part { color: var(--ink); }

@@ -1,0 +1,27 @@
+/* Extras da aba Métricas e conteúdos (blocos reais que o protótipo não tem). */
+.pv .mxe-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pv .mx-th .mx-pl { position: relative; z-index: 1; }
+.pv .mx-th .mx-bd, .pv .mx-th .mx-ov { z-index: 2; }
+.pv .mx-c { text-align: left; display: block; width: 100%; padding: 0; }
+.pv .mxe-sec { display: flex; flex-direction: column; gap: 16px; }
+.pv .mxe-cities { display: flex; flex-direction: column; gap: 14px; }
+.pv .mxe-city { display: grid; grid-template-columns: 18px minmax(0, 150px) 1fr 70px; align-items: center; gap: 12px; font-size: 13.5px; }
+.pv .mxe-city b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv .mxe-city i { height: 8px; border-radius: 99px; background: var(--bg); overflow: hidden; display: block; }
+.pv .mxe-city u { display: block; height: 100%; border-radius: 99px; background: var(--brand); text-decoration: none; animation: pv-pfbar .8s var(--ease) both; }
+.pv .mxe-city em { font-style: normal; font-weight: 600; text-align: right; font-size: 13px; white-space: nowrap; }
+.pv .mxe-age { display: flex; align-items: flex-end; gap: 14px; height: 170px; padding-top: 8px; }
+.pv .mxe-ag { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; }
+.pv .mxe-bars { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 4px; }
+.pv .mxe-bars i { flex: 1; max-width: 26px; height: var(--h); min-height: 3px; border-radius: 8px 8px 4px 4px; background: var(--ink); animation: pv-mxbar .6s var(--ease) both; transform-origin: bottom; }
+.pv .mxe-bars i.ig { background: var(--brand); }
+.pv .mxe-bars i.yt { background: var(--ink); }
+.pv .mxe-ag small { font-size: 12px; color: var(--muted); font-weight: 500; white-space: nowrap; }
+.pv .mxe-lg { display: flex; gap: 16px; font-size: 12.5px; color: var(--muted); font-weight: 600; flex-wrap: wrap; }
+.pv .mxe-lg span { display: inline-flex; align-items: center; gap: 6px; }
+.pv .mxe-lg i { width: 10px; height: 10px; border-radius: 50%; display: block; }
+.pv .mxe-hdr { display: flex; gap: 8px; align-items: center; }
+.pv .mxe-ty { margin: 0; font-size: 13px; color: var(--muted); }
+.pv .mxm .mxe-img { z-index: 0; }
+.pv .mxr-l a, .pv .mxr-l em { text-decoration: none; }
+@media (max-width: 760px) { .pv .mxe-city { grid-template-columns: 18px minmax(0, 100px) 1fr 56px; } }

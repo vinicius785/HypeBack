@@ -1,0 +1,16 @@
+/* Extras do perfil do criador (página) — o CSS base `pf-*` vem de prototype.css. */
+.pv .pf-card { background: #fff; border-radius: 28px; overflow: hidden; width: 100%; max-width: 920px; margin: 0 auto; }
+.pv .pf-card .pf-f { flex-wrap: wrap; }
+.pv .pf-card .pf-f .btn.pri { background: var(--ink); color: #fff; }
+.pv .pf-au.one { grid-template-columns: 1fr; }
+.pv .pf-sh { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.pv .pf-sh h3 { margin: 0; }
+.pv .pf-gl { display: block; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+.pv .pf-tf.pf-tf-w { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.pv .pf-tf.pf-tf-2 { grid-template-columns: repeat(2, 1fr); }
+.pv .pf-dl { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.pv .pf-dl img { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; background: #fff; }
+.pv .pf-hs .pf-ev { height: 36px; padding: 0 14px; font-size: 13px; flex: none; }
+.pv .pf-hs .pf-ev:disabled { opacity: .5; cursor: not-allowed; }
+.pv .pf-hs > div > div { min-width: 0; }
+@media (max-width: 700px) { .pv .pf-tf, .pv .pf-tf.pf-tf-2 { grid-template-columns: 1fr; } .pv .pf-sc { padding: 24px 18px; } .pv .pf-hd { padding-right: 0; flex-wrap: wrap; } }

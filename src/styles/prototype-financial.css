@@ -1,0 +1,13 @@
+/* Extras da página Financeiro (itens reais que o protótipo não tem). */
+.pv .fnx-sum { color: var(--muted); font-size: 13.5px; margin: 0 0 14px 6px; }
+.pv .fnx-sum b { color: var(--ink); font-weight: 600; }
+.pv .fnx-more { display: flex; justify-content: center; margin-top: 16px; }
+.pv .fnx-hm button:disabled, .pv .fnx-qa button:disabled { opacity: .5; cursor: default; }
+.pv .fnx-qa button:disabled:hover span { transform: none; background: linear-gradient(180deg, #fff, #f1ecfa); color: inherit; }
+.pv .fnx-rr:empty { display: none; }
+.pv .fnx-hs .fnx-none { color: var(--muted); font-size: 14px; padding: 18px 6px; }
+.pv a.fnx-ch, .pv a.fnx-cp-l { color: inherit; text-decoration: none; }
+.pv .fnx-cs b.warn { color: #b45309; }
+.pv .fnx-tgm { margin-left: 8px; font-size: 11px; font-weight: 600; background: var(--bg); border-radius: 99px; padding: 3px 9px; color: rgba(5,5,5,.7); white-space: nowrap; }
+.pv .fnx-ch > div { min-width: 0; }
+.pv .fnx-ch b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

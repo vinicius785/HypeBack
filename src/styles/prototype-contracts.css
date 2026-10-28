@@ -1,0 +1,6 @@
+.pv .gjm #ctbar { position: absolute; left: 24px; right: 24px; bottom: 20px; pointer-events: none; }
+.pv .gjm #ctbar .gbar { pointer-events: auto; background: var(--ink); color: #fff; border-radius: 99px; padding: 8px 8px 8px 8px; box-shadow: 0 18px 30px -12px rgba(5,5,5,.5); animation: pv-ccin .4s var(--ease) both; margin: 0; }
+.pv .gjm #ctbar .gbar .lnk { color: var(--dim); }
+.pv .gjm #ctbar .gbar .lnk:hover { background: rgba(255,255,255,.1); color: #fff; }
+.pv .cra .gact:disabled { opacity: .5; cursor: default; }
+@media (max-width: 720px) { .pv .gjm #ctbar { left: 10px; right: 10px; } }
