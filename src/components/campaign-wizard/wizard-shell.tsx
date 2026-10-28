@@ -69,6 +69,16 @@ export function WizardShell(p: WizardShellProps) {
       .join(", ");
 
   const stepRef = useRef<HTMLElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const ind = nav?.querySelector<HTMLElement>(".ind");
+    const on = nav?.querySelector<HTMLElement>("button.on");
+    if (ind && on) {
+      ind.style.width = `${on.offsetWidth}px`;
+      ind.style.transform = `translateX(${on.offsetLeft}px)`;
+    }
+  }, [step]);
   const bodyRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     bodyRef.current?.scrollTo({ top: 0 });
@@ -152,7 +162,8 @@ export function WizardShell(p: WizardShellProps) {
 
         <div className="fade nbarw">
           <div className="nbar">
-            <nav className="nstp">
+            <nav className="nstp" ref={navRef}>
+              <i className="ind" />
               {WIZARD_STEPS.map((l, k) => {
                 const s = k + 1;
                 const on = step === s;

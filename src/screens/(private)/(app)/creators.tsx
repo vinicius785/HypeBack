@@ -574,7 +574,6 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [inviteTarget, setInviteTarget] = useState<InviteTarget | null>(null);
   const membershipMap = useInfluencerMembershipMap();
-  const { data: lists = [] } = useInfluencerLists();
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // "Perto de mim" — estado de geolocalização, persistido em localStorage

@@ -57,7 +57,6 @@ const TEMPOS: Array<{ label: string; months: string }> = [
   { label: "3 meses", months: "3" },
   { label: "6 meses", months: "6" },
   { label: "12 meses", months: "12" },
-  { label: "Sem prazo", months: "999" },
 ];
 
 const p2 = (n: number) => String(n).padStart(2, "0");
