@@ -1339,6 +1339,10 @@ function RouteComponent() {
   const [exploreCount, setExploreCount] = useState<number | undefined>(undefined);
   const { data: myLists = [], isLoading: listsLoading } = useInfluencerLists();
   const canLists = !!permissions.catalog_write;
+  const [visitedLists, setVisitedLists] = useState(activeTab === "lists");
+  useEffect(() => {
+    if (activeTab === "lists") setVisitedLists(true);
+  }, [activeTab]);
 
   function setTab(tab: ActiveTab) {
     navigate({ search: tab === "lists" ? { tab: "lists" } : {} } as any);
@@ -1368,7 +1372,16 @@ function RouteComponent() {
       exploreCount={exploreCount}
       listCount={canLists && !listsLoading ? myLists.length : undefined}
     >
-      {activeTab === "catalog" ? <CatalogTab onTotal={setExploreCount} /> : <ListsTab />}
+      {/* As duas abas ficam montadas (a visitada fica só oculta): trocar não
+          refaz requisições, não mostra skeleton nem repete a animação. */}
+      <div hidden={activeTab !== "catalog"}>
+        <CatalogTab onTotal={setExploreCount} />
+      </div>
+      {canLists && visitedLists && (
+        <div hidden={activeTab !== "lists"}>
+          <ListsTab />
+        </div>
+      )}
     </PageShell>
   );
 }
