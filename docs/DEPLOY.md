@@ -19,15 +19,15 @@ Depois de mudar uma variável é preciso refazer o deploy (ela é gravada no bui
 ## 2. Build
 
 ```bash
-npm ci        # ou: pnpm install --frozen-lockfile
+npm ci
 npm run build # gera dist/
 ```
 
 Vercel: framework "Vite", build `npm run build`, saída `dist`.
 Netlify: build `npm run build`, publish `dist`.
 
-> O repositório tem `package-lock.json` e `pnpm-lock.yaml`. Escolha um gerenciador
-> e apague o outro lockfile para o deploy ser reproduzível.
+> O projeto usa **npm** (`package-lock.json`). Não há lockfile do pnpm: o Vercel e o Netlify
+> detectam o npm sozinhos, sem precisar trocar o Install Command.
 
 ## 3. API: liberar o domínio do front
 
