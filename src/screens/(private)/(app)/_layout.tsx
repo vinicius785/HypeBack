@@ -47,17 +47,11 @@ function RouteComponent() {
     pathname === "/financial" ||
     pathname === "/workspace/settings" ||
     pathname === "/settings" ||
-    (pathname.startsWith("/campaigns/") &&
-      !pathname.includes("/edit") &&
-      !pathname.includes("/influencer/") &&
-      pathname !== "/campaigns/new");
+    (pathname.startsWith("/campaigns/") && !pathname.includes("/influencer/"));
   if (ownTitle || pathname === "/lives/new" || pathname.includes("/influencer/")) title = "";
   // Detalhe da campanha: a barra do topo (voltar + ações) é da própria página.
   const detailOwnsTop =
-    pathname.startsWith("/campaigns/") &&
-    !pathname.includes("/edit") &&
-    !pathname.includes("/influencer/") &&
-    pathname !== "/campaigns/new";
+    pathname.startsWith("/campaigns/") && !pathname.includes("/influencer/");
 
   return (
     <WorkspaceProvider>

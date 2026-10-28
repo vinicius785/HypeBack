@@ -563,13 +563,7 @@ interface InviteTarget {
   profileId: string;
 }
 
-function CatalogTab({
-  setTab,
-  canLists,
-}: {
-  setTab: (t: ActiveTab) => void;
-  canLists: boolean;
-}) {
+function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
   const [filters, setFilters] = useState<CatalogFilters>(EMPTY_FILTERS);
   const [debouncedQ, setDebouncedQ] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -690,6 +684,9 @@ function CatalogTab({
   );
 
   const total = data?.pages[0]?.total;
+  useEffect(() => {
+    onTotal(total);
+  }, [total, onTotal]);
 
   const handleLoadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
@@ -758,13 +755,7 @@ function CatalogTab({
 
   return (
     <>
-      <PageShell
-        tab="catalog"
-        setTab={setTab}
-        canLists={canLists}
-        exploreCount={total}
-        listCount={canLists ? lists.length : undefined}
-      >
+      <>
         <div id="crfb" className="fade crfb">
           <div className="crr2">
             <label className="find">
@@ -976,7 +967,7 @@ function CatalogTab({
             </button>
           </div>
         )}
-      </PageShell>
+      </>
 
       {profileId && <InfluencerProfileDrawer influencerId={profileId} onClose={() => setProfileId(null)} />}
       {selectedForList && (
@@ -1158,13 +1149,7 @@ function ListCard({
   );
 }
 
-function ListsTab({
-  setTab,
-  canLists,
-}: {
-  setTab: (t: ActiveTab) => void;
-  canLists: boolean;
-}) {
+function ListsTab() {
   const { data: lists = [], isLoading } = useInfluencerLists();
   const createMutation = useCreateInfluencerList();
   const updateMutation = useUpdateInfluencerList();
@@ -1197,7 +1182,7 @@ function ListsTab({
 
   return (
     <>
-      <PageShell tab="lists" setTab={setTab} canLists={canLists} listCount={isLoading ? undefined : lists.length}>
+      <>
         <div id="crres" className="fade lsm">
           {isLoading ? (
             <div className="crg crgl">
@@ -1232,7 +1217,7 @@ function ListsTab({
             </div>
           )}
         </div>
-      </PageShell>
+      </>
 
       {showCreateModal && (
         <Modal
@@ -1351,6 +1336,11 @@ function RouteComponent() {
       ? "lists"
       : "catalog";
 
+  // O cabeçalho/abas ficam montados ao trocar de aba; só o conteúdo muda.
+  const [exploreCount, setExploreCount] = useState<number | undefined>(undefined);
+  const { data: myLists = [], isLoading: listsLoading } = useInfluencerLists();
+  const canLists = !!permissions.catalog_write;
+
   function setTab(tab: ActiveTab) {
     navigate({ search: tab === "lists" ? { tab: "lists" } : {} } as any);
   }
@@ -1371,9 +1361,15 @@ function RouteComponent() {
     );
   }
 
-  return activeTab === "catalog" ? (
-    <CatalogTab setTab={setTab} canLists={!!permissions.catalog_write} />
-  ) : (
-    <ListsTab setTab={setTab} canLists={!!permissions.catalog_write} />
+  return (
+    <PageShell
+      tab={activeTab}
+      setTab={setTab}
+      canLists={canLists}
+      exploreCount={exploreCount}
+      listCount={canLists && !listsLoading ? myLists.length : undefined}
+    >
+      {activeTab === "catalog" ? <CatalogTab onTotal={setExploreCount} /> : <ListsTab />}
+    </PageShell>
   );
 }

@@ -56,6 +56,8 @@ const MAP: Record<string, keyof typeof icons> = {
   youtube: "Youtube",
   tiktok: "Music2",
   back: "ArrowLeft",
+  tag: "Tag",
+  pointer: "MousePointerClick",
 };
 
 /** Ícone no padrão do protótipo (`<svg class="ico sm rot">`). */

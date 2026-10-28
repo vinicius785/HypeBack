@@ -2,14 +2,13 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
-import { CreateCampaignStepOne } from "@/components/forms/create-campaign-step-one";
-import { CreateCampaignStepTwo } from "@/components/forms/create-campaign-step-two";
-import { CreateCampaignStepThree } from "@/components/forms/create-campaign-step-three";
-import { CreateCampaignStepFour } from "@/components/forms/create-campaign-step-four";
-import { CreateCampaignStepFive } from "@/components/forms/create-campaign-step-five";
-import { CreateCampaignStepSeven } from "@/components/forms/create-campaign-step-seven";
+import { StepCampaign } from "@/components/campaign-wizard/step-campaign";
+import { StepCreators } from "@/components/campaign-wizard/step-creators";
+import { StepPayment } from "@/components/campaign-wizard/step-payment";
+import { StepPhases } from "@/components/campaign-wizard/step-phases";
+import { WizardShell } from "@/components/campaign-wizard/wizard-shell";
+import { wizardMissing } from "@/components/campaign-wizard/config";
+import { useWorkspaceContext } from "@/contexts/workspace-context";
 
 import type { CampaignFormData, CampaignProductDraft } from "@/shared/types";
 import { useCampaign } from "@/hooks/use-campaigns";
@@ -47,21 +46,13 @@ export const Route = createFileRoute("/(private)/(app)/campaigns/$campaignId/edi
   component: RouteComponent,
 });
 
-/** Mesmo stepper da criação (6 passos). */
-const STEP_LABELS = [
-  "Briefing",
-  "Influenciadores",
-  "Remuneração",
-  "Materiais",
-  "Fases",
-  "Revisão",
-];
-
 function RouteComponent() {
   const navigate = useNavigate();
   const { campaignId } = useParams({ from: "/(private)/(app)/campaigns/$campaignId/edit" });
-  const [currentStep, setCurrentStep] = useState(6);
-  const [focusPhaseId, setFocusPhaseId] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [tried, setTried] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const { selectedWorkspace } = useWorkspaceContext();
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
   const formInitializedRef = useRef(false);
@@ -307,8 +298,6 @@ function RouteComponent() {
     setFormData(initialForm);
   }, [campaign, phases, niches, productsLoaded, serverProducts]);
 
-  const totalSteps = 6;
-
   // Identidade estável e obrigatória: vários steps declaram `updateFormData` no array
   // de dependências de useEffect. Sem useCallback a função é recriada a cada render,
   // o efeito redispara, o setState causa novo render — "Maximum update depth exceeded".
@@ -334,34 +323,7 @@ function RouteComponent() {
         toast.error("Campanha não carregada. Atualize a página e tente de novo.");
         return;
       }
-      const missing: { step: number; field: string; label: string }[] = [];
-
-      // Step 1
-      if (!formData.title?.trim()) missing.push({ step: 1, field: "title", label: "Título da campanha" });
-      if (!formData.description?.trim()) missing.push({ step: 1, field: "description", label: "Descrição da campanha" });
-      const whatToDoArr = Array.isArray(formData.whatToDo)
-        ? formData.whatToDo.filter((s) => s.trim())
-        : formData.whatToDo?.trim() ? [formData.whatToDo] : [];
-      if (!whatToDoArr.length) missing.push({ step: 1, field: "whatToDo", label: "O que fazer" });
-      const whatNotToDoArr = Array.isArray(formData.whatNotToDo)
-        ? formData.whatNotToDo.filter((s) => s.trim())
-        : formData.whatNotToDo?.trim() ? [formData.whatNotToDo] : [];
-      if (!whatNotToDoArr.length) missing.push({ step: 1, field: "whatNotToDo", label: "O que não fazer" });
-
-      // Step 2
-      if (!formData.influencersCount?.trim()) missing.push({ step: 2, field: "influencersCount", label: "Quantidade de influenciadores" });
-
-      // Step 3
-      if (!formData.paymentType?.trim()) missing.push({ step: 3, field: "paymentType", label: "Tipo de remuneração" });
-
-      // Step 4
-      if (!formData.banner?.trim()) missing.push({ step: 4, field: "banner", label: "Banner da campanha" });
-
-      // Step 5
-      const phasesArr = formData.phases ?? [];
-      if (!phasesArr.length || phasesArr.some((p) => !p.objective?.trim() || !p.postDate?.trim() || !p.formats?.length)) {
-        missing.push({ step: 5, field: "phases", label: "Fases da campanha" });
-      }
+      const missing = wizardMissing(formData);
 
       if (missing.length > 0) {
         setFieldErrors(new Set(missing.map((m) => m.field)));
@@ -471,34 +433,6 @@ function RouteComponent() {
     }
   };
 
-  const handleContinue = () => {
-    if (currentStep < totalSteps) {
-      if (currentStep === 5) setFocusPhaseId(null);
-      setCurrentStep((s) => s + 1);
-    }
-  };
-
-  const handleFooterBack = () => {
-    if (currentStep <= 1) {
-      navigate({ to: "/campaigns/$campaignId", params: { campaignId } });
-    } else {
-      setCurrentStep((s) => s - 1);
-    }
-  };
-
-  const handleEditFromReview = (step: number) => {
-    if (step === 5) setFocusPhaseId(null);
-    setCurrentStep(step);
-  };
-
-  const handleEditPhase = (phaseIndex: number) => {
-    const p = formData.phases[phaseIndex];
-    if (p?.id) {
-      setFocusPhaseId(p.id);
-      setCurrentStep(5);
-    }
-  };
-
   if (isLoadingCampaign || isLoadingDashboard) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -515,149 +449,34 @@ function RouteComponent() {
     );
   }
 
+  const stepProps = { formData, updateFormData, fieldErrors, tried };
+
   return (
-    <div className="flex flex-col min-h-[calc(100vh-8rem)] max-w-6xl mx-auto">
-      <div className="flex items-center gap-3 mb-4">
-        <Button
-          type="button"
-          variant="outline"
-          className="h-10 w-min shrink-0 rounded-[24px] border-[#e5e5e5] px-3"
-          onClick={() => navigate({ to: "/campaigns/$campaignId", params: { campaignId } })}
-        >
-          <Icon name="ArrowLeft" size={16} color="#404040" />
-        </Button>
-        <div className="min-w-0">
-          <h1 className="text-lg font-semibold text-neutral-950 truncate">Editar campanha</h1>
-          <p className="text-sm text-neutral-600 truncate">{campaign.title}</p>
-        </div>
-      </div>
-
-      <div className="flex gap-4 items-center mb-8 w-full">
-        {STEP_LABELS.map((label, index) => {
-          const stepNum = index + 1;
-          const isActive = currentStep === stepNum;
-          return (
-            <div key={`edit-step-${stepNum}`} className="flex gap-4 items-center shrink-0">
-              <button
-                type="button"
-                className={`flex gap-2 items-center justify-center pb-3 shrink-0 text-left cursor-pointer ${
-                  isActive ? "border-b-[3px] border-tertiary-500" : ""
-                }`}
-                onClick={() => {
-                  if (stepNum === 5) setFocusPhaseId(null);
-                  setCurrentStep(stepNum);
-                }}
-              >
-                <div
-                  className={`flex items-center justify-center rounded-full size-7 text-sm font-bold shrink-0 ${
-                    isActive
-                      ? "bg-tertiary-500 text-white"
-                      : "border border-[#e5e5e5] text-[#7c7c7c]"
-                  }`}
-                >
-                  {stepNum}
-                </div>
-                <span className="text-base whitespace-nowrap text-[#7c7c7c]">{label}</span>
-              </button>
-              {index < STEP_LABELS.length - 1 && (
-                <div
-                  className="h-px flex-1 min-w-[40px] bg-[#e5e5e5] self-center"
-                  aria-hidden
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="bg-white rounded-[12px] p-6 flex-1">
-        {currentStep === 1 && (
-          <CreateCampaignStepOne formData={formData} updateFormData={updateFormData} fieldErrors={fieldErrors} />
-        )}
-        {currentStep === 2 && (
-          <CreateCampaignStepTwo
-            formData={formData}
-            updateFormData={updateFormData}
-            onBack={() => setCurrentStep(1)}
-            onNext={handleContinue}
-            hideBackButton
-            fieldErrors={fieldErrors}
-          />
-        )}
-        {currentStep === 3 && (
-          <CreateCampaignStepThree
-            formData={formData}
-            updateFormData={updateFormData}
-            onBack={() => setCurrentStep(2)}
-            onNext={handleContinue}
-            hideBackButton
-            fieldErrors={fieldErrors}
-          />
-        )}
-        {currentStep === 4 && (
-          <CreateCampaignStepFour
-            formData={formData}
-            updateFormData={updateFormData}
-            onBack={() => setCurrentStep(3)}
-            onNext={handleContinue}
-            hideBackButton
-            fieldErrors={fieldErrors}
-          />
-        )}
-        {currentStep === 5 && (
-          <CreateCampaignStepFive
-            formData={formData}
-            updateFormData={updateFormData}
-            onBack={() => setCurrentStep(4)}
-            onNext={handleContinue}
-            hideBackButton
-            focusPhaseId={focusPhaseId}
-          />
-        )}
-        {currentStep === 6 && (
-          <CreateCampaignStepSeven
-            formData={formData}
-            updateFormData={updateFormData}
-            onBack={() => setCurrentStep(5)}
-            onEdit={handleEditFromReview}
-            onSubmitCampaign={handleSubmitCampaign}
-            isLoading={updateCampaignMutation.isPending}
-            onReviewBack={() =>
-              navigate({ to: "/campaigns/$campaignId", params: { campaignId } })
-            }
-            onEditPhase={handleEditPhase}
-            submitButtonLabel="Salvar alterações"
-            submitLoadingLabel="Salvando..."
-            reviewSubtitle="Escolha uma seção abaixo ou edite uma fase específica. Depois, salve as alterações."
-          />
-        )}
-      </div>
-
-      {currentStep < 6 && (
-        <div className="mt-10 flex items-center justify-between gap-4 rounded-xl border-t border-[#e5e5e5] bg-[#FAFAFA] p-6 z-10">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleFooterBack}
-            className="h-11 min-w-0 shrink-0 rounded-[24px] border-[#e5e5e5] px-4 font-semibold text-neutral-700 w-min"
-          >
-            <span className="flex items-center gap-2">
-              <Icon name="ArrowLeft" color="#404040" size={16} />
-              Voltar
-            </span>
-          </Button>
-          <Button
-            type="button"
-            onClick={handleContinue}
-            className="h-11 shrink-0 rounded-[24px] bg-primary-600 px-4 font-semibold text-white hover:bg-primary-700 w-min"
-          >
-            <span className="flex items-center gap-2">
-              Continuar
-              <Icon name="ArrowRight" color="#FAFAFA" size={16} />
-            </span>
-          </Button>
-        </div>
+    <WizardShell
+      mode="edit"
+      backLabel="Campanha"
+      onExit={() => navigate({ to: "/campaigns/$campaignId", params: { campaignId } })}
+      step={currentStep}
+      setStep={setCurrentStep}
+      formData={formData}
+      updateFormData={updateFormData}
+      tried={tried}
+      setTried={setTried}
+      reviewOpen={reviewOpen}
+      setReviewOpen={setReviewOpen}
+      onPublish={handleSubmitCampaign}
+      publishing={updateCampaignMutation.isPending}
+      workspaceName={selectedWorkspace?.name}
+    >
+      {currentStep === 1 ? (
+        <StepCampaign {...stepProps} />
+      ) : currentStep === 2 ? (
+        <StepCreators {...stepProps} />
+      ) : currentStep === 3 ? (
+        <StepPayment {...stepProps} />
+      ) : (
+        <StepPhases {...stepProps} />
       )}
-    </div>
+    </WizardShell>
   );
 }
