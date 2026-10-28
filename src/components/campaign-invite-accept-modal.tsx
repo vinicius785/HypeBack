@@ -1,14 +1,15 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useState } from "react";
 import { toast } from "sonner";
-import { z } from "zod";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Icon, type IconName } from "@/components/ui/icon";
-import { Modal } from "@/components/ui/modal";
+import {
+  InviteField,
+  InviteModalShell,
+  InviteSummary,
+  isEmail,
+  isPhone,
+} from "@/components/campaign-invite/parts";
+import { I } from "@/components/prototype/ui";
 import {
   confirmInstagramVerify,
   getBackendOrigin,
@@ -23,28 +24,7 @@ import { formatBrazilianPhoneInput } from "@/shared/utils/masks";
 import {
   HYPEAPP_ANDROID_PLAY_STORE_URL,
   HYPEAPP_IOS_APP_STORE_URL,
-  resolveHypeAppDownloadUrl,
 } from "@/shared/config/app-links";
-
-function hrefOpenHypeappApp(): string {
-  if (typeof navigator === "undefined") return HYPEAPP_IOS_APP_STORE_URL;
-  return resolveHypeAppDownloadUrl(
-    navigator.userAgent,
-    navigator.maxTouchPoints,
-  );
-}
-
-/** Dados de identificação (name/email/phone). Redes são verificadas à parte. */
-const identitySchema = z.object({
-  name: z.string().min(2, "Informe seu nome"),
-  email: z.string().min(1, "E-mail é obrigatório").email("E-mail inválido"),
-  phone: z
-    .string()
-    .min(1, "Celular é obrigatório")
-    .refine((v) => v.replace(/\D/g, "").length >= 10, "Informe o celular com DDD"),
-});
-
-type IdentityFormValues = z.infer<typeof identitySchema>;
 
 /** Estado de verificação de uma rede (token emitido pelo backend). */
 interface VerifiedAccount {
@@ -53,11 +33,18 @@ interface VerifiedAccount {
   followers?: number | null;
 }
 
-const NETWORK_ICON: Record<string, IconName> = {
-  instagram: "Instagram",
-  youtube: "Youtube",
-  tiktok: "Music2",
+const NETWORK_ICON: Record<string, string> = {
+  instagram: "instagram",
+  youtube: "youtube",
+  tiktok: "tiktok",
 };
+
+function formatFollowers(n?: number | null): string {
+  if (n == null || !Number.isFinite(n)) return "";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(".", ",")} mi`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(".", ",")} mil`;
+  return String(n);
+}
 
 /**
  * Abre o popup de forma síncrona (dentro do gesto do clique, evita bloqueio),
@@ -141,160 +128,83 @@ function connectViaPopup(
   });
 }
 
-interface NetworkConnectRowProps {
-  campaignPublicId: string;
-  network: string;
-  verified?: VerifiedAccount;
-  onVerified: (network: string, account: VerifiedAccount) => void;
-}
-
-/** Linha de conexão de UMA rede. OAuth (TikTok/YouTube) ou bio-code (Instagram). */
-function NetworkConnectRow({
+/** Verificação do Instagram por código na bio. */
+function InstagramVerify({
   campaignPublicId,
-  network,
-  verified,
   onVerified,
-}: NetworkConnectRowProps) {
-  const label = getNetworkLabel(network, network);
-  const iconName = NETWORK_ICON[network] ?? "Link";
+}: {
+  campaignPublicId: string;
+  onVerified: (account: VerifiedAccount) => void;
+}) {
+  const [username, setUsername] = useState("");
+  const [code, setCode] = useState<string | null>(null);
+  const [instructions, setInstructions] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const [connecting, setConnecting] = useState(false);
-  // Estado do desafio de bio (apenas Instagram).
-  const [igUsername, setIgUsername] = useState("");
-  const [igCode, setIgCode] = useState<string | null>(null);
-  const [igInstructions, setIgInstructions] = useState("");
-  const [igBusy, setIgBusy] = useState(false);
+  const clean = username.trim().replace(/^@+/, "").toLowerCase();
 
-  const isInstagram = network === "instagram";
-
-  const handleOAuthConnect = async () => {
-    setConnecting(true);
-    try {
-      const account = await connectViaPopup(
-        campaignPublicId,
-        network as "tiktok" | "youtube",
-      );
-      onVerified(network, account);
-      toast.success(`${label} conectado como @${account.username}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível conectar.");
-    } finally {
-      setConnecting(false);
-    }
-  };
-
-  const handleIgStart = async () => {
-    const clean = igUsername.trim().replace(/^@+/, "").toLowerCase();
+  const start = async () => {
     if (!clean) {
       toast.error("Informe seu @ do Instagram.");
       return;
     }
-    setIgBusy(true);
+    setBusy(true);
     try {
       const res = await startInstagramVerify(campaignPublicId, clean);
-      setIgCode(res.code);
-      setIgInstructions(res.instructions);
+      setCode(res.code);
+      setInstructions(res.instructions);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível iniciar.");
     } finally {
-      setIgBusy(false);
+      setBusy(false);
     }
   };
 
-  const handleIgConfirm = async () => {
-    const clean = igUsername.trim().replace(/^@+/, "").toLowerCase();
-    setIgBusy(true);
+  const confirm = async () => {
+    setBusy(true);
     try {
       const res = await confirmInstagramVerify(campaignPublicId, clean);
-      onVerified(network, {
-        token: res.verification_token,
-        username: res.username,
-        followers: res.followers,
-      });
+      onVerified({ token: res.verification_token, username: res.username, followers: res.followers });
       toast.success(`Instagram verificado como @${res.username}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível verificar.");
     } finally {
-      setIgBusy(false);
+      setBusy(false);
     }
   };
 
-  if (verified) {
-    return (
-      <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-        <span className="flex items-center gap-2 min-w-0">
-          <Icon name={iconName} size={18} color="#059669" className="shrink-0" />
-          <span className="flex flex-col min-w-0">
-            <span className="text-sm font-medium text-neutral-950">{label}</span>
-            <span className="text-xs text-neutral-500 truncate">@{verified.username}</span>
-          </span>
-        </span>
-        <span className="flex items-center gap-1 text-emerald-700 text-xs font-medium shrink-0">
-          <Icon name="CircleCheck" size={16} color="#059669" />
-          Verificado
-        </span>
-      </div>
-    );
-  }
-
   return (
-    <div className="rounded-xl border border-neutral-200 px-3 py-2.5 flex flex-col gap-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2">
-          <Icon name={iconName} size={18} color="#404040" className="shrink-0" />
-          <span className="text-sm font-medium text-neutral-950">{label}</span>
-        </span>
-        {!isInstagram && (
-          <Button
-            type="button"
-            variant="outline"
-            className="shrink-0"
-            onClick={handleOAuthConnect}
-            disabled={connecting}
-          >
-            {connecting ? "Conectando…" : "Conectar"}
-          </Button>
-        )}
-      </div>
-
-      {isInstagram && (
-        <div className="flex flex-col gap-2">
-          <Input
-            label="Seu @ do Instagram"
-            placeholder="ex.: maria.silva"
-            value={igUsername}
-            onChange={(e) => setIgUsername(e.target.value)}
-            disabled={igBusy || !!igCode}
-          />
-          {!igCode ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full min-w-full"
-              onClick={handleIgStart}
-              disabled={igBusy}
-            >
-              {igBusy ? "Gerando código…" : "Gerar código de verificação"}
-            </Button>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <div className="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-700">
-                <p className="leading-relaxed">{igInstructions}</p>
-                <p className="mt-1 font-mono text-base font-semibold text-neutral-950">
-                  {igCode}
-                </p>
-              </div>
-              <Button
-                type="button"
-                className="w-full min-w-full"
-                onClick={handleIgConfirm}
-                disabled={igBusy}
-              >
-                {igBusy ? "Verificando…" : "Já colei o código — verificar"}
-              </Button>
+    <div className="cvm-sc">
+      <h4>
+        Instagram <em>verificação pela bio</em>
+      </h4>
+      <InviteField
+        id="cvig"
+        label="Seu @ do Instagram"
+        value={username}
+        onChange={setUsername}
+        placeholder="maria.silva"
+        prefix="@"
+        disabled={busy || !!code}
+      />
+      {!code ? (
+        <button type="button" className="btn out" onClick={start} disabled={busy}>
+          {busy ? <i className="lvf-sp" /> : <I n="link" cls="sm" />}
+          {busy ? "Gerando código…" : "Gerar código de verificação"}
+        </button>
+      ) : (
+        <>
+          <div className="cvm-tm">
+            <div>
+              <b style={{ fontFamily: "ui-monospace, monospace", letterSpacing: ".04em" }}>{code}</b>
+              <small>{instructions}</small>
             </div>
-          )}
-        </div>
+          </div>
+          <button type="button" className="btn" onClick={confirm} disabled={busy}>
+            {busy ? <i className="lvf-sp" /> : <I n="check" cls="sm" />}
+            {busy ? "Verificando…" : "Já colei o código, verificar"}
+          </button>
+        </>
       )}
     </div>
   );
@@ -306,211 +216,276 @@ interface CampaignInviteAcceptModalProps {
   campaignPublicId: string;
   campaignTitle: string;
   inviteData: PublicCampaignInviteData;
+  onAccepted?: () => void;
 }
 
-export function CampaignInviteAcceptModal({
-  isOpen,
+export function CampaignInviteAcceptModal(props: CampaignInviteAcceptModalProps) {
+  if (!props.isOpen) return null;
+  return <AcceptContent {...props} />;
+}
+
+function AcceptContent({
   onClose,
   campaignPublicId,
   campaignTitle,
   inviteData,
+  onAccepted,
 }: CampaignInviteAcceptModalProps) {
-  const [preRegisterSuccess, setPreRegisterSuccess] = useState(false);
+  const allowedNetworks = inviteData.allowed_social_networks ?? [];
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [terms, setTerms] = useState(false);
+  const [tried, setTried] = useState(false);
+  const [done, setDone] = useState(false);
+  const [connecting, setConnecting] = useState<string | null>(null);
   const [verified, setVerified] = useState<Record<string, VerifiedAccount>>({});
-
-  const allowedNetworks = useMemo(
-    () => inviteData.allowed_social_networks ?? [],
-    [inviteData.allowed_social_networks],
-  );
-
-  const {
-    register,
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<IdentityFormValues>({
-    resolver: zodResolver(identitySchema),
-    defaultValues: { name: "", email: "", phone: "" },
-  });
-
-  useEffect(() => {
-    if (isOpen) {
-      reset({ name: "", email: "", phone: "" });
-      setVerified({});
-      setPreRegisterSuccess(false);
-    }
-  }, [isOpen, reset]);
 
   const missingNetworks = allowedNetworks.filter((n) => !verified[n]);
   const allConnected = missingNetworks.length === 0;
 
-  const preRegisterMutation = useMutation({
-    mutationFn: (data: IdentityFormValues) => {
+  const nameErr = tried && name.trim().length < 2 ? "Informe seu nome" : "";
+  const emailErr = tried && !isEmail(email) ? "Digite um e-mail válido" : "";
+  const phoneErr = tried && !isPhone(phone) ? "Informe o celular com DDD" : "";
+
+  const mutation = useMutation({
+    mutationFn: () => {
       const verification_tokens = allowedNetworks
         .map((n) => verified[n]?.token)
         .filter((t): t is string => !!t);
       return postPublicCampaignInvitePreRegister(campaignPublicId, {
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
+        name: name.trim(),
+        email: email.trim(),
+        phone,
         verification_tokens: verification_tokens.length ? verification_tokens : undefined,
       });
     },
     onSuccess: () => {
-      setPreRegisterSuccess(true);
-      toast.success("Pré-cadastro concluído! Você entrou nas inscrições desta campanha.");
+      setDone(true);
+      onAccepted?.();
     },
     onError: (err: Error) => {
       toast.error(err.message || "Erro ao enviar pré-cadastro.");
     },
   });
 
-  const onSubmit = (data: IdentityFormValues) => {
-    if (!allConnected) {
-      toast.error("Conecte todas as redes exigidas para continuar.");
+  const connect = async (network: string) => {
+    setConnecting(network);
+    try {
+      const account = await connectViaPopup(campaignPublicId, network as "tiktok" | "youtube");
+      setVerified((prev) => ({ ...prev, [network]: account }));
+      toast.success(`${getNetworkLabel(network, network)} conectado como @${account.username}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível conectar.");
+    } finally {
+      setConnecting(null);
+    }
+  };
+
+  const submit = () => {
+    if (name.trim().length < 2 || !isEmail(email) || !isPhone(phone) || !allConnected || !terms) {
+      setTried(true);
       return;
     }
-    preRegisterMutation.mutate(data);
+    mutation.mutate();
   };
 
-  const handleVerified = (network: string, account: VerifiedAccount) => {
-    setVerified((prev) => ({ ...prev, [network]: account }));
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <Modal
-      title={preRegisterSuccess ? "Continue no app" : "Pré-cadastro no convite"}
-      onClose={onClose}
-      panelClassName="max-w-lg"
-    >
-      {preRegisterSuccess ? (
-        <div className="flex flex-col gap-5">
-          <p className="text-sm text-neutral-600 leading-relaxed">
-            Seus dados foram registrados e você foi vinculado à campanha{" "}
-            <span className="font-medium text-neutral-950">{campaignTitle}</span> em{" "}
-            <strong>inscrições</strong>. Baixe ou abra o app Hypeapp para acompanhar e concluir as
-            próximas etapas.
-          </p>
-          <a
-            href={hrefOpenHypeappApp()}
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center min-h-11 px-6 rounded-2xl font-medium text-sm bg-primary-600 hover:bg-primary-700 text-white transition-colors w-full min-w-full text-center"
-          >
-            Abrir no app Hypeapp
-          </a>
-          <Button type="button" variant="outline" className="w-full min-w-full" onClick={onClose}>
-            Fechar
-          </Button>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-5">
-          <p className="text-sm text-neutral-600 leading-relaxed">
-            Preencha seus dados e <strong>conecte</strong> as contas das redes desta campanha. A
-            conexão confirma que o perfil é seu. Ao concluir, você entra nas{" "}
-            <strong>inscrições</strong>.
-          </p>
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={handleSubmit(onSubmit)}
-          >
-            <Input
-              label="Nome completo"
-              autoComplete="name"
-              error={errors.name?.message}
-              {...register("name")}
-            />
-            <Input
-              label="E-mail"
-              type="email"
-              autoComplete="email"
-              error={errors.email?.message}
-              {...register("email")}
-            />
-            <Controller
-              name="phone"
-              control={control}
-              render={({ field }) => (
-                <Input
-                  id={field.name}
-                  name={field.name}
-                  label="Celular (com DDD)"
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel"
-                  placeholder="(11) 99999-9999"
-                  error={errors.phone?.message}
-                  value={field.value}
-                  onChange={(e) => field.onChange(formatBrazilianPhoneInput(e.target.value))}
-                  onBlur={field.onBlur}
-                />
-              )}
-            />
-
-            {allowedNetworks.length > 0 && (
-              <div className="flex flex-col gap-3 pt-1 border-t border-neutral-100">
-                <div>
-                  <p className="text-sm font-medium text-neutral-950">Conecte suas contas</p>
-                  <p className="text-xs text-neutral-500">
-                    Conecte cada rede participante para comprovar a posse do perfil.
-                  </p>
-                </div>
-                {allowedNetworks.map((net) => (
-                  <NetworkConnectRow
-                    key={net}
-                    campaignPublicId={campaignPublicId}
-                    network={net}
-                    verified={verified[net]}
-                    onVerified={handleVerified}
-                  />
-                ))}
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              className="w-full min-w-full mt-1"
-              disabled={preRegisterMutation.isPending || !allConnected}
-            >
-              {preRegisterMutation.isPending
-                ? "Enviando…"
-                : !allConnected
-                  ? `Conecte ${missingNetworks.length} rede(s) para continuar`
-                  : "Confirmar e aceitar convite"}
-            </Button>
-          </form>
-          <div className="border-t border-neutral-100 pt-4 flex flex-col gap-3">
-            <p className="text-xs text-neutral-500 text-center">
-              Já tem conta no Hypeapp como influenciador ou prefere instalar antes?{" "} <br />
-              <a
-                href={hrefOpenHypeappApp()}
-                rel="noopener noreferrer"
-                className="text-primary-700 font-medium hover:underline"
-              >
-                Baixar o app Hypeapp
-              </a>
+  if (done) {
+    return (
+      <InviteModalShell
+        title="Convite aceito!"
+        sub="Tudo certo"
+        onClose={onClose}
+        body={
+          <div className="cvm-ok">
+            <span>
+              <I n="check" />
+            </span>
+            <h3>Convite aceito!</h3>
+            <p>
+              Você entrou nas inscrições de <b>{campaignTitle}</b>. Agora é só seguir estes três passos
+              para começar a campanha.
             </p>
-            <div className="flex items-center justify-center gap-4 text-xs">
-              <a
-                href={HYPEAPP_IOS_APP_STORE_URL}
-                rel="noopener noreferrer"
-                className="text-primary-700 font-medium hover:underline"
-              >
+            <ol className="cvm-st">
+              {[
+                ["Baixe o app", "Disponível para iPhone e Android"],
+                ["Entre com o seu e-mail", "Usamos o e-mail que você acabou de informar"],
+                ["Acompanhe as etapas", "Roteiro, conteúdo e publicação ficam no app"],
+              ].map(([a, b], i) => (
+                <li key={a}>
+                  <span>{i + 1}</span>
+                  <div>
+                    <b>{a}</b>
+                    <small>{b}</small>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <div className="cvm-ap">
+              <a className="btn" href={HYPEAPP_IOS_APP_STORE_URL} rel="noopener noreferrer">
                 App Store
               </a>
-              <a
-                href={HYPEAPP_ANDROID_PLAY_STORE_URL}
-                rel="noopener noreferrer"
-                className="text-primary-700 font-medium hover:underline"
-              >
+              <a className="btn out" href={HYPEAPP_ANDROID_PLAY_STORE_URL} rel="noopener noreferrer">
                 Google Play
               </a>
             </div>
           </div>
-        </div>
-      )}
-    </Modal>
+        }
+        foot={
+          <>
+            <span style={{ flex: 1 }} />
+            <button type="button" className="btn out" onClick={onClose}>
+              Fechar
+            </button>
+          </>
+        }
+      />
+    );
+  }
+
+  const instagramPending = allowedNetworks.includes("instagram") && !verified.instagram;
+
+  return (
+    <InviteModalShell
+      title="Aceitar convite"
+      sub="Falta pouco"
+      onClose={onClose}
+      body={
+        <>
+          <InviteSummary data={inviteData} />
+
+          <div className="cvm-sc cvm-yo">
+            <h4>Seus dados</h4>
+            <InviteField
+              id="cvn"
+              label="Nome completo"
+              value={name}
+              onChange={setName}
+              placeholder="Como você se chama"
+              error={nameErr}
+              autoComplete="name"
+            />
+            <InviteField
+              id="cve"
+              label="E-mail"
+              value={email}
+              onChange={setEmail}
+              placeholder="voce@email.com"
+              error={emailErr}
+              type="email"
+              autoComplete="email"
+            />
+            <InviteField
+              id="cvp"
+              label="Celular com DDD"
+              value={phone}
+              onChange={(v) => setPhone(formatBrazilianPhoneInput(v))}
+              placeholder="(11) 99999-9999"
+              error={phoneErr}
+              prefix="BR +55"
+              inputMode="numeric"
+              type="tel"
+              autoComplete="tel"
+            />
+          </div>
+
+          {allowedNetworks.length > 0 && (
+            <div className={`cvm-sc${tried && !allConnected ? " bad" : ""}`}>
+              <h4>
+                Suas redes <em>conecte {allowedNetworks.length > 1 ? "todas" : "a rede"} da campanha</em>
+              </h4>
+              <div className="cvm-ct">
+                {allowedNetworks.map((net) => {
+                  const v = verified[net];
+                  const label = getNetworkLabel(net, net);
+                  const followers = formatFollowers(v?.followers);
+                  return (
+                    <div key={net} className={v ? "on" : ""}>
+                      <span>
+                        <I n={NETWORK_ICON[net] ?? "link"} />
+                      </span>
+                      <div>
+                        <b>{label}</b>
+                        <small>
+                          {v
+                            ? `@${v.username}${followers ? ` · ${followers} seguidores` : ""}`
+                            : net === "instagram"
+                              ? "Confirme pelo código na bio"
+                              : "Confirma o seu perfil"}
+                        </small>
+                      </div>
+                      {v ? (
+                        <em>
+                          <I n="check" cls="sm" />
+                          Conectado
+                        </em>
+                      ) : net !== "instagram" ? (
+                        <button
+                          type="button"
+                          disabled={connecting === net}
+                          onClick={() => connect(net)}
+                        >
+                          {connecting === net ? (
+                            <>
+                              <i className="lvf-sp" />
+                              Conectando
+                            </>
+                          ) : (
+                            "Conectar"
+                          )}
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+              {tried && !allConnected && (
+                <small className="cvm-er">
+                  Conecte {missingNetworks.length > 1 ? "as redes" : "a rede"} para continuar
+                </small>
+              )}
+            </div>
+          )}
+
+          {instagramPending && (
+            <InstagramVerify
+              campaignPublicId={campaignPublicId}
+              onVerified={(account) => setVerified((prev) => ({ ...prev, instagram: account }))}
+            />
+          )}
+
+          <div className={`cvm-tm${tried && !terms ? " bad" : ""}`}>
+            <div>
+              <b>Termos de uso</b>
+              <small>Li e concordo com os Termos e a Política de Privacidade.</small>
+            </div>
+            <button
+              type="button"
+              className={`tgl${terms ? " on" : ""}`}
+              role="switch"
+              aria-checked={terms}
+              aria-label="Aceitar os termos"
+              onClick={() => setTerms((t) => !t)}
+            >
+              <i />
+            </button>
+          </div>
+          {tried && !terms && <small className="cvm-er">Aceite os termos para continuar</small>}
+        </>
+      }
+      foot={
+        <>
+          <small>Você continua no app depois</small>
+          <span style={{ flex: 1 }} />
+          <button type="button" className="btn out" onClick={onClose}>
+            Cancelar
+          </button>
+          <button type="button" className="btn" onClick={submit} disabled={mutation.isPending}>
+            {mutation.isPending ? <i className="lvf-sp" /> : <I n="check" cls="sm" />}
+            {mutation.isPending ? "Enviando…" : "Aceitar convite"}
+          </button>
+        </>
+      }
+    />
   );
 }

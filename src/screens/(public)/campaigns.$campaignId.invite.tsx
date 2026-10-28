@@ -1,572 +1,552 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { clsx } from "clsx";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { brl, fixedAmount, initialsOf } from "@/components/campaign-invite/parts";
 import { CampaignInviteAcceptModal } from "@/components/campaign-invite-accept-modal";
 import { CampaignInviteDeclineModal } from "@/components/campaign-invite-decline-modal";
-import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
+import { I } from "@/components/prototype/ui";
 import { usePublicCampaignInvite } from "@/hooks/use-public-campaign-invite";
 import { getUploadUrl } from "@/lib/utils/api";
-import type { PublicCampaignInviteData } from "@/shared/services/public-campaign-invite";
-import { formatReais } from "@/shared/utils/masks";
-import { formatContentTypeLabel } from "@/shared/utils/social-profile-url";
-import { getNetworkLabel } from "@/shared/constants/network-labels";
 import {
-  getCampaignStatusDisplayLabel,
-  getCampaignStatusValue,
-} from "@/shared/utils/campaign-status";
+  HYPEAPP_ANDROID_PLAY_STORE_URL,
+  HYPEAPP_IOS_APP_STORE_URL,
+} from "@/shared/config/app-links";
+import { getNetworkLabel } from "@/shared/constants/network-labels";
+import type { PublicCampaignInviteData } from "@/shared/services/public-campaign-invite";
+import { formatContentTypeLabel } from "@/shared/utils/social-profile-url";
 
 export const Route = createFileRoute("/(public)/campaigns/$campaignId/invite")({
   component: PublicCampaignInviteScreen,
 });
 
-const linkOutlineClass =
-  "inline-flex items-center justify-center min-h-11 px-8 rounded-full font-semibold text-sm bg-white border border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50 text-neutral-700 transition-colors w-full sm:w-auto text-center";
+const PAYMENT_LABEL: Record<string, string> = {
+  fixed: "Pagamento fixo por influenciador",
+  swap: "Permuta",
+  cpa: "CPA (por ação)",
+  cpm: "CPM",
+};
 
-function paymentMethodLabel(pm?: string): string {
-  if (!pm) return "";
-  const key = pm.toLowerCase();
-  const map: Record<string, string> = {
-    fixed: "Pagamento fixo por influenciador",
-    swap: "Permuta",
-    cpa: "CPA (por ação)",
-    cpm: "CPM",
-  };
-  return map[key] ?? pm;
-}
+const NETWORK_ICON: Record<string, string> = {
+  instagram: "instagram",
+  youtube: "youtube",
+  tiktok: "tiktok",
+};
 
-function formatInvitePhaseDate(iso?: string): string {
+/** "2026-10-28" → "28 de outubro" (sem deslocar o dia por fuso). */
+function shortDate(iso?: string): string {
   if (!iso?.trim()) return "";
-  const d = new Date(iso);
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("pt-BR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  return d.toLocaleDateString("pt-BR", { day: "numeric", month: "long" });
 }
 
-function hasRemunerationBlock(data: PublicCampaignInviteData): boolean {
-  return Boolean(
-    data.payment_method ||
-    data.payment_method_details?.description?.trim() ||
-    (data.payment_method_details?.amount != null &&
-      Number.isFinite(data.payment_method_details.amount)),
+function Title({ a, b }: { a: string; b: string }) {
+  return (
+    <h1 className="pvx-h">
+      {a} <span>{b}</span>
+    </h1>
   );
 }
 
-function NicheListModal({ title, names, onClose }: { title: string; names: string[]; onClose: () => void }) {
+function Item({ icon, title, text, cls = "" }: { icon: string; title: string; text?: string; cls?: string }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-sm bg-white rounded-2xl p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-neutral-950">{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors"
-          >
-            <Icon name="X" size={20} color="#525252" />
-          </button>
-        </div>
-        <ul className="flex flex-col gap-2">
-          {names.map((name, i) => (
-            <li key={i} className="text-base text-neutral-950 py-1 border-b border-neutral-100 last:border-b-0">
-              {name}
-            </li>
-          ))}
-        </ul>
+    <div className={`pvx-it ${cls}`.trim()}>
+      <span>
+        <I n={icon} cls="sm" />
+      </span>
+      <div>
+        <b>{title}</b>
+        {text ? <p>{text}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function Page({ children, scrollRef }: { children: React.ReactNode; scrollRef?: React.Ref<HTMLDivElement> }) {
+  return (
+    <div className="pv">
+      <div ref={scrollRef} className="cvx on" id="cvx">
+        {children}
       </div>
     </div>
   );
 }
 
 function PublicCampaignInviteScreen() {
-  const { campaignId } = useParams({
-    from: "/(public)/campaigns/$campaignId/invite",
-  });
-
+  const { campaignId } = useParams({ from: "/(public)/campaigns/$campaignId/invite" });
   const { data, isLoading, isError, error } = usePublicCampaignInvite(campaignId);
 
-  const [inviteDeclined, setInviteDeclined] = useState(false);
-  const [acceptModalOpen, setAcceptModalOpen] = useState(false);
-  const [declineModalOpen, setDeclineModalOpen] = useState(false);
-  const [nicheModalOpen, setNicheModalOpen] = useState(false);
-  const [secondaryNicheModalOpen, setSecondaryNicheModalOpen] = useState(false);
+  const [accepted, setAccepted] = useState(false);
+  const [declined, setDeclined] = useState(false);
+  const [acceptOpen, setAcceptOpen] = useState(false);
+  const [declineOpen, setDeclineOpen] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const MAX_NICHES_INVITE = 3;
+  const phases = useMemo(
+    () => (data?.phases ?? []).slice().sort((a, b) => a.order - b.order),
+    [data?.phases],
+  );
 
-  const handleAccept = () => {
-    setAcceptModalOpen(true);
-  };
+  // Animação de entrada ao rolar (protótipo `cvReveal`) e contagem do valor.
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root || !data) return;
+    const sel = [
+      ".pvx-tp",
+      ".pvx-hl",
+      ".pvx-stk",
+      ".pvx-sec > .pvx-h",
+      ".pvx-sec > .pvx-cd",
+      ".pvx-tl li",
+      ".pvx-it",
+      ".pvx-pay",
+      ".pvx-fa",
+      ".pvx-fb2 > div",
+      ".pvx-fz",
+    ];
+    const els = [...new Set([...root.querySelectorAll<HTMLElement>(sel.join(","))])];
+    els.forEach((e) => {
+      const sib = [...(e.parentElement?.children ?? [])].filter((x) => els.includes(x as HTMLElement));
+      e.style.setProperty("--d", `${Math.min(sib.indexOf(e), 4) * 90}ms`);
+    });
+    if (!("IntersectionObserver" in window)) return;
 
-  const handleDeclineClick = () => {
-    setDeclineModalOpen(true);
-  };
+    const amount = fixedAmount(data);
+    const payB = root.querySelector<HTMLElement>(".pvx-pay b");
+    if (payB && amount != null) payB.textContent = brl(0);
+
+    const count = (el: HTMLElement) => {
+      const b = el.querySelector<HTMLElement>("b");
+      if (!b || amount == null) return;
+      const t0 = performance.now();
+      const step = (now: number) => {
+        const p = Math.min(1, (now - t0) / 1300);
+        b.textContent = brl(Math.round(amount * (1 - Math.pow(1 - p, 4))));
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+
+    const io = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((x) => {
+          if (!x.isIntersecting) return;
+          const t = x.target as HTMLElement;
+          t.classList.add("in");
+          io.unobserve(t);
+          if (t.classList.contains("pvx-pay")) count(t);
+        }),
+      { root, threshold: 0.12, rootMargin: "0px 0px -6% 0px" },
+    );
+    els.forEach((e) => {
+      e.classList.add("rv");
+      io.observe(e);
+    });
+    return () => io.disconnect();
+  }, [data]);
 
   if (isLoading) {
     return (
-      <div className="w-full max-w-2xl mx-auto px-4 py-10 flex flex-col gap-6">
-        <div className="skeleton h-8 w-48" />
-        <div className="skeleton h-52 w-full rounded-xl" />
-        <div className="skeleton h-32 w-full rounded-xl" />
-        <div className="skeleton h-24 w-full rounded-xl" />
-      </div>
+      <Page>
+        <div className="pvx-pg">
+          <div className="ov-empty big">
+            <span>
+              <I n="mega" />
+            </span>
+            <b>Carregando convite…</b>
+          </div>
+        </div>
+      </Page>
     );
   }
 
   if (isError || !data) {
     const is404 = (error as { status?: number })?.status === 404;
     return (
-      <div className="w-full max-w-md mx-auto px-4 py-16 text-center flex flex-col gap-4">
-        <Icon name="Info" size={40} color="#737373" className="mx-auto" />
-        <p className="text-neutral-700">
-          {is404
-            ? "Este convite não está disponível ou a campanha não foi encontrada."
-            : (error as Error)?.message || "Não foi possível carregar os dados da campanha."}
-        </p>
-        <Link to="/sign-in" className={clsx(linkOutlineClass, "mx-auto")}>
-          Entrar no backoffice
-        </Link>
-      </div>
+      <Page>
+        <div className="pvx-pg">
+          <div className="ov-empty big">
+            <span>
+              <I n="ban" />
+            </span>
+            <b>Convite indisponível</b>
+            <small>
+              {is404
+                ? "Este convite não está disponível ou a campanha não foi encontrada."
+                : (error as Error)?.message || "Não foi possível carregar os dados da campanha."}
+            </small>
+            <Link to="/sign-in" className="btn out">
+              Entrar no backoffice
+            </Link>
+          </div>
+        </div>
+      </Page>
     );
   }
 
-  const bannerSrc = data.banner ? getUploadUrl(data.banner) ?? undefined : undefined;
-  const statusValue = getCampaignStatusValue(data.status);
-  const showRemuneration = hasRemunerationBlock(data);
-  const networks = data.allowed_social_networks ?? [];
-  const phases = data.phases ?? [];
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 py-8 sm:py-10 pb-16 flex flex-col gap-8">
-      <header className="flex items-center justify-between gap-4">
-        <p className="text-sm font-semibold text-primary-600 tracking-tight">Hypeapp</p>
-        <Link
-          to="/sign-in"
-          className="inline-flex items-center justify-center min-h-9 px-4 rounded-full text-sm font-medium bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700"
-        >
-          Área da marca
-        </Link>
-      </header>
+    <>
+      <InviteView
+        data={data}
+        phases={phases}
+        accepted={accepted}
+        declined={declined}
+        scrollRef={scrollRef}
+        onAccept={() => setAcceptOpen(true)}
+        onDecline={() => setDeclineOpen(true)}
+      />
+      <CampaignInviteAcceptModal
+        isOpen={acceptOpen}
+        onClose={() => setAcceptOpen(false)}
+        campaignPublicId={campaignId}
+        campaignTitle={data.title}
+        inviteData={data}
+        onAccepted={() => setAccepted(true)}
+      />
+      <CampaignInviteDeclineModal
+        isOpen={declineOpen}
+        onClose={() => setDeclineOpen(false)}
+        campaignPublicId={campaignId}
+        inviteData={data}
+        onDeclineRecorded={() => setDeclined(true)}
+      />
+    </>
+  );
+}
 
-      <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-sm">
-        <div className="relative h-[220px] sm:h-[260px] w-full bg-neutral-200">
-          {bannerSrc ? (
-            <img
-              src={bannerSrc}
-              alt=""
-              className="absolute inset-0 size-full object-cover"
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-neutral-400 text-sm">
-              Campanha
-            </div>
-          )}
-          <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
-          <div className="absolute bottom-4 left-4 right-4 sm:bottom-6 sm:left-6 sm:right-6">
-            {data.status ? (
-              <span
-                className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${statusValue === "published"
-                  ? "bg-emerald-500/90 text-white"
-                  : "bg-white/90 text-neutral-950"
-                  }`}
-              >
-                {getCampaignStatusDisplayLabel(data.status)}
-              </span>
-            ) : null}
-            <h1 className="mt-3 text-2xl sm:text-3xl font-semibold text-white drop-shadow-sm leading-tight">
+function InviteView({
+  data,
+  phases,
+  accepted,
+  declined,
+  scrollRef,
+  onAccept,
+  onDecline,
+}: {
+  data: PublicCampaignInviteData;
+  phases: NonNullable<PublicCampaignInviteData["phases"]>;
+  accepted: boolean;
+  declined: boolean;
+  scrollRef: React.Ref<HTMLDivElement>;
+  onAccept: () => void;
+  onDecline: () => void;
+}) {
+  const banner = data.banner ? getUploadUrl(data.banner) ?? undefined : undefined;
+  const fixed = fixedAmount(data);
+  const networks = data.allowed_social_networks ?? [];
+  const niches = data.niches ?? [];
+  const subNiches = data.secondary_niche_names ?? [];
+  const benefits = data.benefits ?? [];
+  const does = data.rules_does ?? [];
+  const doesNot = data.rules_does_not ?? [];
+  const description =
+    data.description?.trim() || "Detalhes desta ação serão divulgados pela marca ou pelo aplicativo Hypeapp.";
+  const deliveries = phases.reduce(
+    (sum, p) => sum + p.formats.reduce((s, f) => s + (f.quantity && f.quantity > 0 ? f.quantity : 0), 0),
+    0,
+  );
+  const paymentLabel = data.payment_method ? PAYMENT_LABEL[data.payment_method.toLowerCase()] ?? data.payment_method : "";
+  const paymentText = data.payment_method_details?.description?.trim();
+  const hasPay = Boolean(fixed != null || paymentLabel || paymentText);
+
+  const hint = (net: string) => {
+    const types = new Set<string>();
+    phases.forEach((p) =>
+      p.formats.forEach((f) => {
+        if (f.network === net && f.content_type) types.add(formatContentTypeLabel(f.network, f.content_type));
+      }),
+    );
+    return [...types].join(" e ");
+  };
+
+  const profile: Array<[string, string, string]> = [];
+  if (data.segment_min_followers && data.segment_min_followers > 0)
+    profile.push(["eye", "Seguidores mínimos", `${data.segment_min_followers.toLocaleString("pt-BR")}+`]);
+  if (niches.length) profile.push(["tag", "Nichos", niches.join(" · ")]);
+  if (subNiches.length) profile.push(["tag", "Subnichos", subNiches.join(" · ")]);
+  if (data.image_rights_period && data.image_rights_period > 0)
+    profile.push(["image", "Uso de imagem", `Direitos de imagem por ${data.image_rights_period} meses`]);
+
+  return (
+    <div className="pv">
+      <div ref={scrollRef} className="cvx on" id="cvx">
+        <div className="pvx-pg">
+          <header className="pvx-tp">
+            <span className="pvx-ch">
+              <span className="pvx-av">{initialsOf(data.title)}</span>
               {data.title}
-            </h1>
+            </span>
+            <Link to="/sign-in" className="pvx-rb" aria-label="Área da marca" title="Área da marca">
+              <I n="lock" cls="sm" />
+            </Link>
+          </header>
+
+          <div className="pvx-bd">
+            <div className="pvx-hero">
+              <div className="pvx-hl">
+                <h1 className="pvx-h">
+                  Oi, criador! <span>Você foi convidado para a campanha {data.title}.</span>
+                </h1>
+                <p className="pvx-lead">
+                  Uma marca quer trabalhar com você. Veja os detalhes e responda quando quiser.
+                </p>
+              </div>
+              <div className="pvx-stk">
+                <i />
+                <i />
+                <div className="pvx-mc">
+                  <div
+                    className="pvx-mt"
+                    style={
+                      banner
+                        ? {
+                            backgroundImage: `linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,.05)), url("${banner}")`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                          }
+                        : undefined
+                    }
+                  >
+                    <b>
+                      Campanha
+                      <br />
+                      {data.title}
+                    </b>
+                    {data.max_influencers && data.max_influencers > 0 ? (
+                      <span className="pvx-pl">{data.max_influencers} vagas</span>
+                    ) : null}
+                  </div>
+                  <div className="pvx-mb">
+                    <span className="pvx-av">{initialsOf(data.title)}</span>
+                    <div>
+                      <b>{data.title}</b>
+                      <small>{niches.slice(0, 3).join(" · ") || "Convite para criadores"}</small>
+                    </div>
+                    {fixed != null ? (
+                      <div className="pvx-pr">
+                        <b>{brl(fixed)}</b>
+                        <small>valor fixo</small>
+                      </div>
+                    ) : paymentLabel ? (
+                      <div className="pvx-pr">
+                        <b>{data.payment_method === "swap" ? "Permuta" : paymentLabel.split(" ")[0]}</b>
+                        <small>remuneração</small>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="pvx-mm">
+                    <div>
+                      <small>Fases</small>
+                      <b>{phases.length || "A definir"}</b>
+                    </div>
+                    <div>
+                      <small>Entregas</small>
+                      <b>{deliveries > 0 ? `${deliveries} no total` : networks.map((n) => getNetworkLabel(n, n)).join(" + ") || "A definir"}</b>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pvx-secs">
+              <section className="pvx-sec" id="cvs-about">
+                <Title a="Sobre" b="a campanha" />
+                <div className="pvx-cd">
+                  <p style={{ whiteSpace: "pre-wrap" }}>{description}</p>
+                </div>
+                {data.objective?.trim() ? (
+                  <div className="pvx-cd">
+                    <small className="pvx-lb">Objetivo</small>
+                    <p style={{ whiteSpace: "pre-wrap" }}>{data.objective}</p>
+                  </div>
+                ) : null}
+                {networks.length > 0 ? (
+                  <div className="pvx-cd">
+                    <small className="pvx-lb">Onde publicar</small>
+                    <div className="pvx-nets">
+                      {networks.map((n) => (
+                        <div key={n}>
+                          <span>
+                            <I n={NETWORK_ICON[n] ?? "link"} />
+                          </span>
+                          <div>
+                            <b>{getNetworkLabel(n, n)}</b>
+                            {hint(n) ? <small>{hint(n)}</small> : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {profile.length > 0 ? (
+                  <div className="pvx-cd">
+                    <small className="pvx-lb">Perfil buscado</small>
+                    {profile.map(([icon, t, x]) => (
+                      <Item key={t} icon={icon} title={t} text={x} />
+                    ))}
+                  </div>
+                ) : null}
+              </section>
+
+              {phases.length > 0 ? (
+                <section className="pvx-sec" id="cvs-steps">
+                  <Title a="Entregas" b="e prazos" />
+                  <ol className="pvx-tl">
+                    {phases.map((p, i) => {
+                      const when = [shortDate(p.post_date), p.publish_time ? `às ${p.publish_time}` : ""]
+                        .filter(Boolean)
+                        .join(" ");
+                      const formats = p.formats
+                        .map((f) =>
+                          [
+                            getNetworkLabel(f.network, f.network),
+                            f.content_type ? formatContentTypeLabel(f.network, f.content_type) : "",
+                            f.quantity && f.quantity > 0 ? `${f.quantity}x` : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" · "),
+                        )
+                        .join(" | ");
+                      return (
+                        <li key={`${p.order}-${i}`}>
+                          <span>{i + 1}</span>
+                          <div className="pvx-cd">
+                            <div className="pvx-pt">
+                              <b>Fase {p.order}</b>
+                              {when ? <em>{when}</em> : null}
+                            </div>
+                            <p>{p.objective}</p>
+                            {formats ? <p style={{ marginTop: 8 }}>{formats}</p> : null}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </section>
+              ) : null}
+
+              {does.length > 0 || doesNot.length > 0 ? (
+                <section className="pvx-sec full" id="cvs-rules">
+                  <Title a="O que fazer" b="e evitar" />
+                  <div className="pvx-rl">
+                    {does.length > 0 ? (
+                      <div>
+                        <small className="pvx-lb">A marca espera</small>
+                        {does.map((x) => (
+                          <Item key={x} icon="check" title={x} cls="ok" />
+                        ))}
+                      </div>
+                    ) : null}
+                    {doesNot.length > 0 ? (
+                      <div>
+                        <small className="pvx-lb">Evitar</small>
+                        {doesNot.map((x) => (
+                          <Item key={x} icon="x" title={x} cls="no" />
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+              ) : null}
+            </div>
           </div>
         </div>
 
-        <div className="p-6 sm:p-8 flex flex-col gap-8">
-          <section className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold text-neutral-950">Sobre a campanha</h2>
-            <p className="text-base text-neutral-600 leading-relaxed whitespace-pre-wrap">
-              {data.description.trim() ||
-                "Detalhes desta ação serão divulgados pela marca ou pelo aplicativo Hypeapp."}
-            </p>
-          </section>
-
-          {data.objective?.trim() ? (
-            <section className="flex flex-col gap-2">
-              <h2 className="text-lg font-semibold text-neutral-950">Objetivo</h2>
-              <p className="text-base text-neutral-600 leading-relaxed whitespace-pre-wrap">
-                {data.objective}
-              </p>
-            </section>
-          ) : null}
-
-          <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {data.max_influencers != null && data.max_influencers > 0 ? (
-              <div className="flex items-start gap-3 rounded-xl bg-neutral-50 border border-neutral-100 p-4">
-                <div className="size-10 rounded-lg bg-primary-100 flex items-center justify-center shrink-0">
-                  <Icon name="Users" size={20} color="#525252" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">
-                    Vagas
-                  </p>
-                  <p className="text-base font-semibold text-neutral-950">
-                    Até {data.max_influencers} influenciadores
-                  </p>
-                </div>
-              </div>
-            ) : null}
-            {data.segment_min_followers != null && data.segment_min_followers > 0 ? (
-              <div className="flex items-start gap-3 rounded-xl bg-neutral-50 border border-neutral-100 p-4">
-                <div className="size-10 rounded-lg bg-sky-100 flex items-center justify-center shrink-0">
-                  <Icon name="Eye" size={20} color="#525252" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">
-                    Seguidores mínimos
-                  </p>
-                  <p className="text-base font-semibold text-neutral-950">
-                    {data.segment_min_followers.toLocaleString("pt-BR")}+
-                  </p>
-                </div>
-              </div>
-            ) : null}
-            {data.niches && data.niches.length > 0 ? (
-              <div className="flex items-start gap-3 rounded-xl bg-neutral-50 border border-neutral-100 p-4 sm:col-span-2">
-                <div className="size-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                  <Icon name="Tag" size={20} color="#525252" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
-                    Nichos
-                  </p>
-                  <p className="text-base font-semibold text-neutral-950">
-                    {data.niches.slice(0, MAX_NICHES_INVITE).join(", ")}
-                    {data.niches.length > MAX_NICHES_INVITE && (
-                      <>
-                        {" "}
-                        <button
-                          type="button"
-                          onClick={() => setNicheModalOpen(true)}
-                          className="text-sm font-medium text-amber-700 underline"
-                        >
-                          ver mais ({data.niches.length})
-                        </button>
-                      </>
-                    )}
-                  </p>
-                </div>
-              </div>
-            ) : null}
-
-            {data.secondary_niche_names && data.secondary_niche_names.length > 0 ? (
-              <div className="flex items-start gap-3 rounded-xl bg-neutral-50 border border-neutral-100 p-4 sm:col-span-2">
-                <div className="size-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                  <Icon name="Tag" size={20} color="#525252" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
-                    Subnichos
-                  </p>
-                  <p className="text-base font-semibold text-neutral-950">
-                    {data.secondary_niche_names.slice(0, MAX_NICHES_INVITE).join(", ")}
-                    {data.secondary_niche_names.length > MAX_NICHES_INVITE && (
-                      <>
-                        {" "}
-                        <button
-                          type="button"
-                          onClick={() => setSecondaryNicheModalOpen(true)}
-                          className="text-sm font-medium text-amber-700 underline"
-                        >
-                          ver mais ({data.secondary_niche_names.length})
-                        </button>
-                      </>
-                    )}
-                  </p>
-                </div>
-              </div>
-            ) : null}
-            {data.image_rights_period != null && data.image_rights_period > 0 ? (
-              <div className="flex items-start gap-3 rounded-xl bg-neutral-50 border border-neutral-100 p-4 sm:col-span-2">
-                <div className="size-10 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
-                  <Icon name="Image" size={20} color="#525252" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">
-                    Uso de imagem
-                  </p>
-                  <p className="text-base font-semibold text-neutral-950">
-                    Direitos de imagem: {data.image_rights_period} meses
-                  </p>
-                </div>
-              </div>
-            ) : null}
-          </section>
-
-          {showRemuneration ? (
-            <section className="flex flex-col gap-4 rounded-xl border border-neutral-100 bg-neutral-50/80 p-5 sm:p-6">
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
-                  <Icon name="Wallet" size={20} color="#525252" />
-                </div>
-                <h2 className="text-lg font-semibold text-neutral-950">Remuneração</h2>
-              </div>
-              {data.payment_method ? (
-                <div>
-                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
-                    Forma de remuneração
-                  </p>
-                  <p className="text-base font-semibold text-neutral-950">
-                    {paymentMethodLabel(data.payment_method)}
-                  </p>
-                </div>
-              ) : null}
-              <div>
-                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
-                  Detalhes
-                </p>
-                <div className="text-base text-neutral-700 space-y-2 leading-relaxed">
-                  {data.payment_method_details?.description?.trim() ? (
-                    <p className="whitespace-pre-wrap">{data.payment_method_details.description}</p>
-                  ) : null}
-                  {data.payment_method === "fixed" &&
-                    data.payment_method_details?.amount != null &&
-                    Number.isFinite(data.payment_method_details.amount) ? (
-                    <p className="font-medium text-neutral-950">
-                      Valor: {formatReais(data.payment_method_details.amount)}
-                      {data.payment_method_details.currency
-                        ? ` (${data.payment_method_details.currency})`
-                        : ""}
+        <div className="pvx-dk">
+          <div className="pvx-dkc">
+            {hasPay || benefits.length > 0 ? (
+              <section className="pvx-sec full" id="cvs-perks">
+                <Title a="O que você" b="ganha" />
+                <div className="pvx-gn">
+                  <div className="pvx-pay">
+                    <small>Remuneração</small>
+                    <b>{fixed != null ? brl(fixed) : paymentLabel || "A combinar"}</b>
+                    <p>
+                      {paymentText ||
+                        (fixed != null
+                          ? "Pagamento fixo por influenciador."
+                          : "Os valores e condições são alinhados com a marca após a aprovação.")}
                     </p>
-                  ) : null}
-                  {data.payment_method === "cpm" &&
-                    data.payment_method_details?.amount != null &&
-                    Number.isFinite(data.payment_method_details.amount) ? (
-                    <p className="font-medium text-neutral-950">
-                      CPM: {formatReais(data.payment_method_details.amount)}
-                    </p>
-                  ) : null}
-                  {!data.payment_method_details?.description?.trim() &&
-                    data.payment_method !== "fixed" &&
-                    data.payment_method !== "cpm" &&
-                    (data.payment_method === "swap" || data.payment_method === "cpa") ? (
-                    <p className="text-neutral-600">
-                      Os valores e condições específicos podem constar na descrição acima ou serão
-                      alinhados com a marca após a aprovação.
-                    </p>
-                  ) : null}
-                  {!data.payment_method_details?.description?.trim() &&
-                    data.payment_method !== "fixed" &&
-                    data.payment_method !== "cpm" &&
-                    data.payment_method !== "swap" &&
-                    data.payment_method !== "cpa" ? (
-                    <p className="text-neutral-600 text-sm">
-                      Consulte a marca ou o app para o detalhamento completo desta forma de
-                      pagamento.
-                    </p>
+                  </div>
+                  {benefits.length > 0 ? (
+                    <div className="pvx-pk">
+                      {benefits.map((x, i) => (
+                        <Item key={x} icon={["box", "wallet", "heart"][i % 3]} title={x} />
+                      ))}
+                    </div>
                   ) : null}
                 </div>
-              </div>
-            </section>
-          ) : null}
+              </section>
+            ) : null}
 
-          {networks.length > 0 ? (
-            <section className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-lg bg-sky-100 flex items-center justify-center shrink-0">
-                  <Icon name="Share2" size={20} color="#525252" />
+            <footer className="pvx-fo2">
+              <div className="pvx-fm">
+                <div className="pvx-fa">
+                  <div className="pvx-lo2">
+                    <span>h</span>
+                    <b>hypeapp</b>
+                  </div>
+                  <p>
+                    O HypeApp conecta marcas a criadores de conteúdo. Receba convites de campanhas, envie
+                    seus roteiros, publique e seja pago, tudo em um só lugar.
+                  </p>
+                  <div className="pvx-st">
+                    <a className="btn" href={HYPEAPP_IOS_APP_STORE_URL} rel="noopener noreferrer">
+                      App Store
+                    </a>
+                    <a className="btn out" href={HYPEAPP_ANDROID_PLAY_STORE_URL} rel="noopener noreferrer">
+                      Google Play
+                    </a>
+                  </div>
                 </div>
-                <h2 className="text-lg font-semibold text-neutral-950">Redes sociais da campanha</h2>
-              </div>
-              <p className="text-sm text-neutral-600">
-                Esta ação aceita conteúdo publicado nas seguintes redes. Ao aceitar o convite, você
-                informará o link do seu perfil em cada uma delas.
-              </p>
-              <ul className="flex flex-wrap gap-2">
-                {networks.map((n) => (
-                  <li
-                    key={n}
-                    className="inline-flex items-center rounded-full bg-neutral-100 border border-neutral-200 px-3 py-1.5 text-sm font-medium text-neutral-900"
-                  >
-                    {getNetworkLabel(n, n)}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-
-          {phases.length > 0 ? (
-            <section className="flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
-                  <Icon name="CalendarDays" size={20} color="#525252" />
-                </div>
-                <h2 className="text-lg font-semibold text-neutral-950">Fases e entregas</h2>
-              </div>
-              <p className="text-sm text-neutral-600">
-                Etapas previstas da campanha, com prazos e formatos por rede.
-              </p>
-              <ol className="flex flex-col gap-4 list-none p-0 m-0">
-                {phases
-                  .slice()
-                  .sort((a, b) => a.order - b.order)
-                  .map((phase, idx) => (
-                    <li
-                      key={`${phase.order}-${idx}`}
-                      className="rounded-xl border border-neutral-200 bg-white p-4 sm:p-5 shadow-sm"
-                    >
-                      <div className="flex flex-wrap items-baseline gap-2 mb-2">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-primary-700">
-                          Fase {phase.order}
-                        </span>
-                        {phase.post_date ? (
-                          <span className="text-sm text-neutral-600">
-                            · Publicação: {formatInvitePhaseDate(phase.post_date)}
-                          </span>
-                        ) : null}
-                        {phase.publish_time ? (
-                          <span className="text-sm text-neutral-600">às {phase.publish_time}</span>
-                        ) : null}
-                      </div>
-                      <p className="text-base font-medium text-neutral-950 mb-3">{phase.objective}</p>
-                      {phase.formats.length > 0 ? (
-                        <div>
-                          <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-2">
-                            Etapas / formatos
-                          </p>
-                          <ul className="space-y-2 text-sm text-neutral-700">
-                            {phase.formats.map((f, i) => (
-                              <li key={`${f.network}-${f.content_type}-${i}`} className="flex flex-wrap gap-x-2 gap-y-0.5">
-                                <span className="font-medium text-neutral-950">
-                                  {getNetworkLabel(f.network, f.network)}
-                                </span>
-                                {f.content_type ? (
-                                  <>
-                                    <span className="text-neutral-400">·</span>
-                                    <span>
-                                      {formatContentTypeLabel(f.network, f.content_type)}
-                                    </span>
-                                  </>
-                                ) : null}
-                                {f.quantity != null && f.quantity > 0 ? (
-                                  <>
-                                    <span className="text-neutral-400">·</span>
-                                    <span>
-                                      {f.quantity}{" "}
-                                      {f.quantity === 1 ? "entrega" : "entregas"}
-                                    </span>
-                                  </>
-                                ) : null}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-neutral-500">Formatos serão detalhados no app.</p>
-                      )}
-                    </li>
+                <div className="pvx-fb2">
+                  {[
+                    ["users", "Marcas verificadas", "Só campanhas de marcas que passaram pela nossa análise."],
+                    ["wallet", "Pagamento garantido", "O valor fica reservado antes da campanha começar."],
+                    ["msg", "Tudo no app", "Roteiro, aprovação, contrato e chat em um só lugar."],
+                  ].map(([i, t, x]) => (
+                    <div key={t}>
+                      <span>
+                        <I n={i} />
+                      </span>
+                      <b>{t}</b>
+                      <p>{x}</p>
+                    </div>
                   ))}
-              </ol>
-            </section>
-          ) : null}
-
-          {data.benefits?.length ? (
-            <section className="flex flex-col gap-3">
-              <h2 className="text-lg font-semibold text-neutral-950">Benefícios</h2>
-              <ul className="list-disc pl-5 space-y-2 text-neutral-600">
-                {data.benefits.map((b) => (
-                  <li key={b}>{b}</li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-
-          {data.rules_does?.length ? (
-            <section className="flex flex-col gap-3">
-              <h2 className="text-lg font-semibold text-neutral-950">O que a campanha espera</h2>
-              <ul className="list-disc pl-5 space-y-2 text-neutral-600">
-                {data.rules_does.map((r) => (
-                  <li key={r}>{r}</li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-
-          {data.rules_does_not?.length ? (
-            <section className="flex flex-col gap-3">
-              <h2 className="text-lg font-semibold text-neutral-950">Evitar</h2>
-              <ul className="list-disc pl-5 space-y-2 text-neutral-600">
-                {data.rules_does_not.map((r) => (
-                  <li key={r}>{r}</li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-
-          {nicheModalOpen && data.niches && (
-            <NicheListModal
-              title="Todos os nichos"
-              names={data.niches}
-              onClose={() => setNicheModalOpen(false)}
-            />
-          )}
-
-          {secondaryNicheModalOpen && data.secondary_niche_names && (
-            <NicheListModal
-              title="Todos os subnichos"
-              names={data.secondary_niche_names}
-              onClose={() => setSecondaryNicheModalOpen(false)}
-            />
-          )}
-
-          <CampaignInviteAcceptModal
-            isOpen={acceptModalOpen}
-            onClose={() => setAcceptModalOpen(false)}
-            campaignPublicId={campaignId}
-            campaignTitle={data.title}
-            inviteData={data}
-          />
-
-          <CampaignInviteDeclineModal
-            isOpen={declineModalOpen}
-            onClose={() => setDeclineModalOpen(false)}
-            campaignPublicId={campaignId}
-            onDeclineRecorded={() => setInviteDeclined(true)}
-          />
-
-          <div className="flex flex-col gap-4 pt-2 border-t border-neutral-100">
-            {inviteDeclined ? (
-              <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-5 py-4 text-sm text-neutral-700">
-                Registramos que você não vai participar desta campanha. Se mudar de ideia, peça um
-                novo convite à marca.
+                </div>
               </div>
-            ) : (
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  type="button"
-                  variant="default"
-                  className="w-full sm:flex-1 min-w-0"
-                  onClick={handleAccept}
-                >
-                  Aceitar convite
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full sm:flex-1 min-w-0"
-                  onClick={handleDeclineClick}
-                >
-                  Recusar
-                </Button>
+              <div className="pvx-fz">
+                <small>© {new Date().getFullYear()} HypeApp</small>
+                <small>
+                  <a>Termos de uso</a> · <a>Privacidade</a>
+                </small>
               </div>
-            )}
+            </footer>
           </div>
+        </div>
+
+        <div className="pvx-fb">
+          {declined ? (
+            <div className="pvx-nt">
+              Registramos que você não vai participar. Se mudar de ideia, peça um novo convite à marca.
+            </div>
+          ) : accepted ? (
+            <div className="pvx-ok">
+              <I n="check" cls="sm" />
+              Convite aceito. Continue no app.
+            </div>
+          ) : (
+            <div className="pvx-ac">
+              <button type="button" className="btn" onClick={onAccept}>
+                Aceitar convite
+                <I n="chev" cls="sm" />
+              </button>
+              <button type="button" className="pvx-no" onClick={onDecline}>
+                Recusar
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
