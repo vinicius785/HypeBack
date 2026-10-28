@@ -2069,9 +2069,9 @@
 .pv .upd-x { width: 32px; height: 32px; background: rgba(255,255,255,.1); color: #fff; flex: none; }
 
 /* Criadores: espaçamentos e filtros (sobrepõe os ajustes antigos com margem negativa) */
-.pv .wrap > .head.crhd { margin-bottom: 24px !important; }
-.pv .wrap > .tools.crt { margin: 0 0 24px !important; }
-.pv .crfb { margin: 0 0 20px !important; gap: 0 !important; }
+.pv .wrap > .head.crhd { margin-bottom: -8px !important; }
+.pv .wrap > .tools.crt { margin: 0 0 -12px !important; }
+.pv .crfb { margin: 0 0 12px !important; gap: 0 !important; }
 .pv .crfb .crr2 { display: flex; align-items: center; flex-wrap: wrap !important; gap: 10px !important; }
 .pv .crfb .find { flex: 0 1 280px !important; min-width: 220px !important; height: 44px !important; padding: 0 18px; }
 .pv .crfb .crr2 .cfb, .pv .crfb .crr2 .crnear { height: 44px !important; padding: 0 18px !important; gap: 8px !important; font-size: 13.5px !important; }
@@ -2079,5 +2079,5 @@
 .pv .crfb .crdv { margin: 0 4px !important; }
 .pv .crfb .crvt { height: 44px; }
 .pv #crres { margin-top: 0 !important; }
-.pv #crres .crs { margin: 0 0 20px !important; }
+.pv #crres .crs { margin: 0 0 16px !important; }
 .pv #crres .crg { gap: 18px; }
