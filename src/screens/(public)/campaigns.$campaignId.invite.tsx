@@ -2,7 +2,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import hypeappLogoBranca from "@/assets/images/hypeapp-logo-branca.svg";
-import { brl, fixedAmount, initialsOf } from "@/components/campaign-invite/parts";
+import { BrandAvatar, brandOf, brl, fixedAmount } from "@/components/campaign-invite/parts";
 import { CampaignInviteAcceptModal } from "@/components/campaign-invite-accept-modal";
 import { CampaignInviteDeclineModal } from "@/components/campaign-invite-decline-modal";
 import { I } from "@/components/prototype/ui";
@@ -336,8 +336,8 @@ function InviteView({
         <div className="pvx-pg">
           <header className="pvx-tp">
             <span className="pvx-ch">
-              <span className="pvx-av">{initialsOf(data.title)}</span>
-              {data.title}
+              <BrandAvatar data={data} />
+              {brandOf(data)}
             </span>
             <Link to="/sign-in" className="pvx-rb" aria-label="Área da marca" title="Área da marca">
               <I n="lock" cls="sm" />
@@ -358,31 +358,35 @@ function InviteView({
                 <i />
                 <i />
                 <div className="pvx-mc">
-                  <div
-                    className="pvx-mt"
-                    style={
-                      banner
-                        ? {
-                            backgroundImage: `linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,.05)), url("${banner}")`,
-                            backgroundSize: "cover",
-                            backgroundPosition: "center",
-                          }
-                        : undefined
-                    }
-                  >
-                    <b>
-                      Campanha
-                      <br />
-                      {data.title}
-                    </b>
-                    {data.max_influencers && data.max_influencers > 0 ? (
-                      <span className="pvx-pl">{data.max_influencers} vagas</span>
-                    ) : null}
-                  </div>
+                  {banner ? (
+                    <div style={{ position: "relative", borderRadius: 22, overflow: "hidden", background: "#111" }}>
+                      <img
+                        src={banner}
+                        alt={data.title}
+                        style={{ display: "block", width: "100%", height: "auto" }}
+                      />
+                      {data.max_influencers && data.max_influencers > 0 ? (
+                        <span className="pvx-pl" style={{ position: "absolute", top: 12, right: 12 }}>
+                          {data.max_influencers} vagas
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="pvx-mt">
+                      <b>
+                        Campanha
+                        <br />
+                        {data.title}
+                      </b>
+                      {data.max_influencers && data.max_influencers > 0 ? (
+                        <span className="pvx-pl">{data.max_influencers} vagas</span>
+                      ) : null}
+                    </div>
+                  )}
                   <div className="pvx-mb">
-                    <span className="pvx-av">{initialsOf(data.title)}</span>
+                    <BrandAvatar data={data} />
                     <div>
-                      <b>{data.title}</b>
+                      <b>{brandOf(data)}</b>
                       <small>{niches.slice(0, 3).join(" · ") || "Convite para criadores"}</small>
                     </div>
                     {fixed != null ? (

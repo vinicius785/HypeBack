@@ -22,6 +22,32 @@ export function fixedAmount(data: PublicCampaignInviteData): number | null {
   return null;
 }
 
+/** Nome a exibir como "cliente": a marca, ou o título da campanha quando a API não informa. */
+export function brandOf(data: PublicCampaignInviteData): string {
+  return data.brand_name?.trim() || data.title;
+}
+
+/** Avatar da marca (foto da marca ou iniciais), no padrão `.pvx-av` do convite. */
+export function BrandAvatar({ data, size }: { data: PublicCampaignInviteData; size?: number }) {
+  const [broken, setBroken] = useState(false);
+  const url = data.brand_photo ? getUploadUrl(data.brand_photo) ?? undefined : undefined;
+  const style = size ? { width: size, height: size } : undefined;
+  return (
+    <span className="pvx-av" style={{ ...style, overflow: "hidden" }}>
+      {url && !broken ? (
+        <img
+          src={url}
+          alt=""
+          onError={() => setBroken(true)}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      ) : (
+        initialsOf(brandOf(data))
+      )}
+    </span>
+  );
+}
+
 export function initialsOf(title: string): string {
   return (
     title

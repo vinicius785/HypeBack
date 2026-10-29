@@ -29,6 +29,9 @@ export interface PublicCampaignInviteData {
   /** Valor bruto ou `{ value, label }` — use `getCampaignStatusDisplayLabel` na UI */
   status?: unknown;
   banner?: string | null;
+  /** Marca/cliente dono da campanha (quando a API informa). */
+  brand_name?: string;
+  brand_photo?: string | null;
   max_influencers?: number;
   segment_min_followers?: number;
   /** Nomes dos nichos raízes (parent_id: null), prontos para exibição. */
@@ -258,12 +261,39 @@ function extractSecondaryNicheNames(raw: Record<string, unknown>): string[] | un
   return names.length ? names : undefined;
 }
 
+/** Nome e foto da marca: a API pode enviar planos (`brand_name`) ou aninhados (`workspace.name`). */
+function extractBrand(raw: Record<string, unknown>): { name?: string; photo: string | null } {
+  const nested = [raw.workspace, raw.brand, raw.company, raw.owner].find(
+    (v): v is Record<string, unknown> => !!v && typeof v === "object",
+  );
+  const pick = (o: Record<string, unknown> | undefined, keys: string[]) => {
+    for (const k of keys) {
+      const v = o?.[k];
+      if (typeof v === "string" && v.trim()) return v.trim();
+    }
+    return undefined;
+  };
+  const name =
+    pick(raw, ["brand_name", "workspace_name", "company_name", "client_name"]) ??
+    pick(nested, ["name", "title", "company_name"]);
+  const photoKeys = ["photo", "logo", "avatar", "image", "photo_url", "logo_url", "avatar_url"];
+  const photo =
+    pick(raw, [
+      "brand_photo", "brand_logo", "workspace_photo", "workspace_logo",
+      "company_photo", "company_logo", "client_photo", "client_logo",
+    ]) ?? pick(nested, photoKeys);
+  return { name, photo: photo ?? null };
+}
+
 function normalizePublicInvite(raw: Record<string, unknown>): PublicCampaignInviteData {
   const primary = raw.primary_niche as Record<string, unknown> | undefined;
   const paymentDetails = raw.payment_method_details as Record<string, unknown> | undefined;
   const phases = normalizePhasesList(raw.phases);
+  const brand = extractBrand(raw);
 
   return {
+    brand_name: brand.name,
+    brand_photo: brand.photo,
     title: coerceDisplayText(raw.title ?? raw.name, "Campanha"),
     description: coerceDisplayText(raw.description, ""),
     objective: (() => {
