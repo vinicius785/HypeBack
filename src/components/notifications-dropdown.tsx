@@ -147,8 +147,12 @@ export function NotificationsDropdown() {
       <span>
         <I n="check" />
       </span>
-      <b>Tudo em dia</b>
-      <small>Você não tem notificações pendentes.</small>
+      <b>{notifications.length === 0 ? "Nenhuma notificação ainda" : "Tudo em dia"}</b>
+      <small>
+        {notifications.length === 0
+          ? "Quando algo acontecer nas suas campanhas, aparece aqui."
+          : "Você não tem notificações não lidas."}
+      </small>
     </div>
   ) : (
     GROUPS.map((g) => {
@@ -166,31 +170,32 @@ export function NotificationsDropdown() {
                 className={`nt-i${unread ? " un" : ""}`}
                 style={{ "--k": k++ } as React.CSSProperties}
                 onClick={() => handleNotificationClick(n)}
-                aria-label={`Ver notificação: ${n.boldText || n.title}`}
               >
-                <span className="nt-av sys">
-                  <span className="nt-sy">
-                    <I n={ICONS[n.type] ?? "bell"} />
-                  </span>
+                <span className="nt-sy" aria-hidden="true">
+                  <I n={ICONS[n.type] ?? "bell"} />
                 </span>
-                <div className="nt-b">
-                  <p>
+                <span className="nt-b">
+                  <span className="nt-p">
                     <b>{n.boldText || n.title}</b>
                     {n.message ? ` ${n.message}` : ""}
-                  </p>
-                  <small className="nt-mt">
-                    {n.metadata.campaign_title && <em>{n.metadata.campaign_title}</em>}
-                    {n.metadata.campaign_title && <span className="nt-sp" />}
+                  </span>
+                  {n.metadata.campaign_title && <span className="nt-ctx">{n.metadata.campaign_title}</span>}
+                  <span className="nt-mt">
                     <span>{whenOf(n.created_at)}</span>
-                  </small>
-                  {ACTIONS[n.type] && (
-                    <span className="nt-a">
-                      {ACTIONS[n.type]}
-                      <I n="chev" cls="sm" />
-                    </span>
-                  )}
-                </div>
-                {unread && <i className="nt-dot" />}
+                    {ACTIONS[n.type] && (
+                      <span className="nt-a">
+                        {ACTIONS[n.type]}
+                        <I n="chev" cls="sm" />
+                      </span>
+                    )}
+                  </span>
+                </span>
+                {unread && (
+                  <>
+                    <i className="nt-dot" aria-hidden="true" />
+                    <span className="nt-sr">Não lida</span>
+                  </>
+                )}
               </button>
             );
           })}
@@ -220,9 +225,11 @@ export function NotificationsDropdown() {
                 <div>
                   <h2>Notificações</h2>
                   <small>
-                    {unreadCount
-                      ? `${unreadCount} ${unreadCount > 1 ? "não lidas" : "não lida"}`
-                      : "Tudo em dia"}
+                    {notifications.length === 0
+                      ? "Nenhuma notificação por enquanto"
+                      : unreadCount > 0
+                        ? `${unreadCount} ${unreadCount > 1 ? "não lidas" : "não lida"} de ${notifications.length}`
+                        : `Tudo em dia · ${notifications.length} ${notifications.length > 1 ? "notificações" : "notificação"}`}
                   </small>
                 </div>
                 <button type="button" className="round" onClick={requestClose} aria-label="Fechar">
