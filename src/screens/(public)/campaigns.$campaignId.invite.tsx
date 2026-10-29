@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import hypeappLogoBranca from "@/assets/images/hypeapp-logo-branca.svg";
 import { brl, fixedAmount, initialsOf } from "@/components/campaign-invite/parts";
 import { CampaignInviteAcceptModal } from "@/components/campaign-invite-accept-modal";
 import { CampaignInviteDeclineModal } from "@/components/campaign-invite-decline-modal";
@@ -549,8 +550,7 @@ function InviteView({
               <div className="pvx-fm">
                 <div className="pvx-fa">
                   <div className="pvx-lo2">
-                    <span>h</span>
-                    <b>hypeapp</b>
+                    <img src={hypeappLogoBranca} alt="HypeApp" style={{ height: 40, width: "auto" }} />
                   </div>
                   <p>
                     O HypeApp conecta marcas a criadores de conteúdo. Receba convites de campanhas, envie

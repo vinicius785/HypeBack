@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 
 import authLayoutImage from "@/assets/images/auth-layout-image.png";
-import hypeappLogo from "@/assets/images/hypeapp-logo.png";
+import hypeappLogo from "@/assets/images/hypeapp-logo-branca.svg";
 
 export const Route = createFileRoute("/(public)")({
   component: RouteComponent,
