@@ -313,3 +313,25 @@
   color: var(--color-neutral-700);
   border-color: var(--color-neutral-200);
 }
+
+/* Telas de acesso (login/cadastro): animações */
+@keyframes au-up { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes au-in-r { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: none; } }
+@keyframes au-in-l { from { opacity: 0; transform: translateX(-32px); } to { opacity: 1; transform: none; } }
+@keyframes au-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes au-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes au-pop { from { opacity: 0; transform: translateY(22px) scale(.97); } to { opacity: 1; transform: none; } }
+
+.au-up { animation: au-up .7s cubic-bezier(.32,.72,0,1) both; animation-delay: var(--d, 0ms); }
+.au-pop { animation: au-pop .7s cubic-bezier(.32,.72,0,1) both; animation-delay: var(--d, 0ms); }
+.au-float { animation: au-float 7s ease-in-out infinite; }
+.au-r { animation: au-in-r .55s cubic-bezier(.32,.72,0,1) both; }
+.au-l { animation: au-in-l .55s cubic-bezier(.32,.72,0,1) both; }
+.au-r form > *, .au-l form > * { animation: au-up .6s cubic-bezier(.32,.72,0,1) both; }
+.au-r form > :nth-child(2), .au-l form > :nth-child(2) { animation-delay: .07s; }
+.au-r form > :nth-child(3), .au-l form > :nth-child(3) { animation-delay: .14s; }
+.au-fill { transform-origin: left; animation: au-fill 5.5s linear both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .au-up, .au-pop, .au-float, .au-r, .au-l, .au-r form > *, .au-l form > *, .au-fill { animation: none !important; }
+}
