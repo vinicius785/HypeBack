@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 
 import { WorkspaceProvider } from "@/contexts/workspace-context";
@@ -10,6 +11,12 @@ export const Route = createFileRoute("/(private)/(app)")({
 
 function RouteComponent() {
   const { pathname } = useLocation();
+  // O <main> é o mesmo elemento em todas as páginas: sem isso, a rolagem da
+  // página anterior continua e o cabeçalho da nova abre cortado.
+  const mainRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 });
+  }, [pathname]);
 
   let title = "Início";
 
@@ -61,7 +68,7 @@ function RouteComponent() {
         <div className="flex min-w-0 flex-col overflow-hidden">
           {!detailOwnsTop && <Header title={title} />}
 
-          <main className="w-full flex-1 overflow-y-auto px-2 pb-10 pt-4 max-[900px]:px-5">
+          <main ref={mainRef} className="w-full flex-1 overflow-y-auto px-2 pb-10 pt-4 max-[900px]:px-5">
             <Outlet />
           </main>
         </div>

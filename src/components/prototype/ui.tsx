@@ -41,6 +41,7 @@ const MAP: Record<string, keyof typeof icons> = {
   trash: "Trash2",
   refresh: "RefreshCw",
   alert: "TriangleAlert",
+  logout: "LogOut",
   banknote: "Banknote",
   download: "Download",
   chart: "ChartLine",

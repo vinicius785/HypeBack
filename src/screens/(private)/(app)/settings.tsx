@@ -28,8 +28,6 @@ const ROLE_LABEL: Record<WorkspaceRole, string> = {
   analista: "Analista",
 };
 
-const BRAND_COLORS = ["#9e2cfa", "#050505", "#7e7e7e"];
-
 const initialsOf = (name: string) =>
   name
     .trim()
@@ -48,27 +46,43 @@ interface FieldProps {
   type?: string;
   pre?: string;
   readOnly?: boolean;
+  /** Somente leitura por regra do produto (não é só estado temporário de envio). */
+  locked?: boolean;
+  autoComplete?: string;
+  inputMode?: "email" | "tel" | "text";
   onChange?: (v: string) => void;
 }
 
-/** `mpFd` do protótipo. */
-function Field({ id, label, value, placeholder, error, type, pre, readOnly, onChange }: FieldProps) {
+/** `mpFd` do protótipo. Campo editável = branco com borda; somente leitura = cinza com cadeado. */
+function Field({ id, label, value, placeholder, error, type, pre, readOnly, locked, autoComplete, inputMode, onChange }: FieldProps) {
   return (
     <div className={`mpx-fd ${error ? "bad" : ""}`}>
-      <label htmlFor={id}>{label}</label>
-      <div className={`mpx-in ${pre ? "pre" : ""}`}>
+      <label htmlFor={id}>
+        {label}
+        {locked ? <em>Somente leitura</em> : null}
+      </label>
+      <div className={`mpx-in ${locked ? "ro" : ""}`}>
         {pre ? <span>{pre}</span> : null}
         <input
           id={id}
           type={type}
           placeholder={placeholder}
           value={value}
-          readOnly={readOnly}
-          autoComplete="off"
+          readOnly={readOnly || locked}
+          aria-readonly={locked ? true : undefined}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-err` : undefined}
+          autoComplete={autoComplete ?? "off"}
+          inputMode={inputMode}
           onChange={(e) => onChange?.(e.target.value)}
         />
+        {locked ? <I n="lock" cls="mpx-lock" /> : null}
       </div>
-      {error ? <small>{error}</small> : null}
+      {error ? (
+        <small id={`${id}-err`} role="alert">
+          {error}
+        </small>
+      ) : null}
     </div>
   );
 }
@@ -102,7 +116,10 @@ function SettingsScreen() {
       toast.success("Alterações salvas");
     },
     onError: (e: unknown) => {
-      toast.error(e instanceof Error ? e.message : "Não foi possível salvar as alterações.");
+      const message = e instanceof Error ? e.message : "Não foi possível salvar as alterações.";
+      // Conflito de e-mail volta da API como mensagem; mostra junto do campo.
+      if (/e-?mail/i.test(message)) setErr((p) => ({ ...p, e: message }));
+      else toast.error(message);
     },
   });
 
@@ -145,47 +162,50 @@ function SettingsScreen() {
         </div>
         <div className="fade">
           <div className="mpx-g">
-            <aside className="mpx-id">
-              <div className="mpx-av">
-                {photo && !photoBroken ? (
-                  <img
-                    src={photo}
-                    alt=""
-                    style={{ width: 132, height: 132 }}
-                    onError={() => setPhotoBroken(true)}
-                  />
-                ) : (
-                  <span style={{ width: 132, height: 132 }}>{initialsOf(user.name)}</span>
-                )}
-              </div>
-              <b>{user.name}</b>
-              <small>{user.email}</small>
-              {roleLabel ? <span className="mpx-rl">{roleLabel}</span> : null}
-              {workspaces.length > 0 ? (
-                <div className="mpx-ws">
-                  <small>Workspaces</small>
-                  {workspaces.map((w, i) => {
-                    const wp = w.photo ? getUploadUrl(w.photo) : undefined;
-                    return (
-                      <div key={w.id}>
-                        <span
-                          className="brand"
-                          style={{ background: BRAND_COLORS[i % BRAND_COLORS.length], overflow: "hidden" }}
-                        >
-                          {wp ? (
-                            <img src={wp} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          ) : (
-                            initialsOf(w.name)
-                          )}
-                        </span>
-                        <div>
-                          <b>{w.name}</b>
-                          <small>{w.role ? (ROLE_LABEL[w.role] ?? w.role) : ""}</small>
-                        </div>
-                      </div>
-                    );
-                  })}
+            <aside className="mpx-side">
+              <div className="mpx-id">
+                <div className="mpx-av">
+                  {photo && !photoBroken ? (
+                    <img src={photo} alt="" onError={() => setPhotoBroken(true)} />
+                  ) : (
+                    <span>{initialsOf(user.name)}</span>
+                  )}
                 </div>
+                <div className="mpx-who">
+                  <b>{user.name}</b>
+                  <small>{user.email}</small>
+                  {roleLabel ? <span className="mpx-rl">{roleLabel}</span> : null}
+                </div>
+              </div>
+              {workspaces.length > 0 ? (
+                <section className="mpx-wc" aria-labelledby="mpx-ws-h">
+                  <h3 id="mpx-ws-h">
+                    Workspaces
+                    <em>{workspaces.length}</em>
+                  </h3>
+                  <ul className="mpx-wl" tabIndex={0} aria-label="Lista de workspaces">
+                    {workspaces.map((w) => {
+                      const wp = w.photo ? getUploadUrl(w.photo) : undefined;
+                      const current = w.id === selectedWorkspace?.id;
+                      return (
+                        <li key={w.id} className={current ? "cur" : ""}>
+                          <span className="brand">
+                            {wp ? (
+                              <img src={wp} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            ) : (
+                              initialsOf(w.name)
+                            )}
+                          </span>
+                          <span className="wt">
+                            <b>{w.name}</b>
+                            <small>{w.role ? (ROLE_LABEL[w.role] ?? w.role) : ""}</small>
+                          </span>
+                          {current ? <span className="tag">Atual</span> : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
               ) : null}
             </aside>
             <div className="mpx-cl">
@@ -200,6 +220,8 @@ function SettingsScreen() {
                     label="Nome completo"
                     value={name}
                     placeholder="Como você se chama"
+                    autoComplete="name"
+                    readOnly={isPending}
                     error={err.n}
                     onChange={(v) => {
                       setName(v);
@@ -212,6 +234,9 @@ function SettingsScreen() {
                     type="email"
                     value={email}
                     placeholder="voce@email.com"
+                    autoComplete="email"
+                    inputMode="email"
+                    readOnly={isPending}
                     error={err.e}
                     onChange={(v) => {
                       setEmail(v);
@@ -224,27 +249,41 @@ function SettingsScreen() {
                     value={user.phone ? formatPhoneNumber(user.phone) : ""}
                     placeholder="Não informado"
                     pre="BR +55"
-                    readOnly
+                    locked
                   />
                 </div>
                 <div className="mpx-ac">
-                  <small>{dirty ? "Você tem alterações não salvas" : "Tudo salvo"}</small>
-                  <button type="button" className="btn" disabled={!dirty || isPending} onClick={save}>
-                    <I n="check" cls="sm" />
+                  <span className={`mpx-st${dirty ? " dirty" : ""}`} role="status" aria-live="polite">
+                    {isPending ? (
+                      "Salvando…"
+                    ) : dirty ? (
+                      <>
+                        <i className="dot" aria-hidden="true" />
+                        Você tem alterações não salvas
+                      </>
+                    ) : (
+                      <>
+                        <I n="check" cls="sm" />
+                        Tudo salvo
+                      </>
+                    )}
+                  </span>
+                  <button type="button" className="btn" disabled={!dirty || isPending} aria-busy={isPending} onClick={save}>
+                    {isPending ? <I n="refresh" cls="sm spin" /> : <I n="check" cls="sm" />}
                     {isPending ? "Salvando…" : "Salvar alterações"}
                   </button>
                 </div>
               </section>
-              <section className="mpx-cd mpx-out">
+              <section className="mpx-cd mpx-out" aria-label="Sair da conta">
                 <div className="mpx-rw">
-                  <span>
-                    <I n="x" />
+                  <span aria-hidden="true">
+                    <I n="logout" />
                   </span>
                   <div>
                     <b>Sair da conta</b>
                     <small>Você precisará entrar de novo para acessar o HypeApp.</small>
                   </div>
-                  <button type="button" className="btn dng" onClick={() => doLogout()}>
+                  <button type="button" className="btn sair" onClick={() => doLogout()}>
                     Sair
                   </button>
                 </div>
