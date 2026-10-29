@@ -2081,3 +2081,49 @@
 .pv #crres { margin-top: 0 !important; }
 .pv #crres .crs { margin: 0 0 16px !important; }
 .pv #crres .crg { gap: 18px; }
+
+/* Início: refinamento de hierarquia, métricas e navegação de campanhas */
+.pv .stat small, .pv .stat .d, .pv .msm small { font-size: 14px; }
+.pv .msm small { min-height: 0; }
+.pv .tkcard .tks { flex: none; margin-top: auto; padding-top: 28px; }
+.pv .tk .tk-c { flex: none; min-width: 28px; text-align: right; font-size: 20px; font-weight: 600; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.pv .big .big-src { display: block; max-width: 46ch; margin-top: 10px; color: var(--muted); font-size: 14px; font-weight: 500; line-height: 1.4; }
+.pv .mh-empty { display: flex; align-items: center; gap: 16px; margin-top: 22px; padding: 18px 20px; border-radius: 24px; background: var(--bg); }
+.pv .mh-empty .ei { width: 44px; height: 44px; border-radius: 50%; background: #fff; display: grid; place-items: center; flex: none; }
+.pv .mh-empty b { display: block; font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
+.pv .mh-empty p { margin: 3px 0 0; color: var(--muted); font-size: 14px; line-height: 1.4; }
+.pv .mh-empty .link { margin-left: auto; flex: none; white-space: nowrap; }
+
+.pv .camp { margin: 0; }
+.pv .camp-h { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.pv .camp-h h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.03em; }
+.pv .camp-h .sub { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.pv .camp-h .btn { flex: none; gap: 10px; }
+.pv .camp-h .btn em { font-style: normal; font-size: 13px; font-weight: 700; background: var(--bg); border-radius: 999px; padding: 2px 9px; }
+.pv .trk-w { position: relative; }
+.pv .trk-w .track { padding-left: 0; padding-right: 0; scroll-padding: 0; }
+.pv .trk-b { position: absolute; top: 105px; transform: translateY(-50%); z-index: 6; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: var(--ink); display: grid; place-items: center; transition: background .2s, color .2s, opacity .2s; }
+.pv .trk-b.prev { left: 12px; } .pv .trk-b.next { right: 12px; }
+.pv .trk-b:hover:not(:disabled) { background: var(--ink); color: #fff; }
+.pv .trk-b:disabled { opacity: 0; pointer-events: none; }
+.pv .trk-b:focus-visible, .pv .cc:focus-visible, .pv .camp-h .btn:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+.pv .cc:hover { box-shadow: none; }
+.pv .cc-id small, .pv .cc-bh span { font-size: 14px; }
+.pv .cc-st small { font-size: 13px; }
+@media (max-width: 640px) {
+  .pv .camp-h { flex-direction: column; align-items: flex-start; }
+  .pv .mh-empty { flex-wrap: wrap; }
+  .pv .mh-empty .link { margin-left: 60px; }
+  .pv .trk-b { top: 96px; width: 40px; height: 40px; }
+  .pv .msm { grid-template-columns: 1fr; gap: 14px; }
+  .pv .msm > div { padding: 0; border-left: 0; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+  .pv .msm small { min-height: 0; }
+  .pv .tk { gap: 10px; padding: 12px; }
+  .pv .tk .ti { width: 40px; height: 40px; border-radius: 14px; }
+  .pv .tk .tx { min-width: 0; } .pv .tk .tx b { overflow-wrap: anywhere; font-size: 14px; }
+  .pv .tk .tk-c { min-width: 18px; font-size: 18px; }
+  .pv .tk .go { padding: 0 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pv .trk-b, .pv .cc, .pv .cc-scene { transition: none; }
+}

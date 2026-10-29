@@ -190,6 +190,11 @@ function RouteComponent() {
     return m;
   }, [campaignsData]);
 
+  const campaignsWithReach = useMemo(
+    () => perCampaign.filter((c) => (c.metrics?.reach ?? 0) > 0).length,
+    [perCampaign],
+  );
+
   const reachSeries = useMemo(
     () =>
       displayedTableRows
@@ -237,7 +242,7 @@ function RouteComponent() {
 
   return (
     <div className="pv">
-      <div className="wrap" style={{ maxWidth: "none" }}>
+      <div className="wrap dash" style={{ maxWidth: "none" }}>
         <div className="head fade">
           <div className="hello">
             <WorkspaceBrand name={workspaceName} photo={selectedWorkspace?.photo} />
@@ -245,16 +250,7 @@ function RouteComponent() {
               <h1>
                 {greeting}, {workspaceName}
               </h1>
-              <p>
-                {pendingTaskCount > 0 ? (
-                  <>
-                    Você tem <b style={{ color: "var(--ink)" }}>{pendingTaskCount} {pendingTaskCount === 1 ? "item" : "itens"}</b>{" "}
-                    aguardando sua aprovação hoje.
-                  </>
-                ) : (
-                  "Nada aguardando sua aprovação agora."
-                )}
-              </p>
+              <p>Acompanhe as campanhas, as métricas e as aprovações do seu workspace.</p>
             </div>
           </div>
           <div className="btns">
@@ -367,10 +363,11 @@ function RouteComponent() {
                           <I n={task.kind === "script" ? "file" : task.kind === "content" ? "image" : "users"} />
                         </span>
                         <span className="tx">
-                          <b>
-                            {task.label} · {task.count}
-                          </b>
+                          <b>{task.label}</b>
                           <small>{task.campaignTitle}</small>
+                        </span>
+                        <span className="tk-c" aria-label={`${task.count} ${task.count === 1 ? "item" : "itens"}`}>
+                          {task.count}
                         </span>
                         <span className="go">Revisar</span>
                       </button>
@@ -424,9 +421,18 @@ function RouteComponent() {
                     <div>
                       <small>Alcance estimado</small>
                       <b>{aggregateMetrics.reach ? aggregateMetrics.reach.toLocaleString("pt-BR") : "—"}</b>
+                      <span className="big-src">
+                        {campaignsWithReach > 0
+                          ? `Estimativa somada de ${campaignsWithReach} ${campaignsWithReach === 1 ? "campanha" : "campanhas"} com alcance medido.`
+                          : "Nenhuma campanha com alcance medido ainda."}
+                      </span>
                     </div>
                   </div>
-                  <ReachChart series={reachSeries} />
+                  <ReachChart
+                    series={reachSeries}
+                    total={stats.total}
+                    onOpenCampaigns={() => navigate({ to: "/campaigns" })}
+                  />
                   <div className="msm">
                     <div>
                       <small>Engajamento médio</small>
@@ -453,6 +459,7 @@ function RouteComponent() {
           showOverview={showOverview}
           isOverviewLoading={isOverviewLoading}
           canCreate={permissions.campaigns_create}
+          total={stats.total}
         />
       </div>
     </div>
@@ -527,18 +534,35 @@ function TaskBar({ tasks }: { tasks: Array<{ kind: string; count: number }> }) {
 }
 
 /** Alcance por campanha — mesma linha/área e cursor do gráfico do protótipo. */
-function ReachChart({ series }: { series: Array<{ label: string; at: number; value: number }> }) {
+function ReachChart({
+  series,
+  total,
+  onOpenCampaigns,
+}: {
+  series: Array<{ label: string; at: number; value: number }>;
+  total: number;
+  onOpenCampaigns: () => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<{ x: number; y: number; i: number } | null>(null);
 
   if (series.length < 2) {
     return (
-      <div className="empty" style={{ marginTop: 6 }}>
+      <div className="mh-empty">
         <span className="ei">
           <I n="chart" />
         </span>
-        <b>Sem dados ainda</b>
-        <p>O gráfico aparece quando houver alcance em pelo menos duas campanhas.</p>
+        <div>
+          <b>Histórico de alcance ainda indisponível</b>
+          <p>
+            O gráfico compara o alcance entre campanhas e aparece quando pelo menos duas tiverem alcance medido
+            ({series.length} de {total} hoje).
+          </p>
+        </div>
+        <button type="button" className="link" onClick={onOpenCampaigns}>
+          Ver campanhas
+          <I n="chev" cls="sm" />
+        </button>
       </div>
     );
   }
@@ -587,13 +611,7 @@ function ReachChart({ series }: { series: Array<{ label: string; at: number; val
         onMouseLeave={() => setHover(null)}
       >
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="ga" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#9e2cfa" stopOpacity=".22" />
-              <stop offset="1" stopColor="#9e2cfa" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <path className="ar" d={area} fill="url(#ga)" />
+          <path className="ar" d={area} fill="#9e2cfa" fillOpacity={0.08} />
           <path className="ln" pathLength={1} d={d} fill="none" stroke="#9e2cfa" strokeWidth={3} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
         </svg>
         <i className="cur" style={hover ? { left: hover.x, ["--y" as string]: `${hover.y}px` } : undefined} />
@@ -623,15 +641,18 @@ function CampaignsCarousel({
   showOverview,
   isOverviewLoading,
   canCreate,
+  total,
 }: {
   banners: Map<string, string>;
   rows: TableRow[];
   showOverview: boolean;
   isOverviewLoading: boolean;
   canCreate: boolean;
+  total: number;
 }) {
   const navigate = useNavigate();
   const trackRef = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState({ prev: false, next: false });
   const metricsReady = showOverview && !isOverviewLoading;
 
   useEffect(() => {
@@ -679,29 +700,72 @@ function CampaignsCarousel({
     };
   }, [rows.length]);
 
-  const by = (dir: -1 | 1) => trackRef.current?.scrollBy({ left: dir * 318, behavior: "smooth" });
+  // Setas só existem quando há mais cartões fora da vista, e se desabilitam nas pontas.
+  useEffect(() => {
+    const tr = trackRef.current;
+    if (!tr) return;
+    const update = () =>
+      setEdge({
+        prev: tr.scrollLeft > 4,
+        next: tr.scrollLeft + tr.clientWidth < tr.scrollWidth - 4,
+      });
+    update();
+    tr.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(tr);
+    return () => {
+      tr.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, [rows.length, canCreate]);
+
+  const by = (dir: -1 | 1) => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    trackRef.current?.scrollBy({ left: dir * 318, behavior: reduce ? "auto" : "smooth" });
+  };
 
   return (
     <div className="fade">
       <section className="camp">
-        <div className="card-h" style={{ marginBottom: 18 }}>
+        <div className="camp-h">
           <div>
             <h2>Campanhas</h2>
             <p className="sub">Status, alcance e pendências de cada campanha</p>
           </div>
-          <div className="ctl">
-            <button type="button" className="round" aria-label="Anterior" onClick={() => by(-1)}>
-              <I n="chev" cls="sm rot" />
-            </button>
-            <button type="button" className="round" aria-label="Próxima" onClick={() => by(1)}>
-              <I n="chev" cls="sm" />
-            </button>
-            <button type="button" className="link" onClick={() => navigate({ to: "/campaigns" })}>
-              Ver lista e filtros
-              <I n="chev" cls="sm" />
-            </button>
-          </div>
+          <button
+            type="button"
+            className="btn out"
+            aria-label={`Ver todas as campanhas (${total})`}
+            onClick={() => navigate({ to: "/campaigns" })}
+          >
+            Ver todas
+            <em>{total}</em>
+            <I n="chev" cls="sm" />
+          </button>
         </div>
+        <div className="trk-w">
+          {(edge.prev || edge.next) && (
+            <>
+              <button
+                type="button"
+                className="trk-b prev"
+                aria-label="Campanhas anteriores"
+                disabled={!edge.prev}
+                onClick={() => by(-1)}
+              >
+                <I n="chev" cls="sm rot" />
+              </button>
+              <button
+                type="button"
+                className="trk-b next"
+                aria-label="Próximas campanhas"
+                disabled={!edge.next}
+                onClick={() => by(1)}
+              >
+                <I n="chev" cls="sm" />
+              </button>
+            </>
+          )}
         <div className="track" ref={trackRef}>
           {rows.length === 0 ? (
             <div className="empty" style={{ flex: 1 }}>
@@ -738,6 +802,7 @@ function CampaignsCarousel({
               )}
             </>
           )}
+        </div>
         </div>
       </section>
     </div>

@@ -61,9 +61,19 @@ export function CampaignTile({ row, i, metricsReady, banner }: { row: CampaignTi
     <article
       className="cc"
       style={{ ["--i" as string]: i }}
+      role="link"
+      tabIndex={0}
+      aria-label={`${campaign.title}, ${statusLabel}`}
       onClick={() =>
         navigate({ to: "/campaigns/$campaignId", params: { campaignId: String(campaign.id) } })
       }
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          navigate({ to: "/campaigns/$campaignId", params: { campaignId: String(campaign.id) } });
+        }
+      }}
     >
       <div className="cc-img">
         <div
@@ -108,7 +118,7 @@ export function CampaignTile({ row, i, metricsReady, banner }: { row: CampaignTi
         </div>
         <div className="cc-bar">
           <div className="cc-bh">
-            <span>Publicados</span>
+            <span>Progresso de publicação</span>
             <b>{pr}%</b>
           </div>
           <div className="cc-trk">
