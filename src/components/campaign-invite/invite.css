@@ -1,0 +1,5 @@
+/* Convite: poucas fases não esticam até a altura da coluna ao lado */
+.pv .pvx-tl.compact { flex: none; }
+.pv .pvx-tl.compact li { flex: none; }
+.pv .pvx-cd ul { list-style: disc; }
+.pv .pvx-cd ul li { margin: 2px 0; display: list-item; }

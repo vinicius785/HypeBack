@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { I } from "@/components/prototype/ui";
+import "./invite.css";
 import { getUploadUrl } from "@/lib/utils/api";
 import type { PublicCampaignInviteData } from "@/shared/services/public-campaign-invite";
 

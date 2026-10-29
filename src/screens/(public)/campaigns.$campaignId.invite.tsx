@@ -26,6 +26,8 @@ const PAYMENT_LABEL: Record<string, string> = {
   cpm: "CPM",
 };
 
+const HERO_PAY: Record<string, string> = { swap: "Permuta", cpa: "CPA", cpm: "CPM" };
+
 const NETWORK_ICON: Record<string, string> = {
   instagram: "instagram",
   youtube: "youtube",
@@ -39,6 +41,63 @@ function shortDate(iso?: string): string {
   const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("pt-BR", { day: "numeric", month: "long" });
+}
+
+/** "18:00:00" → "18:00". */
+function shortTime(t?: string): string {
+  const m = /^(\d{1,2}):(\d{2})/.exec(t ?? "");
+  return m ? `${m[1].padStart(2, "0")}:${m[2]}` : (t ?? "");
+}
+
+const cap = (t: string) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
+
+/** Texto da marca com `**negrito**` e linhas "- item" (vindos como markdown simples). */
+function Rich({ text }: { text: string }) {
+  const inline = (line: string) =>
+    line.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+      part.startsWith("**") && part.endsWith("**") && part.length > 4 ? (
+        <b key={i}>{part.slice(2, -2)}</b>
+      ) : (
+        part
+      ),
+    );
+  const blocks: Array<{ list: boolean; lines: string[] }> = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) {
+      blocks.push({ list: false, lines: [] });
+      continue;
+    }
+    const isItem = /^[-•]\s+/.test(line);
+    const last = blocks[blocks.length - 1];
+    const clean = isItem ? line.replace(/^[-•]\s+/, "") : line;
+    if (last && last.lines.length && last.list === isItem && isItem) last.lines.push(clean);
+    else blocks.push({ list: isItem, lines: [clean] });
+  }
+  return (
+    <>
+      {blocks
+        .filter((b) => b.lines.length)
+        .map((b, i) =>
+          b.list ? (
+            <ul key={i} style={{ margin: "8px 0", paddingLeft: 20, lineHeight: 1.6 }}>
+              {b.lines.map((l, j) => (
+                <li key={j}>{inline(l)}</li>
+              ))}
+            </ul>
+          ) : (
+            <p key={i} style={{ margin: i ? "10px 0 0" : 0 }}>
+              {b.lines.map((l, j) => (
+                <span key={j}>
+                  {j > 0 && <br />}
+                  {inline(l)}
+                </span>
+              ))}
+            </p>
+          ),
+        )}
+    </>
+  );
 }
 
 function Title({ a, b }: { a: string; b: string }) {
@@ -246,7 +305,9 @@ function InviteView({
     (sum, p) => sum + p.formats.reduce((s, f) => s + (f.quantity && f.quantity > 0 ? f.quantity : 0), 0),
     0,
   );
-  const paymentLabel = data.payment_method ? PAYMENT_LABEL[data.payment_method.toLowerCase()] ?? data.payment_method : "";
+  const paymentLabel = data.payment_method
+    ? PAYMENT_LABEL[data.payment_method.toLowerCase()] ?? "A combinar"
+    : "";
   const paymentText = data.payment_method_details?.description?.trim();
   const hasPay = Boolean(fixed != null || paymentLabel || paymentText);
 
@@ -330,7 +391,7 @@ function InviteView({
                       </div>
                     ) : paymentLabel ? (
                       <div className="pvx-pr">
-                        <b>{data.payment_method === "swap" ? "Permuta" : paymentLabel.split(" ")[0]}</b>
+                        <b>{HERO_PAY[data.payment_method?.toLowerCase() ?? ""] ?? "A combinar"}</b>
                         <small>remuneração</small>
                       </div>
                     ) : null}
@@ -353,12 +414,12 @@ function InviteView({
               <section className="pvx-sec" id="cvs-about">
                 <Title a="Sobre" b="a campanha" />
                 <div className="pvx-cd">
-                  <p style={{ whiteSpace: "pre-wrap" }}>{description}</p>
+                  <Rich text={description} />
                 </div>
                 {data.objective?.trim() ? (
                   <div className="pvx-cd">
                     <small className="pvx-lb">Objetivo</small>
-                    <p style={{ whiteSpace: "pre-wrap" }}>{data.objective}</p>
+                    <Rich text={data.objective} />
                   </div>
                 ) : null}
                 {networks.length > 0 ? (
@@ -392,22 +453,21 @@ function InviteView({
               {phases.length > 0 ? (
                 <section className="pvx-sec" id="cvs-steps">
                   <Title a="Entregas" b="e prazos" />
-                  <ol className="pvx-tl">
+                  <ol className={`pvx-tl${phases.length < 3 ? " compact" : ""}`}>
                     {phases.map((p, i) => {
-                      const when = [shortDate(p.post_date), p.publish_time ? `às ${p.publish_time}` : ""]
+                      const when = [shortDate(p.post_date), p.publish_time ? `às ${shortTime(p.publish_time)}` : ""]
                         .filter(Boolean)
                         .join(" ");
-                      const formats = p.formats
-                        .map((f) =>
-                          [
-                            getNetworkLabel(f.network, f.network),
-                            f.content_type ? formatContentTypeLabel(f.network, f.content_type) : "",
-                            f.quantity && f.quantity > 0 ? `${f.quantity}x` : "",
-                          ]
-                            .filter(Boolean)
-                            .join(" · "),
-                        )
-                        .join(" | ");
+                      const byNet = new Map<string, string[]>();
+                      p.formats.forEach((f) => {
+                        const item = [
+                          f.content_type ? formatContentTypeLabel(f.network, f.content_type) : "",
+                          f.quantity && f.quantity > 0 ? `${f.quantity}x` : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ");
+                        byNet.set(f.network, [...(byNet.get(f.network) ?? []), item].filter(Boolean));
+                      });
                       return (
                         <li key={`${p.order}-${i}`}>
                           <span>{i + 1}</span>
@@ -416,8 +476,13 @@ function InviteView({
                               <b>Fase {p.order}</b>
                               {when ? <em>{when}</em> : null}
                             </div>
-                            <p>{p.objective}</p>
-                            {formats ? <p style={{ marginTop: 8 }}>{formats}</p> : null}
+                            <p>{cap(p.objective)}</p>
+                            {[...byNet].map(([net, items]) => (
+                              <p key={net} style={{ marginTop: 6 }}>
+                                <b>{getNetworkLabel(net, net)}</b>
+                                {items.length ? `: ${items.join(", ")}` : ""}
+                              </p>
+                            ))}
                           </div>
                         </li>
                       );
