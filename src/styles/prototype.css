@@ -2048,12 +2048,7 @@
 .pv .side2 .btn.out.dng, .pv .drw-b .btn.out.dng { background: var(--bg); color: var(--danger); }
 .pv .side2 .btn.out.dng:hover, .pv .drw-b .btn.out.dng:hover { background: var(--danger); color: #fff; }
 
-/* Aviso de nova versão */
-.pv .upd { position: fixed; right: 24px; bottom: 24px; z-index: 1000; display: flex; align-items: center; gap: 14px; max-width: min(440px, calc(100vw - 32px)); padding: 14px 14px 14px 16px; border-radius: 28px; background: var(--ink); color: #fff; box-shadow: 0 24px 48px -16px rgba(5,5,5,.5); animation: pv-ccin .6s var(--ease) both; }
-.pv .upd-i { width: 42px; height: 42px; border-radius: 50%; background: var(--brand); display: grid; place-items: center; flex: none; }
-.pv .upd-t { flex: 1; min-width: 0; } .pv .upd-t b { display: block; font-size: 14.5px; font-weight: 600; letter-spacing: -.02em; } .pv .upd-t small { display: block; margin-top: 2px; color: rgba(255,255,255,.6); font-size: 12.5px; }
-.pv .upd .btn { flex: none; }
-.pv .upd-x { width: 32px; height: 32px; background: rgba(255,255,255,.1); color: #fff; flex: none; }
+
 
 /* Criadores: espaçamentos e filtros (sobrepõe os ajustes antigos com margem negativa) */
 .pv .wrap > .head.crhd { margin-bottom: -8px !important; }
@@ -2143,4 +2138,33 @@
 @media (prefers-reduced-motion: reduce) {
   .pv .nt-i { animation: none; transition: none; }
   .pv .nt-a .ico { transition: none; }
+}
+
+/* Aviso de nova versão */
+@keyframes pv-updin { from { opacity: 0; transform: translateY(14px); } }
+@keyframes pv-updspin { to { transform: rotate(360deg); } }
+.pv .upd { position: fixed; right: 24px; bottom: 24px; z-index: 1000; display: flex; align-items: center; gap: 14px; width: max-content; max-width: min(480px, calc(100vw - 32px)); padding: 14px 14px 14px 16px; border-radius: 28px; background: var(--ink); color: #fff; border: 1.5px solid rgba(255,255,255,.12); animation: pv-updin var(--dur) var(--ease) both; }
+.pv .upd-i { width: 44px; height: 44px; border-radius: 50%; background: var(--brand); display: grid; place-items: center; flex: none; }
+.pv .upd.err .upd-i { background: var(--danger); }
+.pv .upd-t { flex: 1 1 auto; min-width: 0; }
+.pv .upd-t b { display: block; font-size: 15px; font-weight: 600; letter-spacing: -.02em; white-space: nowrap; }
+.pv .upd-t small { display: block; margin-top: 2px; color: rgba(255,255,255,.7); font-size: 14px; line-height: 1.35; }
+.pv .upd-a { display: flex; align-items: center; gap: 8px; flex: none; }
+.pv .upd-go { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; background: #fff; color: var(--ink); font-size: 14px; font-weight: 700; white-space: nowrap; transition: background-color var(--dur) var(--ease); }
+.pv .upd-go:hover:not(:disabled) { background: var(--bg); }
+.pv .upd-go:disabled { cursor: default; opacity: .8; }
+.pv .upd-go .spin { animation: pv-updspin 1s linear infinite; }
+.pv .upd-x { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.1); color: rgba(255,255,255,.85); display: grid; place-items: center; flex: none; transition: background-color var(--dur) var(--ease); }
+.pv .upd-x:hover { background: rgba(255,255,255,.18); }
+.pv .upd-go:focus-visible, .pv .upd-x:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (max-width: 520px) {
+  .pv .upd { right: 16px; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: auto; max-width: none; flex-wrap: wrap; }
+  .pv .upd-t { flex: 1 1 calc(100% - 70px); }
+  .pv .upd-a { width: 100%; }
+  .pv .upd-go { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pv .upd { animation: none; }
+  .pv .upd-go .spin { animation: none; }
+  .pv .upd-go, .pv .upd-x { transition: none; }
 }
