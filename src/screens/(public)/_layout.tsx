@@ -77,7 +77,7 @@ function MockMain({ slide }: { slide: number }) {
             <span className="rounded-full bg-white px-4 py-2 text-[13px] font-bold text-neutral-950">Revisar</span>
           </div>
         </div>
-        <div className="au-up rounded-[28px] bg-white p-6 text-neutral-950" style={{ ["--d" as string]: "120ms" }}>
+        <div className="au-up hidden rounded-[28px] bg-white p-6 text-neutral-950 [@media(min-height:800px)]:block" style={{ ["--d" as string]: "120ms" }}>
           <p className="text-[18px] font-semibold tracking-[-0.03em]">Métricas no workspace</p>
           <small className="text-[13px] text-neutral-500">Alcance estimado</small>
           <p className="text-[48px] font-semibold leading-none tracking-[-0.06em]">3.753.421</p>
@@ -174,21 +174,9 @@ function AuthShell({ pathname }: { pathname: string }) {
       >
         {ready && (
         <>
-        <div
-          aria-hidden
-          className="absolute"
-          style={{
-            left: 40,
-            top: 36,
-            width: "calc((100% - 40px) / 1.25 + 12%)",
-            transform: "scale(1.25)",
-            transformOrigin: "top left",
-            maskImage: "linear-gradient(to bottom, #000 40%, transparent 74%)",
-            WebkitMaskImage: "linear-gradient(to bottom, #000 40%, transparent 74%)",
-          }}
-        >
+        <div aria-hidden className="absolute inset-x-10 top-10">
         <div className="au-float flex gap-4">
-          <div className="flex w-[250px] flex-none flex-col gap-5 rounded-[28px] bg-neutral-950 p-4">
+          <div className="flex w-[240px] flex-none flex-col gap-5 rounded-[28px] bg-neutral-950 p-4">
             <img src={hypeappLogo} alt="" className="ml-2 mt-1 h-8 w-auto self-start" />
             <div className="flex items-center gap-3 rounded-[20px] bg-white/8 p-3">
               <span className="grid size-10 place-items-center rounded-full bg-white text-[13px] font-bold text-neutral-950">V</span>
