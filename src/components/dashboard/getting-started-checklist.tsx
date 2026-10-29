@@ -154,11 +154,12 @@ export function GettingStartedChecklist({
     return null;
   }
 
-  const steps: Array<[string, boolean, () => void]> = [
-    ["Criar campanha", done.campaign, () => navigate({ to: "/campaigns/new" })],
-    ["Adicionar saldo", done.balance, () => navigate({ to: "/financial" })],
+  const steps: Array<[string, string, boolean, () => void]> = [
+    ["Criar campanha", "Defina briefing, prazos e orçamento", done.campaign, () => navigate({ to: "/campaigns/new" })],
+    ["Adicionar saldo", "Via PIX, para pagar os criadores", done.balance, () => navigate({ to: "/financial" })],
     [
       "Explorar criadores",
+      "Encontre perfis para convidar",
       done.explored,
       () => {
         handleExplore();
@@ -166,24 +167,47 @@ export function GettingStartedChecklist({
       },
     ],
   ];
+  const currentIdx = steps.findIndex((st) => !st[2]);
 
   return (
-    <div className="check fade" aria-label="Primeiros passos com o Hype App">
-      <div className="av" style={{ background: "var(--brand)", width: 52, height: 52 }}>
-        <I n="sparkles" />
+    <section className="ckx fade" aria-label="Primeiros passos com o Hype App">
+      <div className="ckx-h">
+        <span className="ckx-i">
+          <I n="sparkles" />
+        </span>
+        <div>
+          <h3>Primeiros passos</h3>
+          <p>Complete {3 - completedCount === 1 ? "o último passo" : `os ${3 - completedCount} passos que faltam`} para lançar a sua primeira campanha.</p>
+        </div>
+        <div className="ckx-p" aria-label={`${completedCount} de 3 passos concluídos`}>
+          <b>
+            {completedCount}
+            <small>/3</small>
+          </b>
+          <div className="ckx-bar">
+            {steps.map(([label, , ok]) => (
+              <i key={label} className={ok ? "on" : ""} />
+            ))}
+          </div>
+        </div>
       </div>
-      <div>
-        <h3>Primeiros passos</h3>
-        <p>Complete os 3 passos para lançar a primeira campanha. · {completedCount}/3</p>
-      </div>
-      <div className="steps">
-        {steps.map(([label, ok, run]) => (
-          <span key={label} className={ok ? "done" : ""} style={{ cursor: "pointer" }} onClick={run}>
-            {ok && <I n="check" />}
-            {label}
-          </span>
+      <div className="ckx-s">
+        {steps.map(([label, hint, ok, run], k) => (
+          <button
+            key={label}
+            type="button"
+            className={`ckx-st ${ok ? "done" : k === currentIdx ? "cur" : ""}`}
+            onClick={run}
+          >
+            <span className="ckx-n">{ok ? <I n="check" cls="sm" /> : k + 1}</span>
+            <span className="ckx-t">
+              <b>{label}</b>
+              <small>{hint}</small>
+            </span>
+            <I n="chev" cls="sm" />
+          </button>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
