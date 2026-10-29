@@ -13,7 +13,6 @@ import { getUploadUrl } from "@/lib/utils/api";
 import { Button } from "@/components/ui/button";
 import { I } from "@/components/prototype/ui";
 import { CampaignTile } from "@/components/campaign-card";
-import { GettingStartedChecklist } from "@/components/dashboard/getting-started-checklist";
 
 export const Route = createFileRoute("/(private)/(app)/")({
   component: RouteComponent,
@@ -273,11 +272,6 @@ function RouteComponent() {
             )}
           </div>
         </div>
-
-        <GettingStartedChecklist
-          workspaceId={selectedWorkspace?.id ?? ""}
-          campaignCreated={campaignsData.length > 0}
-        />
 
         <div className="fade">
           <div className="card">
