@@ -30,6 +30,9 @@ export default {
 };
 ```
 
+Links antigos sem o prefixo (ex.: `backoffice-v2.hypeapp.com.br/campaigns/…/invite`) são redirecionados
+pelo `vercel.json` para `www.hypeapp.com.br/backoffice/…`; só `/backoffice/*` é servido direto neste domínio.
+
 Só `/backoffice*` passa pela Worker; o resto do domínio vai para o site, onde quer que ele esteja
 hospedado. Se o site mudar de hospedagem, nada muda aqui, desde que o registro `www` continue com o
 proxy da Cloudflare ligado (nuvem laranja).

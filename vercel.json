@@ -1,6 +1,10 @@
 {
   "redirects": [
-    { "source": "/", "destination": "/backoffice/", "permanent": false }
+    {
+      "source": "/((?!backoffice(?:/|$)).*)",
+      "destination": "https://www.hypeapp.com.br/backoffice/$1",
+      "permanent": false
+    }
   ],
   "rewrites": [
     { "source": "/backoffice/:path*", "destination": "/backoffice/index.html" }
