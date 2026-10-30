@@ -335,3 +335,14 @@
 @media (prefers-reduced-motion: reduce) {
   .au-up, .au-pop, .au-float, .au-r, .au-l, .au-r form > *, .au-l form > *, .au-fill { animation: none !important; }
 }
+
+/* Telas de acesso: o preenchimento automático do navegador não pode clarear os campos escuros */
+.au-form input:-webkit-autofill,
+.au-form input:-webkit-autofill:hover,
+.au-form input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
+  box-shadow: 0 0 0 1000px #1b1b1b inset;
+  border-radius: 9999px;
+  transition: background-color 600000s 0s;
+}

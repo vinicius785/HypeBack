@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 
 import hypeappLogo from "@/assets/images/hypeapp-logo-branca.svg";
@@ -138,6 +138,38 @@ function MockMain({ slide }: { slide: number }) {
   );
 }
 
+/**
+ * Mostra `children` (desenhado em `width` x `height`) inteiro dentro do espaço
+ * disponível, reduzindo-o proporcionalmente: nada é cortado nem quebra de linha.
+ */
+function FitBox({ width, height, children }: { width: number; height: number; children: React.ReactNode }) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.5);
+
+  useLayoutEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const update = () => {
+      const r = el.getBoundingClientRect();
+      setScale(Math.max(0.35, Math.min(r.width / width, r.height / height, 1.15)));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [width, height]);
+
+  return (
+    <div className="relative min-h-0 flex-1">
+      <div ref={boxRef} className="absolute inset-x-8 bottom-4 top-8 flex items-center justify-center">
+        <div style={{ width: width * scale, height: height * scale }}>
+          <div style={{ width, height, transform: `scale(${scale})`, transformOrigin: "top left" }}>{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AuthShell({ pathname }: { pathname: string }) {
   const [slide, setSlide] = useState(0);
   // Abertura: logo -> gota roxa expande até virar o card. Pulada sem espaço
@@ -170,63 +202,65 @@ function AuthShell({ pathname }: { pathname: string }) {
       )}
       <section
         ref={panelRef}
-        className={`relative hidden min-h-0 overflow-hidden rounded-[36px] lg:block ${ready ? "bg-primary-600" : "bg-transparent"}`}
+        className={`relative hidden min-h-0 flex-col overflow-hidden rounded-[36px] lg:flex ${ready ? "bg-primary-600" : "bg-transparent"}`}
       >
         {ready && (
-        <>
-        <div aria-hidden className="absolute inset-x-10 top-10">
-        <div className="au-float flex gap-4">
-          <div className="flex w-[240px] flex-none flex-col gap-5 rounded-[28px] bg-neutral-950 p-4">
-            <img src={hypeappLogo} alt="" className="ml-2 mt-1 h-8 w-auto self-start" />
-            <div className="flex items-center gap-3 rounded-[20px] bg-white/8 p-3">
-              <span className="grid size-10 place-items-center rounded-full bg-white text-[13px] font-bold text-neutral-950">V</span>
-              <div className="leading-tight">
-                <b className="block text-[14px] font-semibold">Sua marca</b>
-                <small className="text-[12px] text-white/55">Proprietário</small>
+          <>
+            {/* Vitrine: a tela do produto se ajusta ao espaço que sobra acima do texto. */}
+            <FitBox width={720} height={430}>
+              <div aria-hidden className="au-float flex h-full gap-4">
+                <div className="flex w-[240px] flex-none flex-col gap-5 rounded-[28px] bg-neutral-950 p-4">
+                  <img src={hypeappLogo} alt="" className="ml-2 mt-1 h-8 w-auto self-start" />
+                  <div className="flex items-center gap-3 rounded-[20px] bg-white/8 p-3">
+                    <span className="grid size-10 place-items-center rounded-full bg-white text-[13px] font-bold text-neutral-950">V</span>
+                    <div className="leading-tight">
+                      <b className="block text-[14px] font-semibold">Sua marca</b>
+                      <small className="text-[12px] text-white/55">Proprietário</small>
+                    </div>
+                  </div>
+                  <ul className="flex flex-col gap-1.5">
+                    {NAV.map(([icon, label]) => (
+                      <li
+                        key={label}
+                        className={`flex items-center gap-3 rounded-full px-4 py-3 text-[14px] font-semibold transition-colors duration-500 ${label === cur.nav ? "bg-primary-600 text-white" : "text-white/70"}`}
+                      >
+                        <Icon name={icon} color="currentColor" size={18} />
+                        {label}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div key={slide} className="flex min-w-0 flex-1 flex-col gap-4">
+                  <MockMain slide={slide} />
+                </div>
+              </div>
+            </FitBox>
+
+            {/* Camada roxa própria para o texto: a vitrine nunca passa por cima dele. */}
+            <div className="relative z-10 flex-none bg-primary-600 px-10 pb-10 pt-6">
+              <div key={slide} className="au-up">
+                <h1 className="max-w-[16ch] text-[clamp(30px,min(4.2vw,6.4vh),64px)] font-semibold leading-[1] tracking-[-0.055em]">{cur.title}</h1>
+                <p className="mt-4 max-w-[42ch] text-[clamp(14px,1.2vw,17px)] leading-relaxed text-white/80">{cur.text}</p>
+              </div>
+
+              <div className="mt-6 flex items-center gap-2" role="tablist" aria-label="Destaques">
+                {SLIDES.map((_, k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    role="tab"
+                    aria-selected={k === slide}
+                    aria-label={`Destaque ${k + 1}`}
+                    onClick={() => setSlide(k)}
+                    className={`relative h-1.5 overflow-hidden rounded-full bg-white/30 transition-all duration-500 ${k === slide ? "w-12" : "w-6 hover:bg-white/50"}`}
+                  >
+                    {k === slide && <i key={slide} className="au-fill absolute inset-0 rounded-full bg-white" />}
+                  </button>
+                ))}
               </div>
             </div>
-            <ul className="flex flex-col gap-1.5">
-              {NAV.map(([icon, label]) => (
-                <li
-                  key={label}
-                  className={`flex items-center gap-3 rounded-full px-4 py-3 text-[14px] font-semibold transition-colors duration-500 ${label === cur.nav ? "bg-primary-600 text-white" : "text-white/70"}`}
-                >
-                  <Icon name={icon} color="currentColor" size={18} />
-                  {label}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div key={slide} className="flex min-w-0 flex-1 flex-col gap-4">
-            <MockMain slide={slide} />
-          </div>
-        </div>
-        </div>
-
-        <div className="absolute inset-x-10 bottom-10">
-          <div key={slide} className="au-up">
-            <h1 className="max-w-[15ch] text-[clamp(48px,4.4vw,64px)] font-semibold leading-[1] tracking-[-0.055em]">{cur.title}</h1>
-            <p className="mt-5 max-w-[42ch] text-[17px] leading-relaxed text-white/80">{cur.text}</p>
-          </div>
-
-          <div className="mt-7 flex items-center gap-2" role="tablist" aria-label="Destaques">
-            {SLIDES.map((_, k) => (
-              <button
-                key={k}
-                type="button"
-                role="tab"
-                aria-selected={k === slide}
-                aria-label={`Destaque ${k + 1}`}
-                onClick={() => setSlide(k)}
-                className={`relative h-1.5 overflow-hidden rounded-full bg-white/30 transition-all duration-500 ${k === slide ? "w-12" : "w-6 hover:bg-white/50"}`}
-              >
-                {k === slide && <i key={slide} className="au-fill absolute inset-0 rounded-full bg-white" />}
-              </button>
-            ))}
-          </div>
-        </div>
-        </>
+          </>
         )}
       </section>
 
@@ -242,7 +276,7 @@ function AuthShell({ pathname }: { pathname: string }) {
           key={pathname}
           className={[
             dir,
-            "m-auto w-full max-w-[400px] py-10",
+            "au-form m-auto w-full max-w-[400px] py-10",
             "[&_h1]:!text-white [&_p]:!text-white/60 [&_label]:!text-white/80",
             "[&_.text-neutral-950]:!text-white [&_.text-neutral-700]:!text-white/75 [&_.text-neutral-500]:!text-white/60",
             "[&_div.bg-white]:!bg-white/10 [&_input]:!text-white [&_div.bg-white_svg]:!stroke-white/70",
