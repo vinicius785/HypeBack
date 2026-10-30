@@ -2235,3 +2235,13 @@
 }
 /* Perfil em duas colunas estreitas: o aviso de "somente leitura" fica só no cadeado do campo (com aria-readonly) */
 @media (max-width: 1100px) and (min-width: 821px) { .pv .mpx-fd > label em { display: none; } }
+
+/* Menu do celular: a gaveta fechada não pode receber foco, e o foco fica visível */
+.pv #bmore:not(.on) .bms { visibility: hidden; transition: transform .4s var(--ease), visibility 0s .4s; }
+.pv .bnav button:focus-visible, .pv .bms button:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+.pv .bnav button:focus-visible { outline-color: #fff; }
+@media (prefers-reduced-motion: reduce) {
+  .pv .bnav button, .pv .bnav button span, .pv .bms, .pv .bms-bd { transition: none; }
+  .pv .bnav button.on .ico { animation: none; }
+}
+.pv .bms-ws { max-height: 232px; overflow-y: auto; scrollbar-width: thin; padding-right: 2px; }

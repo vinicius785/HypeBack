@@ -3,6 +3,7 @@ import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 
 import { WorkspaceProvider } from "@/contexts/workspace-context";
 import { Sidebar } from "@/components/sidebar";
+import { MobileNav } from "@/components/mobile-nav";
 import { Header } from "@/components/header";
 
 export const Route = createFileRoute("/(private)/(app)")({
@@ -68,11 +69,12 @@ function RouteComponent() {
         <div className="flex min-w-0 flex-col overflow-hidden">
           {!detailOwnsTop && <Header title={title} />}
 
-          <main ref={mainRef} className="w-full flex-1 overflow-y-auto px-2 pb-10 pt-4 max-[900px]:px-5">
+          <main ref={mainRef} className="w-full flex-1 overflow-y-auto px-2 pb-10 pt-4 max-[900px]:px-5 max-[900px]:pb-32">
             <Outlet />
           </main>
         </div>
       </div>
+      <MobileNav />
     </WorkspaceProvider>
   );
 }

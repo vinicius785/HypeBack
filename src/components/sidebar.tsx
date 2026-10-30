@@ -16,7 +16,7 @@ import { logout } from "@/shared/services/auth";
 import { getCampaignStatusValue } from "@/shared/utils/campaign-status";
 import type { Workspace, WorkspaceRole } from "@/shared/types";
 
-const ROLE_LABEL: Record<WorkspaceRole, string> = {
+export const ROLE_LABEL: Record<WorkspaceRole, string> = {
   owner: "Proprietário",
   admin: "Administrador",
   member: "Membro",
@@ -29,7 +29,7 @@ const ROLE_LABEL: Record<WorkspaceRole, string> = {
 
 const BRAND_COLORS = ["#9e2cfa", "#050505", "#7e7e7e"];
 
-function isCampaignScopedPath(pathname: string): boolean {
+export function isCampaignScopedPath(pathname: string): boolean {
   if (!pathname.startsWith("/campaigns/")) return false;
   const rest = pathname.slice("/campaigns/".length);
   return rest.length > 0 && !rest.startsWith("new");
@@ -44,7 +44,7 @@ const initialsOf = (name: string) =>
     .join("");
 
 /** Círculo do workspace (`.brand`), com foto quando existir e iniciais como reserva. */
-function Brand({ ws, index }: { ws: Workspace; index: number }) {
+export function Brand({ ws, index }: { ws: Workspace; index: number }) {
   const photo = ws.photo ? getUploadUrl(ws.photo) : undefined;
   const [broken, setBroken] = useState(false);
   useEffect(() => setBroken(false), [photo]);
@@ -67,16 +67,28 @@ function Brand({ ws, index }: { ws: Workspace; index: number }) {
   );
 }
 
-/** Menu lateral — marcação e CSS idênticos ao protótipo. */
-export function Sidebar() {
-  const permissions = useWorkspacePermissions();
-  const { user, setUser } = useAuth();
+/** Sair da conta: encerra a sessão na API e limpa o estado local. */
+export function useLogout() {
+  const { setUser } = useAuth();
   const navigate = useNavigate();
+  const { mutate } = useMutation({
+    mutationFn: logout,
+    onSettled: () => {
+      removeAuthToken();
+      setUser(null);
+      navigate({ to: "/sign-in", replace: true });
+    },
+  });
+  return () => mutate();
+}
+
+/** Itens de navegação (e permissões) compartilhados pela sidebar e pelo menu do celular. */
+export function useNavItems() {
+  const permissions = useWorkspacePermissions();
+  const { user } = useAuth();
   const { pathname } = useLocation();
-  const { workspaces, selectedWorkspace, selectWorkspace } = useWorkspaceContext();
+  const { selectedWorkspace } = useWorkspaceContext();
   const showPlatformAdmin = isPlatformAdmin(user);
-  const [open, setOpen] = useState(false);
-  const wswRef = useRef<HTMLDivElement>(null);
 
   const { data: campaigns = [] } = useCampaigns({
     enabled: !!selectedWorkspace && permissions.campaigns_read,
@@ -86,35 +98,6 @@ export function Sidebar() {
     return v === "active" || v === "published";
   }).length;
 
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (wswRef.current && !wswRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
-
-  const { mutate: doLogout } = useMutation({
-    mutationFn: logout,
-    onSettled: () => {
-      removeAuthToken();
-      setUser(null);
-      navigate({ to: "/sign-in", replace: true });
-    },
-  });
-
-  const pick = (ws: Workspace) => {
-    selectWorkspace(ws);
-    setOpen(false);
-    if (isCampaignScopedPath(pathname)) {
-      navigate({ to: "/campaigns", replace: true });
-    }
-  };
-
-  const go = (to: string) => navigate({ to });
   const isOn = (href: string) =>
     href === "/"
       ? pathname === "/"
@@ -132,6 +115,41 @@ export function Sidebar() {
     ["Notificações", "bell", "/admin/notifications"],
     ["Grupos", "users", "/admin/groups"],
   ];
+
+  return { menus, admin, showPlatformAdmin, isOn };
+}
+
+/** Menu lateral — marcação e CSS idênticos ao protótipo. */
+export function Sidebar() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { workspaces, selectedWorkspace, selectWorkspace } = useWorkspaceContext();
+  const { menus, admin, showPlatformAdmin, isOn } = useNavItems();
+  const [open, setOpen] = useState(false);
+  const wswRef = useRef<HTMLDivElement>(null);
+  const doLogout = useLogout();
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (wswRef.current && !wswRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const pick = (ws: Workspace) => {
+    selectWorkspace(ws);
+    setOpen(false);
+    if (isCampaignScopedPath(pathname)) {
+      navigate({ to: "/campaigns", replace: true });
+    }
+  };
+
+  const go = (to: string) => navigate({ to });
 
   const wsIndex = Math.max(
     0,
