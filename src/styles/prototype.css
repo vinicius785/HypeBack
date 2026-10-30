@@ -2224,6 +2224,14 @@
 .pv .mpx-rw small { color: var(--muted); font-size: 14px; }
 .pv .mpx-rw .btn.sair { height: 46px; padding: 0 22px; background: #fff; color: var(--danger); box-shadow: inset 0 0 0 1.5px rgba(220,38,38,.35); transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease); }
 .pv .mpx-rw .btn.sair:hover { background: var(--danger); color: #fff; }
-@media (max-width: 1100px) { .pv .mpx-g { grid-template-columns: 1fr; } .pv .mpx-side { position: static; } .pv .mpx-wl { max-height: 320px; } }
+@media (max-width: 820px) { .pv .mpx-g { grid-template-columns: 1fr; } .pv .mpx-side { position: static; } .pv .mpx-wl { max-height: 320px; } }
 @media (max-width: 640px) { .pv .mpx-fs { grid-template-columns: 1fr; } .pv .mpx-cd { padding: 24px 22px; border-radius: 28px; } .pv .mpx-id { padding: 22px; border-radius: 28px; } .pv .mpx-wc { border-radius: 28px; } .pv .mpx-rw { flex-wrap: wrap; } .pv .mpx-rw .btn { width: 100%; justify-content: center; } .pv .mpx-ac { flex-direction: column; align-items: stretch; } .pv .mpx-ac .btn { justify-content: center; } }
 @media (prefers-reduced-motion: reduce) { .pv .mpx-in, .pv .mpx-ac .btn, .pv .mpx-rw .btn.sair { transition: none; } .pv .mpx-ac .btn .spin { animation: none; } }
+
+/* Sidebar estreita (só ícones): o menu de workspaces abre ao lado da faixa, com largura própria */
+@media (max-width: 1100px) {
+  .pv .side { z-index: 40; }
+  .pv .wsl { left: calc(100% + 18px); right: auto; top: -6px; width: min(320px, calc(100vw - 160px)); max-height: calc(100vh - 130px); transform-origin: left top; }
+}
+/* Perfil em duas colunas estreitas: o aviso de "somente leitura" fica só no cadeado do campo (com aria-readonly) */
+@media (max-width: 1100px) and (min-width: 821px) { .pv .mpx-fd > label em { display: none; } }
