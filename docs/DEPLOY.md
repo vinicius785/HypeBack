@@ -5,13 +5,36 @@ qualquer hospedagem estática serve. Já existem as regras de rotas para
 Vercel (`vercel.json`), Netlify (`public/_redirects`) e Apache
 (`public/.htaccess`).
 
+## 0. Endereço público: `hypeapp.com.br/backoffice`
+
+O app é publicado em um **subcaminho**: `base: "/backoffice/"` no `vite.config.ts`, `basepath`
+no roteador (`src/main.tsx`) e o build sai em `dist/backoffice/` (o mesmo caminho da URL pública).
+Em dev, abra `http://localhost:5173/backoffice/`.
+
+O domínio principal (`www.hypeapp.com.br`) é outro projeto no Vercel. Para ele entregar o backoffice,
+adicione no `vercel.json` **do projeto do site** (troque o destino pela URL de produção deste projeto):
+
+```json
+{
+  "rewrites": [
+    { "source": "/backoffice", "destination": "https://SEU-PROJETO-BACKOFFICE.vercel.app/backoffice/" },
+    { "source": "/backoffice/:path*", "destination": "https://SEU-PROJETO-BACKOFFICE.vercel.app/backoffice/:path*" }
+  ]
+}
+```
+
+O apex `hypeapp.com.br` redireciona para `www`, então o endereço final é `www.hypeapp.com.br/backoffice`.
+
+Ao mudar de domínio: o `localStorage` é por origem, então todos precisam entrar de novo; o
+`localStorage` passa a ser compartilhado com o site (origem `www.hypeapp.com.br`).
+
 ## 1. Variáveis de ambiente (por ambiente)
 
 Cadastre no painel da hospedagem, nunca no código. Veja `.env.example`.
 
 | Variável | Exemplo | Observação |
 |---|---|---|
-| `VITE_SERVER_URL` | `https://hypeapp-api.onrender.com/api/backoffice` | Termina em `/api/backoffice`, sem `/` final. |
+| `VITE_SERVER_URL` | `https://api-v2.hypeapp.com.br/api/backoffice` | Termina em `/api/backoffice`, sem `/` final. |
 | `VITE_PLATFORM_ADMIN_EMAILS` | `voce@empresa.com` | Só controla o menu Admin. |
 
 Depois de mudar uma variável é preciso refazer o deploy (ela é gravada no build).
@@ -31,11 +54,12 @@ Netlify: build `npm run build`, publish `dist`.
 
 ## 3. API: liberar o domínio do front
 
-Na API (Render), ajuste e reinicie:
+Na API (DigitalOcean), ajuste as variáveis de ambiente do serviço (no painel do App Platform ou no `.env` do servidor) e **reinicie** o serviço:
 
-- `ALLOWED_ORIGINS` — inclua a URL do front (ex.: `https://backoffice.seudominio.com`),
+- `ALLOWED_ORIGINS` — inclua a **origem** do front, sem caminho (ex.: `https://www.hypeapp.com.br`),
   separada por vírgula das demais.
-- `FRONTEND_URL` — a mesma URL base do front (usada em links de e-mail/convites).
+- `FRONTEND_URL` / `BACKOFFICE_URL` — a URL base **com o caminho** (`https://www.hypeapp.com.br/backoffice`),
+  usada em links de e-mail e convites.
 
 Sem isso o navegador bloqueia as chamadas e o app mostra "Failed to fetch".
 

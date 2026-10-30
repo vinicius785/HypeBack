@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { appUrl } from "@/lib/utils/base-path";
 
 interface ShareCampaignModalProps {
   isOpen: boolean;
@@ -24,7 +25,7 @@ export function ShareCampaignModal({
   // Link da tela pública de convite (rota da SPA). É esta rota que renderiza o
   // convite e busca `GET /public/campaigns/:id/invite`. Apontar direto para ela
   // garante que colar o link no navegador abra a página de convite.
-  const campaignUrl = `${window.location.origin}/campaigns/${campaignId}/invite`;
+  const campaignUrl = appUrl(`/campaigns/${campaignId}/invite`);
   const shareText = `Convite para a campanha: ${campaignTitle}`;
 
   const handleCopyLink = async () => {

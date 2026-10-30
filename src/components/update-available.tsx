@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { I } from "@/components/prototype/ui";
+import { assetUrl } from "@/lib/utils/base-path";
 
 const CHECK_EVERY_MS = 5 * 60 * 1000;
 /** Se a página continuar viva depois deste tempo, a recarga não aconteceu. */
@@ -10,7 +11,7 @@ type Phase = "idle" | "updating" | "error";
 
 async function fetchServerVersion(): Promise<string | null> {
   try {
-    const res = await fetch(`/version.json?t=${Date.now()}`, { cache: "no-store" });
+    const res = await fetch(`${assetUrl("version.json")}?t=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return null;
     const data = (await res.json()) as { version?: unknown };
     return typeof data.version === "string" ? data.version : null;

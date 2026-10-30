@@ -1,8 +1,8 @@
 {
+  "redirects": [
+    { "source": "/", "destination": "/backoffice/", "permanent": false }
+  ],
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/backoffice/:path*", "destination": "/backoffice/index.html" }
   ]
 }

@@ -24,6 +24,9 @@ function emitVersionFile(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
+  // O app é publicado em hypeapp.com.br/backoffice: assets, rotas e arquivos
+  // estáticos saem com esse prefixo.
+  base: "/backoffice/",
   define: {
     __APP_VERSION__: JSON.stringify(APP_VERSION),
   },
@@ -46,6 +49,9 @@ export default defineConfig({
   // O Vite já faz fallback automático para index.html em desenvolvimento
   // Esta configuração garante que funcione corretamente
   build: {
+    // dist/backoffice/** é servido em /backoffice/** (mesmo caminho da URL pública).
+    outDir: "dist/backoffice",
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         manualChunks: undefined,

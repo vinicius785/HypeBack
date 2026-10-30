@@ -9,6 +9,7 @@ import { CampaignPickerModal } from "@/components/influencer-lists/campaign-pick
 import { InfluencerProfileView } from "@/components/influencer-profile/influencer-profile-view";
 
 import "@/styles/prototype-profile.css";
+import { appUrl } from "@/lib/utils/base-path";
 
 const CLOSE_MS = 300;
 
@@ -62,7 +63,7 @@ export function InfluencerProfileDrawer({ influencerId, onClose }: InfluencerPro
 
   const handleCopyProfileLink = async () => {
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/influencer/${influencerId}`);
+      await navigator.clipboard.writeText(appUrl(`/influencer/${influencerId}`));
       toast.success("Link do perfil copiado.");
     } catch {
       toast.error("Não foi possível copiar o link.");

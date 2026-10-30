@@ -1,2 +1,3 @@
-# Netlify redirects - todas as rotas devem servir index.html
-/*    /index.html   200
+# Netlify: o app vive em /backoffice; rotas do SPA servem o index.html
+/       /backoffice/  302
+/backoffice/*    /backoffice/index.html   200
