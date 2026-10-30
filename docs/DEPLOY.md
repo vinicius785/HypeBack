@@ -11,22 +11,38 @@ O app é publicado em um **subcaminho**: `base: "/backoffice/"` no `vite.config.
 no roteador (`src/main.tsx`) e o build sai em `dist/backoffice/` (o mesmo caminho da URL pública).
 Em dev, abra `http://localhost:5173/backoffice/`.
 
-O domínio principal (`www.hypeapp.com.br`) é outro projeto no Vercel. Para ele entregar o backoffice,
-adicione no `vercel.json` **do projeto do site** (troque o destino pela URL de produção deste projeto):
+### Como o `/backoffice` chega ao domínio principal
 
-```json
-{
-  "rewrites": [
-    { "source": "/backoffice", "destination": "https://SEU-PROJETO-BACKOFFICE.vercel.app/backoffice/" },
-    { "source": "/backoffice/:path*", "destination": "https://SEU-PROJETO-BACKOFFICE.vercel.app/backoffice/:path*" }
-  ]
-}
+Este projeto fica no Vercel, com o domínio técnico `backoffice-v2.hypeapp.com.br` (**não apague nem
+redirecione** esse domínio: ele é a origem do app). O endereço público é `www.hypeapp.com.br/backoffice`
+(o apex `hypeapp.com.br` redireciona para `www`).
+
+Quem faz a ponte é uma **Worker da Cloudflare** (`backoffice-proxy`), com as rotas
+`www.hypeapp.com.br/backoffice*` e `hypeapp.com.br/backoffice*`, na zona `hypeapp.com.br`:
+
+```js
+export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+    url.hostname = "backoffice-v2.hypeapp.com.br";
+    return fetch(new Request(url, request));
+  },
+};
 ```
 
-O apex `hypeapp.com.br` redireciona para `www`, então o endereço final é `www.hypeapp.com.br/backoffice`.
+Só `/backoffice*` passa pela Worker; o resto do domínio vai para o site, onde quer que ele esteja
+hospedado. Se o site mudar de hospedagem, nada muda aqui, desde que o registro `www` continue com o
+proxy da Cloudflare ligado (nuvem laranja).
 
-Ao mudar de domínio: o `localStorage` é por origem, então todos precisam entrar de novo; o
-`localStorage` passa a ser compartilhado com o site (origem `www.hypeapp.com.br`).
+Ao mudar de domínio: o `localStorage` é por origem, então todos precisam entrar de novo; e ele
+passa a ser compartilhado com o site (origem `www.hypeapp.com.br`).
+
+### Vercel (este projeto)
+
+- Branch de produção: `feat/novo-visual-backoffice` (Settings → Environments → Production).
+- **Install Command sem override** (ou `npm ci`): o projeto usa npm. Um `pnpm i` configurado no painel
+  derruba o build com "Command pnpm i exited with 1".
+- Framework Vite, build `npm run build`, saída `dist`.
 
 ## 1. Variáveis de ambiente (por ambiente)
 
