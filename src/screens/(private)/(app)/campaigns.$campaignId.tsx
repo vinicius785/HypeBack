@@ -5,11 +5,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { getUploadUrl } from "@/lib/utils/api";
 
 import { OverviewTab } from "@/components/campaign-tabs/overview-tab";
 import { I } from "@/components/prototype/ui";
 import { TopActions } from "@/components/header";
+import { CampaignHeader } from "@/components/campaign-header";
 import {
   NEEDME,
   STAGE_OF_TILE,
@@ -549,21 +549,25 @@ function RouteComponent() {
               <div className="gap" />
               <TopActions />
             </div>
-            <div className="dhead">
-              <div className="dh-l">
-                <span className="dh-img sk" />
-                <div>
-                  <div className="sk" style={{ height: 34, width: 280, marginBottom: 10 }} />
-                  <div className="sk" style={{ height: 16, width: 200 }} />
+            <div className="chd">
+              <div className="chd-top">
+                <div className="sk" style={{ aspectRatio: "5 / 2", borderRadius: 20 }} />
+                <div className="chd-main">
+                  <div className="sk" style={{ height: 26, width: 230, borderRadius: 999 }} />
+                  <div className="sk" style={{ height: 36, width: "72%" }} />
+                  <div className="sk" style={{ height: 16, width: "54%" }} />
                 </div>
               </div>
-              <div className="btns">
-                <div className="sk" style={{ height: 50, width: 110, borderRadius: 999 }} />
-                <div className="sk" style={{ height: 50, width: 140, borderRadius: 999 }} />
-                <div className="sk" style={{ height: 50, width: 150, borderRadius: 999 }} />
+              <div className="chd-act">
+                <div className="sk" style={{ height: 42, width: 180, borderRadius: 999 }} />
+                <div className="sk" style={{ height: 42, width: 100, borderRadius: 999 }} />
+              </div>
+              <div className="chd-tabsk">
+                <div className="sk" style={{ height: 14, width: 84 }} />
+                <div className="sk" style={{ height: 14, width: 110 }} />
+                <div className="sk" style={{ height: 14, width: 60 }} />
               </div>
             </div>
-            <div className="sk" style={{ height: 52, width: 420, borderRadius: 999 }} />
             <div className="sk" style={{ height: 300, borderRadius: 28 }} />
             <div className="sk" style={{ height: 260, borderRadius: 28 }} />
           </div>
@@ -759,163 +763,75 @@ function RouteComponent() {
                   <I n="back" cls="sm" />
                   Campanhas
                 </button>
-                <span className="crumb-sep" aria-hidden="true">/</span>
-                <span className="crumb-cur" title={campaignFormData.title}>
-                  {campaignFormData.title || "Campanha"}
-                </span>
               </nav>
               <div className="gap" />
               <TopActions />
             </div>
 
-            <div className="dhead fade">
-              <div className="dh-l">
-                <span className="dh-img">
-                  {campaign?.banner ? (
-                    <img
-                      src={getUploadUrl(campaign.banner)}
-                      alt=""
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  ) : (
-                    <span className="dh-ph">{(campaignFormData.title || "?").slice(0, 2).toUpperCase()}</span>
-                  )}
-                </span>
-                <div className="dh-info">
-                  <div className="dh-t">
-                    <h1>{campaignFormData.title}</h1>
-                    {statusValue === "published" && canWriteCampaigns ? (
+            <CampaignHeader
+              title={campaignFormData.title}
+              description={campaignFormData.description}
+              banner={campaign?.banner}
+              status={statusValue}
+              statusLabel={getCampaignStatusDisplayLabel(campaign?.status)}
+              creators={creatorsCount}
+              progress={progressPercentage}
+              canWrite={canWriteCampaigns}
+              checking={checkPublicationTrackingMutation.isPending}
+              onPublish={() => setShowMuralDateModal(true)}
+              onUnpublish={() => setShowUnpublishModal(true)}
+              onCheckPublications={() => checkPublicationTrackingMutation.mutate()}
+              onEdit={() =>
+                navigate({
+                  to: "/campaigns/$campaignId/edit",
+                  params: { campaignId },
+                })
+              }
+              onOpenInvite={() =>
+                window.open(appUrl(`/campaigns/${campaignId}/invite`), "_blank", "noopener")
+              }
+              onShare={() => setIsShareModalOpen(true)}
+            >
+              <nav className="dtabs" ref={dtabsRef}>
+                <i className="ind" />
+                {(
+                  [
+                    ["overview", "Visão geral"],
+                    ["manage", "Gerenciamento"],
+                    ["gest", "Gestão"],
+                  ] as const
+                )
+                  .filter(([id]) => id !== "gest" || gestSubs.length > 0)
+                  .map(([id, label]) => (
+                    <span key={id} style={{ display: "contents" }}>
                       <button
                         type="button"
-                        className="pill p"
-                        title="Despublicar campanha"
-                        onClick={() => setShowUnpublishModal(true)}
+                        data-dtab={id}
+                        className={topTab === id ? "on" : ""}
+                        onClick={() => pickTop(id)}
                       >
-                        {getCampaignStatusDisplayLabel(campaign?.status)}
+                        {label}
+                        {id === "manage" && needMeCount > 0 ? <em>{needMeCount}</em> : null}
                       </button>
-                    ) : (
-                      <span
-                        className={`pill ${
-                          statusValue === "published" || statusValue === "active"
-                            ? "p"
-                            : statusValue === "finished" || statusValue === "completed"
-                              ? "k"
-                              : ""
-                        }`}
-                      >
-                        {getCampaignStatusDisplayLabel(campaign?.status)}
-                      </span>
-                    )}
-                  </div>
-                  {campaignFormData.description ? (
-                    <p className="dh-d">{campaignFormData.description}</p>
-                  ) : null}
-                  <div className="dh-m">
-                    <span>
-                      <b>{creatorsCount}</b> criadores
+                      {id === "gest" && (
+                        <span className={`dsub ${topTab === "gest" ? "open" : ""}`}>
+                          {gestSubs.map((k, j) => (
+                            <button
+                              key={k}
+                              type="button"
+                              className={activeTab === k ? "sel" : ""}
+                              style={{ ["--j" as string]: j }}
+                              onClick={() => setActiveTab(k)}
+                            >
+                              {GEST_LABEL[k]}
+                            </button>
+                          ))}
+                        </span>
+                      )}
                     </span>
-                    <span className="dh-pg" aria-hidden="true">
-                      <i style={{ width: `${Math.min(100, Math.max(0, Math.round(progressPercentage)))}%` }} />
-                    </span>
-                    <span>
-                      <b>{Math.round(progressPercentage)}%</b> concluído
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="dh-act">
-                {canWriteCampaigns && statusValue === "draft" && (
-                  <button type="button" className="btn" onClick={() => setShowMuralDateModal(true)}>
-                    <I n="send" cls="sm" />
-                    Publicar
-                  </button>
-                )}
-                {canWriteCampaigns && (
-                  <button
-                    type="button"
-                    className={statusValue === "draft" ? "btn out" : "btn"}
-                    disabled={checkPublicationTrackingMutation.isPending}
-                    onClick={() => checkPublicationTrackingMutation.mutate()}
-                  >
-                    <I n="refresh" cls="sm" />
-                    {checkPublicationTrackingMutation.isPending
-                      ? "Verificando..."
-                      : "Verificar publicações"}
-                  </button>
-                )}
-                {canWriteCampaigns && (
-                  <button
-                    type="button"
-                    className="btn out"
-                    onClick={() =>
-                      navigate({
-                        to: "/campaigns/$campaignId/edit",
-                        params: { campaignId },
-                      })
-                    }
-                  >
-                    <I n="notepad" cls="sm" />
-                    Editar
-                  </button>
-                )}
-                <span className="dh-qs">
-                  <button
-                    type="button"
-                    className={canWriteCampaigns ? "dh-q" : "btn"}
-                    onClick={() =>
-                      window.open(appUrl(`/campaigns/${campaignId}/invite`), "_blank", "noopener")
-                    }
-                  >
-                    <I n="eye" cls="sm" />
-                    Ver convite
-                  </button>
-                  <button type="button" className="dh-q" onClick={() => setIsShareModalOpen(true)}>
-                    <I n="share" cls="sm" />
-                    Compartilhar
-                  </button>
-                </span>
-              </div>
-            </div>
-
-            <nav className="dtabs fade" ref={dtabsRef}>
-              <i className="ind" />
-              {(
-                [
-                  ["overview", "Visão geral"],
-                  ["manage", "Gerenciamento"],
-                  ["gest", "Gestão"],
-                ] as const
-              )
-                .filter(([id]) => id !== "gest" || gestSubs.length > 0)
-                .map(([id, label]) => (
-                  <span key={id} style={{ display: "contents" }}>
-                    <button
-                      type="button"
-                      data-dtab={id}
-                      className={topTab === id ? "on" : ""}
-                      onClick={() => pickTop(id)}
-                    >
-                      {label}
-                      {id === "manage" && needMeCount > 0 ? <em>{needMeCount}</em> : null}
-                    </button>
-                    {id === "gest" && (
-                      <span className={`dsub ${topTab === "gest" ? "open" : ""}`}>
-                        {gestSubs.map((k, j) => (
-                          <button
-                            key={k}
-                            type="button"
-                            className={activeTab === k ? "sel" : ""}
-                            style={{ ["--j" as string]: j }}
-                            onClick={() => setActiveTab(k)}
-                          >
-                            {GEST_LABEL[k]}
-                          </button>
-                        ))}
-                      </span>
-                    )}
-                  </span>
-                ))}
-            </nav>
+                  ))}
+              </nav>
+            </CampaignHeader>
           </div>
         </div>
 

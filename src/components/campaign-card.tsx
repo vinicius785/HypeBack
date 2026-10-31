@@ -9,12 +9,14 @@ import {
   getCampaignStatusValue,
 } from "@/shared/utils/campaign-status";
 
+/** Iniciais das duas primeiras palavras; símbolos soltos (como o "—" de "Marca — Campanha") não contam. */
 export function getInitials(name: string): string {
   return name
     .split(/\s+/)
-    .filter(Boolean)
+    .map((w) => w.match(/[\p{L}\p{N}]/u)?.[0])
+    .filter((c): c is string => !!c)
     .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
+    .map((c) => c.toUpperCase())
     .join("");
 }
 

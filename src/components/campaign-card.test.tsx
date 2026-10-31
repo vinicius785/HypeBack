@@ -1,7 +1,7 @@
 import { fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CampaignCard, type CampaignCardProps } from "./campaign-card";
+import { CampaignCard, getInitials, type CampaignCardProps } from "./campaign-card";
 
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn() }));
 
@@ -50,5 +50,19 @@ describe("CampaignCard · círculo da marca", () => {
     const circle = renderBrandCircle();
     expect(circle.querySelector("img")).toBeNull();
     expect(circle).toHaveTextContent("CP");
+  });
+});
+
+describe("getInitials", () => {
+  it("usa a primeira letra das duas primeiras palavras", () => {
+    expect(getInitials("Speediance Gym Monster 3S")).toBe("SG");
+  });
+
+  it("ignora símbolos soltos, como o travessão entre marca e campanha", () => {
+    expect(getInitials("Jeitto — Compra Planejada: Celular")).toBe("JC");
+  });
+
+  it("devolve vazio quando não há letras nem números", () => {
+    expect(getInitials("— …")).toBe("");
   });
 });
