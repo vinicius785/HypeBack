@@ -2396,3 +2396,6 @@
 
 /* "Tudo em dia" na visão geral da campanha: ocupa toda a largura, centralizado (a regra de largura dos cards o encolhia) */
 .pv .acs > .empty { flex: 1 0 100%; width: 100%; scroll-snap-align: none; cursor: default; }
+/* .empty.big herda sem querer a regra global .big (alinhada à direita, com space-between): neutraliza */
+.pv .empty.big { align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; }
+.pv .empty.big b { font-size: 20px; letter-spacing: -.02em; line-height: 1.2; margin-top: 0; white-space: normal; }

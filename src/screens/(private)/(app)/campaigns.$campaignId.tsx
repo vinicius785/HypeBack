@@ -474,6 +474,16 @@ function RouteComponent() {
     };
   }, [topTabKey, isLoadingCampaign, needMeCount]);
 
+  // A barra pode montar depois do efeito acima (carregando a campanha): reposiciona o indicador a cada render.
+  useLayoutEffect(() => {
+    const root = dtabsRef.current;
+    const on = root?.querySelector<HTMLElement>("button[data-dtab].on");
+    const ind = root?.querySelector<HTMLElement>(".ind");
+    if (!on || !ind) return;
+    ind.style.width = `${on.offsetWidth}px`;
+    ind.style.transform = `translateX(${on.offsetLeft}px)`;
+  });
+
   /** "Revisar / Curar / Responder…" na visão geral: abre o quadro já filtrado. */
   const goTile = useCallback((tile: string) => {
     setActiveTab("management");
