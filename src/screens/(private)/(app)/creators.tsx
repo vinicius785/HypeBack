@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { createFileRoute, useSearch, useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -183,53 +183,39 @@ const RADIUS_OPTIONS = [10, 25, 50, 100, 200];
 
 const DEFAULT_RADIUS_KM = 50;
 
-/**
- * Chave versionada para o localStorage. Bump da versão (`v1` → `v2`)
- * invalida caches antigos sem precisar migrar.
- */
-const NEAR_ME_STORAGE_KEY = "hypeapp:near-me-location:v1";
+/** Chave antiga em que a posição era guardada; só é apagada (privacidade). */
+const LEGACY_NEAR_ME_KEY = "hypeapp:near-me-location:v1";
 
 interface NearMeLocation {
   lat: number;
   lng: number;
-  /** Epoch ms — usado pra exibir "capturado há X" no futuro, se necessário. */
-  capturedAt: number;
 }
 
-function loadStoredLocation(): NearMeLocation | null {
-  try {
-    const raw = localStorage.getItem(NEAR_ME_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (
-      parsed &&
-      typeof parsed.lat === "number" &&
-      typeof parsed.lng === "number" &&
-      Number.isFinite(parsed.lat) &&
-      Number.isFinite(parsed.lng)
-    ) {
-      return {
-        lat: parsed.lat,
-        lng: parsed.lng,
-        capturedAt: typeof parsed.capturedAt === "number" ? parsed.capturedAt : Date.now(),
-      };
-    }
-  } catch {
-    // localStorage indisponível (modo privado, quota) — ignora.
-  }
-  return null;
-}
+type GeoResult = { ok: true; loc: NearMeLocation } | { ok: false; message: string };
 
-function saveStoredLocation(loc: NearMeLocation | null): void {
-  try {
-    if (loc) {
-      localStorage.setItem(NEAR_ME_STORAGE_KEY, JSON.stringify(loc));
-    } else {
-      localStorage.removeItem(NEAR_ME_STORAGE_KEY);
+/**
+ * Pede a localização atual (precisão baixa: basta para "perto de mim").
+ * Nunca é guardada: o filtro só existe enquanto o usuário o mantém na tela.
+ */
+function requestLocation(): Promise<GeoResult> {
+  return new Promise((resolve) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      resolve({ ok: false, message: "Seu navegador não permite obter a localização." });
+      return;
     }
-  } catch {
-    // ignora — não bloqueia a UX se localStorage falhar
-  }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ ok: true, loc: { lat: pos.coords.latitude, lng: pos.coords.longitude } }),
+      (err) =>
+        resolve({
+          ok: false,
+          message:
+            err.code === err.PERMISSION_DENIED
+              ? "Permissão negada. Libere a localização nas configurações do navegador e tente de novo."
+              : "Não foi possível obter sua localização agora. Tente novamente.",
+        }),
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 5 * 60_000 },
+    );
+  });
 }
 
 
@@ -303,41 +289,218 @@ function PageShell({
 }
 
 // ---------------------------------------------------------------------------
-// Filtros
+// Painel de filtros (gaveta lateral com aplicação explícita)
 // ---------------------------------------------------------------------------
 
-function FilterChip({
+type DraftKey = Exclude<FilterKey, never>;
+
+interface FilterDraft {
+  net: string;
+  niche: string;
+  uf: string;
+  gen: string;
+  fol: string;
+  eng: string;
+  near: NearMeLocation | null;
+  radius: number;
+}
+
+const draftCount = (d: FilterDraft) =>
+  FILTER_KEYS.filter((k) => d[k as DraftKey] && d[k as DraftKey] !== "all").length + (d.near ? 1 : 0);
+
+function PillGroup({
   label,
   opts,
   value,
-  open,
-  onToggle,
   onPick,
 }: {
   label: string;
   opts: Opt[];
   value: string;
-  open: boolean;
-  onToggle: () => void;
   onPick: (v: string) => void;
 }) {
-  const cur = opts.find((o) => o[0] === value);
-  const active = !!value && value !== "all";
   return (
-    <div className={`cfw ${open ? "open" : ""}`}>
-      <button type="button" className={`chip cfb ${active ? "on" : ""}`} onClick={onToggle}>
-        <span>{active && cur ? cur[1].split(" · ")[0] : label}</span>
-        <I n="chev" cls="sm" />
-      </button>
-      <div className="cfm">
-        {opts.map(([v, l]) => (
-          <button key={v} type="button" className={value === v ? "on" : ""} onClick={() => onPick(v)}>
-            {l}
-            {value === v && <I n="check" cls="sm" />}
-          </button>
-        ))}
-      </div>
+    <div className="cf-pills" role="radiogroup" aria-label={label}>
+      {opts.map(([v, l]) => (
+        <button key={v || "any"} type="button" role="radio" aria-checked={value === v} className={value === v ? "on" : ""} onClick={() => onPick(v)}>
+          {l}
+        </button>
+      ))}
     </div>
+  );
+}
+
+const CLOSE_MS = 300;
+
+function FiltersDrawer({
+  initial,
+  nicheOpts,
+  onApply,
+  onClose,
+}: {
+  initial: FilterDraft;
+  nicheOpts: Opt[];
+  onApply: (d: FilterDraft) => void;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState<FilterDraft>(initial);
+  const [closing, setClosing] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState("");
+  const asideRef = useRef<HTMLElement>(null);
+
+  const close = useCallback(() => {
+    setClosing(true);
+    setTimeout(onClose, CLOSE_MS);
+  }, [onClose]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    document.addEventListener("keydown", onKey);
+    asideRef.current?.querySelector<HTMLElement>("input, select, button")?.focus();
+    return () => document.removeEventListener("keydown", onKey);
+  }, [close]);
+
+  const set = <K extends keyof FilterDraft>(k: K, v: FilterDraft[K]) => setDraft((d) => ({ ...d, [k]: v }));
+
+  const useMyLocation = async () => {
+    setLocating(true);
+    setGeoError("");
+    const res = await requestLocation();
+    setLocating(false);
+    if (res.ok) set("near", res.loc);
+    else setGeoError(res.message);
+  };
+
+  const clear = () => {
+    setGeoError("");
+    setDraft({ net: "all", niche: "", uf: "", gen: "", fol: "", eng: "", near: null, radius: DEFAULT_RADIUS_KM });
+  };
+
+  const n = draftCount(draft);
+  const cls = closing ? " out" : "";
+
+  return createPortal(
+    <div className="pv">
+      <div className={`ovb on${cls}`} onClick={close} />
+      <aside ref={asideRef} className={`ovp cf on${cls}`} role="dialog" aria-modal="true" aria-label="Filtros de criadores">
+        <div className="ov-h">
+          <div>
+            <h2>Filtros</h2>
+            <small>{n > 0 ? `${n} ${n === 1 ? "filtro selecionado" : "filtros selecionados"}` : "Nenhum filtro selecionado"}</small>
+          </div>
+          <button type="button" className="round" onClick={close} aria-label="Fechar filtros">
+            <I n="x" cls="sm" />
+          </button>
+        </div>
+
+        <div className="ov-s cf-b">
+          <section className="cf-g">
+            <h3>Redes sociais</h3>
+            <PillGroup label="Rede social" opts={STATIC_OPTS.net} value={draft.net} onPick={(v) => set("net", v)} />
+          </section>
+
+          <section className="cf-g">
+            <h3>Nicho</h3>
+            <label className="cf-sel">
+              <span className="sr-only">Nicho</span>
+              <select value={draft.niche} onChange={(e) => set("niche", e.target.value)}>
+                {nicheOpts.map(([v, l]) => (
+                  <option key={v || "all"} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+              <I n="chev" cls="sm" />
+            </label>
+          </section>
+
+          <section className="cf-g">
+            <h3>Localização</h3>
+            <label className="cf-sel">
+              <span className="sr-only">Estado</span>
+              <select value={draft.uf} onChange={(e) => set("uf", e.target.value)}>
+                {STATIC_OPTS.uf.map(([v, l]) => (
+                  <option key={v || "all"} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+              <I n="chev" cls="sm" />
+            </label>
+
+            <div className="cf-near">
+              {draft.near ? (
+                <>
+                  <div className="cf-nh">
+                    <span>
+                      <I n="locate" cls="sm" /> Perto de você
+                    </span>
+                    <button type="button" className="lnk" onClick={() => set("near", null)}>
+                      Remover
+                    </button>
+                  </div>
+                  <small>Raio de busca</small>
+                  <PillGroup
+                    label="Raio de busca"
+                    opts={RADIUS_OPTIONS.map((v): Opt => [String(v), `${v} km`])}
+                    value={String(draft.radius)}
+                    onPick={(v) => set("radius", Number(v))}
+                  />
+                </>
+              ) : (
+                <>
+                  <button type="button" className="btn out" disabled={locating} onClick={useMyLocation}>
+                    <I n="locate" cls="sm" />
+                    {locating ? "Localizando…" : "Buscar perto de mim"}
+                  </button>
+                  <small>Usa a localização aproximada deste navegador. Ela não é guardada.</small>
+                </>
+              )}
+              {geoError && (
+                <small className="cf-err" role="alert">
+                  {geoError}
+                </small>
+              )}
+            </div>
+          </section>
+
+          <section className="cf-g">
+            <h3>Perfil demográfico</h3>
+            <PillGroup label="Gênero" opts={STATIC_OPTS.gen} value={draft.gen} onPick={(v) => set("gen", v)} />
+          </section>
+
+          <section className="cf-g">
+            <h3>Audiência</h3>
+            <PillGroup label="Quantidade de seguidores" opts={STATIC_OPTS.fol} value={draft.fol} onPick={(v) => set("fol", v)} />
+          </section>
+
+          <section className="cf-g">
+            <h3>Desempenho</h3>
+            <PillGroup label="Engajamento" opts={STATIC_OPTS.eng} value={draft.eng} onPick={(v) => set("eng", v)} />
+          </section>
+        </div>
+
+        <div className="cf-f">
+          <button type="button" className="btn out" onClick={clear} disabled={n === 0}>
+            Limpar filtros
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              onApply(draft);
+              close();
+            }}
+          >
+            Aplicar filtros
+          </button>
+        </div>
+      </aside>
+    </div>,
+    document.body,
   );
 }
 
@@ -361,6 +524,7 @@ const NET_LABEL: Record<string, string> = {
   instagram: "Instagram",
   tiktok: "TikTok",
   youtube: "YouTube",
+  ugc: "UGC",
 };
 
 function CreatorCard({ item, k, selected, near, saved, onSelect, onOpen, onInvite, onSave }: CardProps) {
@@ -407,7 +571,7 @@ function CreatorCard({ item, k, selected, near, saved, onSelect, onOpen, onInvit
         </div>
         <div>
           <small>Rede</small>
-          <b>{NET_LABEL[sn.type] ?? sn.name ?? "—"}</b>
+          <b>{NET_LABEL[sn.type] ?? (sn.name || sn.type || "—")}</b>
         </div>
       </div>
       <div className="crd-a">
@@ -466,6 +630,9 @@ function CreatorRow({ item, k, selected, near, saved, onSelect, onOpen, onInvite
       <span className="crw-a">
         <button type="button" className={`round crd-sv ${saved ? "on" : ""}`} aria-label="Salvar em lista" onClick={stop(onSave)}>
           <I n="heart" cls="sm" />
+        </button>
+        <button type="button" className="btn out" onClick={stop(onOpen)}>
+          Ver perfil
         </button>
         <button type="button" className="btn" onClick={stop(onInvite)}>
           Convidar
@@ -566,8 +733,9 @@ interface InviteTarget {
 function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
   const [filters, setFilters] = useState<CatalogFilters>(EMPTY_FILTERS);
   const [debouncedQ, setDebouncedQ] = useState("");
-  const [view, setView] = useState<"grid" | "list">("grid");
-  const [pop, setPop] = useState<string | null>(null);
+  const [view, setView] = useState<"grid" | "list" | "map">("grid");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [selectedForList, setSelectedForList] = useState<SelectedForList | null>(null);
   const [bulkSave, setBulkSave] = useState(false);
@@ -576,28 +744,36 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
   const membershipMap = useInfluencerMembershipMap();
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // "Perto de mim" — estado de geolocalização, persistido em localStorage
-  // para não pedir permissão a cada visita.
-  const [nearMeLocation, setNearMeLocation] = useState<NearMeLocation | null>(
-    () => loadStoredLocation(),
-  );
+  // "Perto de mim" é um critério de busca: só existe quando o usuário o liga
+  // (painel de filtros ou mapa). A posição não é guardada entre visitas.
+  const [nearMeLocation, setNearMeLocation] = useState<NearMeLocation | null>(null);
   const [radiusKm, setRadiusKm] = useState<number>(DEFAULT_RADIUS_KM);
-  const [nearMeRequesting, setNearMeRequesting] = useState(false);
+  const [mapLocating, setMapLocating] = useState(false);
+  const [mapGeoError, setMapGeoError] = useState("");
+
+  useEffect(() => {
+    // Remove a posição que versões anteriores deixaram salva no navegador.
+    try {
+      localStorage.removeItem(LEGACY_NEAR_ME_KEY);
+    } catch {
+      // localStorage indisponível: nada a limpar.
+    }
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(filters.q), 350);
     return () => clearTimeout(t);
   }, [filters.q]);
 
-  // Fecha o popover de filtro ao clicar fora.
+  // Fecha o menu de ordenação ao clicar fora.
   useEffect(() => {
-    if (!pop) return;
+    if (!sortOpen) return;
     const onDown = (e: MouseEvent) => {
-      if (!(e.target as Element).closest?.(".cfw")) setPop(null);
+      if (!(e.target as Element).closest?.(".cfw")) setSortOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
-  }, [pop]);
+  }, [sortOpen]);
 
   const queryFilters = useMemo(() => {
     const range = FOLLOWER_RANGES[filters.fol];
@@ -611,53 +787,11 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
       gender: filters.gen || undefined,
       engagement_min: filters.eng ? Number(filters.eng) : undefined,
       ...parseOrder(filters.sort),
-      // Geo só vai pro backend quando temos coords salvas (admin já permitiu)
       ...(nearMeLocation
         ? { lat: nearMeLocation.lat, lng: nearMeLocation.lng, radius_km: radiusKm }
         : {}),
     };
   }, [debouncedQ, filters, nearMeLocation, radiusKm]);
-
-  /**
-   * Pede a localização atual via Geolocation API. Grava em localStorage
-   * pra evitar reprompt a cada visita. Em caso de erro/negação, mostra
-   * toast informativo — não bloqueia o resto do catálogo.
-   */
-  const handleEnableNearMe = useCallback(() => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      toast.error("Seu navegador não suporta geolocalização.");
-      return;
-    }
-    setNearMeRequesting(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const loc: NearMeLocation = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          capturedAt: Date.now(),
-        };
-        setNearMeLocation(loc);
-        saveStoredLocation(loc);
-        setNearMeRequesting(false);
-      },
-      (err) => {
-        setNearMeRequesting(false);
-        const denied = err.code === err.PERMISSION_DENIED;
-        toast.error(
-          denied
-            ? "Permissão negada. Habilite a localização nas configurações do navegador."
-            : "Não foi possível obter sua localização agora. Tente novamente.",
-        );
-      },
-      // Precisão alta consome bateria e não é necessária pra "perto de mim".
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 5 * 60_000 },
-    );
-  }, []);
-
-  const handleClearNearMe = useCallback(() => {
-    setNearMeLocation(null);
-    saveStoredLocation(null);
-  }, []);
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useCreatorsCatalog(queryFilters);
@@ -676,7 +810,7 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
 
   const allItems = useMemo(() => data?.pages.flatMap((p) => p.items) ?? [], [data]);
 
-  // Criadores com localização aproximada — plotáveis no mapa "perto de mim".
+  // Criadores com localização aproximada — plotáveis no mapa.
   const nearMeLocatedCount = useMemo(
     () => allItems.filter((i) => i.approx_location).length,
     [allItems],
@@ -691,9 +825,10 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+  // Rolagem infinita (grade e lista); no mapa o carregamento é por botão.
   useEffect(() => {
     const el = loadMoreRef.current;
-    if (!el) return;
+    if (!el || view === "map") return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) handleLoadMore();
@@ -702,20 +837,17 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [handleLoadMore]);
+  }, [handleLoadMore, view]);
 
   function setFilter<K extends keyof CatalogFilters>(key: K, value: CatalogFilters[K]) {
     setFilters((prev) => ({ ...prev, [key]: value }));
   }
 
-  function pick(k: FilterKey, v: string) {
-    setFilter(k, v);
-    setPop(null);
-  }
-
-  function clearAll() {
-    setFilters(EMPTY_FILTERS);
-    setPop(null);
+  /** Remove todos os critérios (mantém a ordenação escolhida e a visualização). */
+  function clearCriteria() {
+    setFilters((prev) => ({ ...EMPTY_FILTERS, sort: prev.sort }));
+    setNearMeLocation(null);
+    setRadiusKm(DEFAULT_RADIUS_KM);
   }
 
   function toggleSel(key: string) {
@@ -729,11 +861,28 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
 
   const openProfile = (userId: number) => setProfileId(String(userId));
 
+  const applyDraft = (d: FilterDraft) => {
+    setFilters((prev) => ({ ...prev, net: d.net, niche: d.niche, uf: d.uf, gen: d.gen, fol: d.fol, eng: d.eng }));
+    setNearMeLocation(d.near);
+    setRadiusKm(d.radius);
+  };
+
+  const enableNearFromMap = async () => {
+    setMapLocating(true);
+    setMapGeoError("");
+    const res = await requestLocation();
+    setMapLocating(false);
+    if (res.ok) setNearMeLocation(res.loc);
+    else setMapGeoError(res.message);
+  };
+
   const activeKeys = FILTER_KEYS.filter((k) => filters[k] && filters[k] !== "all");
-  const selectedItems = allItems.filter((i) => selected.has(String(i.social_network.id)));
   const nearOn = !!nearMeLocation;
+  const activeCount = activeKeys.length + (nearOn ? 1 : 0);
+  const selectedItems = allItems.filter((i) => selected.has(String(i.social_network.id)));
   const sortActive = !!filters.sort;
   const sortLabel = SORT_OPTIONS.find((s) => s[0] === filters.sort)?.[1] ?? "Relevância";
+  const searching = !!debouncedQ;
 
   const renderItem = (item: CatalogItem, k: number) => {
     const key = String(item.social_network.id);
@@ -749,53 +898,52 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
         setInviteTarget({ userId: item.user.id, name: item.user.name, profileId: key }),
       onSave: () => setSelectedForList({ userId: item.user.id, name: item.user.name }),
     };
-    return view === "grid" ? <CreatorCard key={key} {...props} /> : <CreatorRow key={key} {...props} />;
+    return view === "list" ? <CreatorRow key={key} {...props} /> : <CreatorCard key={key} {...props} />;
   };
+
+  const VIEWS: Array<["grid" | "list" | "map", string, string]> = [
+    ["grid", "grid", "Cartões"],
+    ["list", "list", "Lista"],
+    ["map", "map", "Mapa"],
+  ];
 
   return (
     <>
       <>
-        <div id="crfb" className="fade crfb">
-          <div className="crr2">
-            <label className="find">
-              <I n="search" cls="sm" />
-              <input
-                placeholder="Buscar criador"
-                value={filters.q}
-                autoComplete="off"
-                onChange={(e) => setFilter("q", e.target.value)}
-              />
-            </label>
-            <i className="crdv" />
-            {FILTER_KEYS.map((k) => (
-              <FilterChip
-                key={k}
-                label={FILTER_LABEL[k]}
-                opts={optsFor(k)}
-                value={filters[k]}
-                open={pop === k}
-                onToggle={() => setPop(pop === k ? null : k)}
-                onPick={(v) => pick(k, v)}
-              />
-            ))}
-            <button
-              type="button"
-              className={`chip crnear ${nearOn ? "on" : ""}`}
-              disabled={nearMeRequesting}
-              title={nearOn ? "Remover filtro de proximidade" : "Filtrar criadores próximos a você"}
-              onClick={nearOn ? handleClearNearMe : handleEnableNearMe}
-            >
-              <I n="flag" cls="sm" />
-              {nearMeRequesting ? "Localizando…" : "Perto de mim"}
-            </button>
-            <span style={{ flex: 1 }} />
-            <div className={`cfw ${pop === "sort" ? "open" : ""}`}>
+        <div id="crfb" className="fade cx-bar">
+          <label className="cx-find">
+            <I n="search" cls="sm" />
+            <input
+              type="search"
+              placeholder="Buscar criador por nome, @ ou palavra-chave"
+              aria-label="Buscar criador"
+              value={filters.q}
+              autoComplete="off"
+              onChange={(e) => setFilter("q", e.target.value)}
+            />
+            {filters.q && (
+              <button type="button" className="cx-x" aria-label="Limpar busca" onClick={() => setFilter("q", "")}>
+                <I n="x" cls="sm" />
+              </button>
+            )}
+          </label>
+
+          <button type="button" className={`cx-fb ${activeCount > 0 ? "on" : ""}`} aria-haspopup="dialog" onClick={() => setFiltersOpen(true)}>
+            <I n="funnel" cls="sm" />
+            Filtros
+            {activeCount > 0 && <em aria-label={`${activeCount} filtros ativos`}>{activeCount}</em>}
+          </button>
+
+          <div className="cx-ctl">
+            <div className={`cfw ${sortOpen ? "open" : ""}`}>
               <button
                 type="button"
                 className={`cfb crso ${sortActive ? "on" : ""}`}
-                aria-label="Ordenar"
+                aria-label={`Ordenar: ${sortLabel}`}
+                aria-haspopup="menu"
+                aria-expanded={sortOpen}
                 title={`Ordenar: ${sortLabel}`}
-                onClick={() => setPop(pop === "sort" ? null : "sort")}
+                onClick={() => setSortOpen((v) => !v)}
               >
                 <svg className="ico sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="m3 16 4 4 4-4" />
@@ -804,16 +952,18 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
                   <path d="M17 4v16" />
                 </svg>
               </button>
-              <div className="cfm right">
+              <div className="cfm right" role="menu">
                 <small className="cfh">Ordenar por</small>
                 {SORT_OPTIONS.map(([v, l]) => (
                   <button
                     key={v}
                     type="button"
+                    role="menuitemradio"
+                    aria-checked={filters.sort === v}
                     className={filters.sort === v ? "on" : ""}
                     onClick={() => {
                       setFilter("sort", v);
-                      setPop(null);
+                      setSortOpen(false);
                     }}
                   >
                     {l}
@@ -822,82 +972,122 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
                 ))}
               </div>
             </div>
-            <div className="vt crvt">
-              <button type="button" className={view === "grid" ? "on" : ""} aria-label="Cartões" onClick={() => setView("grid")}>
-                <I n="grid" cls="sm" />
-              </button>
-              <button type="button" className={view === "list" ? "on" : ""} aria-label="Lista" onClick={() => setView("list")}>
-                <I n="file" cls="sm" />
-              </button>
+            <div className="vt crvt" role="group" aria-label="Visualização">
+              {VIEWS.map(([v, icon, label]) => (
+                <button key={v} type="button" className={view === v ? "on" : ""} aria-label={label} aria-pressed={view === v} title={label} onClick={() => setView(v)}>
+                  <I n={icon} cls="sm" />
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        <div id="crres" className="fade">
-          {/* Mapa "Perto de mim" real (Leaflet) dentro do contêiner do protótipo */}
-          {nearMeLocation && (
-            <div className="crmap">
-              {nearMeLocatedCount > 0 ? (
-                <Suspense fallback={<div style={{ height: 288, background: "var(--bg)" }} />}>
-                  <NearMeMap
-                    origin={{ lat: nearMeLocation.lat, lng: nearMeLocation.lng, radiusKm }}
-                    items={allItems}
-                    onViewProfile={openProfile}
-                  />
-                </Suspense>
-              ) : isLoading ? (
-                <div style={{ height: 288, background: "var(--bg)" }} />
-              ) : (
-                <div className="ov-empty">
-                  <b>Nenhum criador com localização neste raio</b>
-                  <small>Aumente o raio para ver mais</small>
-                </div>
-              )}
-              <div className="crmap-b">
-                <div>
-                  <b>
-                    {isLoading ? "Buscando criadores…" : `${total ?? allItems.length} ${(total ?? allItems.length) === 1 ? "criador" : "criadores"} num raio de ${radiusKm} km`}
-                  </b>
-                  <small>
-                    Baseado na sua localização
-                    {!isLoading && nearMeLocatedCount > 0 ? ` · ${nearMeLocatedCount} no mapa` : ""}
-                  </small>
-                </div>
-                <div className="n4tm crmap-r">
-                  {RADIUS_OPTIONS.map((v) => (
-                    <button key={v} type="button" className={radiusKm === v ? "on" : ""} onClick={() => setRadiusKm(v)}>
-                      {v} km
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {!isLoading && (
-            <div className="crs">
-              <span>
-                <b>{allItems.length}</b>
-                {total != null ? ` de ${total}` : ""} perfis
-              </span>
-              {activeKeys.map((k) => {
-                const o = optsFor(k).find((x) => x[0] === filters[k]);
-                return (
-                  <button key={k} type="button" className="crx" onClick={() => setFilter(k, EMPTY_FILTERS[k])}>
-                    {FILTER_LABEL[k]}: <b>{o ? o[1] : filters[k]}</b>
-                    <I n="x" cls="sm" />
-                  </button>
-                );
-              })}
-              {(activeKeys.length > 0 || filters.q || filters.sort) && (
-                <button type="button" className="lnk" onClick={clearAll}>
-                  Limpar tudo
+        {activeCount > 0 && (
+          <div className="fade cx-act" aria-label="Filtros ativos">
+            <small>Filtros ativos:</small>
+            {activeKeys.map((k) => {
+              const o = optsFor(k).find((x) => x[0] === filters[k]);
+              return (
+                <button key={k} type="button" className="crx" aria-label={`Remover filtro ${FILTER_LABEL[k]}`} onClick={() => setFilter(k, EMPTY_FILTERS[k])}>
+                  {o ? o[1].split(" · ")[0] : filters[k]}
+                  <I n="x" cls="sm" />
                 </button>
-              )}
+              );
+            })}
+            {nearOn && (
+              <button type="button" className="crx" aria-label="Remover filtro Perto de mim" onClick={() => setNearMeLocation(null)}>
+                Perto de mim · {radiusKm} km
+                <I n="x" cls="sm" />
+              </button>
+            )}
+            <button type="button" className="lnk" onClick={clearCriteria}>
+              Limpar filtros
+            </button>
+          </div>
+        )}
+
+        <div id="crres" className="fade">
+          {!isLoading && (
+            <div className="cx-res" aria-live="polite">
+              <h2>
+                {total ?? allItems.length} {(total ?? allItems.length) === 1 ? "criador encontrado" : "criadores encontrados"}
+              </h2>
+              <small>
+                Mostrando {allItems.length}
+                {nearOn ? ` · num raio de ${radiusKm} km da sua localização` : ""}
+                {activeKeys.length > 0 ? ` · ${activeKeys.length} ${activeKeys.length === 1 ? "filtro aplicado" : "filtros aplicados"}` : ""}
+                {searching ? ` · busca “${debouncedQ}”` : ""}
+              </small>
             </div>
           )}
 
-          {isLoading ? (
+          {view === "map" ? (
+            <div className="crmap cx-map">
+              {!nearMeLocation ? (
+                <div className="cx-mapem">
+                  <span>
+                    <I n="map" />
+                  </span>
+                  <b>Veja os criadores no mapa</b>
+                  <p>Para mostrar quem está perto, usamos a localização aproximada deste navegador. Seus filtros e a busca continuam valendo.</p>
+                  <button type="button" className="btn" disabled={mapLocating} onClick={enableNearFromMap}>
+                    <I n="locate" cls="sm" />
+                    {mapLocating ? "Localizando…" : "Usar minha localização"}
+                  </button>
+                  {mapGeoError && (
+                    <small className="cf-err" role="alert">
+                      {mapGeoError}
+                    </small>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {nearMeLocatedCount > 0 ? (
+                    <Suspense fallback={<div style={{ height: 420, background: "var(--bg)" }} />}>
+                      <NearMeMap
+                        origin={{ lat: nearMeLocation.lat, lng: nearMeLocation.lng, radiusKm }}
+                        items={allItems}
+                        onViewProfile={openProfile}
+                        heightClass="h-[min(560px,62vh)]"
+                      />
+                    </Suspense>
+                  ) : isLoading ? (
+                    <div style={{ height: 420, background: "var(--bg)" }} />
+                  ) : (
+                    <div className="ov-empty">
+                      <b>Nenhum criador com localização neste raio</b>
+                      <small>Aumente o raio para ver mais</small>
+                    </div>
+                  )}
+                  <div className="crmap-b">
+                    <div>
+                      <b>
+                        {isLoading ? "Buscando criadores…" : `${nearMeLocatedCount} no mapa`}
+                      </b>
+                      <small>
+                        Raio de busca a partir da sua localização
+                        {!isLoading && total != null && total > allItems.length ? ` · ${allItems.length} de ${total} carregados` : ""}
+                      </small>
+                    </div>
+                    <div className="n4tm crmap-r" role="group" aria-label="Raio de busca">
+                      {RADIUS_OPTIONS.map((v) => (
+                        <button key={v} type="button" aria-pressed={radiusKm === v} className={radiusKm === v ? "on" : ""} onClick={() => setRadiusKm(v)}>
+                          {v} km
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {hasNextPage && (
+                    <div className="cx-more">
+                      <button type="button" className="btn out" disabled={isFetchingNextPage} onClick={handleLoadMore}>
+                        {isFetchingNextPage ? "Carregando…" : "Carregar mais criadores"}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : isLoading ? (
             <div className="crg">
               {Array.from({ length: 8 }).map((_, i) => (
                 <CardSkeleton key={i} k={i} />
@@ -910,7 +1100,7 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
               </span>
               <b>Nenhum criador encontrado</b>
               <small>Ajuste os filtros ou limpe a busca para ver mais perfis.</small>
-              <button type="button" className="btn out" onClick={clearAll}>
+              <button type="button" className="btn out" onClick={() => { clearCriteria(); setFilter("q", ""); }}>
                 Limpar filtros
               </button>
             </div>
@@ -931,9 +1121,11 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
             </div>
           )}
 
-          <div ref={loadMoreRef} style={{ padding: "16px 0", display: "flex", justifyContent: "center", color: "var(--muted)", fontSize: 13.5 }}>
-            {isFetchingNextPage && "Carregando mais..."}
-          </div>
+          {view !== "map" && (
+            <div ref={loadMoreRef} style={{ padding: "16px 0", display: "flex", justifyContent: "center", color: "var(--muted)", fontSize: 14 }}>
+              {isFetchingNextPage && "Carregando mais..."}
+            </div>
+          )}
         </div>
 
         {selected.size > 0 && (
@@ -968,6 +1160,23 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
         )}
       </>
 
+      {filtersOpen && (
+        <FiltersDrawer
+          initial={{
+            net: filters.net,
+            niche: filters.niche,
+            uf: filters.uf,
+            gen: filters.gen,
+            fol: filters.fol,
+            eng: filters.eng,
+            near: nearMeLocation,
+            radius: radiusKm,
+          }}
+          nicheOpts={nicheOpts}
+          onApply={applyDraft}
+          onClose={() => setFiltersOpen(false)}
+        />
+      )}
       {profileId && <InfluencerProfileDrawer influencerId={profileId} onClose={() => setProfileId(null)} />}
       {selectedForList && (
         <ListMembershipModal

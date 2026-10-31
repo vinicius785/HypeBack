@@ -281,6 +281,21 @@
     0 6px 14px rgba(0, 0, 0, 0.28);
 }
 
+/* Grupo de criadores (marcadores que se sobreporiam) */
+.near-me-cluster__dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 3px solid #fff;
+  border-radius: 9999px;
+  background: var(--color-primary-600);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
 /* Popups no tema */
 .near-me-map .leaflet-popup-content-wrapper {
   padding: 4px 6px;

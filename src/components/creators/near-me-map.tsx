@@ -9,6 +9,7 @@ import {
   Popup,
   TileLayer,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 
 import { Icon } from "@/components/ui/icon";
@@ -26,7 +27,16 @@ interface NearMeMapProps {
   items: CatalogItem[];
   /** Navega para o perfil do criador (recebe `user.id`). */
   onViewProfile: (userId: number) => void;
+  /** Classe de altura do mapa (padrão: compacta). */
+  heightClass?: string;
 }
+
+type LocatedItem = CatalogItem & {
+  approx_location: NonNullable<CatalogItem["approx_location"]>;
+};
+
+/** Distância (px) abaixo da qual marcadores viram um grupo com contagem. */
+const CLUSTER_PX = 54;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -87,6 +97,114 @@ function avatarIcon(item: CatalogItem): L.DivIcon {
   });
 }
 
+function clusterIcon(count: number): L.DivIcon {
+  return L.divIcon({
+    className: "near-me-cluster",
+    html: `<span class="near-me-cluster__dot">${count > 99 ? "99+" : count}</span>`,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+    popupAnchor: [0, -22],
+  });
+}
+
+/**
+ * Agrupa criadores cujos marcadores ficariam sobrepostos no zoom atual
+ * (grade de `CLUSTER_PX`). Sem biblioteca: usa a projeção do próprio Leaflet.
+ */
+function ClusteredCreators({
+  items,
+  onViewProfile,
+}: {
+  items: LocatedItem[];
+  onViewProfile: (userId: number) => void;
+}) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(() => map.getZoom());
+  useMapEvents({ zoomend: () => setZoom(map.getZoom()) });
+
+  const groups = useMemo(() => {
+    const cells = new Map<string, LocatedItem[]>();
+    for (const item of items) {
+      const pt = map.project([item.approx_location.lat, item.approx_location.lng], zoom);
+      const key = `${Math.floor(pt.x / CLUSTER_PX)}:${Math.floor(pt.y / CLUSTER_PX)}`;
+      const list = cells.get(key);
+      if (list) list.push(item);
+      else cells.set(key, [item]);
+    }
+    return [...cells.values()];
+  }, [items, map, zoom]);
+
+  return (
+    <>
+      {groups.map((group) => {
+        if (group.length === 1) {
+          const item = group[0];
+          return (
+            <Marker
+              key={item.social_network.id}
+              position={[item.approx_location.lat, item.approx_location.lng]}
+              icon={avatarIcon(item)}
+            >
+              <Popup>
+                <NearMeCreatorPopup item={item} onViewProfile={onViewProfile} />
+              </Popup>
+            </Marker>
+          );
+        }
+        const lat = group.reduce((a, i) => a + i.approx_location.lat, 0) / group.length;
+        const lng = group.reduce((a, i) => a + i.approx_location.lng, 0) / group.length;
+        const bounds = L.latLngBounds(group.map((i) => [i.approx_location.lat, i.approx_location.lng] as [number, number]));
+        // Todos na mesma célula (~1 km): aproximar não separa, então só lista no popup.
+        const spread = bounds.getNorthEast().distanceTo(bounds.getSouthWest());
+        return (
+          <Marker
+            key={`g-${group.map((i) => i.social_network.id).join("-")}`}
+            position={[lat, lng]}
+            icon={clusterIcon(group.length)}
+            eventHandlers={{
+              click: (e) => {
+                if (spread > 50 && map.getZoom() < map.getMaxZoom()) {
+                  e.target.closePopup();
+                  map.fitBounds(bounds, { padding: [48, 48] });
+                }
+              },
+            }}
+          >
+            <Popup>
+              <ClusterPopup group={group} onViewProfile={onViewProfile} />
+            </Popup>
+          </Marker>
+        );
+      })}
+    </>
+  );
+}
+
+function ClusterPopup({ group, onViewProfile }: { group: LocatedItem[]; onViewProfile: (userId: number) => void }) {
+  return (
+    <div className="flex w-56 flex-col gap-2 py-1">
+      <p className="text-sm font-semibold text-neutral-950">{group.length} criadores nesta área</p>
+      <ul className="flex max-h-52 flex-col gap-1 overflow-y-auto">
+        {group.map((item) => (
+          <li key={item.social_network.id}>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-2 rounded-xl px-2 py-2 text-left text-sm hover:bg-neutral-100"
+              onClick={() => onViewProfile(item.user.id)}
+            >
+              <span className="min-w-0">
+                <span className="block truncate font-medium text-neutral-950">{item.user.name}</span>
+                <span className="block truncate text-xs text-neutral-500">@{item.social_network.username}</span>
+              </span>
+              <span className="shrink-0 text-xs font-semibold text-primary-600">Ver perfil</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** Ajusta o viewport para enquadrar o raio de busca sempre que origem/raio mudam. */
 function FitToRadius({ origin }: { origin: NearMeOrigin }) {
   const map = useMap();
@@ -111,9 +229,9 @@ function FitToRadius({ origin }: { origin: NearMeOrigin }) {
  * Como a posição é privacy-snapped (~`precision_km`), cada criador ganha um halo
  * geográfico que comunica honestamente a área aproximada — sem fingir precisão.
  */
-export function NearMeMap({ origin, items, onViewProfile }: NearMeMapProps) {
+export function NearMeMap({ origin, items, onViewProfile, heightClass = "h-80 sm:h-72" }: NearMeMapProps) {
   const located = useMemo(
-    () => items.filter((i): i is CatalogItem & { approx_location: NonNullable<CatalogItem["approx_location"]> } => !!i.approx_location),
+    () => items.filter((i): i is LocatedItem => !!i.approx_location),
     [items],
   );
 
@@ -135,7 +253,7 @@ export function NearMeMap({ origin, items, onViewProfile }: NearMeMapProps) {
         zoom={12}
         scrollWheelZoom={false}
         attributionControl={false}
-        className="h-80 w-full sm:h-72"
+        className={`${heightClass} w-full`}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <FitToRadius origin={origin} />
@@ -177,18 +295,8 @@ export function NearMeMap({ origin, items, onViewProfile }: NearMeMapProps) {
           </Popup>
         </Marker>
 
-        {/* Criadores */}
-        {located.map((item) => (
-          <Marker
-            key={item.social_network.id}
-            position={[item.approx_location.lat, item.approx_location.lng]}
-            icon={avatarIcon(item)}
-          >
-            <Popup>
-              <NearMeCreatorPopup item={item} onViewProfile={onViewProfile} />
-            </Popup>
-          </Marker>
-        ))}
+        {/* Criadores (agrupados quando os marcadores se sobrepõem) */}
+        <ClusteredCreators items={located} onViewProfile={onViewProfile} />
       </MapContainer>
 
       {/* Legenda flutuante */}
