@@ -70,8 +70,14 @@ export function useEstimateAdminAudience() {
 export function useCreateAdminNotification() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: AdminNotificationCreatePayload) =>
-      createAdminNotification(payload),
+    mutationFn: ({
+      payload,
+      idempotencyKey,
+    }: {
+      payload: AdminNotificationCreatePayload;
+      /** Reaproveite a mesma chave ao reenviar o mesmo conteúdo. */
+      idempotencyKey?: string;
+    }) => createAdminNotification(payload, idempotencyKey),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminNotificationKeys.all });
     },

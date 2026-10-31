@@ -22,6 +22,7 @@ import type {
   AdminNotificationChannel,
   AdminNotificationCreatePayload,
 } from "@/shared/types";
+import { createIdempotencyKeeper } from "@/shared/utils/idempotency-key";
 
 const TITLE_MAX = 65;
 const BODY_MAX = 240;
@@ -108,6 +109,11 @@ export function AdminNotificationForm({
   const estimateMutation = useEstimateAdminAudience();
   const createMutation = useCreateAdminNotification();
   const sending = createMutation.isPending;
+  // Envio imediato pede confirmação (não dá para desfazer). A chave de
+  // idempotência do POST é a mesma para o mesmo conteúdo: reenviar após timeout
+  // ou queda de rede não dispara para todo mundo de novo.
+  const [confirming, setConfirming] = useState(false);
+  const [idempotencyKeyFor] = useState(createIdempotencyKeeper);
 
   // Alcance real: recalcula sozinho (com debounce) quando o público muda.
   const [estimate, setEstimate] = useState<AdminAudienceEstimate | null>(null);
@@ -143,15 +149,22 @@ export function AdminNotificationForm({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !sending) onClose();
+      if (e.key !== "Escape" || sending) return;
+      // Com a confirmação aberta, Esc volta ao resumo em vez de fechar tudo.
+      if (confirming) setConfirming(false);
+      else onClose();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose, sending]);
+  }, [onClose, sending, confirming]);
 
   const reach = estimate?.total_recipients ?? 0;
   const fmt = (n: number) => n.toLocaleString("pt-BR");
   const reachLabel = estimate ? `${fmt(reach)} criadores` : null;
+  const channelsLabel = channels.map((c) => CHANNEL_LABEL[c]).join(", ");
+  const confirmText = `Enviar agora para ${fmt(reach)} ${
+    reach === 1 ? "criador" : "criadores"
+  } (${channelsLabel})? Um envio imediato não pode ser desfeito.`;
   const urlBad = !validateUrl(ctaUrl.trim());
 
   const step0Ok = !!title.trim() && !!body.trim() && !urlBad;
@@ -169,6 +182,12 @@ export function AdminNotificationForm({
   const go = (k: number) => {
     setStep(k);
     setTried(false);
+    setConfirming(false);
+  };
+
+  const chooseWhen = (w: "now" | "sched") => {
+    setWhen(w);
+    setConfirming(false);
   };
 
   const next = () => {
@@ -197,7 +216,10 @@ export function AdminNotificationForm({
       scheduled_at: scheduledAt ? scheduledAt.toISOString() : null,
     };
     try {
-      await createMutation.mutateAsync(payload);
+      await createMutation.mutateAsync({
+        payload,
+        idempotencyKey: idempotencyKeyFor(JSON.stringify(payload)),
+      });
       toast.success(
         when === "now" ? "Notificação enviada para a fila." : "Envio agendado.",
       );
@@ -397,11 +419,11 @@ export function AdminNotificationForm({
     return (
       <>
         <div className="n4tm lvf-wt">
-          <button type="button" className={when === "now" ? "on" : ""} onClick={() => setWhen("now")}>
+          <button type="button" className={when === "now" ? "on" : ""} onClick={() => chooseWhen("now")}>
             <I n="send" cls="sm" />
             Enviar agora
           </button>
-          <button type="button" className={when === "sched" ? "on" : ""} onClick={() => setWhen("sched")}>
+          <button type="button" className={when === "sched" ? "on" : ""} onClick={() => chooseWhen("sched")}>
             <I n="cal" cls="sm" />
             Agendar para depois
           </button>
@@ -497,29 +519,50 @@ export function AdminNotificationForm({
             </div>
           </div>
           <div className="cm-f">
-            {step ? (
-              <button type="button" className="btn out" onClick={() => go(step - 1)} disabled={sending}>
-                <I n="back" cls="sm" />
-                Voltar
-              </button>
+            {confirming ? (
+              <>
+                <small style={{ flex: 1 }}>{confirmText}</small>
+                <button type="button" className="btn out" onClick={() => setConfirming(false)} disabled={sending}>
+                  <I n="back" cls="sm" />
+                  Voltar
+                </button>
+                <button type="button" className="btn" onClick={save} disabled={sending}>
+                  <I n="send" cls="sm" />
+                  {sending ? "Enviando…" : "Confirmar envio"}
+                </button>
+              </>
             ) : (
-              <small>{STEPS[0][1]}</small>
-            )}
-            <span style={{ flex: 1 }} />
-            {last ? (
-              <button type="button" className="btn" onClick={save} disabled={sending}>
-                <I n={when === "now" ? "send" : "check"} cls="sm" />
-                {sending
-                  ? "Enviando…"
-                  : when === "now"
-                    ? "Enviar agora"
-                    : "Agendar envio"}
-              </button>
-            ) : (
-              <button type="button" className="btn" onClick={next}>
-                Continuar
-                <I n="chev" cls="sm" />
-              </button>
+              <>
+                {step ? (
+                  <button type="button" className="btn out" onClick={() => go(step - 1)} disabled={sending}>
+                    <I n="back" cls="sm" />
+                    Voltar
+                  </button>
+                ) : (
+                  <small>{STEPS[0][1]}</small>
+                )}
+                <span style={{ flex: 1 }} />
+                {last ? (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={when === "now" ? () => setConfirming(true) : save}
+                    disabled={sending}
+                  >
+                    <I n={when === "now" ? "send" : "check"} cls="sm" />
+                    {sending
+                      ? "Enviando…"
+                      : when === "now"
+                        ? "Enviar agora"
+                        : "Agendar envio"}
+                  </button>
+                ) : (
+                  <button type="button" className="btn" onClick={next}>
+                    Continuar
+                    <I n="chev" cls="sm" />
+                  </button>
+                )}
+              </>
             )}
           </div>
         </section>

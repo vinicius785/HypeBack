@@ -1,4 +1,5 @@
 import { getApiUrl, getAuthToken } from "@/lib/utils/api";
+import { generateIdempotencyKey } from "@/shared/utils/idempotency-key";
 import type {
   AdminAudienceEstimate,
   AdminAudienceFilter,
@@ -14,8 +15,10 @@ import type {
  * Particularidades:
  * - NÃO envia header `Workspace-Id` — escopo global.
  * - Backend protege com `PlatformAdminGuard` (ver doc).
- * - `POST /admin/notifications` é idempotente via header `Idempotency-Key`
- *   — passamos um UUID por mutação pra evitar duplicidade em retry.
+ * - `POST /admin/notifications` é idempotente via header `Idempotency-Key`.
+ *   Quem chama passa a chave e reaproveita a mesma no reenvio do mesmo
+ *   conteúdo (ver `createIdempotencyKeeper`); sem chave, geramos uma por
+ *   chamada, o que não evita duplicidade em retry.
  *
  * Contrato detalhado: `docs/api-super-admin-notifications.md`.
  */
@@ -45,22 +48,6 @@ async function handleResponse<T>(res: Response, fallbackMsg: string): Promise<T>
   }
   const json = (await res.json()) as { data: T };
   return json.data;
-}
-
-/** UUID v4 — usado como `Idempotency-Key` em POSTs. */
-function generateIdempotencyKey(): string {
-  if (
-    typeof crypto !== "undefined" &&
-    typeof crypto.randomUUID === "function"
-  ) {
-    return crypto.randomUUID();
-  }
-  // Fallback simples (suficiente para idempotency, não criptográfico).
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
 }
 
 export interface AdminNotificationsListParams {
@@ -118,14 +105,19 @@ export async function estimateAdminAudience(
   );
 }
 
+/**
+ * Cria (ou agenda) a notificação. `idempotencyKey` deve ser a mesma em reenvios
+ * do mesmo conteúdo — ver `createIdempotencyKeeper`.
+ */
 export async function createAdminNotification(
   payload: AdminNotificationCreatePayload,
+  idempotencyKey: string = generateIdempotencyKey(),
 ): Promise<AdminNotificationDetail> {
   const res = await fetch(getApiUrl(`/admin/notifications`), {
     method: "POST",
     headers: buildHeaders({
       "Content-Type": "application/json",
-      "Idempotency-Key": generateIdempotencyKey(),
+      "Idempotency-Key": idempotencyKey,
     }),
     body: JSON.stringify(payload),
   });
