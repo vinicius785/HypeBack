@@ -2393,3 +2393,6 @@
 .pv .cx-res { margin: 2px 0 16px; color: var(--muted); font-size: 14px; }
 .pv .cf-hint { color: var(--muted); font-size: 14px; line-height: 1.4; }
 .pv .crd-n .crd-ugc { background: var(--ink); color: #fff; }
+
+/* "Tudo em dia" na visão geral da campanha: ocupa toda a largura, centralizado (a regra de largura dos cards o encolhia) */
+.pv .acs > .empty { flex: 1 0 100%; width: 100%; scroll-snap-align: none; cursor: default; }

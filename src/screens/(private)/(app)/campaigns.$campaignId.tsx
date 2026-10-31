@@ -462,9 +462,15 @@ function RouteComponent() {
     place();
     const t = window.setTimeout(place, 520);
     window.addEventListener("resize", place);
+    // Reposiciona quando o layout muda depois do primeiro render (fontes, animação de entrada, badges).
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(place) : null;
+    ro?.observe(root);
+    root.querySelectorAll("button[data-dtab]").forEach((b) => ro?.observe(b));
+    void document.fonts?.ready.then(place);
     return () => {
       window.clearTimeout(t);
       window.removeEventListener("resize", place);
+      ro?.disconnect();
     };
   }, [topTabKey, isLoadingCampaign, needMeCount]);
 
