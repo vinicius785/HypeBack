@@ -150,8 +150,8 @@ function AdminGroups() {
       <div className="wrap" style={{ maxWidth: "none" }}>
         <div className="head fade">
           <div>
-            <h1>Grupos</h1>
-            <p>Comunidades dos criadores no app: crie, modere e acompanhe.</p>
+            <h1>Comunidade</h1>
+            <p>Grupos dos criadores no app: crie, modere e acompanhe.</p>
           </div>
           <div className="btns">
             <button type="button" className="btn" onClick={goNew}>

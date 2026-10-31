@@ -97,7 +97,7 @@ function NewGroup() {
       >
         <div className="sh-h cm-h">
           <div>
-            <small>Grupos</small>
+            <small>Comunidade</small>
             <h2>Criar grupo</h2>
           </div>
           <button type="button" className="round" onClick={close} aria-label="Fechar">

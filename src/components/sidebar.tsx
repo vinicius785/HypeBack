@@ -113,7 +113,7 @@ export function useNavItems() {
   const admin: Array<[string, string, string]> = [
     ["Dashboard", "shield", "/admin/dashboard"],
     ["Notificações", "bell", "/admin/notifications"],
-    ["Grupos", "users", "/admin/groups"],
+    ["Comunidade", "users", "/admin/groups"],
   ];
 
   return { menus, admin, showPlatformAdmin, isOn };
