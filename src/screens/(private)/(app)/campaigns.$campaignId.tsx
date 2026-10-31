@@ -49,6 +49,7 @@ import {
   mapApiPhasesToCampaignPhases,
 } from "@/shared/services/dashboard";
 import { formatReais } from "@/shared/utils/masks";
+import { decideIncomingCampaignDeepLink } from "@/shared/utils/notification-navigation";
 import {
   getCampaignStatusDisplayLabel,
   getCampaignStatusValue,
@@ -167,41 +168,26 @@ function RouteComponent() {
   // Ler search params da URL para navegação de notificações
   useEffect(() => {
     const sp = new URLSearchParams(location.search);
-    const tabParam = sp.get("tab");
-    const openChat = sp.get("openChat");
-    const focusCampaignUser = sp.get("focusCampaignUser");
-    const contentId = sp.get("contentId");
+    const link = {
+      tab: sp.get("tab"),
+      openChat: sp.get("openChat"),
+      focusCampaignUser: sp.get("focusCampaignUser"),
+      contentId: sp.get("contentId"),
+    };
 
-    const validTabIds = new Set(visibleTabs.map((t) => t.id));
-    let targetTab: string | null =
-      tabParam && validTabIds.has(tabParam) ? tabParam : null;
+    const decision = decideIncomingCampaignDeepLink({
+      link,
+      visibleTabIds: new Set(visibleTabs.map((t) => t.id)),
+      // "Envios" e "Propostas" só existem depois que a campanha carrega.
+      campaignReady: !!campaign || !!campaignError,
+    });
+    if (decision.type !== "apply") return;
 
-    if (!targetTab) {
-      if (openChat && validTabIds.has("management")) targetTab = "management";
-      else if (contentId && validTabIds.has("approval")) targetTab = "approval";
-      else if (focusCampaignUser && validTabIds.has("curation"))
-        targetTab = "curation";
-    }
-
-    if (targetTab && !validTabIds.has(targetTab)) {
-      targetTab = visibleTabs[0]?.id ?? null;
-    }
-
-    if (
-      !targetTab &&
-      !openChat &&
-      !focusCampaignUser &&
-      !contentId
-    ) {
-      return;
-    }
-
-    if (targetTab) {
-      setActiveTab(targetTab);
-    }
-    if (openChat) setPendingOpenChat(openChat);
-    if (focusCampaignUser) setPendingFocusCampaignUser(focusCampaignUser);
-    if (contentId) setPendingContentId(contentId);
+    if (decision.tab) setActiveTab(decision.tab);
+    if (link.openChat) setPendingOpenChat(link.openChat);
+    if (link.focusCampaignUser)
+      setPendingFocusCampaignUser(link.focusCampaignUser);
+    if (link.contentId) setPendingContentId(link.contentId);
 
     const next = new URLSearchParams(location.search);
     for (const k of ["tab", "openChat", "focusCampaignUser", "contentId"]) {
@@ -213,7 +199,14 @@ function RouteComponent() {
       search: Object.keys(rest).length > 0 ? rest : undefined,
       replace: true,
     });
-  }, [location.search, location.pathname, navigate, visibleTabs]);
+  }, [
+    location.search,
+    location.pathname,
+    navigate,
+    visibleTabs,
+    campaign,
+    campaignError,
+  ]);
 
   const checkPublicationTrackingMutation = useMutation({
     mutationFn: () => checkCampaignPublicationTracking(campaignId),

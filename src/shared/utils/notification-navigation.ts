@@ -151,3 +151,58 @@ export function resolveNotificationCampaignDeepLink(
   }
   return { tab: "management" };
 }
+
+/** Parâmetros de deep link lidos da URL da campanha, sem tratamento. */
+export interface IncomingCampaignDeepLink {
+  tab: string | null;
+  openChat: string | null;
+  focusCampaignUser: string | null;
+  contentId: string | null;
+}
+
+export type IncomingCampaignDeepLinkDecision =
+  /** Nada a aplicar: sem parâmetros, ou sem aba nem destino que sirva. */
+  | { type: "ignore" }
+  /** A aba pedida ainda não existe (campanha carregando): não consuma a URL. */
+  | { type: "wait" }
+  /** Abrir `tab` (se houver), guardar os pendentes e limpar a URL. */
+  | { type: "apply"; tab: string | null };
+
+/**
+ * Decide o que a página da campanha faz com o deep link vindo da notificação.
+ *
+ * "Envios" e "Propostas" dependem do `payment_method` e só entram em
+ * `visibleTabIds` depois que a campanha carrega. Consumir o link antes disso
+ * mandaria o usuário para outra aba (ex.: Curadoria, via `focusCampaignUser`) e
+ * apagaria a URL — por isso esperamos a campanha (`campaignReady`).
+ */
+export function decideIncomingCampaignDeepLink({
+  link,
+  visibleTabIds,
+  campaignReady,
+}: {
+  link: IncomingCampaignDeepLink;
+  visibleTabIds: ReadonlySet<string>;
+  /** Campanha carregada (ou com erro: aí não adianta mais esperar). */
+  campaignReady: boolean;
+}): IncomingCampaignDeepLinkDecision {
+  const { tab, openChat, focusCampaignUser, contentId } = link;
+
+  let target: string | null = tab && visibleTabIds.has(tab) ? tab : null;
+
+  if (!target && tab && TAB_SET.has(tab) && !campaignReady) {
+    return { type: "wait" };
+  }
+
+  if (!target) {
+    if (openChat && visibleTabIds.has("management")) target = "management";
+    else if (contentId && visibleTabIds.has("approval")) target = "approval";
+    else if (focusCampaignUser && visibleTabIds.has("curation"))
+      target = "curation";
+  }
+
+  if (!target && !openChat && !focusCampaignUser && !contentId) {
+    return { type: "ignore" };
+  }
+  return { type: "apply", tab: target };
+}
