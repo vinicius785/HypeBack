@@ -110,7 +110,7 @@ export function InviteNetworksModal({ userId, name, known, onConfirm, onClose }:
                   </span>
                   <span className="cx-inv-n">
                     <b>{a.label}</b>
-                    <small>@{a.username} · {fmtMembers(a.members)} seguidores{a.blocked ? " · não pode ser convidada" : ""}</small>
+                    <small>@{a.username} · {a.type === "ugc" ? "tipo de conteúdo" : `${fmtMembers(a.members)} seguidores`}{a.blocked ? " · não pode ser convidada" : ""}</small>
                   </span>
                 </label>
               </li>

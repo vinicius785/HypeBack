@@ -233,9 +233,14 @@ export function InfluencerProfileView({
         };
       })
   )
-    .filter((a) => a.type)
+    // UGC é tipo de conteúdo (etiqueta no cabeçalho), não uma rede social.
+    .filter((a) => a.type && a.type !== "ugc")
     // Maior audiência primeiro (mesma ordem dos cartões da listagem).
     .sort((a, b) => (b.followers ?? -1) - (a.followers ?? -1));
+
+  const hasUgc = !isExternal
+    ? (influencer.social_networks ?? []).some((sn) => (sn.type ?? "").toLowerCase() === "ugc")
+    : preRegisteredProfiles.some((p) => (p.network ?? "").toLowerCase() === "ugc");
 
   // Ao abrir o perfil, a rede selecionada é a de maior audiência.
   const firstSelectable = accountCards.map((a) => networkTypeToMetricsTab(a.type)).find(Boolean) ?? null;
@@ -386,8 +391,9 @@ export function InfluencerProfileView({
           </div>
         </div>
 
-        {nicheName || subNicheNames.length > 0 ? (
+        {nicheName || subNicheNames.length > 0 || hasUgc ? (
           <div className="pf-ch">
+            {hasUgc ? <span>UGC</span> : null}
             {nicheName ? <span>{nicheName}</span> : null}
             {subNicheNames.map((n: string) => (
               <span key={n}>{n}</span>

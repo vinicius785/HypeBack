@@ -21,10 +21,30 @@ export interface CreatorGroup {
   distance_km: number | null;
 }
 
+/** UGC é um tipo de conteúdo (conta "UGC" no cadastro), não uma rede social. */
+export const isSocialNetworkType = (type: string) => type.trim().toLowerCase() !== "ugc";
+
+export const hasUgcAccount = (group: CreatorGroup) =>
+  group.accounts.some((a) => !isSocialNetworkType(a.social_network.type));
+
+const normalizeName = (name: string) =>
+  name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
+/**
+ * O backend devolve contas de quem excluiu o cadastro com este nome no lugar do
+ * nome real (não há campo próprio). Elas não devem aparecer para convite.
+ */
+export const isDeletedUser = (user: CatalogUser) => normalizeName(user.name) === "usuario excluido";
+
 export function groupCreators(items: CatalogItem[]): CreatorGroup[] {
   const groups = new Map<number, CreatorGroup>();
 
   for (const item of items) {
+    if (isDeletedUser(item.user)) continue;
     const id = item.user.id;
     let group = groups.get(id);
     if (!group) {

@@ -2391,3 +2391,5 @@
 @media (max-width: 480px) { .pv .pf-nwm { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 10px; } }
 @media (prefers-reduced-motion: reduce) { .pv .pf-nw { transition: none; } }
 .pv .cx-res { margin: 2px 0 16px; color: var(--muted); font-size: 14px; }
+.pv .cf-hint { color: var(--muted); font-size: 14px; line-height: 1.4; }
+.pv .crd-n .crd-ugc { background: var(--ink); color: #fff; }

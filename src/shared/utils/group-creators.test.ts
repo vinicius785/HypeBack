@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { CatalogItem } from "@/shared/services/creators-catalog";
-import { groupCreators } from "./group-creators";
+import { groupCreators, hasUgcAccount, isDeletedUser, isSocialNetworkType } from "./group-creators";
 
 const item = (
   snId: number,
@@ -65,5 +65,23 @@ describe("groupCreators", () => {
     ]);
     expect(groups.map((g) => g.key)).toEqual(["10", "20"]);
     expect(groups[0].user.photo).toBe("/p.png");
+  });
+
+  it("ignora usuários excluídos (nome de reserva do backend)", () => {
+    const groups = groupCreators([
+      item(1, 10, {}, { name: "Usuário excluído" }),
+      item(2, 11, {}, { name: "usuario EXCLUIDO " }),
+      item(3, 12, {}, { name: "Ana" }),
+    ]);
+    expect(groups.map((g) => g.user.name)).toEqual(["Ana"]);
+    expect(isDeletedUser({ id: 1, name: "Usuário excluído", photo: null, gender: null })).toBe(true);
+    expect(isDeletedUser({ id: 2, name: "Excluída Silva", photo: null, gender: null })).toBe(false);
+  });
+
+  it("trata UGC como tipo de conteúdo, não como rede social", () => {
+    expect(isSocialNetworkType("instagram")).toBe(true);
+    expect(isSocialNetworkType("UGC")).toBe(false);
+    const [g] = groupCreators([item(1, 10, { type: "instagram" }), item(2, 10, { type: "ugc" })]);
+    expect(hasUgcAccount(g)).toBe(true);
   });
 });

@@ -24,7 +24,7 @@ import {
 } from "@/hooks/use-creators-catalog";
 import { useInfluencerAccounts } from "@/hooks/use-influencer-accounts";
 import { InviteNetworksModal } from "@/components/influencer-lists/invite-networks-modal";
-import { groupCreators, type CreatorGroup } from "@/shared/utils/group-creators";
+import { groupCreators, isSocialNetworkType, type CreatorGroup } from "@/shared/utils/group-creators";
 import type {
   CatalogItem,
   CatalogOrderBy,
@@ -73,6 +73,12 @@ const EMPTY_FILTERS: CatalogFilters = {
   sort: "",
 };
 
+/** UGC é tipo de conteúdo (mesmo parâmetro `social_network` da API), não uma rede. */
+const CONTENT_OPTS: Opt[] = [
+  ["", "Qualquer"],
+  ["ugc", "UGC"],
+];
+
 const FILTER_KEYS: FilterKey[] = ["net", "niche", "uf", "gen", "fol", "eng"];
 
 const FILTER_LABEL: Record<FilterKey, string> = {
@@ -100,7 +106,6 @@ const STATIC_OPTS: Record<Exclude<FilterKey, "niche">, Opt[]> = {
     ["instagram", "Instagram"],
     ["tiktok", "TikTok"],
     ["youtube", "YouTube"],
-    ["ugc", "UGC"],
   ],
   uf: [["", "Todo o Brasil"], ...UFS.map(([k, v]): Opt => [k, `${k} · ${v}`])],
   gen: [
@@ -407,6 +412,17 @@ function FiltersDrawer({
           </section>
 
           <section className="cf-g">
+            <h3>Tipo de conteúdo</h3>
+            <PillGroup
+              label="Tipo de conteúdo"
+              opts={CONTENT_OPTS}
+              value={draft.net === "ugc" ? "ugc" : ""}
+              onPick={(v) => set("net", v === "ugc" ? "ugc" : draft.net === "ugc" ? "all" : draft.net)}
+            />
+            <small className="cf-hint">UGC é um tipo de conteúdo, não uma rede. Escolhê-lo troca a rede selecionada.</small>
+          </section>
+
+          <section className="cf-g">
             <h3>Nicho</h3>
             <label className="cf-sel">
               <span className="sr-only">Nicho</span>
@@ -553,11 +569,12 @@ interface AccountRow {
  * assim que a lista completa chega (endpoint de perfis, com cache), passa a
  * mostrar todas — a paginação do catálogo é por conta, não por pessoa.
  */
-function useAccountRows(group: CreatorGroup): AccountRow[] {
+function useAccountRows(group: CreatorGroup): { networks: AccountRow[]; ugc: boolean } {
   const { data } = useInfluencerAccounts(group.user.id);
   return useMemo(() => {
+    let rows: AccountRow[];
     if (data && data.length > 0) {
-      return [...data]
+      rows = [...data]
         .sort((a, b) => b.members - a.members)
         .map((p) => {
           const fromCatalog = group.accounts.find((a) => String(a.social_network.id) === p.id)?.social_network;
@@ -570,21 +587,24 @@ function useAccountRows(group: CreatorGroup): AccountRow[] {
             engagement: p.engagement_percent ?? fromCatalog?.engagement_percent ?? null,
           };
         });
+    } else {
+      rows = group.accounts.map(({ social_network: sn }) => ({
+        id: String(sn.id),
+        type: sn.type,
+        label: netLabel(sn),
+        username: sn.username,
+        members: sn.members,
+        engagement: sn.engagement_percent,
+      }));
     }
-    return group.accounts.map(({ social_network: sn }) => ({
-      id: String(sn.id),
-      type: sn.type,
-      label: netLabel(sn),
-      username: sn.username,
-      members: sn.members,
-      engagement: sn.engagement_percent,
-    }));
+    // UGC é tipo de conteúdo: vira uma etiqueta, não uma linha de rede social.
+    return { networks: rows.filter((r) => isSocialNetworkType(r.type)), ugc: rows.some((r) => !isSocialNetworkType(r.type)) };
   }, [data, group.accounts]);
 }
 
 function CreatorCard({ group, k, selected, near, saved, onSelect, onOpen, onInvite, onSave }: CardProps) {
   const names = group.niches.map((n) => n.name).filter((s) => s.trim().length > 0);
-  const rows = useAccountRows(group);
+  const { networks: rows, ugc } = useAccountRows(group);
   const shown = rows.slice(0, MAX_NETWORK_ROWS);
   const hidden = rows.length - shown.length;
   const stop = (fn: () => void) => (e: React.MouseEvent) => {
@@ -601,11 +621,12 @@ function CreatorCard({ group, k, selected, near, saved, onSelect, onOpen, onInvi
         <div>
           <b>{group.user.name}</b>
           <small>
-            {rows.length} {rows.length === 1 ? "rede social" : "redes sociais"}
+            {rows.length === 0 ? "Sem redes sociais" : `${rows.length} ${rows.length === 1 ? "rede social" : "redes sociais"}`}
           </small>
         </div>
       </div>
       <div className="crd-n">
+        {ugc && <span className="crd-ugc">UGC</span>}
         {names.slice(0, 2).map((n) => (
           <span key={n}>{n}</span>
         ))}
@@ -617,6 +638,7 @@ function CreatorCard({ group, k, selected, near, saved, onSelect, onOpen, onInvi
           </span>
         )}
       </div>
+      {rows.length > 0 ? (
       <ul className="crd-nw" aria-label="Redes sociais do criador">
         {shown.map((a) => (
           <li key={a.id}>
@@ -635,6 +657,7 @@ function CreatorCard({ group, k, selected, near, saved, onSelect, onOpen, onInvi
         ))}
         {hidden > 0 && <li className="crd-nm">+{hidden} {hidden === 1 ? "rede" : "redes"} no perfil</li>}
       </ul>
+      ) : null}
       <div className="crd-a">
         <button type="button" className="btn out" onClick={stop(onOpen)}>
           Ver perfil
@@ -651,7 +674,7 @@ function CreatorCard({ group, k, selected, near, saved, onSelect, onOpen, onInvi
 }
 
 function CreatorRow({ group, k, selected, near, saved, onSelect, onOpen, onInvite, onSave }: CardProps) {
-  const rows = useAccountRows(group);
+  const { networks: rows, ugc } = useAccountRows(group);
   const names = group.niches.map((n) => n.name).filter((s) => s.trim().length > 0);
   const stop = (fn: () => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -667,11 +690,11 @@ function CreatorRow({ group, k, selected, near, saved, onSelect, onOpen, onInvit
         <div>
           <b>{group.user.name}</b>
           <small>
-            {rows.length} {rows.length === 1 ? "rede social" : "redes sociais"}
+            {rows.length === 0 ? "Sem redes sociais" : `${rows.length} ${rows.length === 1 ? "rede social" : "redes sociais"}`}
           </small>
         </div>
       </div>
-      <span className="crw-n">{names.join(" · ")}</span>
+      <span className="crw-n">{[...(ugc ? ["UGC"] : []), ...names].join(" · ")}</span>
       <span className="crw-nets">
         {rows.map((a) => (
           <span key={a.id} title={`${a.label} · @${a.username} · ${fmtEngagement(a.engagement)} de engajamento`}>
@@ -868,7 +891,8 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
   }, [niches]);
 
   const optsFor = useCallback(
-    (k: FilterKey): Opt[] => (k === "niche" ? nicheOpts : STATIC_OPTS[k]),
+    (k: FilterKey): Opt[] =>
+      k === "niche" ? nicheOpts : k === "net" ? [...STATIC_OPTS.net, ["ugc", "Conteúdo UGC"]] : STATIC_OPTS[k],
     [nicheOpts],
   );
 
