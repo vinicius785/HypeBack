@@ -2321,17 +2321,72 @@
   .pv .cx-find, .pv .cx-fb, .pv .cf-pills button, .pv .cf-sel select { transition: none; }
 }
 
-/* Criadores: lista com ações visíveis (Ver perfil, Convidar, favorito) */
-.pv .crwh, .pv .crw { grid-template-columns: 30px minmax(220px, 1.6fr) minmax(140px, 1.1fr) 96px 110px 100px 310px; }
+/* Criadores: lista por criador, com redes e ações visíveis (Ver perfil, Convidar, favorito) */
+.pv .crwh, .pv .crw { grid-template-columns: 30px minmax(200px, 1.3fr) minmax(130px, 1fr) minmax(190px, 1.3fr) 90px 310px; }
 .pv .crw-a { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .pv .crw-a .btn { height: 42px; padding: 0 18px; font-size: 14px; }
-@media (max-width: 1180px) { .pv .crwh, .pv .crw { grid-template-columns: 30px minmax(180px, 1.6fr) 96px 110px 290px; } }
+.pv .crw-nets { display: flex; flex-wrap: wrap; gap: 6px; }
+.pv .crw-nets > span { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 99px; background: var(--bg); font-size: 14px; }
+.pv .crw-nets b { font-weight: 600; }
+@media (max-width: 1180px) { .pv .crwh, .pv .crw { grid-template-columns: 30px minmax(170px, 1.3fr) minmax(170px, 1.3fr) 290px; } .pv .crwh span:nth-child(3), .pv .crw-n, .pv .crwh span:nth-child(5), .pv .crw-v { display: none; } }
 @media (max-width: 900px) {
   .pv .crwh { display: none; }
-  .pv .crw { grid-template-columns: 30px minmax(0, 1fr) auto; row-gap: 12px; }
-  .pv .crw-v { display: none; }
-  .pv .crw-a { grid-column: 1 / -1; justify-content: flex-start; }
+  .pv .crw { grid-template-columns: 30px minmax(0, 1fr); row-gap: 12px; }
+  .pv .crw-nets { grid-column: 1 / -1; }
+  .pv .crw-a { grid-column: 1 / -1; justify-content: flex-start; flex-wrap: wrap; }
 }
 .pv .crw-a .btn { white-space: nowrap; }
 .pv .crw-a .btn.out { background: var(--bg); }
 .pv .crw-a .btn.out:hover { background: #e4e4e4; }
+
+/* A regra antiga `.crmap svg` (mapa de protótipo) esticava os ícones do novo estado vazio e os desenhos do Leaflet */
+.pv .cx-map .cx-mapem svg { width: 26px; height: 26px; }
+.pv .cx-map .cx-mapem .btn svg { width: 16px; height: 16px; }
+.pv .cx-map .leaflet-container svg { width: auto; height: auto; }
+.pv .cx-map .leaflet-container .leaflet-control svg { width: auto; height: auto; }
+
+/* Cartão por criador: redes sociais vinculadas */
+.pv .crd-nw { list-style: none; margin: 0; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; background: var(--bg); border-radius: 20px; }
+.pv .crd-nw li { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.pv .crd-ni { width: 30px; height: 30px; border-radius: 50%; background: #fff; display: grid; place-items: center; }
+.pv .crd-nu { min-width: 0; }
+.pv .crd-nu b, .pv .crd-nv b { display: block; font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.pv .crd-nu small { display: block; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .crd-nv { text-align: right; }
+.pv .crd-nv small { display: block; color: var(--muted); font-size: 12.5px; }
+.pv .crd-nw li.crd-nm { display: block; text-align: center; color: var(--muted); font-size: 13px; font-weight: 600; padding-top: 2px; }
+.pv .crd-h small { color: var(--muted); font-size: 14px; }
+
+/* Convite: escolher as redes do criador */
+.pv .cx-inv-t { margin: 0 0 12px; font-size: 14.5px; font-weight: 500; }
+.pv .cx-inv { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pv .cx-inv label { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 20px; background: var(--bg); cursor: pointer; }
+.pv .cx-inv label.off { opacity: .55; cursor: default; }
+.pv .cx-inv input { width: 20px; height: 20px; accent-color: var(--ink); flex: none; }
+.pv .cx-inv-i { width: 36px; height: 36px; border-radius: 50%; background: #fff; display: grid; place-items: center; flex: none; }
+.pv .cx-inv-n b { display: block; font-size: 14.5px; font-weight: 600; }
+.pv .cx-inv-n small { color: var(--muted); font-size: 14px; }
+.pv .cx-inv input:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+/* Perfil do criador: visão geral, redes sociais vinculadas e origem dos conteúdos */
+.pv .pf-note { margin: -4px 0 12px; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.pv .pf-nws { display: flex; flex-direction: column; gap: 10px; }
+.pv .pf-nw { display: flex; align-items: stretch; background: var(--bg); border-radius: 24px; box-shadow: inset 0 0 0 2px transparent; transition: box-shadow var(--dur) var(--ease), background-color var(--dur) var(--ease); }
+.pv .pf-nw.on { background: #fff; box-shadow: inset 0 0 0 2px var(--ink); }
+.pv .pf-nwb { flex: 1; min-width: 0; text-align: left; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; border-radius: 24px; }
+.pv .pf-nwb:disabled { cursor: default; }
+.pv .pf-nwh { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pv .pf-nwh b { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+.pv .pf-nwh small { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.pv .pf-nwh em { font-style: normal; font-size: 13px; font-weight: 600; background: #fff; border-radius: 99px; padding: 2px 10px; margin-left: auto; }
+.pv .pf-nw.on .pf-nwh em { background: var(--bg); }
+.pv .pf-nwm { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.pv .pf-nwm small { display: block; color: var(--muted); font-size: 13px; }
+.pv .pf-nwm b { font-size: 15px; font-weight: 600; }
+.pv .pf-nwl { width: 48px; display: grid; place-items: center; flex: none; color: var(--ink); border-radius: 0 24px 24px 0; }
+.pv .pf-nwl:hover { background: rgba(5,5,5,.06); }
+.pv .pf-nwb:focus-visible, .pv .pf-nwl:focus-visible { outline: 3px solid var(--brand); outline-offset: -3px; }
+.pv .pf-t { position: relative; }
+.pv .pf-or { position: absolute; left: 8px; top: 8px; width: 28px; height: 28px; border-radius: 50%; background: #fff; display: grid; place-items: center; z-index: 2; }
+@media (max-width: 480px) { .pv .pf-nwm { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 10px; } }
+@media (prefers-reduced-motion: reduce) { .pv .pf-nw { transition: none; } }

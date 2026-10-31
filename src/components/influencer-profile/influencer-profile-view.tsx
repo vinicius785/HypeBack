@@ -14,12 +14,6 @@ const NETWORK_LABEL: Record<string, string> = {
   youtube: "YouTube",
 };
 
-const PROFILE_LINK_LABEL: Record<string, string> = {
-  instagram: "Ver no Instagram",
-  tiktok: "Ver no TikTok",
-  youtube: "Ver no YouTube",
-};
-
 const TILE_COLORS = ["#e9d3fd", "#dcdcdc", "#cfcfcf", "#f0e1fe", "#d9d9d9", "#e3c4fc"];
 
 function networkTypeToMetricsTab(type: string): (typeof METRIC_NETWORKS)[number] | null {
@@ -45,6 +39,26 @@ function socialNetworkUrl(type: string, username: string): string | null {
     case "youtube": return `https://www.youtube.com/@${u}`;
     default: return null;
   }
+}
+
+/** Plataforma de um conteúdo, deduzida do domínio do link (a API não informa a rede). */
+function networkFromUrl(url: string | null | undefined): "instagram" | "tiktok" | "youtube" | null {
+  if (!url) return null;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host.includes("instagram.com")) return "instagram";
+    if (host.includes("tiktok.com")) return "tiktok";
+    if (host.includes("youtube.com") || host.includes("youtu.be")) return "youtube";
+  } catch {
+    // link inválido: sem plataforma
+  }
+  return null;
+}
+
+/** Texto de situação vindo da API (`status`), em formato legível. */
+function prettyStatus(status: string): string {
+  const t = status.replace(/_/g, " ").trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
 function formatCampaignDate(dateStr: string | null | undefined): string {
@@ -140,7 +154,6 @@ export function InfluencerProfileView({
 
   const influencer = data.influencer;
   const name = influencer?.name ?? "Influenciador";
-  const firstName = name.split(" ")[0];
 
   const nicheName = influencer?.niche_name ?? null;
   const subNicheNames = influencer?.sub_niche_names ?? [];
@@ -178,24 +191,59 @@ export function InfluencerProfileView({
   const activeSN = !isExternal && activeTab
     ? (influencer.social_networks ?? []).find((sn) => sn.type?.toLowerCase() === activeTab)
     : null;
-  const activeExtProfile = isExternal && activeTab
-    ? preRegisteredProfiles.find((p) => (p.network ?? "").toLowerCase() === activeTab)
-    : null;
   // A API devolve `avatar` vazio; a foto vem do perfil na rede (como na lista).
   const avatarSrc =
     activeSN?.photo ||
     influencer.avatar ||
     (influencer.social_networks ?? []).find((sn) => sn.photo)?.photo ||
     undefined;
-  const username = activeSN?.username?.replace(/^@/, "") ?? null;
-  const profileUrl = username && activeTab
-    ? socialNetworkUrl(activeTab, username)
-    : (activeExtProfile?.profile_url ?? null);
 
-  const tabMetrics = activeTab
-    ? data?.metrics_by_network?.[activeTab]
-    : null;
-  const followersLabel = activeTab === "youtube" ? "Inscritos" : "Seguidores";
+  // Contas vinculadas ao criador, cada uma com as métricas da própria rede.
+  const accountCards = (!isExternal
+    ? (influencer.social_networks ?? []).map((sn) => {
+        const type = (sn.type ?? "").toLowerCase();
+        const m = data?.metrics_by_network?.[type];
+        const user = (sn.username ?? "").replace(/^@/, "");
+        return {
+          key: String(sn.id),
+          type,
+          label: NETWORK_LABEL[type] ?? (sn.name || sn.type),
+          username: user,
+          url: user ? socialNetworkUrl(type, user) : null,
+          followers: m?.followers ?? sn.members,
+          likes: m?.likes,
+          reach: m?.average_reach,
+          engagement: m?.engagement_percent,
+          status: sn.status,
+        };
+      })
+    : preRegisteredProfiles.map((p) => {
+        const type = (p.network ?? "").toLowerCase();
+        return {
+          key: type,
+          type,
+          label: NETWORK_LABEL[type] ?? p.network,
+          username: "",
+          url: p.profile_url ?? null,
+          followers: undefined as number | undefined,
+          likes: undefined as number | undefined,
+          reach: undefined as number | undefined,
+          engagement: undefined as number | undefined,
+          status: undefined as string | undefined,
+        };
+      })
+  )
+    .filter((a) => a.type)
+    // Maior audiência primeiro (mesma ordem dos cartões da listagem).
+    .sort((a, b) => (b.followers ?? -1) - (a.followers ?? -1));
+
+  // Ao abrir o perfil, a rede selecionada é a de maior audiência.
+  const firstSelectable = accountCards.map((a) => networkTypeToMetricsTab(a.type)).find(Boolean) ?? null;
+  const creatorId = influencer?.id;
+  useEffect(() => {
+    if (firstSelectable) setMetricsTab(firstSelectable);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [creatorId]);
 
   const locationLabel =
     influencer?.location && typeof influencer.location === "object"
@@ -299,14 +347,6 @@ export function InfluencerProfileView({
     g.items.some((i) => i.value != null && i.value !== "—"),
   );
 
-  const stat = (label: string, value: string, sub?: string) => (
-    <div className="pf-st" key={label}>
-      <small>{label}</small>
-      <b>{value}</b>
-      {sub ? <em>{sub}</em> : null}
-    </div>
-  );
-
   const shipping = influencer.shipping_address;
   const showContact = showContactData && (influencer.email || influencer.phone);
   const showShipping = showContactData && shipping;
@@ -321,14 +361,14 @@ export function InfluencerProfileView({
               <I n="verified" cls="sm" />
               {isExternal ? <em className="ext">Externo</em> : null}
             </h2>
-            {username ? <p className="pf-hn">@{username}</p> : null}
+            {influencer.app_username ? <p className="pf-hn">@{influencer.app_username}</p> : null}
             <div className="pf-mt">
-              {activeTab ? (
-                <span>
-                  <I n={activeTab} cls="sm" />
-                  {NETWORK_LABEL[activeTab]}
+              {tabs.map((t) => (
+                <span key={t}>
+                  <I n={t} cls="sm" />
+                  {NETWORK_LABEL[t]}
                 </span>
-              ) : null}
+              ))}
               {locationLabel ? (
                 <span>
                   <I n="flag" cls="sm" />
@@ -340,14 +380,6 @@ export function InfluencerProfileView({
                   <I n="star" cls="sm" />
                   <b>{ratingLabel}</b>
                   <em>· Hypeapp</em>
-                </span>
-              ) : null}
-              {profileUrl && activeTab ? (
-                <span>
-                  <I n="link" cls="sm" />
-                  <a href={profileUrl} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600 }}>
-                    {PROFILE_LINK_LABEL[activeTab] ?? "Ver perfil"}
-                  </a>
                 </span>
               ) : null}
             </div>
@@ -367,45 +399,92 @@ export function InfluencerProfileView({
           {influencer.bio || (activeSN as { bio?: string | null } | null | undefined)?.bio || "Nenhuma descrição informada."}
         </p>
 
-        {tabs.length > 1 ? (
-          <div className="gtabs" style={{ marginBottom: 14 }}>
-            {tabs.map((t) => (
-              <button
-                key={t}
-                type="button"
-                className={t === activeTab ? "on" : ""}
-                onClick={() => {
-                  const m = networkTypeToMetricsTab(t);
-                  if (m) setMetricsTab(m);
-                }}
-              >
-                <I n={t} cls="sm" />
-                {NETWORK_LABEL[t]}
-              </button>
-            ))}
-          </div>
+        {!isExternal ? (
+          <section className="pf-s">
+            <h3>Visão geral do criador</h3>
+            <p className="pf-note">Números do criador na HypeApp, somando todas as redes dele. As métricas de audiência ficam em cada rede.</p>
+            <div className="pf-tf">
+              <div>
+                <small>Campanhas no Hypeapp</small>
+                <b>{campaignsParticipated}</b>
+              </div>
+              <div>
+                <small>Publicações no Hypeapp</small>
+                <b>{totalPosts}</b>
+              </div>
+              <div>
+                <small>Índice de confiança</small>
+                <b>{trustIndex != null ? `${trustIndex}% de audiência real` : "Em análise"}</b>
+              </div>
+            </div>
+          </section>
         ) : null}
 
-        <div className="pf-g4">
-          {stat(
-            followersLabel,
-            tabMetrics?.followers != null ? formatCompact(tabMetrics.followers) : "—",
-          )}
-          {stat("Curtidas", metrics?.likes != null ? formatCompact(metrics.likes) : "—")}
-          {stat(
-            "Alcance médio",
-            metrics?.average_reach ? formatCompact(metrics.average_reach) : "—",
-          )}
-          {stat(
-            "Engajamento",
-            tabMetrics?.engagement_percent != null ? `${tabMetrics.engagement_percent}%` : "—",
-          )}
-        </div>
+        {accountCards.length > 0 ? (
+          <section className="pf-s">
+            <div className="pf-sh">
+              <h3>Redes sociais</h3>
+              <small className="pf-gl">
+                {accountCards.length} {accountCards.length === 1 ? "conta vinculada" : "contas vinculadas"}
+              </small>
+            </div>
+            <div className="pf-nws">
+              {accountCards.map((a) => {
+                const tab = networkTypeToMetricsTab(a.type);
+                const selectable = !!tab && !isExternal;
+                const on = a.type === activeTab;
+                return (
+                  <div key={a.key} className={`pf-nw${on ? " on" : ""}`}>
+                    <button
+                      type="button"
+                      className="pf-nwb"
+                      aria-pressed={selectable ? on : undefined}
+                      disabled={!selectable}
+                      onClick={() => tab && setMetricsTab(tab)}
+                    >
+                      <span className="pf-nwh">
+                        <I n={a.type} cls="sm" />
+                        <b>{a.label}</b>
+                        {a.username ? <small>@{a.username}</small> : null}
+                        {a.status ? <em>{prettyStatus(a.status)}</em> : null}
+                      </span>
+                      {!isExternal ? (
+                        <span className="pf-nwm">
+                          <span>
+                            <small>{a.type === "youtube" ? "Inscritos" : "Seguidores"}</small>
+                            <b>{a.followers != null ? formatCompact(a.followers) : "—"}</b>
+                          </span>
+                          <span>
+                            <small>Curtidas</small>
+                            <b>{a.likes != null ? formatCompact(a.likes) : "—"}</b>
+                          </span>
+                          <span>
+                            <small>Alcance médio</small>
+                            <b>{a.reach ? formatCompact(a.reach) : "—"}</b>
+                          </span>
+                          <span>
+                            <small>Engajamento</small>
+                            <b>{a.engagement != null ? `${a.engagement}%` : "—"}</b>
+                          </span>
+                        </span>
+                      ) : null}
+                    </button>
+                    {a.url ? (
+                      <a className="pf-nwl" href={a.url} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${a.label} em nova aba`}>
+                        <I n="link" cls="sm" />
+                      </a>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
 
         {!isExternal && (visibleGranular.length > 0 || onMetricsPostsChange) ? (
           <section className="pf-s">
             <div className="pf-sh">
-              <h3>Métricas</h3>
+              <h3>Métricas{activeTab ? ` · ${NETWORK_LABEL[activeTab]}` : ""}</h3>
               {onMetricsPostsChange ? (
                 <div className="gtabs" aria-label="Posts analisados">
                   {[10, 30].map((n) => (
@@ -439,7 +518,7 @@ export function InfluencerProfileView({
 
         {!isExternal && (hasGender || hasAge) ? (
           <section className="pf-s">
-            <h3>Audiência</h3>
+            <h3>Audiência{activeTab ? ` · ${NETWORK_LABEL[activeTab]}` : ""}</h3>
             <div className={`pf-au ${hasGender && hasAge ? "" : "one"}`}>
               {hasGender ? (
                 <div className="pf-gn">
@@ -483,6 +562,7 @@ export function InfluencerProfileView({
 
         <section className="pf-s">
           <h3>Conteúdos recentes</h3>
+          <p className="pf-note">Publicações de todas as redes, com a plataforma de origem.</p>
           {topContents.length > 0 ? (
             <div className="pf-gr">
               {topContents.slice(0, 6).map((c, k) => {
@@ -494,8 +574,15 @@ export function InfluencerProfileView({
                     ? { backgroundImage: `url("${thumb}")`, backgroundSize: "cover", backgroundPosition: "center" }
                     : {}),
                 } as React.CSSProperties;
+                const origin = networkFromUrl(c.post_url);
                 const inner = (
                   <>
+                    {origin ? (
+                      <span className="pf-or" title={NETWORK_LABEL[origin]}>
+                        <I n={origin} cls="sm" />
+                        <em className="sr-only">{NETWORK_LABEL[origin]}</em>
+                      </span>
+                    ) : null}
                     {isVideo || !thumb ? (
                       <span>
                         <I n={isVideo ? "video" : "image"} cls="sm" />
@@ -532,6 +619,7 @@ export function InfluencerProfileView({
 
         <section className="pf-s">
           <h3>Histórico de campanhas</h3>
+          <p className="pf-note">Todas as campanhas do criador, sem repetir por rede social.</p>
           {hypeappCampaigns.length > 0 ? (
             <div className="pf-hs">
               {hypeappCampaigns.map((c) => {
@@ -596,26 +684,6 @@ export function InfluencerProfileView({
             </div>
           )}
         </section>
-
-        {!isExternal ? (
-          <section className="pf-s">
-            <h3>Trabalhando com {firstName}</h3>
-            <div className="pf-tf">
-              <div>
-                <small>Campanhas no Hypeapp</small>
-                <b>{campaignsParticipated}</b>
-              </div>
-              <div>
-                <small>Publicações no Hypeapp</small>
-                <b>{totalPosts}</b>
-              </div>
-              <div>
-                <small>Índice de confiança</small>
-                <b>{trustIndex != null ? `${trustIndex}% de audiência real` : "Em análise"}</b>
-              </div>
-            </div>
-          </section>
-        ) : null}
 
         {showContact ? (
           <section className="pf-s">

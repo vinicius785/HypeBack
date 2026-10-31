@@ -22,10 +22,14 @@ import {
   useAddToInfluencerList,
   useRemoveFromInfluencerList,
 } from "@/hooks/use-creators-catalog";
+import { useInfluencerAccounts } from "@/hooks/use-influencer-accounts";
+import { InviteNetworksModal } from "@/components/influencer-lists/invite-networks-modal";
+import { groupCreators, type CreatorGroup } from "@/shared/utils/group-creators";
 import type {
   CatalogItem,
   CatalogOrderBy,
   CatalogOrderDir,
+  CatalogSocialNetwork,
 } from "@/shared/services/creators-catalog";
 import type { Niche } from "@/shared/types";
 
@@ -509,7 +513,7 @@ function FiltersDrawer({
 // ---------------------------------------------------------------------------
 
 interface CardProps {
-  item: CatalogItem;
+  group: CreatorGroup;
   k: number;
   selected: boolean;
   near: boolean;
@@ -527,24 +531,77 @@ const NET_LABEL: Record<string, string> = {
   ugc: "UGC",
 };
 
-function CreatorCard({ item, k, selected, near, saved, onSelect, onOpen, onInvite, onSave }: CardProps) {
-  const sn = item.social_network;
-  const names = item.niches.map((n) => n.name).filter((s) => s.trim().length > 0);
+const netLabel = (sn: CatalogSocialNetwork) => NET_LABEL[sn.type] ?? (sn.name || sn.type || "Rede");
+
+/** Foto do criador: a do usuário, ou a da primeira conta de rede que tiver uma. */
+const groupPhoto = (g: CreatorGroup) =>
+  g.user.photo ?? g.accounts.find((a) => a.social_network.photo)?.social_network.photo ?? undefined;
+
+const MAX_NETWORK_ROWS = 3;
+
+interface AccountRow {
+  id: string;
+  type: string;
+  label: string;
+  username: string;
+  members: number;
+  engagement: number | null;
+}
+
+/**
+ * Contas do criador para o cartão. Começa com as que o catálogo já trouxe e,
+ * assim que a lista completa chega (endpoint de perfis, com cache), passa a
+ * mostrar todas — a paginação do catálogo é por conta, não por pessoa.
+ */
+function useAccountRows(group: CreatorGroup): AccountRow[] {
+  const { data } = useInfluencerAccounts(group.user.id);
+  return useMemo(() => {
+    if (data && data.length > 0) {
+      return [...data]
+        .sort((a, b) => b.members - a.members)
+        .map((p) => {
+          const fromCatalog = group.accounts.find((a) => String(a.social_network.id) === p.id)?.social_network;
+          return {
+            id: p.id,
+            type: p.type.toLowerCase(),
+            label: NET_LABEL[p.type.toLowerCase()] ?? (p.type_label || p.type),
+            username: p.username,
+            members: p.members || fromCatalog?.members || 0,
+            engagement: p.engagement_percent ?? fromCatalog?.engagement_percent ?? null,
+          };
+        });
+    }
+    return group.accounts.map(({ social_network: sn }) => ({
+      id: String(sn.id),
+      type: sn.type,
+      label: netLabel(sn),
+      username: sn.username,
+      members: sn.members,
+      engagement: sn.engagement_percent,
+    }));
+  }, [data, group.accounts]);
+}
+
+function CreatorCard({ group, k, selected, near, saved, onSelect, onOpen, onInvite, onSave }: CardProps) {
+  const names = group.niches.map((n) => n.name).filter((s) => s.trim().length > 0);
+  const rows = useAccountRows(group);
+  const shown = rows.slice(0, MAX_NETWORK_ROWS);
+  const hidden = rows.length - shown.length;
   const stop = (fn: () => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
     fn();
   };
   return (
     <article className={`crd ${selected ? "sel" : ""}`} style={{ "--k": Math.min(k, 14) } as React.CSSProperties} onClick={onOpen}>
-      <button type="button" className={`crd-ck ${selected ? "on" : ""}`} aria-label={`Selecionar ${item.user.name}`} aria-pressed={selected} onClick={stop(onSelect)}>
+      <button type="button" className={`crd-ck ${selected ? "on" : ""}`} aria-label={`Selecionar ${group.user.name}`} aria-pressed={selected} onClick={stop(onSelect)}>
         <I n="check" cls="sm" />
       </button>
       <div className="crd-h">
-        <Av name={item.user.name} src={sn.photo ?? item.user.photo ?? undefined} size={60} />
+        <Av name={group.user.name} src={groupPhoto(group)} size={60} />
         <div>
-          <b>{item.user.name}</b>
+          <b>{group.user.name}</b>
           <small>
-            @{sn.username} · <I n={NET_ICON[sn.type] ?? "video"} cls="sm" />
+            {rows.length} {rows.length === 1 ? "rede social" : "redes sociais"}
           </small>
         </div>
       </div>
@@ -553,27 +610,31 @@ function CreatorCard({ item, k, selected, near, saved, onSelect, onOpen, onInvit
           <span key={n}>{n}</span>
         ))}
         {names.length > 2 && <span>+{names.length - 2}</span>}
-        {near && item.distance_km != null && (
+        {near && group.distance_km != null && (
           <span className="crd-d">
             <I n="flag" cls="sm" />
-            {fmtDistance(item.distance_km)}
+            {fmtDistance(group.distance_km)}
           </span>
         )}
       </div>
-      <div className="crd-s">
-        <div>
-          <small>Seguidores</small>
-          <b>{fmtFollowers(sn.members)}</b>
-        </div>
-        <div>
-          <small>Engajamento</small>
-          <b>{fmtEngagement(sn.engagement_percent)}</b>
-        </div>
-        <div>
-          <small>Rede</small>
-          <b>{NET_LABEL[sn.type] ?? (sn.name || sn.type || "—")}</b>
-        </div>
-      </div>
+      <ul className="crd-nw" aria-label="Redes sociais do criador">
+        {shown.map((a) => (
+          <li key={a.id}>
+            <span className="crd-ni" title={a.label}>
+              <I n={NET_ICON[a.type] ?? "video"} cls="sm" />
+            </span>
+            <span className="crd-nu">
+              <b>{a.label}</b>
+              <small>@{a.username}</small>
+            </span>
+            <span className="crd-nv">
+              <b>{fmtFollowers(a.members)}</b>
+              <small>{fmtEngagement(a.engagement)} eng.</small>
+            </span>
+          </li>
+        ))}
+        {hidden > 0 && <li className="crd-nm">+{hidden} {hidden === 1 ? "rede" : "redes"} no perfil</li>}
+      </ul>
       <div className="crd-a">
         <button type="button" className="btn out" onClick={stop(onOpen)}>
           Ver perfil
@@ -589,40 +650,40 @@ function CreatorCard({ item, k, selected, near, saved, onSelect, onOpen, onInvit
   );
 }
 
-function CreatorRow({ item, k, selected, near, saved, onSelect, onOpen, onInvite, onSave }: CardProps) {
-  const sn = item.social_network;
-  const names = item.niches.map((n) => n.name).filter((s) => s.trim().length > 0);
+function CreatorRow({ group, k, selected, near, saved, onSelect, onOpen, onInvite, onSave }: CardProps) {
+  const rows = useAccountRows(group);
+  const names = group.niches.map((n) => n.name).filter((s) => s.trim().length > 0);
   const stop = (fn: () => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
     fn();
   };
   return (
     <div className={`crw ${selected ? "sel" : ""}`} style={{ "--k": Math.min(k, 14) } as React.CSSProperties} onClick={onOpen}>
-      <button type="button" className={`crd-ck ${selected ? "on" : ""}`} aria-label={`Selecionar ${item.user.name}`} onClick={stop(onSelect)}>
+      <button type="button" className={`crd-ck ${selected ? "on" : ""}`} aria-label={`Selecionar ${group.user.name}`} aria-pressed={selected} onClick={stop(onSelect)}>
         <I n="check" cls="sm" />
       </button>
       <div className="crw-i">
-        <Av name={item.user.name} src={sn.photo ?? item.user.photo ?? undefined} size={44} />
+        <Av name={group.user.name} src={groupPhoto(group)} size={44} />
         <div>
-          <b>{item.user.name}</b>
+          <b>{group.user.name}</b>
           <small>
-            @{sn.username} · <I n={NET_ICON[sn.type] ?? "video"} cls="sm" />
+            {rows.length} {rows.length === 1 ? "rede social" : "redes sociais"}
           </small>
         </div>
       </div>
       <span className="crw-n">{names.join(" · ")}</span>
-      <span className="crw-v">
-        <b>{fmtFollowers(sn.members)}</b>
-        <small>seguidores</small>
+      <span className="crw-nets">
+        {rows.map((a) => (
+          <span key={a.id} title={`${a.label} · @${a.username} · ${fmtEngagement(a.engagement)} de engajamento`}>
+            <I n={NET_ICON[a.type] ?? "video"} cls="sm" />
+            <b>{fmtFollowers(a.members)}</b>
+          </span>
+        ))}
       </span>
       <span className="crw-v">
-        <b>{fmtEngagement(sn.engagement_percent)}</b>
-        <small>engajamento</small>
-      </span>
-      <span className="crw-v">
-        {near && item.distance_km != null ? (
+        {near && group.distance_km != null ? (
           <>
-            <b>{fmtDistance(item.distance_km)}</b>
+            <b>{fmtDistance(group.distance_km)}</b>
             <small>de você</small>
           </>
         ) : null}
@@ -727,7 +788,10 @@ interface SelectedForList {
 interface InviteTarget {
   userId: number;
   name: string;
-  profileId: string;
+  /** Contas já carregadas do criador (reserva do seletor de redes). */
+  accounts: CatalogItem[];
+  /** Contas escolhidas para o convite; ausente = ainda vai perguntar. */
+  profileIds?: string[];
 }
 
 function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
@@ -808,18 +872,29 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
     [nicheOpts],
   );
 
-  const allItems = useMemo(() => data?.pages.flatMap((p) => p.items) ?? [], [data]);
+  // O catálogo vem por conta de rede social; a tela mostra pessoas (agrupadas
+  // por `user.id`, o vínculo que a API já informa).
+  const accountItems = useMemo(() => data?.pages.flatMap((p) => p.items) ?? [], [data]);
+  const creators = useMemo(() => groupCreators(accountItems), [accountItems]);
 
-  // Criadores com localização aproximada — plotáveis no mapa.
-  const nearMeLocatedCount = useMemo(
-    () => allItems.filter((i) => i.approx_location).length,
-    [allItems],
+  // Um item por criador no mapa (a conta com localização aproximada).
+  const mapItems = useMemo(
+    () =>
+      creators.map((c) => ({
+        ...(c.accounts.find((a) => a.approx_location) ?? c.accounts[0]),
+        distance_km: c.distance_km,
+      })),
+    [creators],
   );
+  const nearMeLocatedCount = useMemo(() => mapItems.filter((i) => i.approx_location).length, [mapItems]);
 
-  const total = data?.pages[0]?.total;
+  // `total` da API conta contas de rede social, não pessoas. O número de
+  // criadores só é exato quando todas as páginas já foram carregadas.
+  const accountsTotal = data?.pages[0]?.total;
+  const creatorsExact = !isLoading && !hasNextPage;
   useEffect(() => {
-    onTotal(total);
-  }, [total, onTotal]);
+    onTotal(creatorsExact ? creators.length : undefined);
+  }, [creatorsExact, creators.length, onTotal]);
 
   const handleLoadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
@@ -879,26 +954,24 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
   const activeKeys = FILTER_KEYS.filter((k) => filters[k] && filters[k] !== "all");
   const nearOn = !!nearMeLocation;
   const activeCount = activeKeys.length + (nearOn ? 1 : 0);
-  const selectedItems = allItems.filter((i) => selected.has(String(i.social_network.id)));
+  const selectedCreators = creators.filter((c) => selected.has(c.key));
   const sortActive = !!filters.sort;
   const sortLabel = SORT_OPTIONS.find((s) => s[0] === filters.sort)?.[1] ?? "Relevância";
   const searching = !!debouncedQ;
 
-  const renderItem = (item: CatalogItem, k: number) => {
-    const key = String(item.social_network.id);
+  const renderItem = (group: CreatorGroup, k: number) => {
     const props: CardProps = {
-      item,
+      group,
       k,
-      selected: selected.has(key),
+      selected: selected.has(group.key),
       near: nearOn,
-      saved: (membershipMap.get(item.user.id) ?? []).length > 0,
-      onSelect: () => toggleSel(key),
-      onOpen: () => openProfile(item.user.id),
-      onInvite: () =>
-        setInviteTarget({ userId: item.user.id, name: item.user.name, profileId: key }),
-      onSave: () => setSelectedForList({ userId: item.user.id, name: item.user.name }),
+      saved: (membershipMap.get(group.user.id) ?? []).length > 0,
+      onSelect: () => toggleSel(group.key),
+      onOpen: () => openProfile(group.user.id),
+      onInvite: () => setInviteTarget({ userId: group.user.id, name: group.user.name, accounts: group.accounts }),
+      onSave: () => setSelectedForList({ userId: group.user.id, name: group.user.name }),
     };
-    return view === "list" ? <CreatorRow key={key} {...props} /> : <CreatorCard key={key} {...props} />;
+    return view === "list" ? <CreatorRow key={group.key} {...props} /> : <CreatorCard key={group.key} {...props} />;
   };
 
   const VIEWS: Array<["grid" | "list" | "map", string, string]> = [
@@ -1010,10 +1083,15 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
           {!isLoading && (
             <div className="cx-res" aria-live="polite">
               <h2>
-                {total ?? allItems.length} {(total ?? allItems.length) === 1 ? "criador encontrado" : "criadores encontrados"}
+                {creators.length}{" "}
+                {creatorsExact
+                  ? creators.length === 1 ? "criador encontrado" : "criadores encontrados"
+                  : creators.length === 1 ? "criador carregado" : "criadores carregados"}
               </h2>
               <small>
-                Mostrando {allItems.length}
+                {accountsTotal != null
+                  ? `${accountsTotal} ${accountsTotal === 1 ? "conta de rede social corresponde" : "contas de rede social correspondem"} à busca · cada criador aparece uma vez`
+                  : "Cada criador aparece uma vez"}
                 {nearOn ? ` · num raio de ${radiusKm} km da sua localização` : ""}
                 {activeKeys.length > 0 ? ` · ${activeKeys.length} ${activeKeys.length === 1 ? "filtro aplicado" : "filtros aplicados"}` : ""}
                 {searching ? ` · busca “${debouncedQ}”` : ""}
@@ -1046,7 +1124,7 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
                     <Suspense fallback={<div style={{ height: 420, background: "var(--bg)" }} />}>
                       <NearMeMap
                         origin={{ lat: nearMeLocation.lat, lng: nearMeLocation.lng, radiusKm }}
-                        items={allItems}
+                        items={mapItems}
                         onViewProfile={openProfile}
                         heightClass="h-[min(560px,62vh)]"
                       />
@@ -1062,11 +1140,11 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
                   <div className="crmap-b">
                     <div>
                       <b>
-                        {isLoading ? "Buscando criadores…" : `${nearMeLocatedCount} no mapa`}
+                        {isLoading ? "Buscando criadores…" : `${nearMeLocatedCount} ${nearMeLocatedCount === 1 ? "criador no mapa" : "criadores no mapa"}`}
                       </b>
                       <small>
                         Raio de busca a partir da sua localização
-                        {!isLoading && total != null && total > allItems.length ? ` · ${allItems.length} de ${total} carregados` : ""}
+                        {!isLoading && hasNextPage ? " · há mais criadores para carregar" : ""}
                       </small>
                     </div>
                     <div className="n4tm crmap-r" role="group" aria-label="Raio de busca">
@@ -1093,7 +1171,7 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
                 <CardSkeleton key={i} k={i} />
               ))}
             </div>
-          ) : allItems.length === 0 ? (
+          ) : creators.length === 0 ? (
             <div className="ov-empty big lvx-em cre">
               <span>
                 <I n="search" />
@@ -1105,19 +1183,18 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
               </button>
             </div>
           ) : view === "grid" ? (
-            <div className="crg">{allItems.map(renderItem)}</div>
+            <div className="crg">{creators.map(renderItem)}</div>
           ) : (
             <div className="crwl">
               <div className="crwh">
                 <span />
                 <span>Criador</span>
                 <span>Nichos</span>
-                <span>Seguidores</span>
-                <span>Engajamento</span>
+                <span>Redes</span>
                 <span>{nearOn ? "Distância" : ""}</span>
                 <span />
               </div>
-              {allItems.map(renderItem)}
+              {creators.map(renderItem)}
             </div>
           )}
 
@@ -1137,15 +1214,15 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
               <I n="heart" cls="sm" />
               Salvar em lista
             </button>
-            {selectedItems.length === 1 && (
+            {selectedCreators.length === 1 && (
               <button
                 type="button"
                 className="btn"
                 onClick={() =>
                   setInviteTarget({
-                    userId: selectedItems[0].user.id,
-                    name: selectedItems[0].user.name,
-                    profileId: String(selectedItems[0].social_network.id),
+                    userId: selectedCreators[0].user.id,
+                    name: selectedCreators[0].user.name,
+                    accounts: selectedCreators[0].accounts,
                   })
                 }
               >
@@ -1187,16 +1264,31 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
       )}
       {bulkSave && (
         <BulkSaveModal
-          userIds={Array.from(new Set(selectedItems.map((i) => i.user.id)))}
+          userIds={selectedCreators.map((c) => c.user.id)}
           onClose={() => setBulkSave(false)}
         />
       )}
-      {inviteTarget && (
+      {inviteTarget && !inviteTarget.profileIds && (
+        <InviteNetworksModal
+          userId={inviteTarget.userId}
+          name={inviteTarget.name}
+          known={inviteTarget.accounts.map(({ social_network: sn }) => ({
+            id: String(sn.id),
+            type: sn.type,
+            label: netLabel(sn),
+            username: sn.username,
+            members: sn.members,
+          }))}
+          onConfirm={(profileIds) => setInviteTarget((t) => (t ? { ...t, profileIds } : t))}
+          onClose={() => setInviteTarget(null)}
+        />
+      )}
+      {inviteTarget && inviteTarget.profileIds && (
         <CampaignPickerModal
           mode="invite"
           influencerId={String(inviteTarget.userId)}
           influencerName={inviteTarget.name}
-          profileIds={[inviteTarget.profileId]}
+          profileIds={inviteTarget.profileIds}
           onClose={() => setInviteTarget(null)}
         />
       )}
