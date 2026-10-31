@@ -888,9 +888,8 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
   );
   const nearMeLocatedCount = useMemo(() => mapItems.filter((i) => i.approx_location).length, [mapItems]);
 
-  // `total` da API conta contas de rede social, não pessoas. O número de
-  // criadores só é exato quando todas as páginas já foram carregadas.
-  const accountsTotal = data?.pages[0]?.total;
+  // O número de criadores só é exato quando todas as páginas já foram carregadas
+  // (a API conta contas de rede social, não pessoas).
   const creatorsExact = !isLoading && !hasNextPage;
   useEffect(() => {
     onTotal(creatorsExact ? creators.length : undefined);
@@ -958,6 +957,15 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
   const sortActive = !!filters.sort;
   const sortLabel = SORT_OPTIONS.find((s) => s[0] === filters.sort)?.[1] ?? "Relevância";
   const searching = !!debouncedQ;
+  // Sem contagem de resultados: o catálogo pagina por conta de rede social, então
+  // qualquer número seria de contas ou de criadores parcialmente carregados.
+  const contextLine = [
+    nearOn ? `Num raio de ${radiusKm} km da sua localização` : "",
+    activeKeys.length > 0 ? `${activeKeys.length} ${activeKeys.length === 1 ? "filtro aplicado" : "filtros aplicados"}` : "",
+    searching ? `Busca por “${debouncedQ}”` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   const renderItem = (group: CreatorGroup, k: number) => {
     const props: CardProps = {
@@ -1080,23 +1088,10 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
         )}
 
         <div id="crres" className="fade">
-          {!isLoading && (
-            <div className="cx-res" aria-live="polite">
-              <h2>
-                {creators.length}{" "}
-                {creatorsExact
-                  ? creators.length === 1 ? "criador encontrado" : "criadores encontrados"
-                  : creators.length === 1 ? "criador carregado" : "criadores carregados"}
-              </h2>
-              <small>
-                {accountsTotal != null
-                  ? `${accountsTotal} ${accountsTotal === 1 ? "conta de rede social corresponde" : "contas de rede social correspondem"} à busca · cada criador aparece uma vez`
-                  : "Cada criador aparece uma vez"}
-                {nearOn ? ` · num raio de ${radiusKm} km da sua localização` : ""}
-                {activeKeys.length > 0 ? ` · ${activeKeys.length} ${activeKeys.length === 1 ? "filtro aplicado" : "filtros aplicados"}` : ""}
-                {searching ? ` · busca “${debouncedQ}”` : ""}
-              </small>
-            </div>
+          {!isLoading && contextLine && (
+            <p className="cx-res" aria-live="polite">
+              {contextLine}
+            </p>
           )}
 
           {view === "map" ? (
@@ -1144,7 +1139,6 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
                       </b>
                       <small>
                         Raio de busca a partir da sua localização
-                        {!isLoading && hasNextPage ? " · há mais criadores para carregar" : ""}
                       </small>
                     </div>
                     <div className="n4tm crmap-r" role="group" aria-label="Raio de busca">
