@@ -59,6 +59,14 @@ const CHANNEL_SHORT: Record<AdminNotificationChannel, string> = {
 
 const fmt = (n: number) => n.toLocaleString("pt-BR");
 
+/** "43 leram no app (36%)": só aparece quando o comunicado gerou itens no sino dos criadores. */
+export function inAppSummary(stats: AdminNotificationListItem["stats"]): string {
+  const inApp = stats?.in_app;
+  if (!inApp || inApp.total <= 0) return "";
+  const pct = Math.round((inApp.read / inApp.total) * 100);
+  return `${fmt(inApp.read)} ${inApp.read === 1 ? "leu" : "leram"} no app (${pct}%)`;
+}
+
 function dateLabel(iso: string | null, withTime = true): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -210,6 +218,7 @@ export function AdminNotificationList({
     <div className="ntx-ls">
       {items.map((n, k) => {
         const w = whenOf(n);
+        const read = inAppSummary(n.stats);
         const total = n.stats?.total_recipients;
         const chans = n.channels.map((c) => CHANNEL_SHORT[c]).join(", ");
         return (
@@ -235,6 +244,7 @@ export function AdminNotificationList({
             <div className="ntx-w">
               <b>{w.main}</b>
               <small>{w.sub}</small>
+              {read && <small>{read}</small>}
             </div>
             <span className={`hdx-s ${STATUS_CHIP[n.status]}`}>
               <i />

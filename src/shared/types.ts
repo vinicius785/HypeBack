@@ -204,6 +204,11 @@ export interface AdminNotificationListItem {
     total_recipients: number;
     delivered: number;
     failed: number;
+    /**
+     * Quem leu no app. O push também cria um item no sino de cada destinatário: `total` = itens criados,
+     * `read` = os já lidos (inclui "Marcar todas como lidas"). Ausente quando o canal push não foi usado.
+     */
+    in_app?: { total: number; read: number };
   };
 }
 
