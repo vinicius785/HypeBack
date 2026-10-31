@@ -950,10 +950,19 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
     setFilters((prev) => ({ ...prev, [key]: value }));
   }
 
-  /** Remove todos os critérios (mantém a ordenação escolhida e a visualização). */
+  /**
+   * O mapa só existe com "Perto de mim". Ao tirar o filtro estando nele, volta para os cartões
+   * em vez de cair no convite para usar a localização (que a pessoa acabou de remover).
+   */
+  function removeNearMe() {
+    setNearMeLocation(null);
+    setView((v) => (v === "map" ? "grid" : v));
+  }
+
+  /** Remove todos os critérios (mantém a ordenação escolhida e a visualização, exceto o mapa). */
   function clearCriteria() {
     setFilters((prev) => ({ ...EMPTY_FILTERS, sort: prev.sort }));
-    setNearMeLocation(null);
+    if (nearMeLocation) removeNearMe();
     setRadiusKm(DEFAULT_RADIUS_KM);
   }
 
@@ -970,7 +979,8 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
 
   const applyDraft = (d: FilterDraft) => {
     setFilters((prev) => ({ ...prev, net: d.net, niche: d.niche, uf: d.uf, gen: d.gen, fol: d.fol, eng: d.eng }));
-    setNearMeLocation(d.near);
+    if (nearMeLocation && !d.near) removeNearMe();
+    else setNearMeLocation(d.near);
     setRadiusKm(d.radius);
   };
 
@@ -1109,7 +1119,7 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
               );
             })}
             {nearOn && (
-              <button type="button" className="crx" aria-label="Remover filtro Perto de mim" onClick={() => setNearMeLocation(null)}>
+              <button type="button" className="crx" aria-label="Remover filtro Perto de mim" onClick={removeNearMe}>
                 Perto de mim · {radiusKm} km
                 <I n="x" cls="sm" />
               </button>
