@@ -2449,3 +2449,9 @@
   .pv .dtabs > button { flex: 1 1 0; height: 46px; padding: 0 8px; font-size: 13.5px; }
   .pv .dtabs .ind { top: 43px; bottom: auto; height: 3px; }
 }
+
+/* Convite público: remuneração em texto (sem valor fixo) e linha do tempo sem esticar os cards */
+.pv .pvx-dk .pvx-pay b.txt { font-size: clamp(30px, 4.2vw, 56px); letter-spacing: -.045em; line-height: 1.08; overflow-wrap: anywhere; white-space: normal; }
+.pv .pvx-tl, .pv .pvx-tl li { flex: none; }
+.pv .pvx-tl li { align-items: center; }
+.pv .pvx-gn { align-items: start; }

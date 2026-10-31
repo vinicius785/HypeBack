@@ -276,12 +276,18 @@ function extractBrand(raw: Record<string, unknown>): { name?: string; photo: str
   const name =
     pick(raw, ["brand_name", "workspace_name", "company_name", "client_name"]) ??
     pick(nested, ["name", "title", "company_name"]);
-  const photoKeys = ["photo", "logo", "avatar", "image", "photo_url", "logo_url", "avatar_url"];
+  const photoKeys = ["photo", "logo", "avatar", "image", "picture", "photo_url", "logo_url", "avatar_url", "image_url"];
+  const OWNER = /^(brand|workspace|company|client|owner|organization|advertiser)_?(photo|logo|avatar|image|picture)(_url)?$/i;
+  const flatKey = Object.keys(raw).find((k) => OWNER.test(k) && typeof raw[k] === "string" && (raw[k] as string).trim());
   const photo =
-    pick(raw, [
-      "brand_photo", "brand_logo", "workspace_photo", "workspace_logo",
-      "company_photo", "company_logo", "client_photo", "client_logo",
-    ]) ?? pick(nested, photoKeys);
+    (flatKey ? (raw[flatKey] as string).trim() : undefined) ??
+    pick(nested, photoKeys) ??
+    pick(
+      [raw.workspace, raw.brand, raw.company, raw.client, raw.organization, raw.advertiser].find(
+        (v): v is Record<string, unknown> => !!v && typeof v === "object",
+      ),
+      photoKeys,
+    );
   return { name, photo: photo ?? null };
 }
 

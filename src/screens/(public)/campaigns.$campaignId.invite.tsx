@@ -531,7 +531,7 @@ function InviteView({
                 <div className="pvx-gn">
                   <div className="pvx-pay">
                     <small>Remuneração</small>
-                    <b>{fixed != null ? brl(fixed) : paymentLabel || "A combinar"}</b>
+                    <b className={fixed != null ? undefined : "txt"}>{fixed != null ? brl(fixed) : paymentLabel || "A combinar"}</b>
                     <p>
                       {paymentText ||
                         (fixed != null

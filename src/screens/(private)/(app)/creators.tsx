@@ -923,19 +923,28 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // Rolagem infinita (grade e lista); no mapa o carregamento é por botão.
+  // Grade e lista: rolagem infinita (carrega antes de o fim aparecer). O observador é recriado a
+  // cada página para disparar de novo quando o fim da lista ainda está à vista.
   useEffect(() => {
     const el = loadMoreRef.current;
     if (!el || view === "map") return;
+    // A margem só vale em relação à raiz: usa o contêiner que rola (o <main>), não a janela.
+    let root: HTMLElement | null = el.parentElement;
+    while (root && !/(auto|scroll)/.test(getComputedStyle(root).overflowY)) root = root.parentElement;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) handleLoadMore();
       },
-      { threshold: 0.1 },
+      { root, rootMargin: "900px 0px" },
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [handleLoadMore, view]);
+  }, [handleLoadMore, view, accountItems.length]);
+
+  // Mapa: traz todos os criadores do filtro, sem botão.
+  useEffect(() => {
+    if (view === "map" && hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [view, hasNextPage, isFetchingNextPage, fetchNextPage, accountItems.length]);
 
   function setFilter<K extends keyof CatalogFilters>(key: K, value: CatalogFilters[K]) {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -1159,7 +1168,7 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
                   <div className="crmap-b">
                     <div>
                       <b>
-                        {isLoading ? "Buscando criadores…" : `${nearMeLocatedCount} ${nearMeLocatedCount === 1 ? "criador no mapa" : "criadores no mapa"}`}
+                        {isLoading ? "Buscando criadores…" : `${nearMeLocatedCount} ${nearMeLocatedCount === 1 ? "criador no mapa" : "criadores no mapa"}${hasNextPage ? " · carregando o restante…" : ""}`}
                       </b>
                       <small>
                         Raio de busca a partir da sua localização
@@ -1173,13 +1182,6 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
                       ))}
                     </div>
                   </div>
-                  {hasNextPage && (
-                    <div className="cx-more">
-                      <button type="button" className="btn out" disabled={isFetchingNextPage} onClick={handleLoadMore}>
-                        {isFetchingNextPage ? "Carregando…" : "Carregar mais criadores"}
-                      </button>
-                    </div>
-                  )}
                 </>
               )}
             </div>
