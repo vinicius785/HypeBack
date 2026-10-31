@@ -1,3 +1,4 @@
+import { appUrl } from "@/lib/utils/base-path";
 import { useState, useMemo, useEffect, useCallback, useLayoutEffect, useRef } from "react";
 import { createFileRoute, useNavigate, useParams, Outlet, useLocation } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -869,7 +870,7 @@ function RouteComponent() {
                     type="button"
                     className={canWriteCampaigns ? "dh-q" : "btn"}
                     onClick={() =>
-                      window.open(`/campaigns/${campaignId}/invite`, "_blank", "noopener")
+                      window.open(appUrl(`/campaigns/${campaignId}/invite`), "_blank", "noopener")
                     }
                   >
                     <I n="eye" cls="sm" />
