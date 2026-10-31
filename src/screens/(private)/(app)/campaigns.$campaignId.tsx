@@ -82,7 +82,7 @@ const CAMPAIGN_TAB_DEFS: Array<{
     { id: "applications", label: "Inscrições", visible: (p) => p.campaigns_read },
     { id: "curation", label: "Curadoria", visible: (p) => p.influencers_approve || p.influencers_reject },
     { id: "management", label: "Gerenciamento", visible: (p) => p.campaigns_read },
-    { id: "groups", label: "Grupo", visible: (p) => p.campaigns_read },
+    { id: "groups", label: "Comunidade", visible: (p) => p.campaigns_read },
     { id: "contracts", label: "Contratos", visible: (p) => p.contracts_read },
     {
       id: "script-approval",
@@ -731,7 +731,7 @@ function RouteComponent() {
   ];
   const GEST_IDS = ["groups", "contracts", "metrics"];
   const GEST_LABEL: Record<string, string> = {
-    groups: "Grupo",
+    groups: "Comunidade",
     contracts: "Contratos",
     metrics: "Métricas e conteúdos",
   };
