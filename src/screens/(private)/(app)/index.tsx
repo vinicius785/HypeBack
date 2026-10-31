@@ -12,7 +12,7 @@ import type { CampaignListItem } from "@/shared/services/campaign";
 import { getUploadUrl } from "@/lib/utils/api";
 import { Button } from "@/components/ui/button";
 import { I } from "@/components/prototype/ui";
-import { CampaignTile } from "@/components/campaign-card";
+import { CampaignTile, type CampaignBrand } from "@/components/campaign-card";
 
 export const Route = createFileRoute("/(private)/(app)/")({
   component: RouteComponent,
@@ -455,6 +455,7 @@ function RouteComponent() {
 
         <CampaignsCarousel
           banners={bannerById}
+          brand={selectedWorkspace}
           rows={displayedTableRows}
           showOverview={showOverview}
           isOverviewLoading={isOverviewLoading}
@@ -637,6 +638,7 @@ function ReachChart({
 
 function CampaignsCarousel({
   banners,
+  brand,
   rows,
   showOverview,
   isOverviewLoading,
@@ -644,6 +646,7 @@ function CampaignsCarousel({
   total,
 }: {
   banners: Map<string, string>;
+  brand?: CampaignBrand;
   rows: TableRow[];
   showOverview: boolean;
   isOverviewLoading: boolean;
@@ -784,7 +787,7 @@ function CampaignsCarousel({
           ) : (
             <>
               {rows.map((row, i) => (
-                <CampaignTile key={row.campaign.id} row={row} i={i} metricsReady={metricsReady} banner={banners.get(row.campaign.id)} />
+                <CampaignTile key={row.campaign.id} row={row} i={i} metricsReady={metricsReady} banner={banners.get(row.campaign.id)} brand={brand} />
               ))}
               {canCreate && (
                 <button

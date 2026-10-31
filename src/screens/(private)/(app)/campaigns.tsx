@@ -455,6 +455,7 @@ function RouteComponent() {
               description={c.description}
               status={c.statusValue}
               banner={c.banner}
+              brand={selectedWorkspace}
               reach={c.reach}
               published={c.published}
               pending={c.pending}

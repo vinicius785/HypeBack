@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { I } from "@/components/prototype/ui";
 import { getUploadUrl } from "@/lib/utils/api";
+import type { Workspace } from "@/shared/types";
 import {
   getCampaignStatusDisplayLabel,
   getCampaignStatusValue,
@@ -45,7 +47,43 @@ export type CampaignTileRow = {
   pendingTotal: number;
 };
 
-export function CampaignTile({ row, i, metricsReady, banner }: { row: CampaignTileRow; i: number; metricsReady: boolean; banner?: string }) {
+/** Marca dona da campanha (o workspace): nome e foto do círculo do cartão. */
+export type CampaignBrand = Pick<Workspace, "name" | "photo">;
+
+/** Círculo da marca (`.brand`): foto quando existir e iniciais como reserva (sem foto ou se ela falhar). */
+function BrandMark({ brand, fallbackName }: { brand?: CampaignBrand; fallbackName: string }) {
+  const url = getUploadUrl(brand?.photo);
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [url]);
+  return (
+    <span className="brand" style={{ background: "#9e2cfa", overflow: "hidden" }}>
+      {url && !broken ? (
+        <img
+          src={url}
+          alt=""
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        initialsOf(brand?.name || fallbackName)
+      )}
+    </span>
+  );
+}
+
+export function CampaignTile({
+  row,
+  i,
+  metricsReady,
+  banner,
+  brand,
+}: {
+  row: CampaignTileRow;
+  i: number;
+  metricsReady: boolean;
+  banner?: string;
+  brand?: CampaignBrand;
+}) {
   const navigate = useNavigate();
   const { campaign, overview, pendingTotal } = row;
   const status = getCampaignStatusValue(campaign.status) ?? "";
@@ -108,9 +146,7 @@ export function CampaignTile({ row, i, metricsReady, banner }: { row: CampaignTi
       </div>
       <div className="cc-box">
         <div className="cc-id">
-          <span className="brand" style={{ background: "#9e2cfa" }}>
-            {initialsOf(campaign.title)}
-          </span>
+          <BrandMark brand={brand} fallbackName={campaign.title} />
           <div style={{ minWidth: 0 }}>
             <b style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{campaign.title}</b>
             <small>{campaign.description ? campaign.description.slice(0, 34) : "Sem descrição"}</small>
@@ -157,6 +193,8 @@ export interface CampaignCardProps {
   /** Status normalizado (active, draft, finished…). */
   status: string;
   banner?: string;
+  /** Marca (workspace) — foto e nome para o círculo ao lado do título. */
+  brand?: CampaignBrand;
   /** Métricas — `undefined` = ainda carregando / indisponível ("—"). */
   reach?: number;
   published?: number;
@@ -191,6 +229,7 @@ export function CampaignCard(props: CampaignCardProps) {
       i={props.index ?? 0}
       metricsReady={props.reach !== undefined}
       banner={props.banner}
+      brand={props.brand}
     />
   );
 }
