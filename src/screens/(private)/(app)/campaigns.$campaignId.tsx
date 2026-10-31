@@ -542,16 +542,16 @@ function RouteComponent() {
         <div className="pv">
           <div className="wrap" style={{ maxWidth: "none" }}>
             <div className="top">
-              <button
-                type="button"
-                className="back"
-                onClick={() => navigate({ to: "/campaigns" })}
-              >
-                <span>
+              <nav className="crumb" aria-label="Navegação">
+                <button
+                  type="button"
+                  className="crumb-back"
+                  onClick={() => navigate({ to: "/campaigns" })}
+                >
                   <I n="back" cls="sm" />
-                </span>
-                Campanhas
-              </button>
+                  Campanhas
+                </button>
+              </nav>
               <div className="gap" />
               <TopActions />
             </div>
@@ -756,16 +756,20 @@ function RouteComponent() {
         <div className="pv">
           <div className="wrap" style={{ maxWidth: "none" }}>
             <div className="top">
-              <button
-                type="button"
-                className="back"
-                onClick={() => navigate({ to: "/campaigns" })}
-              >
-                <span>
+              <nav className="crumb" aria-label="Navegação">
+                <button
+                  type="button"
+                  className="crumb-back"
+                  onClick={() => navigate({ to: "/campaigns" })}
+                >
                   <I n="back" cls="sm" />
+                  Campanhas
+                </button>
+                <span className="crumb-sep" aria-hidden="true">/</span>
+                <span className="crumb-cur" title={campaignFormData.title}>
+                  {campaignFormData.title || "Campanha"}
                 </span>
-                Campanhas
-              </button>
+              </nav>
               <div className="gap" />
               <TopActions />
             </div>
@@ -780,23 +784,10 @@ function RouteComponent() {
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
                   ) : (
-                    <span
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        display: "grid",
-                        placeItems: "center",
-                        color: "#fff",
-                        fontWeight: 600,
-                        fontSize: 26,
-                        background: "linear-gradient(135deg,#ead1ff,#c47aff,#5d1390)",
-                      }}
-                    >
-                      {(campaignFormData.title || "?").slice(0, 2).toUpperCase()}
-                    </span>
+                    <span className="dh-ph">{(campaignFormData.title || "?").slice(0, 2).toUpperCase()}</span>
                   )}
                 </span>
-                <div>
+                <div className="dh-info">
                   <div className="dh-t">
                     <h1>{campaignFormData.title}</h1>
                     {statusValue === "published" && canWriteCampaigns ? (
@@ -822,12 +813,23 @@ function RouteComponent() {
                       </span>
                     )}
                   </div>
-                  <p>
-                    {creatorsCount} criadores · <b>{Math.round(progressPercentage)}%</b> concluído
-                  </p>
+                  {campaignFormData.description ? (
+                    <p className="dh-d">{campaignFormData.description}</p>
+                  ) : null}
+                  <div className="dh-m">
+                    <span>
+                      <b>{creatorsCount}</b> criadores
+                    </span>
+                    <span className="dh-pg" aria-hidden="true">
+                      <i style={{ width: `${Math.min(100, Math.max(0, Math.round(progressPercentage)))}%` }} />
+                    </span>
+                    <span>
+                      <b>{Math.round(progressPercentage)}%</b> concluído
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="btns">
+              <div className="dh-act">
                 {canWriteCampaigns && statusValue === "draft" && (
                   <button type="button" className="btn" onClick={() => setShowMuralDateModal(true)}>
                     <I n="send" cls="sm" />
@@ -837,7 +839,7 @@ function RouteComponent() {
                 {canWriteCampaigns && (
                   <button
                     type="button"
-                    className="btn out"
+                    className={statusValue === "draft" ? "btn out" : "btn"}
                     disabled={checkPublicationTrackingMutation.isPending}
                     onClick={() => checkPublicationTrackingMutation.mutate()}
                   >
@@ -862,20 +864,22 @@ function RouteComponent() {
                     Editar
                   </button>
                 )}
-                <button
-                  type="button"
-                  className="btn out"
-                  onClick={() =>
-                    window.open(`/campaigns/${campaignId}/invite`, "_blank", "noopener")
-                  }
-                >
-                  <I n="eye" cls="sm" />
-                  Ver convite
-                </button>
-                <button type="button" className="btn out" onClick={() => setIsShareModalOpen(true)}>
-                  <I n="share" cls="sm" />
-                  Compartilhar
-                </button>
+                <span className="dh-qs">
+                  <button
+                    type="button"
+                    className={canWriteCampaigns ? "dh-q" : "btn"}
+                    onClick={() =>
+                      window.open(`/campaigns/${campaignId}/invite`, "_blank", "noopener")
+                    }
+                  >
+                    <I n="eye" cls="sm" />
+                    Ver convite
+                  </button>
+                  <button type="button" className="dh-q" onClick={() => setIsShareModalOpen(true)}>
+                    <I n="share" cls="sm" />
+                    Compartilhar
+                  </button>
+                </span>
               </div>
             </div>
 
