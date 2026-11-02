@@ -237,7 +237,7 @@ function PublicCampaignInviteScreen() {
                 : (error as Error)?.message || "Não foi possível carregar os dados da campanha."}
             </small>
             <Link to="/sign-in" className="btn out">
-              Entrar no backoffice
+              Entrar na plataforma
             </Link>
           </div>
         </div>

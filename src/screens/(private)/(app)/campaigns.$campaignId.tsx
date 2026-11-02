@@ -167,7 +167,7 @@ function RouteComponent() {
 
   // Ler search params da URL para navegação de notificações
   useEffect(() => {
-    const sp = new URLSearchParams(location.search);
+    const sp = new URLSearchParams(location.searchStr);
     const link = {
       tab: sp.get("tab"),
       openChat: sp.get("openChat"),
@@ -189,7 +189,7 @@ function RouteComponent() {
       setPendingFocusCampaignUser(link.focusCampaignUser);
     if (link.contentId) setPendingContentId(link.contentId);
 
-    const next = new URLSearchParams(location.search);
+    const next = new URLSearchParams(location.searchStr);
     for (const k of ["tab", "openChat", "focusCampaignUser", "contentId"]) {
       next.delete(k);
     }

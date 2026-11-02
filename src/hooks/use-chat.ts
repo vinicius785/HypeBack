@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 import { getApiUrl, getAuthToken, getWorkspaceId } from "@/lib/utils/api";
 import { getInfluencerMessages } from "@/shared/services/chat";
+import { useWorkspaceContext } from "@/contexts/workspace-context";
+import { WORKSPACE_STATE_DEFAULT_MESSAGE } from "@/lib/workspace-state/lifecycle-errors";
 import type { ChatMessage } from "@/shared/types";
 
 interface UseChatOptions {
@@ -23,6 +25,14 @@ export function useChat({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Workspace arquivado: o servidor trata mark_as_read como escrita e recusaria cada uma (erro a cada mensagem).
+  const { selectedWorkspace } = useWorkspaceContext();
+  const isArchived = selectedWorkspace?.status === "archived";
+  const isArchivedRef = useRef(isArchived);
+  useEffect(() => {
+    isArchivedRef.current = isArchived;
+  }, [isArchived]);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -131,12 +141,21 @@ export function useChat({
         return [...prev, message];
       });
 
-      if (message.sender_id !== String(influencerId)) {
+      if (message.sender_id !== String(influencerId) && !isArchivedRef.current) {
         newSocket.emit("mark_as_read", { messageId: message.id });
       }
     });
 
-    newSocket.on("error", (err: { message: string }) => {
+    newSocket.on("error", (err: { message: string; error?: string }) => {
+      // Ciclo de vida do workspace: o payload leva o código em `error` (WORKSPACE_ARCHIVED é só uma escrita recusada).
+      if (err.error === "WORKSPACE_ARCHIVED") {
+        if (!isArchivedRef.current) setError(WORKSPACE_STATE_DEFAULT_MESSAGE.WORKSPACE_ARCHIVED);
+        return;
+      }
+      if (err.error === "WORKSPACE_SUSPENDED" || err.error === "WORKSPACE_DELETED") {
+        setError(WORKSPACE_STATE_DEFAULT_MESSAGE[err.error]);
+        return;
+      }
       let errorMessage = err.message;
       if (err.message.includes("não encontrada") || err.message.includes("não encontrado")) {
         errorMessage = "Campanha não encontrada. Verifique se você tem acesso a esta campanha.";
@@ -182,7 +201,7 @@ export function useChat({
 
   const markAsRead = useCallback(
     (messageId: string) => {
-      if (socket && isConnected) {
+      if (socket && isConnected && !isArchivedRef.current) {
         socket.emit("mark_as_read", { messageId });
       }
     },

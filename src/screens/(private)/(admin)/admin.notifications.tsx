@@ -7,6 +7,7 @@ import {
   type AdminNotificationInitial,
 } from "@/components/admin/admin-notification-form";
 import { AdminNotificationList } from "@/components/admin/admin-notification-list";
+import { useAdminDocumentTitle } from "@/hooks/admin/use-admin-document-title";
 import { useAdminNotificationsList } from "@/hooks/use-admin-notifications";
 import type {
   AdminNotificationListItem,
@@ -14,7 +15,7 @@ import type {
 } from "@/shared/types";
 
 export const Route = createFileRoute(
-  "/(private)/(admin)/admin/notifications" as "/(private)/(admin)/admin/notifications",
+  "/(private)/(admin)/admin/notifications",
 )({
   component: SuperAdminNotifications,
 });
@@ -43,6 +44,7 @@ function inTab(n: AdminNotificationListItem, tab: Tab): boolean {
 }
 
 function SuperAdminNotifications() {
+  useAdminDocumentTitle("Notificações");
   const { data, isLoading, isError, refetch } = useAdminNotificationsList();
   const [tab, setTab] = useState<Tab>("all");
   const [form, setForm] = useState<{ initial?: AdminNotificationInitial } | null>(

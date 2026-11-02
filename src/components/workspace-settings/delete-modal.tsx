@@ -1,17 +1,26 @@
 import { useState } from "react";
 
 import { I } from "@/components/prototype/ui";
+import { DeleteBlockersPanel } from "@/components/workspace-state/delete-blockers-panel";
+import type { DeleteBlocker } from "@/lib/workspace-state/delete-blockers";
 
 import { WkModal } from "./wk-modal";
 
+/**
+ * Exclusão do workspace: o nome digitado confirma. A exclusão é LÓGICA (o workspace some para o time, nada é
+ * apagado) e o servidor recusa com impedimentos (409 WORKSPACE_DELETE_BLOCKED): `blockers` os mostra no próprio
+ * diálogo, que continua aberto. `null`/ausente = sem recusa por impedimento.
+ */
 export function DeleteModal({
   name,
   pending,
+  blockers,
   onClose,
   onConfirm,
 }: {
   name: string;
   pending: boolean;
+  blockers?: DeleteBlocker[] | null;
   onClose: () => void;
   onConfirm: () => void;
 }) {
@@ -34,7 +43,7 @@ export function DeleteModal({
             onClick={onConfirm}
           >
             <I n="trash" cls="sm" />
-            {pending ? "Excluindo…" : "Excluir definitivamente"}
+            {pending ? "Excluindo…" : "Excluir workspace"}
           </button>
         </>
       }
@@ -42,8 +51,9 @@ export function DeleteModal({
       <div className="wkm-wr">
         <I n="trash" />
         <p>
-          Isso apaga <b>{name}</b> para sempre, junto com campanhas, contratos e financeiro. Para confirmar,
-          digite o nome do workspace.
+          <b>{name}</b> deixa de aparecer para você e para toda a equipe, com as campanhas, os contratos e o
+          financeiro. Nada é apagado dos nossos registros, mas só o suporte pode restaurar o workspace. Para
+          confirmar, digite o nome dele.
         </p>
       </div>
       <div className="n4c">
@@ -59,6 +69,7 @@ export function DeleteModal({
           onChange={(e) => setV(e.target.value)}
         />
       </div>
+      {blockers ? <DeleteBlockersPanel blockers={blockers} workspaceName={name} /> : null}
     </WkModal>
   );
 }

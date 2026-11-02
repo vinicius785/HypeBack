@@ -9,57 +9,78 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './screens/__root'
-import { Route as publicLayoutRouteImport } from './screens/(public)/_layout'
 import { Route as privateLayoutRouteImport } from './screens/(private)/_layout'
-import { Route as publicSignUpRouteImport } from './screens/(public)/sign-up'
-import { Route as publicSignInRouteImport } from './screens/(public)/sign-in'
-import { Route as publicResetPasswordRouteImport } from './screens/(public)/reset-password'
-import { Route as publicForgotPasswordRouteImport } from './screens/(public)/forgot-password'
-import { Route as privateOnboardingLayoutRouteImport } from './screens/(private)/onboarding/_layout'
-import { Route as privateappLayoutRouteImport } from './screens/(private)/(app)/_layout'
+import { Route as publicLayoutRouteImport } from './screens/(public)/_layout'
 import { Route as privateadminLayoutRouteImport } from './screens/(private)/(admin)/_layout'
-import { Route as privateOnboardingIndexRouteImport } from './screens/(private)/onboarding/index'
+import { Route as privateappLayoutRouteImport } from './screens/(private)/(app)/_layout'
+import { Route as privateOnboardingLayoutRouteImport } from './screens/(private)/onboarding/_layout'
+import { Route as publicForgotPasswordRouteImport } from './screens/(public)/forgot-password'
+import { Route as publicResetPasswordRouteImport } from './screens/(public)/reset-password'
+import { Route as publicSignInRouteImport } from './screens/(public)/sign-in'
+import { Route as publicSignUpRouteImport } from './screens/(public)/sign-up'
 import { Route as privateappIndexRouteImport } from './screens/(private)/(app)/index'
-import { Route as publicUUsernameRouteImport } from './screens/(public)/u.$username'
-import { Route as privateOnboardingWelcomeRouteImport } from './screens/(private)/onboarding/welcome'
-import { Route as privateOnboardingVerifyPhoneRouteImport } from './screens/(private)/onboarding/verify-phone'
-import { Route as privateOnboardingCreateWorkspaceRouteImport } from './screens/(private)/onboarding/create-workspace'
-import { Route as privateappSettingsRouteImport } from './screens/(private)/(app)/settings'
-import { Route as privateappLivesRouteImport } from './screens/(private)/(app)/lives'
-import { Route as privateappFinancialRouteImport } from './screens/(private)/(app)/financial'
-import { Route as privateappCreatorsRouteImport } from './screens/(private)/(app)/creators'
 import { Route as privateappCampaignsRouteImport } from './screens/(private)/(app)/campaigns'
-import { Route as publicCampaignsCampaignIdInviteRouteImport } from './screens/(public)/campaigns.$campaignId.invite'
-import { Route as privateappWorkspaceSettingsRouteImport } from './screens/(private)/(app)/workspace.settings'
-import { Route as privateappLivesNewRouteImport } from './screens/(private)/(app)/lives.new'
-import { Route as privateappLivesLiveIdRouteImport } from './screens/(private)/(app)/lives.$liveId'
-import { Route as privateappInfluencerInfluencerIdRouteImport } from './screens/(private)/(app)/influencer.$influencerId'
-import { Route as privateappCampaignsNewRouteImport } from './screens/(private)/(app)/campaigns.new'
-import { Route as privateappCampaignsCampaignIdRouteImport } from './screens/(private)/(app)/campaigns.$campaignId'
-import { Route as privateadminAdminNotificationsRouteImport } from './screens/(private)/(admin)/admin.notifications'
-import { Route as privateadminAdminGroupsRouteImport } from './screens/(private)/(admin)/admin.groups'
+import { Route as privateappCreatorsRouteImport } from './screens/(private)/(app)/creators'
+import { Route as privateappFinancialRouteImport } from './screens/(private)/(app)/financial'
+import { Route as privateappLivesRouteImport } from './screens/(private)/(app)/lives'
+import { Route as privateappSettingsRouteImport } from './screens/(private)/(app)/settings'
+import { Route as privateOnboardingIndexRouteImport } from './screens/(private)/onboarding/index'
+import { Route as privateOnboardingCreateWorkspaceRouteImport } from './screens/(private)/onboarding/create-workspace'
+import { Route as privateOnboardingVerifyPhoneRouteImport } from './screens/(private)/onboarding/verify-phone'
+import { Route as privateOnboardingWelcomeRouteImport } from './screens/(private)/onboarding/welcome'
+import { Route as publicUUsernameRouteImport } from './screens/(public)/u.$username'
+import { Route as privateadminAdminActivityRouteImport } from './screens/(private)/(admin)/admin.activity'
+import { Route as privateadminAdminCampaignsRouteImport } from './screens/(private)/(admin)/admin.campaigns'
+import { Route as privateadminAdminCreatorsRouteImport } from './screens/(private)/(admin)/admin.creators'
 import { Route as privateadminAdminDashboardRouteImport } from './screens/(private)/(admin)/admin.dashboard'
-import { Route as privateappCampaignsCampaignIdEditRouteImport } from './screens/(private)/(app)/campaigns.$campaignId.edit'
-import { Route as privateadminAdminGroupsNewRouteImport } from './screens/(private)/(admin)/admin.groups.new'
+import { Route as privateadminAdminFinancialRouteImport } from './screens/(private)/(admin)/admin.financial'
+import { Route as privateadminAdminGroupsRouteImport } from './screens/(private)/(admin)/admin.groups'
+import { Route as privateadminAdminHealthRouteImport } from './screens/(private)/(admin)/admin.health'
+import { Route as privateadminAdminNotificationsRouteImport } from './screens/(private)/(admin)/admin.notifications'
+import { Route as privateadminAdminUsersRouteImport } from './screens/(private)/(admin)/admin.users'
+import { Route as privateadminAdminWorkspacesRouteImport } from './screens/(private)/(admin)/admin.workspaces'
+import { Route as privateappCampaignsCampaignIdRouteImport } from './screens/(private)/(app)/campaigns.$campaignId'
+import { Route as privateappCampaignsNewRouteImport } from './screens/(private)/(app)/campaigns.new'
+import { Route as privateappInfluencerInfluencerIdRouteImport } from './screens/(private)/(app)/influencer.$influencerId'
+import { Route as privateappLivesLiveIdRouteImport } from './screens/(private)/(app)/lives.$liveId'
+import { Route as privateappLivesNewRouteImport } from './screens/(private)/(app)/lives.new'
+import { Route as privateappWorkspaceSettingsRouteImport } from './screens/(private)/(app)/workspace.settings'
+import { Route as publicCampaignsCampaignIdInviteRouteImport } from './screens/(public)/campaigns.$campaignId.invite'
+import { Route as privateadminAdminCampaignsIndexRouteImport } from './screens/(private)/(admin)/admin.campaigns.index'
+import { Route as privateadminAdminCampaignsCampaignIdRouteImport } from './screens/(private)/(admin)/admin.campaigns.$campaignId'
 import { Route as privateadminAdminGroupsGroupIdRouteImport } from './screens/(private)/(admin)/admin.groups.$groupId'
+import { Route as privateadminAdminGroupsNewRouteImport } from './screens/(private)/(admin)/admin.groups.new'
+import { Route as privateadminAdminUsersIndexRouteImport } from './screens/(private)/(admin)/admin.users.index'
+import { Route as privateadminAdminUsersUserIdRouteImport } from './screens/(private)/(admin)/admin.users.$userId'
+import { Route as privateadminAdminWorkspacesIndexRouteImport } from './screens/(private)/(admin)/admin.workspaces.index'
+import { Route as privateadminAdminWorkspacesWorkspaceIdRouteImport } from './screens/(private)/(admin)/admin.workspaces.$workspaceId'
+import { Route as privateappCampaignsCampaignIdEditRouteImport } from './screens/(private)/(app)/campaigns.$campaignId.edit'
 import { Route as privateappCampaignsCampaignIdInfluencerInfluencerIdRouteImport } from './screens/(private)/(app)/campaigns.$campaignId.influencer.$influencerId'
 
-const publicLayoutRoute = publicLayoutRouteImport.update({
-  id: '/(public)',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const privateLayoutRoute = privateLayoutRouteImport.update({
   id: '/(private)',
   getParentRoute: () => rootRouteImport,
 } as any)
-const publicSignUpRoute = publicSignUpRouteImport.update({
-  id: '/sign-up',
-  path: '/sign-up',
-  getParentRoute: () => publicLayoutRoute,
+const publicLayoutRoute = publicLayoutRouteImport.update({
+  id: '/(public)',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const publicSignInRoute = publicSignInRouteImport.update({
-  id: '/sign-in',
-  path: '/sign-in',
+const privateadminLayoutRoute = privateadminLayoutRouteImport.update({
+  id: '/(admin)',
+  getParentRoute: () => privateLayoutRoute,
+} as any)
+const privateappLayoutRoute = privateappLayoutRouteImport.update({
+  id: '/(app)',
+  getParentRoute: () => privateLayoutRoute,
+} as any)
+const privateOnboardingLayoutRoute = privateOnboardingLayoutRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => privateLayoutRoute,
+} as any)
+const publicForgotPasswordRoute = publicForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => publicLayoutRoute,
 } as any)
 const publicResetPasswordRoute = publicResetPasswordRouteImport.update({
@@ -67,43 +88,55 @@ const publicResetPasswordRoute = publicResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => publicLayoutRoute,
 } as any)
-const publicForgotPasswordRoute = publicForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
+const publicSignInRoute = publicSignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
   getParentRoute: () => publicLayoutRoute,
 } as any)
-const privateOnboardingLayoutRoute = privateOnboardingLayoutRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => privateLayoutRoute,
-} as any)
-const privateappLayoutRoute = privateappLayoutRouteImport.update({
-  id: '/(app)',
-  getParentRoute: () => privateLayoutRoute,
-} as any)
-const privateadminLayoutRoute = privateadminLayoutRouteImport.update({
-  id: '/(admin)',
-  getParentRoute: () => privateLayoutRoute,
-} as any)
-const privateOnboardingIndexRoute = privateOnboardingIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => privateOnboardingLayoutRoute,
+const publicSignUpRoute = publicSignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => publicLayoutRoute,
 } as any)
 const privateappIndexRoute = privateappIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => privateappLayoutRoute,
 } as any)
-const publicUUsernameRoute = publicUUsernameRouteImport.update({
-  id: '/u/$username',
-  path: '/u/$username',
-  getParentRoute: () => publicLayoutRoute,
+const privateappCampaignsRoute = privateappCampaignsRouteImport.update({
+  id: '/campaigns',
+  path: '/campaigns',
+  getParentRoute: () => privateappLayoutRoute,
 } as any)
-const privateOnboardingWelcomeRoute =
-  privateOnboardingWelcomeRouteImport.update({
-    id: '/welcome',
-    path: '/welcome',
+const privateappCreatorsRoute = privateappCreatorsRouteImport.update({
+  id: '/creators',
+  path: '/creators',
+  getParentRoute: () => privateappLayoutRoute,
+} as any)
+const privateappFinancialRoute = privateappFinancialRouteImport.update({
+  id: '/financial',
+  path: '/financial',
+  getParentRoute: () => privateappLayoutRoute,
+} as any)
+const privateappLivesRoute = privateappLivesRouteImport.update({
+  id: '/lives',
+  path: '/lives',
+  getParentRoute: () => privateappLayoutRoute,
+} as any)
+const privateappSettingsRoute = privateappSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => privateappLayoutRoute,
+} as any)
+const privateOnboardingIndexRoute = privateOnboardingIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => privateOnboardingLayoutRoute,
+} as any)
+const privateOnboardingCreateWorkspaceRoute =
+  privateOnboardingCreateWorkspaceRouteImport.update({
+    id: '/create-workspace',
+    path: '/create-workspace',
     getParentRoute: () => privateOnboardingLayoutRoute,
   } as any)
 const privateOnboardingVerifyPhoneRoute =
@@ -112,80 +145,45 @@ const privateOnboardingVerifyPhoneRoute =
     path: '/verify-phone',
     getParentRoute: () => privateOnboardingLayoutRoute,
   } as any)
-const privateOnboardingCreateWorkspaceRoute =
-  privateOnboardingCreateWorkspaceRouteImport.update({
-    id: '/create-workspace',
-    path: '/create-workspace',
+const privateOnboardingWelcomeRoute =
+  privateOnboardingWelcomeRouteImport.update({
+    id: '/welcome',
+    path: '/welcome',
     getParentRoute: () => privateOnboardingLayoutRoute,
   } as any)
-const privateappSettingsRoute = privateappSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => privateappLayoutRoute,
+const publicUUsernameRoute = publicUUsernameRouteImport.update({
+  id: '/u/$username',
+  path: '/u/$username',
+  getParentRoute: () => publicLayoutRoute,
 } as any)
-const privateappLivesRoute = privateappLivesRouteImport.update({
-  id: '/lives',
-  path: '/lives',
-  getParentRoute: () => privateappLayoutRoute,
-} as any)
-const privateappFinancialRoute = privateappFinancialRouteImport.update({
-  id: '/financial',
-  path: '/financial',
-  getParentRoute: () => privateappLayoutRoute,
-} as any)
-const privateappCreatorsRoute = privateappCreatorsRouteImport.update({
-  id: '/creators',
-  path: '/creators',
-  getParentRoute: () => privateappLayoutRoute,
-} as any)
-const privateappCampaignsRoute = privateappCampaignsRouteImport.update({
-  id: '/campaigns',
-  path: '/campaigns',
-  getParentRoute: () => privateappLayoutRoute,
-} as any)
-const publicCampaignsCampaignIdInviteRoute =
-  publicCampaignsCampaignIdInviteRouteImport.update({
-    id: '/campaigns/$campaignId/invite',
-    path: '/campaigns/$campaignId/invite',
-    getParentRoute: () => publicLayoutRoute,
+const privateadminAdminActivityRoute =
+  privateadminAdminActivityRouteImport.update({
+    id: '/admin/activity',
+    path: '/admin/activity',
+    getParentRoute: () => privateadminLayoutRoute,
   } as any)
-const privateappWorkspaceSettingsRoute =
-  privateappWorkspaceSettingsRouteImport.update({
-    id: '/workspace/settings',
-    path: '/workspace/settings',
-    getParentRoute: () => privateappLayoutRoute,
+const privateadminAdminCampaignsRoute =
+  privateadminAdminCampaignsRouteImport.update({
+    id: '/admin/campaigns',
+    path: '/admin/campaigns',
+    getParentRoute: () => privateadminLayoutRoute,
   } as any)
-const privateappLivesNewRoute = privateappLivesNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => privateappLivesRoute,
-} as any)
-const privateappLivesLiveIdRoute = privateappLivesLiveIdRouteImport.update({
-  id: '/$liveId',
-  path: '/$liveId',
-  getParentRoute: () => privateappLivesRoute,
-} as any)
-const privateappInfluencerInfluencerIdRoute =
-  privateappInfluencerInfluencerIdRouteImport.update({
-    id: '/influencer/$influencerId',
-    path: '/influencer/$influencerId',
-    getParentRoute: () => privateappLayoutRoute,
+const privateadminAdminCreatorsRoute =
+  privateadminAdminCreatorsRouteImport.update({
+    id: '/admin/creators',
+    path: '/admin/creators',
+    getParentRoute: () => privateadminLayoutRoute,
   } as any)
-const privateappCampaignsNewRoute = privateappCampaignsNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => privateappCampaignsRoute,
-} as any)
-const privateappCampaignsCampaignIdRoute =
-  privateappCampaignsCampaignIdRouteImport.update({
-    id: '/$campaignId',
-    path: '/$campaignId',
-    getParentRoute: () => privateappCampaignsRoute,
+const privateadminAdminDashboardRoute =
+  privateadminAdminDashboardRouteImport.update({
+    id: '/admin/dashboard',
+    path: '/admin/dashboard',
+    getParentRoute: () => privateadminLayoutRoute,
   } as any)
-const privateadminAdminNotificationsRoute =
-  privateadminAdminNotificationsRouteImport.update({
-    id: '/admin/notifications',
-    path: '/admin/notifications',
+const privateadminAdminFinancialRoute =
+  privateadminAdminFinancialRouteImport.update({
+    id: '/admin/financial',
+    path: '/admin/financial',
     getParentRoute: () => privateadminLayoutRoute,
   } as any)
 const privateadminAdminGroupsRoute = privateadminAdminGroupsRouteImport.update({
@@ -193,17 +191,84 @@ const privateadminAdminGroupsRoute = privateadminAdminGroupsRouteImport.update({
   path: '/admin/groups',
   getParentRoute: () => privateadminLayoutRoute,
 } as any)
-const privateadminAdminDashboardRoute =
-  privateadminAdminDashboardRouteImport.update({
-    id: '/admin/dashboard',
-    path: '/admin/dashboard',
+const privateadminAdminHealthRoute = privateadminAdminHealthRouteImport.update({
+  id: '/admin/health',
+  path: '/admin/health',
+  getParentRoute: () => privateadminLayoutRoute,
+} as any)
+const privateadminAdminNotificationsRoute =
+  privateadminAdminNotificationsRouteImport.update({
+    id: '/admin/notifications',
+    path: '/admin/notifications',
     getParentRoute: () => privateadminLayoutRoute,
   } as any)
-const privateappCampaignsCampaignIdEditRoute =
-  privateappCampaignsCampaignIdEditRouteImport.update({
-    id: '/edit',
-    path: '/edit',
-    getParentRoute: () => privateappCampaignsCampaignIdRoute,
+const privateadminAdminUsersRoute = privateadminAdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => privateadminLayoutRoute,
+} as any)
+const privateadminAdminWorkspacesRoute =
+  privateadminAdminWorkspacesRouteImport.update({
+    id: '/admin/workspaces',
+    path: '/admin/workspaces',
+    getParentRoute: () => privateadminLayoutRoute,
+  } as any)
+const privateappCampaignsCampaignIdRoute =
+  privateappCampaignsCampaignIdRouteImport.update({
+    id: '/$campaignId',
+    path: '/$campaignId',
+    getParentRoute: () => privateappCampaignsRoute,
+  } as any)
+const privateappCampaignsNewRoute = privateappCampaignsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => privateappCampaignsRoute,
+} as any)
+const privateappInfluencerInfluencerIdRoute =
+  privateappInfluencerInfluencerIdRouteImport.update({
+    id: '/influencer/$influencerId',
+    path: '/influencer/$influencerId',
+    getParentRoute: () => privateappLayoutRoute,
+  } as any)
+const privateappLivesLiveIdRoute = privateappLivesLiveIdRouteImport.update({
+  id: '/$liveId',
+  path: '/$liveId',
+  getParentRoute: () => privateappLivesRoute,
+} as any)
+const privateappLivesNewRoute = privateappLivesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => privateappLivesRoute,
+} as any)
+const privateappWorkspaceSettingsRoute =
+  privateappWorkspaceSettingsRouteImport.update({
+    id: '/workspace/settings',
+    path: '/workspace/settings',
+    getParentRoute: () => privateappLayoutRoute,
+  } as any)
+const publicCampaignsCampaignIdInviteRoute =
+  publicCampaignsCampaignIdInviteRouteImport.update({
+    id: '/campaigns/$campaignId/invite',
+    path: '/campaigns/$campaignId/invite',
+    getParentRoute: () => publicLayoutRoute,
+  } as any)
+const privateadminAdminCampaignsIndexRoute =
+  privateadminAdminCampaignsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => privateadminAdminCampaignsRoute,
+  } as any)
+const privateadminAdminCampaignsCampaignIdRoute =
+  privateadminAdminCampaignsCampaignIdRouteImport.update({
+    id: '/$campaignId',
+    path: '/$campaignId',
+    getParentRoute: () => privateadminAdminCampaignsRoute,
+  } as any)
+const privateadminAdminGroupsGroupIdRoute =
+  privateadminAdminGroupsGroupIdRouteImport.update({
+    id: '/$groupId',
+    path: '/$groupId',
+    getParentRoute: () => privateadminAdminGroupsRoute,
   } as any)
 const privateadminAdminGroupsNewRoute =
   privateadminAdminGroupsNewRouteImport.update({
@@ -211,11 +276,35 @@ const privateadminAdminGroupsNewRoute =
     path: '/new',
     getParentRoute: () => privateadminAdminGroupsRoute,
   } as any)
-const privateadminAdminGroupsGroupIdRoute =
-  privateadminAdminGroupsGroupIdRouteImport.update({
-    id: '/$groupId',
-    path: '/$groupId',
-    getParentRoute: () => privateadminAdminGroupsRoute,
+const privateadminAdminUsersIndexRoute =
+  privateadminAdminUsersIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => privateadminAdminUsersRoute,
+  } as any)
+const privateadminAdminUsersUserIdRoute =
+  privateadminAdminUsersUserIdRouteImport.update({
+    id: '/$userId',
+    path: '/$userId',
+    getParentRoute: () => privateadminAdminUsersRoute,
+  } as any)
+const privateadminAdminWorkspacesIndexRoute =
+  privateadminAdminWorkspacesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => privateadminAdminWorkspacesRoute,
+  } as any)
+const privateadminAdminWorkspacesWorkspaceIdRoute =
+  privateadminAdminWorkspacesWorkspaceIdRouteImport.update({
+    id: '/$workspaceId',
+    path: '/$workspaceId',
+    getParentRoute: () => privateadminAdminWorkspacesRoute,
+  } as any)
+const privateappCampaignsCampaignIdEditRoute =
+  privateappCampaignsCampaignIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => privateappCampaignsCampaignIdRoute,
   } as any)
 const privateappCampaignsCampaignIdInfluencerInfluencerIdRoute =
   privateappCampaignsCampaignIdInfluencerInfluencerIdRouteImport.update({
@@ -241,9 +330,16 @@ export interface FileRoutesByFullPath {
   '/u/$username': typeof publicUUsernameRoute
   '/': typeof privateappIndexRoute
   '/onboarding/': typeof privateOnboardingIndexRoute
+  '/admin/activity': typeof privateadminAdminActivityRoute
+  '/admin/campaigns': typeof privateadminAdminCampaignsRouteWithChildren
+  '/admin/creators': typeof privateadminAdminCreatorsRoute
   '/admin/dashboard': typeof privateadminAdminDashboardRoute
+  '/admin/financial': typeof privateadminAdminFinancialRoute
   '/admin/groups': typeof privateadminAdminGroupsRouteWithChildren
+  '/admin/health': typeof privateadminAdminHealthRoute
   '/admin/notifications': typeof privateadminAdminNotificationsRoute
+  '/admin/users': typeof privateadminAdminUsersRouteWithChildren
+  '/admin/workspaces': typeof privateadminAdminWorkspacesRouteWithChildren
   '/campaigns/$campaignId': typeof privateappCampaignsCampaignIdRouteWithChildren
   '/campaigns/new': typeof privateappCampaignsNewRoute
   '/influencer/$influencerId': typeof privateappInfluencerInfluencerIdRoute
@@ -251,9 +347,15 @@ export interface FileRoutesByFullPath {
   '/lives/new': typeof privateappLivesNewRoute
   '/workspace/settings': typeof privateappWorkspaceSettingsRoute
   '/campaigns/$campaignId/invite': typeof publicCampaignsCampaignIdInviteRoute
+  '/admin/campaigns/$campaignId': typeof privateadminAdminCampaignsCampaignIdRoute
   '/admin/groups/$groupId': typeof privateadminAdminGroupsGroupIdRoute
   '/admin/groups/new': typeof privateadminAdminGroupsNewRoute
+  '/admin/users/$userId': typeof privateadminAdminUsersUserIdRoute
+  '/admin/workspaces/$workspaceId': typeof privateadminAdminWorkspacesWorkspaceIdRoute
   '/campaigns/$campaignId/edit': typeof privateappCampaignsCampaignIdEditRoute
+  '/admin/campaigns/': typeof privateadminAdminCampaignsIndexRoute
+  '/admin/users/': typeof privateadminAdminUsersIndexRoute
+  '/admin/workspaces/': typeof privateadminAdminWorkspacesIndexRoute
   '/campaigns/$campaignId/influencer/$influencerId': typeof privateappCampaignsCampaignIdInfluencerInfluencerIdRoute
 }
 export interface FileRoutesByTo {
@@ -272,8 +374,12 @@ export interface FileRoutesByTo {
   '/u/$username': typeof publicUUsernameRoute
   '/': typeof privateappIndexRoute
   '/onboarding': typeof privateOnboardingIndexRoute
+  '/admin/activity': typeof privateadminAdminActivityRoute
+  '/admin/creators': typeof privateadminAdminCreatorsRoute
   '/admin/dashboard': typeof privateadminAdminDashboardRoute
+  '/admin/financial': typeof privateadminAdminFinancialRoute
   '/admin/groups': typeof privateadminAdminGroupsRouteWithChildren
+  '/admin/health': typeof privateadminAdminHealthRoute
   '/admin/notifications': typeof privateadminAdminNotificationsRoute
   '/campaigns/$campaignId': typeof privateappCampaignsCampaignIdRouteWithChildren
   '/campaigns/new': typeof privateappCampaignsNewRoute
@@ -282,9 +388,15 @@ export interface FileRoutesByTo {
   '/lives/new': typeof privateappLivesNewRoute
   '/workspace/settings': typeof privateappWorkspaceSettingsRoute
   '/campaigns/$campaignId/invite': typeof publicCampaignsCampaignIdInviteRoute
+  '/admin/campaigns/$campaignId': typeof privateadminAdminCampaignsCampaignIdRoute
   '/admin/groups/$groupId': typeof privateadminAdminGroupsGroupIdRoute
   '/admin/groups/new': typeof privateadminAdminGroupsNewRoute
+  '/admin/users/$userId': typeof privateadminAdminUsersUserIdRoute
+  '/admin/workspaces/$workspaceId': typeof privateadminAdminWorkspacesWorkspaceIdRoute
   '/campaigns/$campaignId/edit': typeof privateappCampaignsCampaignIdEditRoute
+  '/admin/campaigns': typeof privateadminAdminCampaignsIndexRoute
+  '/admin/users': typeof privateadminAdminUsersIndexRoute
+  '/admin/workspaces': typeof privateadminAdminWorkspacesIndexRoute
   '/campaigns/$campaignId/influencer/$influencerId': typeof privateappCampaignsCampaignIdInfluencerInfluencerIdRoute
 }
 export interface FileRoutesById {
@@ -309,9 +421,16 @@ export interface FileRoutesById {
   '/(public)/u/$username': typeof publicUUsernameRoute
   '/(private)/(app)/': typeof privateappIndexRoute
   '/(private)/onboarding/': typeof privateOnboardingIndexRoute
+  '/(private)/(admin)/admin/activity': typeof privateadminAdminActivityRoute
+  '/(private)/(admin)/admin/campaigns': typeof privateadminAdminCampaignsRouteWithChildren
+  '/(private)/(admin)/admin/creators': typeof privateadminAdminCreatorsRoute
   '/(private)/(admin)/admin/dashboard': typeof privateadminAdminDashboardRoute
+  '/(private)/(admin)/admin/financial': typeof privateadminAdminFinancialRoute
   '/(private)/(admin)/admin/groups': typeof privateadminAdminGroupsRouteWithChildren
+  '/(private)/(admin)/admin/health': typeof privateadminAdminHealthRoute
   '/(private)/(admin)/admin/notifications': typeof privateadminAdminNotificationsRoute
+  '/(private)/(admin)/admin/users': typeof privateadminAdminUsersRouteWithChildren
+  '/(private)/(admin)/admin/workspaces': typeof privateadminAdminWorkspacesRouteWithChildren
   '/(private)/(app)/campaigns/$campaignId': typeof privateappCampaignsCampaignIdRouteWithChildren
   '/(private)/(app)/campaigns/new': typeof privateappCampaignsNewRoute
   '/(private)/(app)/influencer/$influencerId': typeof privateappInfluencerInfluencerIdRoute
@@ -319,9 +438,15 @@ export interface FileRoutesById {
   '/(private)/(app)/lives/new': typeof privateappLivesNewRoute
   '/(private)/(app)/workspace/settings': typeof privateappWorkspaceSettingsRoute
   '/(public)/campaigns/$campaignId/invite': typeof publicCampaignsCampaignIdInviteRoute
+  '/(private)/(admin)/admin/campaigns/$campaignId': typeof privateadminAdminCampaignsCampaignIdRoute
   '/(private)/(admin)/admin/groups/$groupId': typeof privateadminAdminGroupsGroupIdRoute
   '/(private)/(admin)/admin/groups/new': typeof privateadminAdminGroupsNewRoute
+  '/(private)/(admin)/admin/users/$userId': typeof privateadminAdminUsersUserIdRoute
+  '/(private)/(admin)/admin/workspaces/$workspaceId': typeof privateadminAdminWorkspacesWorkspaceIdRoute
   '/(private)/(app)/campaigns/$campaignId/edit': typeof privateappCampaignsCampaignIdEditRoute
+  '/(private)/(admin)/admin/campaigns/': typeof privateadminAdminCampaignsIndexRoute
+  '/(private)/(admin)/admin/users/': typeof privateadminAdminUsersIndexRoute
+  '/(private)/(admin)/admin/workspaces/': typeof privateadminAdminWorkspacesIndexRoute
   '/(private)/(app)/campaigns/$campaignId/influencer/$influencerId': typeof privateappCampaignsCampaignIdInfluencerInfluencerIdRoute
 }
 export interface FileRouteTypes {
@@ -343,9 +468,16 @@ export interface FileRouteTypes {
     | '/u/$username'
     | '/'
     | '/onboarding/'
+    | '/admin/activity'
+    | '/admin/campaigns'
+    | '/admin/creators'
     | '/admin/dashboard'
+    | '/admin/financial'
     | '/admin/groups'
+    | '/admin/health'
     | '/admin/notifications'
+    | '/admin/users'
+    | '/admin/workspaces'
     | '/campaigns/$campaignId'
     | '/campaigns/new'
     | '/influencer/$influencerId'
@@ -353,9 +485,15 @@ export interface FileRouteTypes {
     | '/lives/new'
     | '/workspace/settings'
     | '/campaigns/$campaignId/invite'
+    | '/admin/campaigns/$campaignId'
     | '/admin/groups/$groupId'
     | '/admin/groups/new'
+    | '/admin/users/$userId'
+    | '/admin/workspaces/$workspaceId'
     | '/campaigns/$campaignId/edit'
+    | '/admin/campaigns/'
+    | '/admin/users/'
+    | '/admin/workspaces/'
     | '/campaigns/$campaignId/influencer/$influencerId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -374,8 +512,12 @@ export interface FileRouteTypes {
     | '/u/$username'
     | '/'
     | '/onboarding'
+    | '/admin/activity'
+    | '/admin/creators'
     | '/admin/dashboard'
+    | '/admin/financial'
     | '/admin/groups'
+    | '/admin/health'
     | '/admin/notifications'
     | '/campaigns/$campaignId'
     | '/campaigns/new'
@@ -384,9 +526,15 @@ export interface FileRouteTypes {
     | '/lives/new'
     | '/workspace/settings'
     | '/campaigns/$campaignId/invite'
+    | '/admin/campaigns/$campaignId'
     | '/admin/groups/$groupId'
     | '/admin/groups/new'
+    | '/admin/users/$userId'
+    | '/admin/workspaces/$workspaceId'
     | '/campaigns/$campaignId/edit'
+    | '/admin/campaigns'
+    | '/admin/users'
+    | '/admin/workspaces'
     | '/campaigns/$campaignId/influencer/$influencerId'
   id:
     | '__root__'
@@ -410,9 +558,16 @@ export interface FileRouteTypes {
     | '/(public)/u/$username'
     | '/(private)/(app)/'
     | '/(private)/onboarding/'
+    | '/(private)/(admin)/admin/activity'
+    | '/(private)/(admin)/admin/campaigns'
+    | '/(private)/(admin)/admin/creators'
     | '/(private)/(admin)/admin/dashboard'
+    | '/(private)/(admin)/admin/financial'
     | '/(private)/(admin)/admin/groups'
+    | '/(private)/(admin)/admin/health'
     | '/(private)/(admin)/admin/notifications'
+    | '/(private)/(admin)/admin/users'
+    | '/(private)/(admin)/admin/workspaces'
     | '/(private)/(app)/campaigns/$campaignId'
     | '/(private)/(app)/campaigns/new'
     | '/(private)/(app)/influencer/$influencerId'
@@ -420,9 +575,15 @@ export interface FileRouteTypes {
     | '/(private)/(app)/lives/new'
     | '/(private)/(app)/workspace/settings'
     | '/(public)/campaigns/$campaignId/invite'
+    | '/(private)/(admin)/admin/campaigns/$campaignId'
     | '/(private)/(admin)/admin/groups/$groupId'
     | '/(private)/(admin)/admin/groups/new'
+    | '/(private)/(admin)/admin/users/$userId'
+    | '/(private)/(admin)/admin/workspaces/$workspaceId'
     | '/(private)/(app)/campaigns/$campaignId/edit'
+    | '/(private)/(admin)/admin/campaigns/'
+    | '/(private)/(admin)/admin/users/'
+    | '/(private)/(admin)/admin/workspaces/'
     | '/(private)/(app)/campaigns/$campaignId/influencer/$influencerId'
   fileRoutesById: FileRoutesById
 }
@@ -433,13 +594,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/(public)': {
-      id: '/(public)'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof publicLayoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/(private)': {
       id: '/(private)'
       path: ''
@@ -447,39 +601,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof privateLayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(public)/sign-up': {
-      id: '/(public)/sign-up'
-      path: '/sign-up'
-      fullPath: '/sign-up'
-      preLoaderRoute: typeof publicSignUpRouteImport
-      parentRoute: typeof publicLayoutRoute
+    '/(public)': {
+      id: '/(public)'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof publicLayoutRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/(public)/sign-in': {
-      id: '/(public)/sign-in'
-      path: '/sign-in'
-      fullPath: '/sign-in'
-      preLoaderRoute: typeof publicSignInRouteImport
-      parentRoute: typeof publicLayoutRoute
-    }
-    '/(public)/reset-password': {
-      id: '/(public)/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof publicResetPasswordRouteImport
-      parentRoute: typeof publicLayoutRoute
-    }
-    '/(public)/forgot-password': {
-      id: '/(public)/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof publicForgotPasswordRouteImport
-      parentRoute: typeof publicLayoutRoute
-    }
-    '/(private)/onboarding': {
-      id: '/(private)/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof privateOnboardingLayoutRouteImport
+    '/(private)/(admin)': {
+      id: '/(private)/(admin)'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof privateadminLayoutRouteImport
       parentRoute: typeof privateLayoutRoute
     }
     '/(private)/(app)': {
@@ -489,81 +622,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof privateappLayoutRouteImport
       parentRoute: typeof privateLayoutRoute
     }
-    '/(private)/(admin)': {
-      id: '/(private)/(admin)'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof privateadminLayoutRouteImport
+    '/(private)/onboarding': {
+      id: '/(private)/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof privateOnboardingLayoutRouteImport
       parentRoute: typeof privateLayoutRoute
     }
-    '/(private)/onboarding/': {
-      id: '/(private)/onboarding/'
-      path: '/'
-      fullPath: '/onboarding/'
-      preLoaderRoute: typeof privateOnboardingIndexRouteImport
-      parentRoute: typeof privateOnboardingLayoutRoute
+    '/(public)/forgot-password': {
+      id: '/(public)/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof publicForgotPasswordRouteImport
+      parentRoute: typeof publicLayoutRoute
+    }
+    '/(public)/reset-password': {
+      id: '/(public)/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof publicResetPasswordRouteImport
+      parentRoute: typeof publicLayoutRoute
+    }
+    '/(public)/sign-in': {
+      id: '/(public)/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof publicSignInRouteImport
+      parentRoute: typeof publicLayoutRoute
+    }
+    '/(public)/sign-up': {
+      id: '/(public)/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof publicSignUpRouteImport
+      parentRoute: typeof publicLayoutRoute
     }
     '/(private)/(app)/': {
       id: '/(private)/(app)/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof privateappIndexRouteImport
-      parentRoute: typeof privateappLayoutRoute
-    }
-    '/(public)/u/$username': {
-      id: '/(public)/u/$username'
-      path: '/u/$username'
-      fullPath: '/u/$username'
-      preLoaderRoute: typeof publicUUsernameRouteImport
-      parentRoute: typeof publicLayoutRoute
-    }
-    '/(private)/onboarding/welcome': {
-      id: '/(private)/onboarding/welcome'
-      path: '/welcome'
-      fullPath: '/onboarding/welcome'
-      preLoaderRoute: typeof privateOnboardingWelcomeRouteImport
-      parentRoute: typeof privateOnboardingLayoutRoute
-    }
-    '/(private)/onboarding/verify-phone': {
-      id: '/(private)/onboarding/verify-phone'
-      path: '/verify-phone'
-      fullPath: '/onboarding/verify-phone'
-      preLoaderRoute: typeof privateOnboardingVerifyPhoneRouteImport
-      parentRoute: typeof privateOnboardingLayoutRoute
-    }
-    '/(private)/onboarding/create-workspace': {
-      id: '/(private)/onboarding/create-workspace'
-      path: '/create-workspace'
-      fullPath: '/onboarding/create-workspace'
-      preLoaderRoute: typeof privateOnboardingCreateWorkspaceRouteImport
-      parentRoute: typeof privateOnboardingLayoutRoute
-    }
-    '/(private)/(app)/settings': {
-      id: '/(private)/(app)/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof privateappSettingsRouteImport
-      parentRoute: typeof privateappLayoutRoute
-    }
-    '/(private)/(app)/lives': {
-      id: '/(private)/(app)/lives'
-      path: '/lives'
-      fullPath: '/lives'
-      preLoaderRoute: typeof privateappLivesRouteImport
-      parentRoute: typeof privateappLayoutRoute
-    }
-    '/(private)/(app)/financial': {
-      id: '/(private)/(app)/financial'
-      path: '/financial'
-      fullPath: '/financial'
-      preLoaderRoute: typeof privateappFinancialRouteImport
-      parentRoute: typeof privateappLayoutRoute
-    }
-    '/(private)/(app)/creators': {
-      id: '/(private)/(app)/creators'
-      path: '/creators'
-      fullPath: '/creators'
-      preLoaderRoute: typeof privateappCreatorsRouteImport
       parentRoute: typeof privateappLayoutRoute
     }
     '/(private)/(app)/campaigns': {
@@ -573,67 +671,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof privateappCampaignsRouteImport
       parentRoute: typeof privateappLayoutRoute
     }
-    '/(public)/campaigns/$campaignId/invite': {
-      id: '/(public)/campaigns/$campaignId/invite'
-      path: '/campaigns/$campaignId/invite'
-      fullPath: '/campaigns/$campaignId/invite'
-      preLoaderRoute: typeof publicCampaignsCampaignIdInviteRouteImport
+    '/(private)/(app)/creators': {
+      id: '/(private)/(app)/creators'
+      path: '/creators'
+      fullPath: '/creators'
+      preLoaderRoute: typeof privateappCreatorsRouteImport
+      parentRoute: typeof privateappLayoutRoute
+    }
+    '/(private)/(app)/financial': {
+      id: '/(private)/(app)/financial'
+      path: '/financial'
+      fullPath: '/financial'
+      preLoaderRoute: typeof privateappFinancialRouteImport
+      parentRoute: typeof privateappLayoutRoute
+    }
+    '/(private)/(app)/lives': {
+      id: '/(private)/(app)/lives'
+      path: '/lives'
+      fullPath: '/lives'
+      preLoaderRoute: typeof privateappLivesRouteImport
+      parentRoute: typeof privateappLayoutRoute
+    }
+    '/(private)/(app)/settings': {
+      id: '/(private)/(app)/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof privateappSettingsRouteImport
+      parentRoute: typeof privateappLayoutRoute
+    }
+    '/(private)/onboarding/': {
+      id: '/(private)/onboarding/'
+      path: '/'
+      fullPath: '/onboarding/'
+      preLoaderRoute: typeof privateOnboardingIndexRouteImport
+      parentRoute: typeof privateOnboardingLayoutRoute
+    }
+    '/(private)/onboarding/create-workspace': {
+      id: '/(private)/onboarding/create-workspace'
+      path: '/create-workspace'
+      fullPath: '/onboarding/create-workspace'
+      preLoaderRoute: typeof privateOnboardingCreateWorkspaceRouteImport
+      parentRoute: typeof privateOnboardingLayoutRoute
+    }
+    '/(private)/onboarding/verify-phone': {
+      id: '/(private)/onboarding/verify-phone'
+      path: '/verify-phone'
+      fullPath: '/onboarding/verify-phone'
+      preLoaderRoute: typeof privateOnboardingVerifyPhoneRouteImport
+      parentRoute: typeof privateOnboardingLayoutRoute
+    }
+    '/(private)/onboarding/welcome': {
+      id: '/(private)/onboarding/welcome'
+      path: '/welcome'
+      fullPath: '/onboarding/welcome'
+      preLoaderRoute: typeof privateOnboardingWelcomeRouteImport
+      parentRoute: typeof privateOnboardingLayoutRoute
+    }
+    '/(public)/u/$username': {
+      id: '/(public)/u/$username'
+      path: '/u/$username'
+      fullPath: '/u/$username'
+      preLoaderRoute: typeof publicUUsernameRouteImport
       parentRoute: typeof publicLayoutRoute
     }
-    '/(private)/(app)/workspace/settings': {
-      id: '/(private)/(app)/workspace/settings'
-      path: '/workspace/settings'
-      fullPath: '/workspace/settings'
-      preLoaderRoute: typeof privateappWorkspaceSettingsRouteImport
-      parentRoute: typeof privateappLayoutRoute
-    }
-    '/(private)/(app)/lives/new': {
-      id: '/(private)/(app)/lives/new'
-      path: '/new'
-      fullPath: '/lives/new'
-      preLoaderRoute: typeof privateappLivesNewRouteImport
-      parentRoute: typeof privateappLivesRoute
-    }
-    '/(private)/(app)/lives/$liveId': {
-      id: '/(private)/(app)/lives/$liveId'
-      path: '/$liveId'
-      fullPath: '/lives/$liveId'
-      preLoaderRoute: typeof privateappLivesLiveIdRouteImport
-      parentRoute: typeof privateappLivesRoute
-    }
-    '/(private)/(app)/influencer/$influencerId': {
-      id: '/(private)/(app)/influencer/$influencerId'
-      path: '/influencer/$influencerId'
-      fullPath: '/influencer/$influencerId'
-      preLoaderRoute: typeof privateappInfluencerInfluencerIdRouteImport
-      parentRoute: typeof privateappLayoutRoute
-    }
-    '/(private)/(app)/campaigns/new': {
-      id: '/(private)/(app)/campaigns/new'
-      path: '/new'
-      fullPath: '/campaigns/new'
-      preLoaderRoute: typeof privateappCampaignsNewRouteImport
-      parentRoute: typeof privateappCampaignsRoute
-    }
-    '/(private)/(app)/campaigns/$campaignId': {
-      id: '/(private)/(app)/campaigns/$campaignId'
-      path: '/$campaignId'
-      fullPath: '/campaigns/$campaignId'
-      preLoaderRoute: typeof privateappCampaignsCampaignIdRouteImport
-      parentRoute: typeof privateappCampaignsRoute
-    }
-    '/(private)/(admin)/admin/notifications': {
-      id: '/(private)/(admin)/admin/notifications'
-      path: '/admin/notifications'
-      fullPath: '/admin/notifications'
-      preLoaderRoute: typeof privateadminAdminNotificationsRouteImport
+    '/(private)/(admin)/admin/activity': {
+      id: '/(private)/(admin)/admin/activity'
+      path: '/admin/activity'
+      fullPath: '/admin/activity'
+      preLoaderRoute: typeof privateadminAdminActivityRouteImport
       parentRoute: typeof privateadminLayoutRoute
     }
-    '/(private)/(admin)/admin/groups': {
-      id: '/(private)/(admin)/admin/groups'
-      path: '/admin/groups'
-      fullPath: '/admin/groups'
-      preLoaderRoute: typeof privateadminAdminGroupsRouteImport
+    '/(private)/(admin)/admin/campaigns': {
+      id: '/(private)/(admin)/admin/campaigns'
+      path: '/admin/campaigns'
+      fullPath: '/admin/campaigns'
+      preLoaderRoute: typeof privateadminAdminCampaignsRouteImport
+      parentRoute: typeof privateadminLayoutRoute
+    }
+    '/(private)/(admin)/admin/creators': {
+      id: '/(private)/(admin)/admin/creators'
+      path: '/admin/creators'
+      fullPath: '/admin/creators'
+      preLoaderRoute: typeof privateadminAdminCreatorsRouteImport
       parentRoute: typeof privateadminLayoutRoute
     }
     '/(private)/(admin)/admin/dashboard': {
@@ -643,12 +762,117 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof privateadminAdminDashboardRouteImport
       parentRoute: typeof privateadminLayoutRoute
     }
-    '/(private)/(app)/campaigns/$campaignId/edit': {
-      id: '/(private)/(app)/campaigns/$campaignId/edit'
-      path: '/edit'
-      fullPath: '/campaigns/$campaignId/edit'
-      preLoaderRoute: typeof privateappCampaignsCampaignIdEditRouteImport
-      parentRoute: typeof privateappCampaignsCampaignIdRoute
+    '/(private)/(admin)/admin/financial': {
+      id: '/(private)/(admin)/admin/financial'
+      path: '/admin/financial'
+      fullPath: '/admin/financial'
+      preLoaderRoute: typeof privateadminAdminFinancialRouteImport
+      parentRoute: typeof privateadminLayoutRoute
+    }
+    '/(private)/(admin)/admin/groups': {
+      id: '/(private)/(admin)/admin/groups'
+      path: '/admin/groups'
+      fullPath: '/admin/groups'
+      preLoaderRoute: typeof privateadminAdminGroupsRouteImport
+      parentRoute: typeof privateadminLayoutRoute
+    }
+    '/(private)/(admin)/admin/health': {
+      id: '/(private)/(admin)/admin/health'
+      path: '/admin/health'
+      fullPath: '/admin/health'
+      preLoaderRoute: typeof privateadminAdminHealthRouteImport
+      parentRoute: typeof privateadminLayoutRoute
+    }
+    '/(private)/(admin)/admin/notifications': {
+      id: '/(private)/(admin)/admin/notifications'
+      path: '/admin/notifications'
+      fullPath: '/admin/notifications'
+      preLoaderRoute: typeof privateadminAdminNotificationsRouteImport
+      parentRoute: typeof privateadminLayoutRoute
+    }
+    '/(private)/(admin)/admin/users': {
+      id: '/(private)/(admin)/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof privateadminAdminUsersRouteImport
+      parentRoute: typeof privateadminLayoutRoute
+    }
+    '/(private)/(admin)/admin/workspaces': {
+      id: '/(private)/(admin)/admin/workspaces'
+      path: '/admin/workspaces'
+      fullPath: '/admin/workspaces'
+      preLoaderRoute: typeof privateadminAdminWorkspacesRouteImport
+      parentRoute: typeof privateadminLayoutRoute
+    }
+    '/(private)/(app)/campaigns/$campaignId': {
+      id: '/(private)/(app)/campaigns/$campaignId'
+      path: '/$campaignId'
+      fullPath: '/campaigns/$campaignId'
+      preLoaderRoute: typeof privateappCampaignsCampaignIdRouteImport
+      parentRoute: typeof privateappCampaignsRoute
+    }
+    '/(private)/(app)/campaigns/new': {
+      id: '/(private)/(app)/campaigns/new'
+      path: '/new'
+      fullPath: '/campaigns/new'
+      preLoaderRoute: typeof privateappCampaignsNewRouteImport
+      parentRoute: typeof privateappCampaignsRoute
+    }
+    '/(private)/(app)/influencer/$influencerId': {
+      id: '/(private)/(app)/influencer/$influencerId'
+      path: '/influencer/$influencerId'
+      fullPath: '/influencer/$influencerId'
+      preLoaderRoute: typeof privateappInfluencerInfluencerIdRouteImport
+      parentRoute: typeof privateappLayoutRoute
+    }
+    '/(private)/(app)/lives/$liveId': {
+      id: '/(private)/(app)/lives/$liveId'
+      path: '/$liveId'
+      fullPath: '/lives/$liveId'
+      preLoaderRoute: typeof privateappLivesLiveIdRouteImport
+      parentRoute: typeof privateappLivesRoute
+    }
+    '/(private)/(app)/lives/new': {
+      id: '/(private)/(app)/lives/new'
+      path: '/new'
+      fullPath: '/lives/new'
+      preLoaderRoute: typeof privateappLivesNewRouteImport
+      parentRoute: typeof privateappLivesRoute
+    }
+    '/(private)/(app)/workspace/settings': {
+      id: '/(private)/(app)/workspace/settings'
+      path: '/workspace/settings'
+      fullPath: '/workspace/settings'
+      preLoaderRoute: typeof privateappWorkspaceSettingsRouteImport
+      parentRoute: typeof privateappLayoutRoute
+    }
+    '/(public)/campaigns/$campaignId/invite': {
+      id: '/(public)/campaigns/$campaignId/invite'
+      path: '/campaigns/$campaignId/invite'
+      fullPath: '/campaigns/$campaignId/invite'
+      preLoaderRoute: typeof publicCampaignsCampaignIdInviteRouteImport
+      parentRoute: typeof publicLayoutRoute
+    }
+    '/(private)/(admin)/admin/campaigns/': {
+      id: '/(private)/(admin)/admin/campaigns/'
+      path: '/'
+      fullPath: '/admin/campaigns/'
+      preLoaderRoute: typeof privateadminAdminCampaignsIndexRouteImport
+      parentRoute: typeof privateadminAdminCampaignsRoute
+    }
+    '/(private)/(admin)/admin/campaigns/$campaignId': {
+      id: '/(private)/(admin)/admin/campaigns/$campaignId'
+      path: '/$campaignId'
+      fullPath: '/admin/campaigns/$campaignId'
+      preLoaderRoute: typeof privateadminAdminCampaignsCampaignIdRouteImport
+      parentRoute: typeof privateadminAdminCampaignsRoute
+    }
+    '/(private)/(admin)/admin/groups/$groupId': {
+      id: '/(private)/(admin)/admin/groups/$groupId'
+      path: '/$groupId'
+      fullPath: '/admin/groups/$groupId'
+      preLoaderRoute: typeof privateadminAdminGroupsGroupIdRouteImport
+      parentRoute: typeof privateadminAdminGroupsRoute
     }
     '/(private)/(admin)/admin/groups/new': {
       id: '/(private)/(admin)/admin/groups/new'
@@ -657,12 +881,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof privateadminAdminGroupsNewRouteImport
       parentRoute: typeof privateadminAdminGroupsRoute
     }
-    '/(private)/(admin)/admin/groups/$groupId': {
-      id: '/(private)/(admin)/admin/groups/$groupId'
-      path: '/$groupId'
-      fullPath: '/admin/groups/$groupId'
-      preLoaderRoute: typeof privateadminAdminGroupsGroupIdRouteImport
-      parentRoute: typeof privateadminAdminGroupsRoute
+    '/(private)/(admin)/admin/users/': {
+      id: '/(private)/(admin)/admin/users/'
+      path: '/'
+      fullPath: '/admin/users/'
+      preLoaderRoute: typeof privateadminAdminUsersIndexRouteImport
+      parentRoute: typeof privateadminAdminUsersRoute
+    }
+    '/(private)/(admin)/admin/users/$userId': {
+      id: '/(private)/(admin)/admin/users/$userId'
+      path: '/$userId'
+      fullPath: '/admin/users/$userId'
+      preLoaderRoute: typeof privateadminAdminUsersUserIdRouteImport
+      parentRoute: typeof privateadminAdminUsersRoute
+    }
+    '/(private)/(admin)/admin/workspaces/': {
+      id: '/(private)/(admin)/admin/workspaces/'
+      path: '/'
+      fullPath: '/admin/workspaces/'
+      preLoaderRoute: typeof privateadminAdminWorkspacesIndexRouteImport
+      parentRoute: typeof privateadminAdminWorkspacesRoute
+    }
+    '/(private)/(admin)/admin/workspaces/$workspaceId': {
+      id: '/(private)/(admin)/admin/workspaces/$workspaceId'
+      path: '/$workspaceId'
+      fullPath: '/admin/workspaces/$workspaceId'
+      preLoaderRoute: typeof privateadminAdminWorkspacesWorkspaceIdRouteImport
+      parentRoute: typeof privateadminAdminWorkspacesRoute
+    }
+    '/(private)/(app)/campaigns/$campaignId/edit': {
+      id: '/(private)/(app)/campaigns/$campaignId/edit'
+      path: '/edit'
+      fullPath: '/campaigns/$campaignId/edit'
+      preLoaderRoute: typeof privateappCampaignsCampaignIdEditRouteImport
+      parentRoute: typeof privateappCampaignsCampaignIdRoute
     }
     '/(private)/(app)/campaigns/$campaignId/influencer/$influencerId': {
       id: '/(private)/(app)/campaigns/$campaignId/influencer/$influencerId'
@@ -673,6 +925,23 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface privateadminAdminCampaignsRouteChildren {
+  privateadminAdminCampaignsCampaignIdRoute: typeof privateadminAdminCampaignsCampaignIdRoute
+  privateadminAdminCampaignsIndexRoute: typeof privateadminAdminCampaignsIndexRoute
+}
+
+const privateadminAdminCampaignsRouteChildren: privateadminAdminCampaignsRouteChildren =
+  {
+    privateadminAdminCampaignsCampaignIdRoute:
+      privateadminAdminCampaignsCampaignIdRoute,
+    privateadminAdminCampaignsIndexRoute: privateadminAdminCampaignsIndexRoute,
+  }
+
+const privateadminAdminCampaignsRouteWithChildren =
+  privateadminAdminCampaignsRoute._addFileChildren(
+    privateadminAdminCampaignsRouteChildren,
+  )
 
 interface privateadminAdminGroupsRouteChildren {
   privateadminAdminGroupsGroupIdRoute: typeof privateadminAdminGroupsGroupIdRoute
@@ -690,16 +959,65 @@ const privateadminAdminGroupsRouteWithChildren =
     privateadminAdminGroupsRouteChildren,
   )
 
+interface privateadminAdminUsersRouteChildren {
+  privateadminAdminUsersUserIdRoute: typeof privateadminAdminUsersUserIdRoute
+  privateadminAdminUsersIndexRoute: typeof privateadminAdminUsersIndexRoute
+}
+
+const privateadminAdminUsersRouteChildren: privateadminAdminUsersRouteChildren =
+  {
+    privateadminAdminUsersUserIdRoute: privateadminAdminUsersUserIdRoute,
+    privateadminAdminUsersIndexRoute: privateadminAdminUsersIndexRoute,
+  }
+
+const privateadminAdminUsersRouteWithChildren =
+  privateadminAdminUsersRoute._addFileChildren(
+    privateadminAdminUsersRouteChildren,
+  )
+
+interface privateadminAdminWorkspacesRouteChildren {
+  privateadminAdminWorkspacesWorkspaceIdRoute: typeof privateadminAdminWorkspacesWorkspaceIdRoute
+  privateadminAdminWorkspacesIndexRoute: typeof privateadminAdminWorkspacesIndexRoute
+}
+
+const privateadminAdminWorkspacesRouteChildren: privateadminAdminWorkspacesRouteChildren =
+  {
+    privateadminAdminWorkspacesWorkspaceIdRoute:
+      privateadminAdminWorkspacesWorkspaceIdRoute,
+    privateadminAdminWorkspacesIndexRoute:
+      privateadminAdminWorkspacesIndexRoute,
+  }
+
+const privateadminAdminWorkspacesRouteWithChildren =
+  privateadminAdminWorkspacesRoute._addFileChildren(
+    privateadminAdminWorkspacesRouteChildren,
+  )
+
 interface privateadminLayoutRouteChildren {
+  privateadminAdminActivityRoute: typeof privateadminAdminActivityRoute
+  privateadminAdminCampaignsRoute: typeof privateadminAdminCampaignsRouteWithChildren
+  privateadminAdminCreatorsRoute: typeof privateadminAdminCreatorsRoute
   privateadminAdminDashboardRoute: typeof privateadminAdminDashboardRoute
+  privateadminAdminFinancialRoute: typeof privateadminAdminFinancialRoute
   privateadminAdminGroupsRoute: typeof privateadminAdminGroupsRouteWithChildren
+  privateadminAdminHealthRoute: typeof privateadminAdminHealthRoute
   privateadminAdminNotificationsRoute: typeof privateadminAdminNotificationsRoute
+  privateadminAdminUsersRoute: typeof privateadminAdminUsersRouteWithChildren
+  privateadminAdminWorkspacesRoute: typeof privateadminAdminWorkspacesRouteWithChildren
 }
 
 const privateadminLayoutRouteChildren: privateadminLayoutRouteChildren = {
+  privateadminAdminActivityRoute: privateadminAdminActivityRoute,
+  privateadminAdminCampaignsRoute: privateadminAdminCampaignsRouteWithChildren,
+  privateadminAdminCreatorsRoute: privateadminAdminCreatorsRoute,
   privateadminAdminDashboardRoute: privateadminAdminDashboardRoute,
+  privateadminAdminFinancialRoute: privateadminAdminFinancialRoute,
   privateadminAdminGroupsRoute: privateadminAdminGroupsRouteWithChildren,
+  privateadminAdminHealthRoute: privateadminAdminHealthRoute,
   privateadminAdminNotificationsRoute: privateadminAdminNotificationsRoute,
+  privateadminAdminUsersRoute: privateadminAdminUsersRouteWithChildren,
+  privateadminAdminWorkspacesRoute:
+    privateadminAdminWorkspacesRouteWithChildren,
 }
 
 const privateadminLayoutRouteWithChildren =

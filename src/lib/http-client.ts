@@ -13,8 +13,12 @@
  *   await apiPost("/campaigns", payload);
  *   await apiPatch(`/campaigns/${id}`, updates);
  *   await apiDelete(`/campaigns/${id}`);
+ *
+ * Erros de resposta são `Error` com `status`, `code` (o `error` do corpo, ex.: WORKSPACE_SUSPENDED) e
+ * `details`. O app reage a esses códigos num lugar só (`lib/workspace-state/response-observer.ts`).
  */
 import { getApiUrl, getAuthToken, getWorkspaceId } from "@/lib/utils/api";
+import { buildApiError } from "@/lib/workspace-state/api-error";
 
 // ---------------------------------------------------------------------------
 // Helpers internos
@@ -39,15 +43,13 @@ function resolveWorkspaceHeaders(): Record<string, string> {
 }
 
 async function handleError(response: Response, fallback: string): Promise<never> {
-  let message: string = fallback;
+  let body: unknown;
   try {
-    const body = await response.json();
-    if (typeof body?.message === "string") message = body.message;
-    else if (typeof body?.error === "string") message = body.error;
+    body = await response.json();
   } catch {
     // ignore parse error
   }
-  throw new Error(message);
+  throw buildApiError(response.status, body, fallback);
 }
 
 async function parseResponse<T>(response: Response, path: string): Promise<T> {

@@ -1,13 +1,16 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 
 import { AuthProvider } from "@/contexts/auth-context";
+import { createAppQueryClient } from "@/lib/workspace-state/query-client";
 
 import { Toaster } from "@/components/ui/sonner";
 import { AuthLoader } from "@/components/auth-loader";
 import { NotFoundPage } from "@/components/not-found-page";
 
-const queryClient = new QueryClient();
+// Mesmos padrões do React Query, exceto que recusas por ciclo de vida do workspace (suspenso, arquivado,
+// excluído) não são repetidas.
+const queryClient = createAppQueryClient();
 
 const RootLayout = () => (
   <QueryClientProvider client={queryClient}>

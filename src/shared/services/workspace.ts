@@ -1,17 +1,28 @@
 import { getApiUrl, getAuthToken } from "@/lib/utils/api";
+import { buildApiError } from "@/lib/workspace-state/api-error";
 import type {
   Workspace,
   WorkspaceMember,
   WorkspacePermissions,
   WorkspaceRole,
+  WorkspaceStatus,
 } from "../types";
 import { mergeWorkspacePermissions } from "../utils/workspace-permissions";
+
+const WORKSPACE_STATUSES: readonly WorkspaceStatus[] = ["active", "suspended", "archived"];
 
 function normalizeWorkspaceRow(row: unknown): Workspace | null {
   if (!row || typeof row !== "object") return null;
   const o = row as Record<string, unknown>;
   const id = o.id != null ? String(o.id) : "";
   if (!id) return null;
+  const statusRaw = typeof o.status === "string" ? o.status.toLowerCase() : "";
+  // Excluído nunca deveria vir (o servidor tira da lista); se vier, o workspace não existe para o app.
+  if (statusRaw === "deleted") return null;
+  // Servidor antigo (sem o campo) ou valor que o app não conhece: segue como ativo, o servidor barra o que precisar.
+  const status: WorkspaceStatus = WORKSPACE_STATUSES.includes(statusRaw as WorkspaceStatus)
+    ? (statusRaw as WorkspaceStatus)
+    : "active";
   const perms = o.permissions;
   let permissions: WorkspacePermissions | undefined;
   if (Array.isArray(perms)) {
@@ -53,6 +64,7 @@ function normalizeWorkspaceRow(row: unknown): Workspace | null {
         : undefined,
     joined_at: o.joined_at != null ? String(o.joined_at) : undefined,
     permissions,
+    status,
   };
 }
 
@@ -463,6 +475,11 @@ export async function removeWorkspaceMember(
   }
 }
 
+/**
+ * Exclusão LÓGICA do workspace (some para o time; nada é apagado do banco). Com saldo, valor comprometido,
+ * cobrança pendente, saque em andamento ou campanha publicada o servidor responde `409 WORKSPACE_DELETE_BLOCKED`
+ * com `details.blockers`; o erro lançado traz `status`, `code` e `details` (ver `getDeleteBlockers`).
+ */
 export async function deleteWorkspace(workspaceId: string): Promise<void> {
   const request = await fetch(getApiUrl(`/workspaces/${workspaceId}`), {
     method: "DELETE",
@@ -474,13 +491,13 @@ export async function deleteWorkspace(workspaceId: string): Promise<void> {
   });
 
   if (!request.ok) {
-    let errorData;
+    let errorData: unknown;
     try {
       errorData = await request.json();
     } catch {
-      errorData = { message: "Failed to delete workspace" };
+      // corpo ausente: fica a mensagem padrão
     }
-    throw errorData || "Failed to delete workspace";
+    throw buildApiError(request.status, errorData, "Não foi possível excluir o workspace.");
   }
 }
 

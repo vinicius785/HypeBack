@@ -1,0 +1,134 @@
+/*
+ * Admin da plataforma — Criadores (`src/components/admin/creators`).
+ *
+ * Mesmas regras do kit (`admin-platform.css`): prefixo `adm-creators-`, tudo sob `.pv`, cores chapadas, sem
+ * gradiente, divisores finos e roxo só como acento. Nenhuma classe curta do protótipo é usada nem redefinida aqui.
+ */
+
+/* ───────────────────────── aba (conteúdo) ───────────────────────── */
+
+.pv .adm-creators-panel { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.pv .adm-creators-panel > * { min-width: 0; }
+
+/* ───────────────────────── tabela de criadores ───────────────────────── */
+
+.pv .adm-creators-who { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pv .adm-creators-who-text { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pv .adm-creators-who-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pv .adm-creators-who-name b { min-width: 0; font-size: 14px; font-weight: 600; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .adm-creators-who-text small { display: block; color: var(--adm-text-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* redes: uma linha por rede (ícone, @usuário, seguidores à direita) */
+.pv .adm-creators-nets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; min-width: 0; }
+.pv .adm-creators-nets li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pv .adm-creators-net-ico { flex: none; width: 16px; height: 16px; display: inline-grid; place-items: center; color: var(--adm-text-muted); }
+.pv .adm-creators-net-ico .ico { width: 15px; height: 15px; }
+.pv .adm-creators-net-user { min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .adm-creators-net-off { flex: none; color: var(--adm-text-muted); font-size: 11.5px; }
+.pv .adm-creators-net-n { flex: none; margin-left: auto; padding-left: 8px; color: var(--adm-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pv .adm-creators-nets li[data-disabled="true"] .adm-creators-net-user { color: var(--adm-text-muted); font-weight: 400; }
+
+/* UGC é tipo de conteúdo, não rede: etiqueta só com contorno, nunca uma linha de rede */
+.pv .adm-creators-ugc { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; box-shadow: inset 0 0 0 1.5px var(--adm-rule); color: var(--ink); font-size: 11px; font-weight: 700; letter-spacing: .05em; line-height: 1; }
+
+/* cadastro: etiqueta + "Faltam: …" */
+.pv .adm-creators-reg { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.pv .adm-creators-missing { margin: 0; color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.5; }
+.pv .adm-creators-missing > span { color: var(--ink); font-weight: 600; }
+.pv .adm-creators-more { color: var(--ink); font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--adm-rule); border-radius: 6px; padding: 0 2px; }
+.pv .adm-creators-more:hover { text-decoration-color: var(--ink); }
+.pv .adm-creators-more:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+/* primeira campanha: campanha em cima; workspace e dia embaixo */
+.pv .adm-creators-first { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pv .adm-creators-first a { color: inherit; text-decoration: none; }
+.pv .adm-creators-first a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.pv .adm-creators-first a:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+.pv .adm-creators-first-title { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .adm-creators-first small { color: var(--adm-text-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ───────────────────────── duplicados ───────────────────────── */
+
+/* o aviso fixo da aba: texto simples numa faixa branca, sem ícone nem cor de alarme */
+.pv .adm-creators-note { margin: 0; padding: 14px 20px; border-radius: 18px; background: #fff; color: var(--ink); font-size: 14px; font-weight: 500; line-height: 1.45; }
+
+.pv .adm-creators-groups { display: flex; flex-direction: column; gap: 16px; transition: opacity .2s; }
+.pv .adm-creators-groups[aria-busy="true"] { opacity: .55; }
+.pv .adm-creators-group { background: #fff; border-radius: var(--adm-radius); padding: 22px 24px 12px; min-width: 0; }
+.pv .adm-creators-group-sk { display: flex; flex-direction: column; gap: 12px; padding-bottom: 22px; }
+.pv .adm-creators-group-h { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 14px; }
+.pv .adm-creators-group-sk .adm-creators-group-h { margin-bottom: 2px; }
+.pv .adm-creators-group-match { margin: 0; display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; color: var(--adm-text-muted); font-size: 14px; }
+.pv .adm-creators-group-match code { font: inherit; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pv .adm-creators-group-count { margin-left: auto; color: var(--adm-text-muted); font-size: 13px; white-space: nowrap; }
+
+.pv .adm-creators-gu-head,
+.pv .adm-creators-gu { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) 112px 72px 92px; column-gap: 16px; align-items: center; }
+.pv .adm-creators-gu-head { padding: 8px 0; border-bottom: 1.5px solid var(--line); color: var(--adm-text-muted); font-size: 11.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
+.pv .adm-creators-gu { padding: 12px 0; border-top: 1.5px solid var(--line); font-size: 14px; }
+.pv .adm-creators-gu-head + .adm-creators-gu { border-top: 0; }
+.pv .adm-creators-gu-who { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pv .adm-creators-gu-name { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
+.pv .adm-creators-gu-name b { min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.pv .adm-creators-gu-who small { color: var(--adm-text-muted); font-size: 12.5px; }
+.pv .adm-creators-gu-email { color: var(--adm-text-muted); overflow-wrap: anywhere; }
+
+.pv .adm-creators-pager { background: #fff; border-radius: var(--adm-radius); }
+
+/* ───────────────────────── inconsistências ───────────────────────── */
+
+.pv .adm-creators-incs { display: flex; flex-direction: column; }
+.pv .adm-creators-inc { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 24px; row-gap: 12px; padding: 20px 0; border-top: 1.5px solid var(--line); }
+.pv .adm-creators-incs > .adm-creators-inc:first-child { border-top: 0; padding-top: 0; }
+.pv .adm-creators-incs > .adm-creators-inc:last-child { padding-bottom: 0; }
+.pv .adm-creators-inc-main { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.pv .adm-creators-inc-sk { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.pv .adm-creators-inc h3 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; line-height: 1.35; }
+.pv .adm-creators-inc-desc { margin: -4px 0 0; color: var(--adm-text-muted); font-size: 13.5px; line-height: 1.5; }
+.pv .adm-creators-inc-count { text-align: right; }
+.pv .adm-creators-inc-count b { display: block; font-size: 28px; font-weight: 600; letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; }
+.pv .adm-creators-inc-count small { display: block; margin-top: 4px; color: var(--adm-text-muted); font-size: 12px; }
+.pv .adm-creators-inc-samples { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; font-size: 13px; }
+.pv .adm-creators-inc-samples > span { color: var(--adm-text-muted); }
+.pv .adm-creators-inc-samples ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; min-width: 0; }
+.pv .adm-creators-inc-samples small { color: var(--adm-text-muted); font-size: 12px; }
+.pv .adm-creators-inc-sample { color: var(--ink); font-weight: 500; text-decoration: none; overflow-wrap: anywhere; }
+.pv a.adm-creators-inc-sample:hover { text-decoration: underline; text-underline-offset: 3px; }
+.pv a.adm-creators-inc-sample:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+
+/* ───────────────────────── perfil da base ───────────────────────── */
+
+/* recolhido: só o cabeçalho, sem a folga que o cartão deixa para o conteúdo */
+.pv .adm-creators-profile-closed > .adm-card-h { margin-bottom: 0; }
+.pv .adm-creators-profile-body { display: flex; flex-direction: column; gap: 22px; }
+.pv .adm-creators-profile-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; }
+/* o controle segmentado do protótipo tem trilho branco: dentro do cartão branco ele precisa de um cinza para existir */
+.pv .adm-creators-profile .seg { background: var(--bg); }
+.pv .adm-creators-profile-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 40px; }
+.pv .adm-creators-profile-cols > div { min-width: 0; }
+.pv .adm-creators-profile h3 { margin: 0 0 16px; font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+
+/* ───────────────────────── tablet e celular ───────────────────────── */
+
+@media (max-width: 900px) {
+  .pv .adm-creators-profile-cols { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .pv .adm-creators-group { padding: 18px 18px 8px; border-radius: 24px; }
+  .pv .adm-creators-pager { border-radius: 24px; }
+  .pv .adm-creators-note { border-radius: 16px; padding: 12px 16px; }
+  .pv .adm-creators-group-count { margin-left: 0; width: 100%; }
+  /* contas do grupo: sem cabeçalho de colunas; cada conta vira um bloco com rótulos nos números */
+  .pv .adm-creators-gu-head { display: none; }
+  .pv .adm-creators-gu { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 8px; padding: 14px 0; }
+  .pv .adm-creators-gu-who, .pv .adm-creators-gu-email { grid-column: 1 / -1; }
+  .pv .adm-creators-gu > [data-label]:not(.adm-creators-gu-email)::before { content: attr(data-label); display: block; color: var(--adm-text-muted); font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 2px; }
+  .pv .adm-creators-inc { grid-template-columns: minmax(0, 1fr); }
+  .pv .adm-creators-inc-count { text-align: left; display: flex; align-items: baseline; gap: 8px; }
+  .pv .adm-creators-inc-count small { margin-top: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-creators-groups { transition: none; }
+}

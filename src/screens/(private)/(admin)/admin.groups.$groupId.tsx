@@ -28,7 +28,7 @@ import { getUploadUrl } from "@/lib/utils/api";
 import type { CommunityGroupDetail, GroupPost } from "@/shared/types";
 
 export const Route = createFileRoute(
-  "/(private)/(admin)/admin/groups/$groupId" as "/(private)/(admin)/admin/groups/$groupId",
+  "/(private)/(admin)/admin/groups/$groupId",
 )({
   component: GroupDetailRoute,
 });

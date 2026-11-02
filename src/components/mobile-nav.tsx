@@ -8,7 +8,10 @@ import {
   isCampaignScopedPath,
   useLogout,
   useNavItems,
+  type AdminNavItem,
+  type NavScope,
 } from "@/components/sidebar";
+import { WorkspaceStatusChip } from "@/components/workspace-state/workspace-status-chip";
 import { useWorkspaceContext } from "@/contexts/workspace-context";
 import type { Workspace } from "@/shared/types";
 
@@ -17,17 +20,23 @@ const HIDE_ON = [/^\/campaigns\/new\/?$/, /^\/campaigns\/[^/]+\/edit\/?$/, /^\/l
 
 /** Atalhos fixos da barra; o restante fica na gaveta "Mais". */
 const BAR = ["Início", "Campanhas", "Criadores", "Financeiro"];
+/** No Admin a barra leva as quatro áreas mais usadas; as outras ficam em "Mais". */
+const ADMIN_BAR = ["Dashboard", "Workspaces", "Usuários", "Financeiro"];
 
 /**
  * Navegação do celular (≤ 900px, quando a sidebar some): barra inferior com os
  * atalhos principais e uma gaveta "Mais" com workspaces, demais telas e a conta.
  * O CSS (`.bnav`, `#bmore`) vem do protótipo e só aparece em telas estreitas.
+ *
+ * `scope="platform"` (layout do Admin): a barra e a gaveta levam as áreas do Admin, sem a lista de
+ * workspaces (escolher um mexeria no `workspaceId` guardado) e com "Voltar ao app".
  */
-export function MobileNav() {
+export function MobileNav({ scope = "workspace" }: { scope?: NavScope }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { workspaces, selectedWorkspace, selectWorkspace } = useWorkspaceContext();
-  const { menus, admin, showPlatformAdmin, isOn } = useNavItems();
+  const { menus, adminGroups, isOn } = useNavItems(scope);
+  const platform = scope === "platform";
   const doLogout = useLogout();
   const [open, setOpen] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -53,11 +62,19 @@ export function MobileNav() {
   if (HIDE_ON.some((re) => re.test(pathname))) return null;
 
   const visible = menus.filter((m) => m[3]);
-  const barItems = visible.filter((m) => BAR.includes(m[0]));
-  const extraItems = visible.filter((m) => !BAR.includes(m[0]));
+  const adminItems: AdminNavItem[] = adminGroups.flatMap((g) => [...g.items]);
+  const barItems: Array<[string, string, string]> = platform
+    ? ADMIN_BAR.map((label) => adminItems.find((a) => a.label === label)).filter((a): a is AdminNavItem => !!a).map((a) => [a.label, a.icon, a.href])
+    : visible.filter((m) => BAR.includes(m[0])).map((m) => [m[0], m[1], m[2]]);
+  const barLabels = barItems.map((b) => b[0]);
+  const extraItems = platform ? [] : visible.filter((m) => !BAR.includes(m[0]));
+  // Em cada área do Admin, o que a barra já mostra não repete na gaveta.
+  const extraGroups = adminGroups
+    .map((g) => ({ ...g, items: platform ? g.items.filter((a) => !barLabels.includes(a.label)) : g.items }))
+    .filter((g) => g.items.length > 0);
   const extraHrefs = [
     ...extraItems.map((m) => m[2]),
-    ...(showPlatformAdmin ? admin.map((a) => a[2]) : []),
+    ...extraGroups.flatMap((g) => g.items.map((a) => a.href)),
     "/settings",
     "/workspace",
   ];
@@ -105,7 +122,7 @@ export function MobileNav() {
         <div ref={sheetRef} className="bms" role="dialog" aria-modal="true" aria-label="Mais opções" aria-hidden={!open}>
           <div className="bms-gr" aria-hidden="true" />
 
-          {workspaces.length > 0 && (
+          {!platform && workspaces.length > 0 && (
             <div className="bms-ws">
               <small>Workspace</small>
               {workspaces.map((w, k) => {
@@ -115,7 +132,10 @@ export function MobileNav() {
                     <Brand ws={w} index={k} />
                     <div>
                       <b>{w.name}</b>
-                      <small>{w.role ? (ROLE_LABEL[w.role] ?? w.role) : ""}</small>
+                      <small>
+                        {w.role ? (ROLE_LABEL[w.role] ?? w.role) : ""}
+                        <WorkspaceStatusChip status={w.status} />
+                      </small>
                     </div>
                     {on && (
                       <i aria-hidden="true">
@@ -128,7 +148,7 @@ export function MobileNav() {
             </div>
           )}
 
-          {(extraItems.length > 0 || showPlatformAdmin) && (
+          {extraItems.length > 0 && (
             <div className="bms-sc">
               <small>Navegação</small>
               <div>
@@ -140,18 +160,31 @@ export function MobileNav() {
                     {label}
                   </button>
                 ))}
-                {showPlatformAdmin &&
-                  admin.map(([label, icon, href]) => (
-                    <button key={label} type="button" className={`bms-t${isOn(href) ? " on" : ""}`} onClick={() => go(href)}>
-                      <span>
-                        <I n={icon} cls="sm" />
-                      </span>
-                      {label}
-                    </button>
-                  ))}
               </div>
             </div>
           )}
+
+          {extraGroups.map((group) => (
+            <div className="bms-sc" key={group.id}>
+              <small>{group.label}</small>
+              <div>
+                {group.items.map(({ label, icon, href }) => (
+                  <button
+                    key={href}
+                    type="button"
+                    className={`bms-t${isOn(href) ? " on" : ""}`}
+                    aria-current={isOn(href) ? "page" : undefined}
+                    onClick={() => go(href)}
+                  >
+                    <span>
+                      <I n={icon} cls="sm" />
+                    </span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
 
           <div className="bms-sc">
             <small>Conta</small>
@@ -162,18 +195,29 @@ export function MobileNav() {
                 </span>
                 Meu perfil
               </button>
-              <button type="button" className={`bms-t${isOn("/workspace/settings") ? " on" : ""}`} onClick={() => go("/workspace/settings")}>
-                <span>
-                  <I n="gear" cls="sm" />
-                </span>
-                Workspace
-              </button>
-              <button type="button" className="bms-t" onClick={() => go("/onboarding/create-workspace")}>
-                <span>
-                  <I n="plus" cls="sm" />
-                </span>
-                Novo workspace
-              </button>
+              {platform ? (
+                <button type="button" className="bms-t" onClick={() => go("/")}>
+                  <span>
+                    <I n="back" cls="sm" />
+                  </span>
+                  Voltar ao app
+                </button>
+              ) : (
+                <>
+                  <button type="button" className={`bms-t${isOn("/workspace/settings") ? " on" : ""}`} onClick={() => go("/workspace/settings")}>
+                    <span>
+                      <I n="gear" cls="sm" />
+                    </span>
+                    Workspace
+                  </button>
+                  <button type="button" className="bms-t" onClick={() => go("/onboarding/create-workspace")}>
+                    <span>
+                      <I n="plus" cls="sm" />
+                    </span>
+                    Novo workspace
+                  </button>
+                </>
+              )}
               <button type="button" className="bms-t out" onClick={() => doLogout()}>
                 <span>
                   <I n="logout" cls="sm" />

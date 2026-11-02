@@ -1,0 +1,78 @@
+/*
+ * Estado do workspace para o time do cliente (`src/components/workspace-state`): etiqueta de estado nos menus de
+ * workspace, faixa de "somente consulta", tela de bloqueio do workspace suspenso e o painel de impedimentos do
+ * diálogo de exclusão.
+ *
+ * Regras deste arquivo (as mesmas do Admin):
+ * - prefixo `wst-` e tudo sob `.pv`; nenhuma classe curta genérica do protótipo é usada ou redefinida
+ *   (.big .tag .box .lk .on .out .round .head .tools .card .stat .cell .chart .steps .stack .link .pill .badge
+ *   .chip .search .top .fade .txt .pend .metric .cols). Do protótipo entram só `.btn`, `.brand` (o círculo do
+ *   workspace, do menu) e as classes do diálogo de exclusão que já existiam;
+ * - visual de Início: fundo neutro, cartão branco (raio 32), tipografia 32/18/14, preto na ação principal,
+ *   cores chapadas, sem gradiente. Vermelho só no que é recusa (suspenso).
+ */
+
+.pv {
+  /* texto de etiqueta com contraste mínimo de 4.5:1 sobre o próprio fundo (o --muted do protótipo não chega) */
+  --wst-bad: #c62027;
+  --wst-bad-bg: #fdecec;
+  --wst-muted-strong: #5c5c5c;
+  --wst-muted-bg: #e6e6e6;
+  --wst-rule: rgba(5, 5, 5, .1);
+}
+
+/* ───────────────────────── etiqueta de estado (menus de workspace) ───────────────────────── */
+
+.pv .wst-chip { display: inline-flex; align-items: center; height: 18px; padding: 0 8px; margin-left: 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; font-style: normal; letter-spacing: .02em; line-height: 1; white-space: nowrap; vertical-align: middle; }
+.pv .wst-chip[data-status="suspended"] { background: var(--wst-bad-bg); color: var(--wst-bad); }
+.pv .wst-chip[data-status="archived"] { background: var(--wst-muted-bg); color: var(--wst-muted-strong); }
+
+/* ───────────────────────── faixa "somente consulta" (workspace arquivado) ───────────────────────── */
+
+/* o `.pv` do protótipo tem `height: 100%`: a faixa é um item de coluna e não pode esticar nem encolher */
+.pv.wst-top { height: auto; flex: none; }
+.pv .wst-banner-wrap { padding: 0 8px 4px; }
+.pv .wst-banner { margin: 0; display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 16px; border-radius: 20px; background: #fff; font-size: 13.5px; line-height: 1.4; }
+.pv .wst-banner .ico { color: var(--wst-muted-strong); }
+.pv .wst-banner b { font-weight: 600; }
+
+/* ───────────────────────── workspace suspenso: bloqueio dentro da área de conteúdo ───────────────────────── */
+
+.pv .wst-block { background: #fff; border-radius: 32px; padding: 56px 24px 48px; min-height: min(560px, calc(100vh - 150px)); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px; }
+.pv .wst-block-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--bg); display: grid; place-items: center; margin-bottom: 8px; }
+.pv .wst-block-icon .ico { width: 26px; height: 26px; }
+.pv .wst-block h1 { margin: 0; font-size: 32px; line-height: 1.1; font-weight: 600; letter-spacing: -.04em; }
+.pv .wst-block p { margin: 0; max-width: 52ch; font-size: 14px; line-height: 1.6; }
+.pv .wst-block p b { font-weight: 600; }
+.pv .wst-block .wst-muted { color: var(--muted); }
+.pv .wst-block a.btn { margin-top: 12px; text-decoration: none; }
+.pv .wst-block a.btn:focus-visible,
+.pv .wst-pick:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+.pv .wst-switch { width: 100%; max-width: 440px; margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--wst-rule); text-align: left; }
+.pv .wst-switch h2 { margin: 0 0 8px 8px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.pv .wst-switch ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.pv .wst-pick { width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 18px; text-align: left; transition: background .2s; }
+.pv .wst-pick:hover { background: var(--bg); }
+.pv .wst-pick .brand { width: 38px; height: 38px; font-size: 12px; }
+.pv .wst-pick-text { flex: 1; min-width: 0; }
+.pv .wst-pick-text b { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv .wst-pick-text small { display: block; color: var(--muted); font-size: 12.5px; }
+.pv .wst-pick > .ico { color: var(--muted); }
+
+@media (max-width: 900px) {
+  .pv .wst-banner-wrap { padding: 0 20px 4px; }
+  .pv .wst-block { padding: 40px 20px 36px; min-height: 0; }
+  .pv .wst-block h1 { font-size: 26px; }
+}
+
+/* ───────────────────────── exclusão do workspace: impedimentos ───────────────────────── */
+
+.pv .wst-blockers { background: var(--bg); border-radius: 20px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.pv .wst-blockers h3 { margin: 0; font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; }
+.pv .wst-blockers ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pv .wst-blockers li { display: flex; gap: 10px; font-size: 13.5px; line-height: 1.45; }
+.pv .wst-blockers li::before { content: ""; width: 6px; height: 6px; margin-top: 7px; border-radius: 50%; background: var(--ink); flex: none; }
+.pv .wst-blockers p { margin: 0; color: var(--wst-muted-strong); font-size: 13px; line-height: 1.5; }
+.pv .wst-blockers a { color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.pv .wst-blockers a:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 4px; }

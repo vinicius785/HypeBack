@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 
+import { useQueryClient } from "@tanstack/react-query";
+
 import {
   createFileRoute,
   Outlet,
@@ -8,7 +10,8 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 
-import { getAuthToken, removeAuthToken } from "@/lib/utils/api";
+import { getAuthToken } from "@/lib/utils/api";
+import { clearClientSession } from "@/lib/utils/session";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -26,6 +29,7 @@ function RouteComponent() {
   const { user, isLoading, error, isError } = useCurrentUser();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     // Se houver erro de autenticação (401, 403, 404, 429), redirecionar para login
@@ -34,12 +38,21 @@ function RouteComponent() {
       
       // Se for erro 401 (não autorizado), 404 (não encontrado) ou 429 (too many requests)
       if (errorStatus === 401 || errorStatus === 404 || errorStatus === 429) {
-        removeAuthToken();
+        clearClientSession(queryClient);
         navigate({ to: "/sign-in", replace: true });
         return;
       }
     }
   }, [isError, error]); // Removido navigate das dependências
+
+  const noUser = !user && !isLoading && !isError;
+  useEffect(() => {
+    // Token inválido sem erro de rede: encerra a sessão (fora do render, o clear do cache notifica assinantes).
+    if (noUser) {
+      clearClientSession(queryClient);
+      navigate({ to: "/sign-in", replace: true });
+    }
+  }, [noUser, queryClient, navigate]);
 
   useEffect(() => {
     if (user && !user.phone && !location.pathname.startsWith("/onboarding")) {
@@ -75,9 +88,7 @@ function RouteComponent() {
   }
 
   // Se não houver usuário e não estiver carregando, pode ser que o token seja inválido
-  if (!user && !isLoading && !isError) {
-    removeAuthToken();
-    navigate({ to: "/sign-in", replace: true });
+  if (noUser) {
     return <LoadingSpinner message="Redirecionando..." />;
   }
 

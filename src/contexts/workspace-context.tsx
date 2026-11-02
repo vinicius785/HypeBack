@@ -6,11 +6,13 @@ import {
   useMemo,
   useCallback,
 } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import type { Workspace, WorkspacePermissions } from "@/shared/types";
 import { getWorkspaceId, saveWorkspaceId } from "@/lib/utils/api";
 import { invalidateWorkspaceScopedQueries } from "@/lib/utils/workspace-query-invalidation";
+import { useWorkspaceLifecycleReactions } from "@/lib/workspace-state/use-workspace-lifecycle-reactions";
+import { pickDefaultWorkspace } from "@/lib/workspace-state/workspace-list-cache";
 import { useWorkspaces } from "@/hooks/use-workspaces";
 import { mergeWorkspacePermissions } from "@/shared/utils/workspace-permissions";
 
@@ -25,6 +27,12 @@ interface WorkspaceContextType {
 
 const WorkspaceContext = createContext<WorkspaceContextType | null>(null);
 
+/** Workspace suspenso recusa toda chamada: não há o que rebuscar (a tela de bloqueio explica). */
+function refreshWorkspaceScopedQueries(queryClient: QueryClient, workspace: Workspace) {
+  if (workspace.status === "suspended") return;
+  invalidateWorkspaceScopedQueries(queryClient);
+}
+
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const { data: workspaces = [], isLoading } = useWorkspaces();
@@ -33,10 +41,16 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   >(undefined);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Restaurar workspace salvo ou auto-selecionar o primeiro
+  // O estado do workspace (suspenso, arquivado, excluído) é revelado pelas respostas do servidor e entra na
+  // lista abaixo; o workspace selecionado é derivado dela. Ver `lib/workspace-state/`.
+  useWorkspaceLifecycleReactions();
+
+  // Restaurar workspace salvo ou auto-selecionar o primeiro que está funcionando
   useEffect(() => {
     if (isLoading) return;
     if (workspaces.length === 0) {
+      // Sem workspaces (conta nova, ou o último foi excluído): nenhum fica selecionado.
+      setSelectedWorkspace(undefined);
       setIsInitialized(true);
       return;
     }
@@ -47,9 +61,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     if (savedWorkspace) {
       setSelectedWorkspace(savedWorkspace);
     } else {
-      setSelectedWorkspace(workspaces[0]);
-      saveWorkspaceId(workspaces[0].id);
-      invalidateWorkspaceScopedQueries(queryClient);
+      const next = pickDefaultWorkspace(workspaces) ?? workspaces[0];
+      setSelectedWorkspace(next);
+      saveWorkspaceId(next.id);
+      refreshWorkspaceScopedQueries(queryClient, next);
     }
     setIsInitialized(true);
   }, [isLoading, workspaces, queryClient]);
@@ -58,7 +73,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     (workspace: Workspace) => {
       setSelectedWorkspace(workspace);
       saveWorkspaceId(workspace.id);
-      invalidateWorkspaceScopedQueries(queryClient);
+      refreshWorkspaceScopedQueries(queryClient, workspace);
     },
     [queryClient],
   );

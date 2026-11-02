@@ -1,0 +1,32 @@
+import { useEffect, useState } from "react";
+
+import { adminInitials } from "@/components/admin/platform";
+import { getUploadUrl } from "@/lib/utils/api";
+
+import "@/styles/admin-campaigns.css";
+
+function resolveBanner(banner: string | null): string | undefined {
+  if (!banner) return undefined;
+  try {
+    return getUploadUrl(banner);
+  } catch {
+    // Sem VITE_SERVER_URL (ambiente de teste) não há como montar a URL: cai nas iniciais.
+    return undefined;
+  }
+}
+
+/**
+ * Banner da campanha na proporção 5:2 em que ele é feito (1280 × 512), inteiro e sem corte; sem banner (ou com a
+ * imagem quebrada) entram as iniciais do título. Decorativo: o título já está ao lado.
+ */
+export function AdminCampaignBanner({ title, banner }: { title: string; banner: string | null }) {
+  const url = resolveBanner(banner);
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [url]);
+
+  return (
+    <span className="adm-campaigns-banner" aria-hidden="true">
+      {url && !broken ? <img src={url} alt="" onError={() => setBroken(true)} /> : <span>{adminInitials(title) || "?"}</span>}
+    </span>
+  );
+}

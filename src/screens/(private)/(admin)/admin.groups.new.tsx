@@ -15,7 +15,7 @@ import {
 import { useCreateGroup, useUploadGroupCover } from "@/hooks/use-groups";
 
 export const Route = createFileRoute(
-  "/(private)/(admin)/admin/groups/new" as "/(private)/(admin)/admin/groups/new",
+  "/(private)/(admin)/admin/groups/new",
 )({
   component: NewGroup,
 });

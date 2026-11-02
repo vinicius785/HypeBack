@@ -3,12 +3,13 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 
 import { I } from "@/components/prototype/ui";
 import { GroupCardPv } from "@/components/groups/pv-group";
+import { useAdminDocumentTitle } from "@/hooks/admin/use-admin-document-title";
 import { useGroups } from "@/hooks/use-groups";
 import { getUploadUrl } from "@/lib/utils/api";
 import type { GroupStatusFilter } from "@/shared/types";
 
 export const Route = createFileRoute(
-  "/(private)/(admin)/admin/groups" as "/(private)/(admin)/admin/groups",
+  "/(private)/(admin)/admin/groups",
 )({
   component: AdminGroups,
 });
@@ -20,6 +21,7 @@ const TABS: Array<{ id: GroupStatusFilter; label: string }> = [
 ];
 
 function AdminGroups() {
+  useAdminDocumentTitle("Comunidade");
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<GroupStatusFilter>("active");
   const [search, setSearch] = useState("");

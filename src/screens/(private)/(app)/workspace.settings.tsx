@@ -21,6 +21,8 @@ import {
 } from "@/hooks/use-workspace-members";
 import { useNiches } from "@/hooks/use-niches";
 import { removeWorkspaceId, saveWorkspaceId } from "@/lib/utils/api";
+import { getDeleteBlockers } from "@/lib/workspace-state/delete-blockers";
+import { pickDefaultWorkspace } from "@/lib/workspace-state/workspace-list-cache";
 import {
   deleteWorkspace,
   getMyWorkspaces,
@@ -160,17 +162,28 @@ function WorkspaceSettingsScreen() {
       setDeleteOpen(false);
       await queryClient.invalidateQueries({ queryKey: ["me-workspaces"] });
       const list = await queryClient.fetchQuery({ queryKey: ["me-workspaces"], queryFn: getMyWorkspaces });
-      if (list.length > 0) {
-        selectWorkspace(list[0]);
-        saveWorkspaceId(list[0].id);
+      const next = pickDefaultWorkspace(list);
+      if (next) {
+        selectWorkspace(next);
+        saveWorkspaceId(next.id);
         navigate({ to: "/" });
       } else {
         removeWorkspaceId();
         navigate({ to: "/onboarding/create-workspace" });
       }
     },
-    onError: (e) => toast.error(apiErr(e)),
+    onError: (e) => {
+      // Impedimentos (saldo, cobrança pendente, campanha publicada...) aparecem dentro do diálogo, que continua
+      // aberto: sem toast de erro por cima.
+      if (getDeleteBlockers(e) !== null) return;
+      toast.error(apiErr(e));
+    },
   });
+  const deleteBlockers = getDeleteBlockers(deleteMutation.error);
+  const closeDelete = () => {
+    setDeleteOpen(false);
+    deleteMutation.reset();
+  };
 
   const canRemoveMember = (m: WorkspaceMember) => {
     if (!canRemove) return false;
@@ -342,7 +355,8 @@ function WorkspaceSettingsScreen() {
         <DeleteModal
           name={ws.name}
           pending={deleteMutation.isPending}
-          onClose={() => setDeleteOpen(false)}
+          blockers={deleteBlockers}
+          onClose={closeDelete}
           onConfirm={() => deleteMutation.mutate()}
         />
       )}

@@ -54,7 +54,6 @@ Cadastre no painel da hospedagem, nunca no código. Veja `.env.example`.
 | Variável | Exemplo | Observação |
 |---|---|---|
 | `VITE_SERVER_URL` | `https://api-v2.hypeapp.com.br/api/backoffice` | Termina em `/api/backoffice`, sem `/` final. |
-| `VITE_PLATFORM_ADMIN_EMAILS` | `voce@empresa.com` | Só controla o menu Admin. |
 
 Depois de mudar uma variável é preciso refazer o deploy (ela é gravada no build).
 

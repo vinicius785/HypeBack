@@ -288,6 +288,12 @@ export interface WorkspacePermissions {
   billing_write: boolean;
 }
 
+/**
+ * Ciclo de vida do workspace para o time do cliente. Workspace excluído nunca chega ao app: o servidor tira
+ * ele da lista (`/me/workspaces`) e responde 404 WORKSPACE_DELETED às chamadas que ainda o citam.
+ */
+export type WorkspaceStatus = "active" | "suspended" | "archived";
+
 export interface Workspace {
   id: string; // public_id (UUID)
   name: string;
@@ -310,6 +316,8 @@ export interface Workspace {
   membership_id?: number;
   joined_at?: string;
   permissions?: WorkspacePermissions;
+  /** `active` quando o servidor não manda o campo (versões antigas da API). */
+  status: WorkspaceStatus;
 }
 
 /** Membro do workspace — `GET /backoffice/workspaces/:id/members`. */

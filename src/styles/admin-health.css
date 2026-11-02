@@ -1,0 +1,93 @@
+/*
+ * Saúde da plataforma do Admin (`src/components/admin/health`): alertas, sugestões e sistema.
+ *
+ * Mesmas regras do kit (`admin-platform.css`): prefixo `adm-health-`, tudo sob `.pv`, nenhuma classe curta do
+ * protótipo usada nem redefinida. Alerta e sugestão se distinguem pelo peso, não pela cor: o alerta tem número
+ * grande, regra à vista e botão; a sugestão é uma lista discreta, sem cor de gravidade. Vermelho e âmbar só nas
+ * etiquetas de gravidade do kit. Sem gradiente.
+ */
+
+.pv .adm-health-refresh .ico { transition: transform .3s var(--ease); }
+.pv .adm-health-refresh[aria-busy="true"] .ico { animation: adm-health-spin 1s linear infinite; }
+@keyframes adm-health-spin { to { transform: rotate(360deg); } }
+
+.pv .adm-health-checked { color: var(--adm-text-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+.pv .adm-health-total { margin-left: 10px; vertical-align: 2px; display: inline-block; min-width: 24px; padding: 2px 9px; border-radius: 99px; background: var(--bg); color: var(--ink); font-size: 12px; font-weight: 700; line-height: 1.4; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* ───────────────────────── alertas ───────────────────────── */
+
+.pv .adm-health-groups { display: flex; flex-direction: column; gap: 28px; }
+.pv .adm-health-group h3 { margin: 0 0 4px; display: flex; align-items: center; gap: 10px; color: var(--adm-text-muted); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.pv .adm-health-group h3 em { font-style: normal; font-size: 11.5px; letter-spacing: 0; background: var(--bg); color: var(--ink); border-radius: 99px; padding: 2px 8px; }
+.pv .adm-health-list { display: flex; flex-direction: column; }
+
+.pv .adm-health-alert { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 24px; row-gap: 12px; padding: 20px 0; border-top: 1.5px solid var(--line); }
+.pv .adm-health-list > .adm-health-alert:first-child { border-top: 0; padding-top: 12px; }
+.pv .adm-health-main { min-width: 0; }
+.pv .adm-health-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.pv .adm-health-alert h4,
+.pv .adm-health-sug h4 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; line-height: 1.35; }
+.pv .adm-health-desc { margin: 4px 0 0; color: var(--adm-text-muted); font-size: 13.5px; line-height: 1.5; }
+
+/* regra exata e origem: sempre à vista */
+.pv .adm-health-rule { margin: 12px 0 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; padding: 12px 14px; border-radius: 16px; background: var(--bg); font-size: 12.5px; line-height: 1.5; }
+.pv .adm-health-rule dt { color: var(--adm-text-muted); font-weight: 600; }
+.pv .adm-health-rule dd { margin: 0; overflow-wrap: anywhere; }
+
+.pv .adm-health-count { text-align: right; }
+.pv .adm-health-count b { display: block; font-size: 28px; font-weight: 600; letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; }
+.pv .adm-health-count small { display: block; margin-top: 4px; color: var(--adm-text-muted); font-size: 12px; }
+
+.pv .adm-health-samples { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; font-size: 13px; }
+.pv .adm-health-samples > span:first-child { color: var(--adm-text-muted); }
+.pv .adm-health-sample { display: inline-flex; align-items: baseline; gap: 6px; color: var(--ink); text-decoration: none; font-weight: 500; overflow-wrap: anywhere; }
+.pv .adm-health-sample small { color: var(--adm-text-muted); font-size: 12px; font-weight: 400; }
+.pv a.adm-health-sample:hover { text-decoration: underline; text-underline-offset: 3px; }
+.pv .adm-health-foot { grid-column: 1 / -1; display: flex; justify-content: flex-end; }
+.pv .adm-health-sample:focus-visible,
+.pv .adm-health-sug-link:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
+
+/* ───────────────────────── sugestões (mais discretas) ───────────────────────── */
+
+.pv .adm-health-sugs { list-style: none; margin: 0; padding: 0; }
+.pv .adm-health-sug { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 24px; row-gap: 6px; padding: 16px 0; border-top: 1.5px solid var(--line); }
+.pv .adm-health-sugs > .adm-health-sug:first-child { border-top: 0; padding-top: 4px; }
+.pv .adm-health-sug-main { min-width: 0; }
+.pv .adm-health-sug-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
+.pv .adm-health-sug h4 { font-size: 14px; font-weight: 600; }
+.pv .adm-health-sug .adm-health-desc { font-size: 13px; }
+.pv .adm-health-sug-rule { margin: 6px 0 0; color: rgba(5, 5, 5, .78); font-size: 12.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.pv .adm-health-sug-rule b { font-weight: 600; color: var(--ink); }
+.pv .adm-health-sug-src { margin: 2px 0 0; color: var(--adm-text-muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.pv .adm-health-sug .adm-health-samples { margin-top: 8px; font-size: 12.5px; }
+.pv .adm-health-sug-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; text-align: right; color: var(--adm-text-muted); font-size: 12.5px; white-space: nowrap; }
+.pv .adm-health-sug-count b { color: var(--ink); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pv .adm-health-sug-link { color: var(--ink); font-size: 12.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--adm-rule); }
+.pv .adm-health-sug-link:hover { text-decoration-color: var(--ink); }
+
+/* ───────────────────────── carregando ───────────────────────── */
+
+.pv .adm-health-skeleton { display: flex; flex-direction: column; }
+.pv .adm-health-skeleton-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 0; border-top: 1.5px solid var(--line); }
+.pv .adm-health-skeleton-row:first-child { border-top: 0; padding-top: 4px; }
+.pv .adm-health-skeleton-row > div { flex: 1; min-width: 0; }
+.pv .adm-health-sys-skeleton { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-top: 1.5px solid var(--line); }
+.pv .adm-health-sys-skeleton:first-child { border-top: 0; padding-top: 0; }
+
+/* ───────────────────────── celular ───────────────────────── */
+
+@media (max-width: 760px) {
+  .pv .adm-health-alert,
+  .pv .adm-health-sug { grid-template-columns: minmax(0, 1fr); }
+  .pv .adm-health-count { text-align: left; display: flex; align-items: baseline; gap: 8px; }
+  .pv .adm-health-count small { margin-top: 0; }
+  .pv .adm-health-rule { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .pv .adm-health-rule dd { margin-bottom: 6px; }
+  .pv .adm-health-sug-side { flex-direction: row; align-items: baseline; justify-content: space-between; text-align: left; }
+  .pv .adm-health-foot { justify-content: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-health-refresh[aria-busy="true"] .ico { animation: none; }
+}

@@ -1,0 +1,519 @@
+/*
+ * Admin da plataforma — peças compartilhadas (`src/components/admin/platform`).
+ *
+ * Regras deste arquivo:
+ * - prefixo `adm-` e tudo sob `.pv` (o resto do protótipo é global e já tem dono para quase toda classe
+ *   curta: .big .tag .box .lk .on .out .round .head .tools .card .stat .cell .chart .steps .stack .link
+ *   .pill .badge .chip .search .top .fade .txt .pend .metric .cols — nenhuma é usada nem redefinida aqui);
+ * - `table/th/td` nativos são reestilizados pelo `.pv table` global, então a tabela é feita com `div` +
+ *   `role` (e não herda nada daquilo);
+ * - do protótipo só entram `.btn`, `.btn.out`, `.btn.dng` e `.seg` (conferidos: o CSS deles não depende do
+ *   contêiner onde ficam);
+ * - visual de Início: fundo neutro, cartões brancos (raio 28), tipografia 32/18/14, preto na ação
+ *   principal, roxo só como acento (selecionado, contagem ativa), divisores finos, cores chapadas, sem
+ *   gradiente. Vermelho só para erro e ação destrutiva.
+ */
+
+.pv {
+  --adm-rule: rgba(5, 5, 5, .1);
+  /* texto de etiqueta de estado: contraste mínimo 4.5:1 sobre o próprio fundo (o --muted do protótipo não chega) */
+  --adm-ok: #166534;
+  --adm-ok-bg: #e3f6e9;
+  --adm-warn: #92400e;
+  --adm-warn-bg: #fdf0d9;
+  --adm-bad: #c62027;
+  --adm-bad-bg: #fdecec;
+  --adm-muted-strong: #5c5c5c;
+  /* texto pequeno secundário (cabeçalhos de tabela, dicas, linhas de apoio, legendas): 6,9:1 sobre #fff e 5,8:1 sobre o
+     fundo #efefef. O --muted do protótipo (#7e7e7e) dá 4,06:1 e 3,5:1: não passa de 4,5:1. --muted fica só para ícones e pontos. */
+  --adm-text-muted: #5c5c5c;
+  --adm-radius: 28px;
+}
+
+/* ───────────────────────── página ───────────────────────── */
+
+.pv .adm-page { display: flex; flex-direction: column; gap: 24px; width: 100%; min-width: 0; }
+.pv .adm-page > * { min-width: 0; }
+
+.pv .adm-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* `.btn` não tem estado desabilitado global no protótipo */
+.pv .adm-page .btn:disabled,
+.pv .adm-dialog .btn:disabled { opacity: .45; cursor: not-allowed; }
+.pv .adm-page .btn:disabled:active,
+.pv .adm-dialog .btn:disabled:active { transform: none; }
+.pv .btn.adm-btn-sm { height: 36px; padding: 0 16px; font-size: 13px; }
+/* `.btn.out` é branco: dentro de um cartão/tabela/diálogo (também branco) precisa de um cinza para existir */
+.pv .adm-card .btn.out,
+.pv .adm-table .btn.out,
+.pv .adm-dialog .btn.out { background: var(--bg); }
+.pv .adm-card .btn.out:hover:not(:disabled),
+.pv .adm-table .btn.out:hover:not(:disabled),
+.pv .adm-dialog .btn.out:hover:not(:disabled) { background: #e4e4e4; }
+.pv .adm-page a.btn, .pv .adm-dialog a.btn { text-decoration: none; }
+
+/* foco por teclado: o mesmo anel roxo do menu do celular */
+.pv .adm-crumb a:focus-visible,
+.pv .adm-th-btn:focus-visible,
+.pv .adm-pill:focus-visible,
+.pv .adm-chip:focus-visible,
+.pv .adm-textbtn:focus-visible,
+.pv .adm-search-clear:focus-visible,
+.pv .adm-info:focus-visible,
+.pv .adm-pg-btn:focus-visible,
+.pv .adm-tab:focus-visible,
+.pv .adm-iconbtn:focus-visible,
+.pv .adm-fig-link:focus-visible,
+.pv .adm-filters-toggle:focus-visible,
+.pv .adm-summary:focus-visible,
+.pv .adm-filters .seg button:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+/* ───────────────────────── cabeçalho da página ───────────────────────── */
+
+.pv .adm-head { display: flex; flex-direction: column; gap: 14px; }
+.pv .adm-head-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; }
+.pv .adm-head-main { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; min-width: 0; flex: 1 1 320px; }
+.pv .adm-head-lead { flex: none; display: flex; }
+/* o título nunca fica mais estreito que isto: se não couber ao lado da foto, a foto vai para a linha de cima */
+.pv .adm-head-text { min-width: 0; flex: 1 1 240px; }
+.pv .adm-head-title { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
+.pv .adm-head h1 { margin: 0; font-size: 32px; line-height: 1.1; font-weight: 600; letter-spacing: -.04em; overflow-wrap: anywhere; }
+.pv .adm-head-sub { margin: 6px 0 0; color: var(--adm-text-muted); font-size: 14px; line-height: 1.45; }
+.pv .adm-head-meta { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; color: var(--adm-text-muted); font-size: 13px; }
+.pv .adm-head-meta b { color: var(--ink); font-weight: 600; }
+.pv .adm-head-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* migalhas: o mesmo "voltar" em pílula do detalhe da campanha */
+.pv .adm-crumb ol { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; font-size: 14px; font-weight: 600; min-width: 0; }
+.pv .adm-crumb li { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.pv .adm-crumb-back { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px 0 10px; border-radius: 999px; background: #fff; color: var(--ink); text-decoration: none; transition: background .25s, color .25s; }
+.pv .adm-crumb-back:hover { background: var(--ink); color: #fff; }
+.pv .adm-crumb a:not(.adm-crumb-back) { color: var(--adm-text-muted); text-decoration: none; }
+.pv .adm-crumb a:not(.adm-crumb-back):hover { color: var(--ink); }
+.pv .adm-crumb-sep { color: var(--adm-text-muted); display: inline-flex; }
+.pv .adm-crumb-cur { color: var(--ink); max-width: 44ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ───────────────────────── cartão / seção ───────────────────────── */
+
+.pv .adm-card { background: #fff; border-radius: var(--adm-radius); padding: 26px; min-width: 0; }
+.pv .adm-card-flush { padding: 0; overflow: clip; }
+.pv .adm-card-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.pv .adm-card-flush > .adm-card-h { padding: 24px 26px 0; margin-bottom: 14px; }
+.pv .adm-card-h h2 { margin: 0; font-size: 18px; line-height: 1.25; letter-spacing: -.02em; font-weight: 600; }
+.pv .adm-card-h p { margin: 3px 0 0; color: var(--adm-text-muted); font-size: 13px; line-height: 1.45; }
+.pv .adm-card-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* ───────────────────────── carregando / vazio / erro ───────────────────────── */
+
+/* cor chapada que pulsa: sem gradiente */
+.pv .adm-sk { display: block; max-width: 100%; background: rgba(5, 5, 5, .07); border-radius: 10px; animation: adm-pulse 1.4s ease-in-out infinite; }
+.pv .adm-sk-lines { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+@keyframes adm-pulse { 50% { opacity: .45; } }
+
+.pv .adm-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; min-height: 220px; padding: 48px 24px; }
+.pv .adm-state-compact { min-height: 0; padding: 32px 20px; }
+.pv .adm-state b { font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
+.pv .adm-state p { margin: 0; color: var(--adm-text-muted); font-size: 14px; line-height: 1.5; max-width: 46ch; }
+.pv .adm-state .ico { width: 26px; height: 26px; color: var(--adm-text-muted); margin-bottom: 4px; }
+.pv .adm-state-error .ico { color: var(--adm-bad); }
+.pv .adm-state-action { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+/* o cartão branco por baixo já dá a moldura; sobre o fundo cinza o estado vira um cartão */
+.pv .adm-state-boxed { background: #fff; border-radius: var(--adm-radius); }
+
+/* ───────────────────────── etiquetas de estado ───────────────────────── */
+
+.pv .adm-badge { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 11px 0 10px; border-radius: 999px; background: var(--bg); color: var(--ink); font-size: 12px; font-weight: 600; line-height: 1; white-space: nowrap; vertical-align: middle; }
+.pv .adm-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.pv .adm-badge[data-size="sm"] { height: 22px; padding: 0 9px 0 8px; font-size: 11.5px; gap: 6px; }
+.pv .adm-badge[data-tone="ok"] { background: var(--adm-ok-bg); color: var(--adm-ok); }
+.pv .adm-badge[data-tone="warn"] { background: var(--adm-warn-bg); color: var(--adm-warn); }
+.pv .adm-badge[data-tone="bad"] { background: var(--adm-bad-bg); color: var(--adm-bad); }
+.pv .adm-badge[data-tone="brand"] { background: var(--tint); color: #7a1fc4; }
+.pv .adm-badge[data-tone="muted"] { color: var(--adm-muted-strong); }
+.pv .adm-badge[data-tone="outline"] { background: transparent; box-shadow: inset 0 0 0 1.5px var(--adm-rule); color: var(--ink); }
+.pv .adm-badge[data-tone="outline"]::before { display: none; }
+
+/* ───────────────────────── definição do número (popover) ───────────────────────── */
+
+.pv .adm-info { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; background: var(--bg); color: var(--adm-text-muted); font-size: 11.5px; font-weight: 700; font-style: normal; line-height: 1; transition: background .2s, color .2s; }
+.pv .adm-info:hover, .pv .adm-info[aria-expanded="true"] { background: var(--ink); color: #fff; }
+.pv .adm-pop { position: fixed; z-index: 300; max-width: min(320px, calc(100vw - 24px)); background: var(--ink); color: #fff; border-radius: 16px; padding: 12px 14px; font-size: 13px; line-height: 1.5; box-shadow: 0 18px 40px -12px rgba(5, 5, 5, .45); }
+.pv .adm-pop p { margin: 0; }
+.pv .adm-pop p + p { margin-top: 8px; color: rgba(255, 255, 255, .62); }
+
+/* ───────────────────────── número com definição ───────────────────────── */
+
+.pv .adm-figs { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 16px; }
+/* contêiner de consulta: o valor se ajusta à largura do próprio cartão (ver `.adm-fig-value`) */
+.pv .adm-fig { container-type: inline-size; position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; background: #fff; border-radius: var(--adm-radius); padding: 22px 24px 20px; transition: box-shadow .2s; }
+.pv .adm-fig[data-link="true"]:hover { box-shadow: inset 0 0 0 1.5px var(--adm-rule); }
+.pv .adm-fig[data-variant="plain"] { background: none; border-radius: 0; padding: 0; }
+.pv .adm-fig-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 22px; }
+.pv .adm-fig-label { color: var(--adm-text-muted); font-size: 13px; font-weight: 500; line-height: 1.3; }
+/*
+ * Dinheiro exato é comprido ("R$ 1.234.567,89") e não pode quebrar nem virar abreviação. O tamanho sai da largura
+ * do cartão e do tamanho do texto (`--adm-fig-units`: letras e dígitos contam 1; pontuação e espaço, ½),
+ * limitado a [--adm-fig-min, --adm-fig-max]: número curto fica grande, número comprido encolhe até caber.
+ * 0.6em é a largura média de um dígito da fonte, já descontado o espaçamento negativo.
+ */
+.pv .adm-fig-value { --adm-fig-max: 34px; --adm-fig-min: 18px; font-size: clamp(var(--adm-fig-min), calc(100cqw / (var(--adm-fig-units, 8) * .6)), var(--adm-fig-max)); font-weight: 600; letter-spacing: -.05em; line-height: 1.08; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pv .adm-fig[data-size="sm"] .adm-fig-value { --adm-fig-max: 26px; --adm-fig-min: 16px; }
+.pv .adm-fig-value[data-unavailable="true"] { font-size: 18px; letter-spacing: -.02em; color: var(--adm-text-muted); padding: 7px 0 5px; white-space: normal; }
+.pv .adm-fig-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 4px; color: var(--adm-text-muted); font-size: 12.5px; }
+.pv .adm-kind { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px 0 8px; border-radius: 999px; background: var(--bg); color: var(--ink); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.pv .adm-kind::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); flex: none; }
+.pv .adm-kind[data-kind="committed"]::before { background: var(--brand); }
+.pv .adm-kind[data-kind="stock"]::before { background: var(--muted); }
+.pv .adm-kind[data-kind="derived"]::before { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ink); }
+.pv .adm-kind[data-kind="proxy"]::before { background: #d97706; }
+.pv .adm-kind[data-kind="unavailable"] { color: var(--adm-text-muted); }
+.pv .adm-kind[data-kind="unavailable"]::before { background: transparent; box-shadow: inset 0 0 0 1.5px var(--muted); }
+.pv .adm-fig-go { margin-left: auto; color: var(--adm-text-muted); display: inline-flex; transition: transform .25s var(--ease), color .2s; }
+.pv .adm-fig[data-link="true"]:hover .adm-fig-go { color: var(--ink); transform: translateX(2px); }
+.pv .adm-fig-link { position: absolute; inset: 0; border-radius: inherit; }
+.pv .adm-fig-top .adm-info { position: relative; z-index: 2; }
+
+/* ───────────────────────── lista de chave/valor ───────────────────────── */
+
+.pv .adm-kv { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 32px; }
+.pv .adm-kv[data-columns="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pv .adm-kv-row { display: grid; grid-template-columns: minmax(110px, 38%) minmax(0, 1fr); gap: 4px 16px; align-items: baseline; padding: 12px 0; border-top: 1.5px solid var(--line); }
+.pv .adm-kv > .adm-kv-row:first-child { border-top: 0; padding-top: 0; }
+.pv .adm-kv[data-columns="2"] > .adm-kv-row:nth-child(2) { border-top: 0; padding-top: 0; }
+.pv .adm-kv dt { display: flex; align-items: center; gap: 6px; color: var(--adm-text-muted); font-size: 13px; font-weight: 500; }
+.pv .adm-kv dd { margin: 0; min-width: 0; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+.pv .adm-kv dd small { display: block; margin-top: 2px; color: var(--adm-text-muted); font-size: 12.5px; font-weight: 400; }
+.pv .adm-kv-empty { color: var(--adm-text-muted); font-weight: 400; }
+
+/* ───────────────────────── abas com sublinhado ───────────────────────── */
+
+.pv .adm-tabs { position: relative; display: flex; align-items: center; gap: 4px; border-bottom: 1.5px solid var(--adm-rule); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.pv .adm-tabs::-webkit-scrollbar { display: none; }
+.pv .adm-tab { position: relative; flex: none; display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 16px; font-size: 14px; font-weight: 600; color: var(--adm-text-muted); white-space: nowrap; transition: color .25s; }
+.pv .adm-tab:hover { color: var(--ink); }
+.pv .adm-tab[aria-selected="true"] { color: var(--ink); }
+.pv .adm-tab em { font-style: normal; font-size: 11.5px; font-weight: 700; background: #fff; color: var(--ink); border-radius: 99px; padding: 2px 8px; min-width: 20px; text-align: center; transition: background .25s, color .25s; }
+.pv .adm-tab[aria-selected="true"] em { background: var(--brand); color: #fff; }
+/* o anel de foco da aba fica por dentro: `.adm-tabs` rola na horizontal (overflow-x:auto força overflow-y a cortar) e cortaria um anel de fora */
+.pv .adm-tab:focus-visible { outline-offset: -3px; }
+/* `.seg` do protótipo: o botão não selecionado também usa --muted; no Admin precisa de 4.5:1. O anel fica por dentro (`.seg.sm` rola e corta) */
+.pv .adm-page .seg button:not(.on), .pv .adm-dialog .seg button:not(.on) { color: var(--adm-text-muted); }
+.pv .adm-page .seg button:focus-visible, .pv .adm-dialog .seg button:focus-visible { outline: 3px solid var(--brand); outline-offset: -3px; }
+.pv .adm-tabs-ind { position: absolute; left: 0; bottom: -1.5px; height: 3px; width: 0; border-radius: 3px 3px 0 0; background: var(--ink); pointer-events: none; transition: transform .45s var(--ease), width .45s var(--ease); }
+
+/* ───────────────────────── busca, filtros, chips ───────────────────────── */
+
+.pv .adm-search { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 8px 0 16px; border-radius: 999px; background: #fff; color: var(--adm-text-muted); flex: 1 1 260px; min-width: 200px; max-width: 380px; transition: box-shadow .2s; }
+.pv .adm-search:focus-within { box-shadow: inset 0 0 0 2px var(--brand); }
+.pv .adm-search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); appearance: none; -webkit-appearance: none; }
+.pv .adm-search input::placeholder { color: var(--adm-text-muted); }
+.pv .adm-search input::-webkit-search-cancel-button { display: none; -webkit-appearance: none; }
+.pv .adm-search-clear { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--adm-text-muted); transition: background .2s, color .2s; }
+.pv .adm-search-clear:hover { background: var(--bg); color: var(--ink); }
+.pv .adm-search-clear[hidden] { display: none; }
+
+.pv .adm-filters { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.pv .adm-filters-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.pv .adm-filters-panel { display: contents; }
+.pv .adm-filters-toggle { display: none; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 999px; background: #fff; font-size: 14px; font-weight: 600; }
+.pv .adm-filters-toggle em { font-style: normal; font-size: 11.5px; font-weight: 700; background: var(--brand); color: #fff; border-radius: 99px; padding: 2px 8px; }
+.pv .adm-filters-trail { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pv .adm-textbtn { color: var(--ink); font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--adm-rule); padding: 8px 6px; border-radius: 8px; }
+.pv .adm-textbtn:hover { text-decoration-color: var(--ink); }
+
+/* seletor: o <select> nativo fica por cima, invisível, e leva clique e teclado; a pílula é só a face */
+.pv .adm-select { position: relative; display: inline-flex; align-items: center; height: 44px; border-radius: 999px; background: #fff; color: var(--ink); font-size: 14px; font-weight: 600; transition: box-shadow .2s, background .25s, color .25s; }
+.pv .adm-select:focus-within { box-shadow: inset 0 0 0 2px var(--brand); }
+.pv .adm-select-face { display: inline-flex; align-items: center; gap: 6px; padding: 0 14px 0 16px; min-width: 0; pointer-events: none; }
+.pv .adm-select-k { color: var(--adm-text-muted); font-weight: 500; white-space: nowrap; }
+.pv .adm-select-v { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+.pv .adm-select .ico { width: 14px; height: 14px; color: var(--adm-text-muted); transform: rotate(90deg); margin-left: 2px; }
+.pv .adm-select select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; border: 0; }
+.pv .adm-select[data-active="true"] { background: var(--ink); color: #fff; }
+.pv .adm-select[data-active="true"] .adm-select-k, .pv .adm-select[data-active="true"] .ico { color: rgba(255, 255, 255, .62); }
+
+.pv .adm-daterange { display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 8px 0 16px; border-radius: 999px; background: #fff; font-size: 14px; transition: box-shadow .2s, background .25s, color .25s; }
+.pv .adm-daterange:focus-within { box-shadow: inset 0 0 0 2px var(--brand); }
+.pv .adm-daterange-k { color: var(--adm-text-muted); font-weight: 500; white-space: nowrap; margin-right: 2px; }
+.pv .adm-daterange-sep { color: var(--adm-text-muted); }
+.pv .adm-daterange input { height: 100%; width: 128px; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-weight: 600; color: var(--ink); padding: 0 4px; }
+.pv .adm-daterange[data-active="true"] { background: var(--ink); color: #fff; color-scheme: dark; }
+.pv .adm-daterange[data-active="true"] input { color: #fff; }
+.pv .adm-daterange[data-active="true"] .adm-daterange-k, .pv .adm-daterange[data-active="true"] .adm-daterange-sep { color: rgba(255, 255, 255, .62); }
+
+.pv .adm-pills { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pv .adm-pills-k { color: var(--adm-text-muted); font-size: 13px; font-weight: 600; margin-right: 4px; }
+.pv .adm-pill { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: 999px; background: #fff; color: var(--ink); font-size: 13.5px; font-weight: 600; transition: background .2s, color .2s, box-shadow .2s; }
+.pv .adm-pill:hover { box-shadow: inset 0 0 0 1.5px var(--adm-rule); }
+.pv .adm-pill[aria-pressed="true"] { background: var(--ink); color: #fff; box-shadow: none; }
+.pv .adm-pill em { font-style: normal; font-size: 11.5px; font-weight: 700; background: var(--bg); color: var(--ink); border-radius: 99px; padding: 2px 7px; }
+.pv .adm-pill[aria-pressed="true"] em { background: var(--brand); color: #fff; }
+
+.pv .adm-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.pv .adm-chips-k { color: var(--adm-text-muted); font-size: 13px; }
+.pv .adm-chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px 0 12px; border-radius: 999px; background: #fff; color: var(--ink); font-size: 12.5px; font-weight: 500; transition: background .2s, color .2s; }
+.pv .adm-chip b { font-weight: 600; }
+.pv .adm-chip .ico { width: 13px; height: 13px; }
+.pv .adm-chip:hover { background: var(--ink); color: #fff; }
+
+/* segmentado de status: `.seg` do protótipo; aqui só o que ele não cobre */
+.pv .adm-filters .seg { align-self: flex-start; max-width: 100%; }
+
+/* ───────────────────────── paginação ───────────────────────── */
+
+.pv .adm-pg { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; padding: 14px 20px; color: var(--adm-text-muted); font-size: 13px; }
+.pv .adm-pg-range b { color: var(--ink); font-weight: 600; }
+.pv .adm-pg-ctl { display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap; }
+.pv .adm-pg-size { position: relative; display: inline-flex; align-items: center; gap: 8px; }
+.pv .adm-pg-size select { appearance: none; -webkit-appearance: none; height: 36px; padding: 0 30px 0 14px; border-radius: 999px; border: 0; outline: 0; background: var(--bg); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pv .adm-pg-size select:focus-visible { box-shadow: inset 0 0 0 2px var(--brand); }
+.pv .adm-pg-size .ico { position: absolute; right: 11px; top: 50%; width: 13px; height: 13px; margin-top: -6.5px; transform: rotate(90deg); pointer-events: none; color: var(--adm-text-muted); }
+.pv .adm-pg-nav { display: flex; align-items: center; gap: 4px; }
+.pv .adm-pg-btn { min-width: 36px; height: 36px; padding: 0 8px; border-radius: 999px; display: inline-grid; place-items: center; color: var(--ink); font-size: 13.5px; font-weight: 600; transition: background .2s, color .2s; }
+.pv .adm-pg-btn:hover:not(:disabled):not([aria-current="page"]) { background: var(--bg); }
+.pv .adm-pg-btn[aria-current="page"] { background: var(--ink); color: #fff; }
+.pv .adm-pg-btn:disabled { color: #c4c4c4; cursor: not-allowed; }
+.pv .adm-pg-btn .ico { width: 16px; height: 16px; }
+.pv .adm-pg-gap { min-width: 22px; text-align: center; color: var(--adm-text-muted); }
+.pv .adm-pg-compact { display: none; padding: 0 8px; color: var(--ink); font-weight: 600; }
+
+/* ───────────────────────── tabela ───────────────────────── */
+
+/* contêiner de consulta: a tabela reage à largura que tem (barra lateral aberta ou em trilho, celular) */
+.pv .adm-table { container-type: inline-size; container-name: adm-table; position: relative; background: #fff; border-radius: var(--adm-radius); overflow: clip; }
+.pv .adm-thead-group { position: sticky; top: 0; z-index: 3; background: #fff; border-bottom: 1.5px solid var(--line); }
+.pv .adm-table[data-sticky="false"] .adm-thead-group { position: static; }
+.pv .adm-thead,
+.pv .adm-row { display: grid; grid-template-columns: var(--adm-cols); column-gap: 16px; align-items: center; padding: 0 24px; }
+.pv .adm-th { min-width: 0; padding: 14px 0; color: var(--adm-text-muted); font-size: 11.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
+.pv .adm-th[data-align="right"] { justify-content: flex-end; text-align: right; }
+.pv .adm-th[data-align="center"] { justify-content: center; text-align: center; }
+.pv .adm-th-btn { display: inline-flex; align-items: center; gap: 6px; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; padding: 0; border-radius: 6px; transition: color .2s; }
+.pv .adm-th-btn:hover { color: var(--ink); }
+.pv .adm-th[aria-sort="ascending"], .pv .adm-th[aria-sort="descending"] { color: var(--ink); }
+.pv .adm-th-btn .ico { width: 13px; height: 13px; opacity: 0; transition: opacity .2s; }
+.pv .adm-th-btn:hover .ico { opacity: .45; }
+.pv .adm-th[aria-sort="ascending"] .ico, .pv .adm-th[aria-sort="descending"] .ico { opacity: 1; }
+
+.pv .adm-tbody { transition: opacity .2s; }
+.pv .adm-tbody[aria-busy="true"] { opacity: .55; }
+.pv .adm-row { position: relative; min-height: 64px; padding-top: 14px; padding-bottom: 14px; border-top: 1.5px solid var(--line); font-size: 14px; transition: background .15s; }
+.pv .adm-tbody > .adm-row:first-child { border-top: 0; }
+.pv .adm-row[data-link="true"]:hover { background: rgba(5, 5, 5, .03); }
+.pv .adm-row:has(.adm-row-link:focus-visible) { box-shadow: inset 0 0 0 2px var(--brand); }
+.pv .adm-cell { min-width: 0; overflow-wrap: anywhere; }
+.pv .adm-cell[data-align="right"] { text-align: right; justify-self: end; }
+.pv .adm-cell[data-align="center"] { text-align: center; justify-self: center; }
+.pv .adm-cell[data-nowrap="true"] { white-space: nowrap; overflow-wrap: normal; }
+.pv .adm-row-link { display: block; min-width: 0; color: inherit; text-decoration: none; }
+.pv .adm-row-link:focus-visible { outline: none; }
+/* link esticado: a linha inteira clica, e só a célula principal entra na ordem de tabulação */
+.pv .adm-row-link::after { content: ""; position: absolute; inset: 0; z-index: 1; }
+.pv .adm-row .adm-cell a:not(.adm-row-link),
+.pv .adm-row .adm-cell button,
+.pv .adm-row .adm-cell input,
+.pv .adm-row .adm-cell select { position: relative; z-index: 2; }
+
+.pv .adm-muted { color: var(--adm-text-muted); }
+.pv .adm-sub { display: block; margin-top: 2px; color: var(--adm-text-muted); font-size: 12.5px; font-weight: 400; }
+.pv .adm-num { font-variant-numeric: tabular-nums; }
+
+.pv .adm-table-foot { border-top: 1.5px solid var(--line); }
+.pv .adm-table-alert { border-bottom: 1.5px solid var(--line); }
+/* vazio e erro ocupam a linha toda (uma "linha" com uma célula que atravessa as colunas) */
+.pv .adm-state-row { display: block; }
+
+/* ordenação no celular (a linha de cabeçalhos some) */
+.pv .adm-sortbar { display: none; align-items: center; gap: 8px; padding: 12px 18px; border-bottom: 1.5px solid var(--line); color: var(--adm-text-muted); font-size: 13px; }
+.pv .adm-sortbar label { flex: none; font-weight: 500; }
+.pv .adm-sortbar select { appearance: none; -webkit-appearance: none; height: 36px; padding: 0 14px; border-radius: 999px; border: 0; outline: 0; background: var(--bg); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; flex: 1; min-width: 0; }
+.pv .adm-sortbar select:focus-visible { box-shadow: inset 0 0 0 2px var(--brand); }
+.pv .adm-sortbar button { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); color: var(--ink); flex: none; }
+.pv .adm-sortbar button:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+.pv .adm-entity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pv .adm-entity-av { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 700; letter-spacing: -.02em; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(5, 5, 5, .06); }
+.pv .adm-entity-av[data-shape="square"] { border-radius: 12px; }
+.pv .adm-entity-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pv .adm-entity-text { min-width: 0; }
+.pv .adm-entity-text b { display: block; font-size: 14px; font-weight: 600; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .adm-entity-text small { display: block; margin-top: 1px; color: var(--adm-text-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ───────────────────────── alerta ───────────────────────── */
+
+.pv .adm-alerts { display: flex; flex-direction: column; }
+.pv .adm-alert { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 24px; row-gap: 8px; padding: 20px 0; border-top: 1.5px solid var(--line); }
+.pv .adm-alerts > .adm-alert:first-child { border-top: 0; padding-top: 0; }
+.pv .adm-alerts > .adm-alert:last-child { padding-bottom: 0; }
+.pv .adm-alert-main { min-width: 0; }
+.pv .adm-alert-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.pv .adm-alert h3 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; line-height: 1.35; }
+.pv .adm-alert-desc { margin: 4px 0 0; color: var(--adm-text-muted); font-size: 13.5px; line-height: 1.5; }
+.pv .adm-alert-count { text-align: right; }
+.pv .adm-alert-count b { display: block; font-size: 28px; font-weight: 600; letter-spacing: -.05em; line-height: 1; }
+.pv .adm-alert-count small { display: block; margin-top: 4px; color: var(--adm-text-muted); font-size: 12px; }
+.pv .adm-alert-more { grid-column: 1 / -1; }
+.pv .adm-summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--adm-text-muted); font-size: 13px; font-weight: 600; list-style: none; border-radius: 6px; }
+.pv .adm-summary::-webkit-details-marker { display: none; }
+.pv .adm-summary::before { content: ""; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform .2s; margin-right: 2px; }
+.pv details[open] > .adm-summary::before { transform: rotate(45deg); }
+.pv .adm-summary:hover { color: var(--ink); }
+.pv .adm-alert-rule { margin: 10px 0 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; font-size: 13px; line-height: 1.5; }
+.pv .adm-alert-rule dt { color: var(--adm-text-muted); }
+.pv .adm-alert-rule dd { margin: 0; overflow-wrap: anywhere; }
+.pv .adm-alert-samples { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: 13px; }
+.pv .adm-alert-samples > span { color: var(--adm-text-muted); }
+.pv .adm-alert-sample { display: inline-flex; align-items: baseline; gap: 6px; color: var(--ink); text-decoration: none; font-weight: 500; }
+.pv .adm-alert-sample small { color: var(--adm-text-muted); font-size: 12px; font-weight: 400; }
+.pv a.adm-alert-sample:hover { text-decoration: underline; text-underline-offset: 3px; }
+.pv .adm-alert-foot { grid-column: 1 / -1; display: flex; justify-content: flex-end; }
+
+/* ───────────────────────── diálogo de confirmação ───────────────────────── */
+
+.pv .adm-overlay { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 16px; background: rgba(5, 5, 5, .34); backdrop-filter: blur(3px); animation: adm-fade .25s var(--ease) both; }
+.pv .adm-dialog { width: min(520px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; background: #fff; color: var(--ink); border-radius: var(--adm-radius); box-shadow: 0 30px 80px -20px rgba(5, 5, 5, .45); overflow: hidden; outline: none; animation: adm-rise .35s var(--ease) both; }
+.pv .adm-dialog[data-wide="true"] { width: min(640px, 100%); }
+.pv .adm-dialog-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 26px 28px 6px; }
+.pv .adm-dialog-h small { display: block; color: var(--adm-text-muted); font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.pv .adm-dialog-h h2 { margin: 0; font-size: 22px; line-height: 1.2; font-weight: 600; letter-spacing: -.03em; overflow-wrap: anywhere; }
+.pv .adm-iconbtn { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); color: var(--ink); transition: background .2s; }
+.pv .adm-iconbtn:hover:not(:disabled) { background: #e2e2e2; }
+.pv .adm-iconbtn:disabled { opacity: .45; cursor: not-allowed; }
+.pv .adm-dialog-b { display: flex; flex-direction: column; gap: 18px; padding: 10px 28px 22px; overflow-y: auto; min-height: 0; flex: 1; scrollbar-width: thin; }
+.pv .adm-dialog-desc { margin: 0; color: rgba(5, 5, 5, .72); font-size: 14px; line-height: 1.55; }
+.pv .adm-conseq b { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; }
+.pv .adm-conseq ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pv .adm-conseq li { position: relative; padding-left: 16px; font-size: 14px; line-height: 1.5; color: rgba(5, 5, 5, .8); }
+.pv .adm-conseq li::before { content: ""; position: absolute; left: 1px; top: .6em; width: 5px; height: 5px; border-radius: 50%; background: var(--ink); }
+.pv .adm-dialog[data-tone="danger"] .adm-conseq li::before { background: var(--adm-bad); }
+.pv .adm-field { display: flex; flex-direction: column; gap: 8px; }
+.pv .adm-field label { font-size: 13px; font-weight: 600; }
+.pv .adm-field label span { color: var(--adm-text-muted); font-weight: 500; }
+.pv .adm-input { width: 100%; border: 0; outline: 0; border-radius: 18px; background: var(--bg); color: var(--ink); font: inherit; font-size: 14px; line-height: 1.5; padding: 13px 16px; transition: box-shadow .2s; }
+.pv textarea.adm-input { resize: vertical; min-height: 92px; max-height: 240px; display: block; }
+.pv .adm-input::placeholder { color: var(--adm-text-muted); }
+.pv .adm-input:focus { box-shadow: inset 0 0 0 2px var(--ink); }
+.pv .adm-input[aria-invalid="true"] { box-shadow: inset 0 0 0 2px var(--adm-bad); }
+.pv .adm-field-foot { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-height: 18px; font-size: 12px; color: var(--adm-text-muted); }
+.pv .adm-field-foot [data-error="true"] { color: var(--adm-bad); }
+.pv .adm-field-count { margin-left: auto; font-variant-numeric: tabular-nums; }
+.pv .adm-field-count[data-over="true"] { color: var(--adm-bad); }
+.pv .adm-dialog-error { padding: 12px 16px; border-radius: 16px; background: var(--adm-bad-bg); color: var(--adm-bad); font-size: 13.5px; line-height: 1.45; }
+.pv .adm-dialog-f { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; padding: 16px 28px 24px; border-top: 1.5px solid var(--line); }
+
+@keyframes adm-fade { from { opacity: 0; } }
+@keyframes adm-rise { from { opacity: 0; transform: translateY(16px) scale(.98); } }
+
+/* ───────────────────────── menu lateral do admin ───────────────────────── */
+
+/* a pilha de itens rola sozinha quando é mais alta que a tela; o logo, o bloco de escopo e o perfil ficam */
+.pv .side .adm-nav { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .22) transparent; margin: 0 -8px; padding: 0 8px; }
+.pv .side .adm-nav::-webkit-scrollbar { width: 6px; }
+.pv .side .adm-nav::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .22); border-radius: 3px; }
+.pv .side .adm-nav-group { display: flex; flex-direction: column; gap: 4px; }
+/* a lista continua além da borda: uma linha fina (chapada, sem degradê) — o macOS esconde a barra de rolagem */
+.pv .side .adm-nav[data-more-before="true"] { box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, .2); }
+.pv .side .adm-nav[data-more-after="true"] { box-shadow: inset 0 -1.5px 0 rgba(255, 255, 255, .2); }
+.pv .side .adm-nav[data-more-before="true"][data-more-after="true"] { box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, .2), inset 0 -1.5px 0 rgba(255, 255, 255, .2); }
+.pv .side .adm-nav button { flex: none; }
+.pv .side .adm-nav button:focus-visible,
+.pv .side .adm-nav-exit:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+/* o Admin tem dez itens e dois rótulos: espaçamento um pouco mais justo para caber em telas de ~900px sem rolar */
+.pv .side.adm-side { gap: 16px; }
+.pv .side.adm-side .adm-nav h6 { margin: 12px 12px 4px; }
+.pv .side.adm-side .adm-nav-group { gap: 2px; }
+.pv .side.adm-side .adm-nav-exit { height: 42px; }
+.pv .side .adm-ws-static { cursor: default; }
+.pv .side .adm-ws-static:hover { background: rgba(255, 255, 255, .1); }
+.pv .side .adm-ws-static .brand { background: var(--brand); }
+.pv .side .adm-nav-exit { display: flex; align-items: center; gap: 12px; height: 46px; width: 100%; padding: 0 14px; border-radius: 999px; color: var(--dim); font-size: 14px; font-weight: 600; text-align: left; transition: background .25s, color .25s; }
+.pv .side .adm-nav-exit:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+
+/* ───────────────────────── tablet e celular ───────────────────────── */
+
+/* trilho (≤1100px): sem rótulos de grupo, um fio separa os grupos; a barra de rolagem some */
+@media (max-width: 1100px) {
+  .pv .side .adm-nav { scrollbar-width: none; }
+  .pv .side .adm-nav::-webkit-scrollbar { display: none; }
+  .pv .side .adm-nav-group + .adm-nav-group { margin-top: 8px; padding-top: 8px; border-top: 1.5px solid rgba(255, 255, 255, .12); }
+  .pv .side .adm-nav-exit { justify-content: center; padding: 0; }
+  .pv .side .adm-nav-exit span { display: none; }
+}
+
+@container adm-table (max-width: 1180px) {
+  .pv .adm-thead, .pv .adm-row { grid-template-columns: var(--adm-cols-lg); }
+  .pv .adm-th[data-hide="lg"], .pv .adm-cell[data-hide="lg"] { display: none; }
+}
+
+@container adm-table (max-width: 960px) {
+  .pv .adm-thead, .pv .adm-row { grid-template-columns: var(--adm-cols-md); }
+  .pv .adm-th[data-hide="md"], .pv .adm-cell[data-hide="md"] { display: none; }
+}
+
+/* empilhado: cada linha vira um bloco com "rótulo / valor" (nada se perde nem rola para o lado) */
+@container adm-table (max-width: 720px) {
+  .pv .adm-thead-group { display: none; }
+  .pv .adm-sortbar { display: flex; }
+  .pv .adm-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; align-items: start; padding: 16px 18px; }
+  /* rótulo em cima, valor embaixo, tudo à esquerda: o alinhamento à direita das colunas numéricas só vale na grade larga */
+  .pv .adm-cell, .pv .adm-cell[data-hide], .pv .adm-cell[data-align] { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; justify-self: stretch; }
+  .pv .adm-cell::before { content: attr(data-label); color: var(--adm-text-muted); font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+  .pv .adm-cell[data-label=""]::before { display: none; }
+  .pv .adm-cell[data-primary="true"] { grid-column: 1 / -1; align-items: stretch; }
+  .pv .adm-cell[data-primary="true"]::before { display: none; }
+  .pv .adm-cell[data-wide="true"] { grid-column: 1 / -1; }
+  .pv .adm-pg { padding: 12px 18px; }
+}
+
+@media (max-width: 900px) {
+  .pv .adm-page { gap: 20px; }
+}
+
+@media (max-width: 760px) {
+  .pv .adm-head h1 { font-size: 28px; }
+  .pv .adm-head-actions { width: 100%; }
+  .pv .adm-head-actions .btn { flex: 1 1 auto; justify-content: center; }
+  .pv .adm-card { padding: 20px; border-radius: 24px; }
+  .pv .adm-card-flush { padding: 0; }
+  .pv .adm-card-flush > .adm-card-h { padding: 20px 20px 0; }
+  .pv .adm-fig { border-radius: 24px; padding: 18px 18px 16px; }
+  .pv .adm-fig-value { --adm-fig-max: 28px; }
+  /* duas colunas só quando o dinheiro exato cabe; no celular estreito o cartão ocupa a linha inteira */
+  .pv .adm-figs { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 10px; }
+  .pv .adm-kv[data-columns="2"] { grid-template-columns: minmax(0, 1fr); }
+  .pv .adm-kv[data-columns="2"] > .adm-kv-row:nth-child(2) { border-top: 1.5px solid var(--line); padding-top: 12px; }
+  .pv .adm-kv-row { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  /* filtros: busca + botão "Filtros"; o restante abre num painel */
+  .pv .adm-search { max-width: none; flex: 1 1 0; min-width: 0; }
+  .pv .adm-filters-toggle { display: inline-flex; }
+  .pv .adm-filters-panel { display: none; flex: 1 1 100%; flex-direction: column; align-items: stretch; gap: 10px; }
+  .pv .adm-filters-panel[data-open="true"] { display: flex; }
+  .pv .adm-filters-panel .adm-select, .pv .adm-filters-panel .adm-daterange { width: 100%; }
+  .pv .adm-filters-panel .adm-select-face { flex: 1; }
+  .pv .adm-filters-panel .adm-select .ico { margin-left: auto; }
+  .pv .adm-daterange { flex-wrap: wrap; height: auto; min-height: 44px; padding: 6px 12px 6px 16px; }
+  .pv .adm-daterange input { flex: 1 1 110px; height: 32px; }
+  .pv .adm-filters-trail { margin-left: 0; width: 100%; }
+  /* paginação: só anterior/próxima e "Página X de Y" */
+  .pv .adm-pg-num, .pv .adm-pg-gap { display: none; }
+  .pv .adm-pg-compact { display: inline; }
+  .pv .adm-pg-ctl { width: 100%; justify-content: space-between; }
+  .pv .adm-alert { grid-template-columns: minmax(0, 1fr); }
+  .pv .adm-alert-count { text-align: left; display: flex; align-items: baseline; gap: 8px; }
+  .pv .adm-alert-count small { margin-top: 0; }
+}
+
+@media (max-width: 560px) {
+  .pv .adm-overlay { place-items: end center; padding: 0; }
+  .pv .adm-dialog { width: 100%; max-height: 92vh; max-height: 92dvh; border-radius: 28px 28px 0 0; }
+  .pv .adm-dialog-h { padding: 22px 22px 6px; }
+  .pv .adm-dialog-b { padding: 8px 22px 18px; }
+  .pv .adm-dialog-f { padding: 14px 22px calc(20px + env(safe-area-inset-bottom, 0px)); }
+  .pv .adm-dialog-f .btn { flex: 1 1 auto; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-sk { animation: none; }
+  .pv .adm-overlay, .pv .adm-dialog { animation: none; }
+  .pv .adm-tabs-ind, .pv .adm-tab, .pv .adm-tbody, .pv .adm-fig-go { transition: none; }
+}

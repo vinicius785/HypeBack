@@ -4,10 +4,10 @@ import {
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { logout } from "@/shared/services/auth";
-import { removeAuthToken } from "@/lib/utils/api";
+import { clearClientSession } from "@/lib/utils/session";
 import { useAuth } from "@/contexts/auth-context";
 
 import { Button } from "@/components/ui/button";
@@ -22,18 +22,19 @@ export const Route = createFileRoute("/(private)/onboarding")({
 
 function RouteComponent() {
   const { setUser } = useAuth();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const navigate = useNavigate();
 
   const { mutate: logoutMutation, isPending: isLoggingOut } = useMutation({
     mutationFn: logout,
     onSuccess: () => {
-      removeAuthToken();
+      clearClientSession(queryClient);
       setUser(null);
       navigate({ to: "/sign-in", replace: true });
     },
     onError: () => {
-      removeAuthToken();
+      clearClientSession(queryClient);
       setUser(null);
       navigate({ to: "/sign-in", replace: true });
     },

@@ -5,7 +5,8 @@ import { toast } from "sonner";
 
 import { useAuth } from "@/contexts/auth-context";
 import { useWorkspaceContext } from "@/contexts/workspace-context";
-import { getUploadUrl, removeAuthToken } from "@/lib/utils/api";
+import { getUploadUrl } from "@/lib/utils/api";
+import { clearClientSession } from "@/lib/utils/session";
 import { formatPhoneNumber } from "@/lib/utils/format";
 import { logout } from "@/shared/services/auth";
 import { updateCurrentUserProfile } from "@/shared/services/me";
@@ -126,7 +127,7 @@ function SettingsScreen() {
   const { mutate: doLogout } = useMutation({
     mutationFn: logout,
     onSettled: () => {
-      removeAuthToken();
+      clearClientSession(queryClient);
       setUser(null);
       navigate({ to: "/sign-in", replace: true });
     },

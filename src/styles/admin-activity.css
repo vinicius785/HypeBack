@@ -1,0 +1,149 @@
+/*
+ * Atividades do Admin (`src/components/admin/activity`): linha do tempo, alterações administrativas (com
+ * antes/depois) e o filtro de autor.
+ *
+ * Mesmas regras do kit (`admin-platform.css`): prefixo `adm-act-`, tudo sob `.pv`, nenhuma classe curta do
+ * protótipo usada nem redefinida. Visual de Início: cartões brancos, hairlines, preto/cinza, roxo só como
+ * acento; sem gradiente nem cor decorativa. O ícone de cada tipo de evento é cinza claro com traço preto.
+ */
+
+.pv .adm-act-stack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.pv .adm-act-stack > * { min-width: 0; }
+
+.pv .adm-act-refresh .ico { transition: transform .3s var(--ease); }
+.pv .adm-act-refresh[aria-busy="true"] .ico { animation: adm-act-spin 1s linear infinite; }
+@keyframes adm-act-spin { to { transform: rotate(360deg); } }
+
+.pv .adm-act-link { color: var(--ink); text-decoration: none; font-weight: 500; overflow-wrap: anywhere; }
+.pv .adm-act-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.pv .adm-act-link:focus-visible,
+.pv .adm-act-entry-head:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
+.pv .adm-act-alert { border-bottom: 1.5px solid var(--line); margin-bottom: 8px; }
+
+/* ───────────────────────── linha do tempo ───────────────────────── */
+
+.pv .adm-act-days { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 26px; transition: opacity .2s; }
+.pv .adm-act-days[aria-busy="true"] { opacity: .55; }
+.pv .adm-act-day h3 { margin: 0 0 4px; color: var(--adm-text-muted); font-size: 13px; font-weight: 600; letter-spacing: .01em; }
+.pv .adm-act-list { list-style: none; margin: 0; padding: 0; }
+
+.pv .adm-act-item { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: start; gap: 4px 14px; padding: 14px 0; border-top: 1.5px solid var(--line); }
+.pv .adm-act-list > .adm-act-item:first-child { border-top: 0; }
+.pv .adm-act-skeleton .adm-act-item:first-child { border-top: 0; }
+.pv .adm-act-ico { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); color: var(--ink); }
+.pv .adm-act-ico .ico { width: 17px; height: 17px; }
+.pv .adm-act-body { min-width: 0; }
+.pv .adm-act-title { margin: 0; font-size: 14px; font-weight: 500; line-height: 1.45; letter-spacing: -.005em; overflow-wrap: anywhere; }
+.pv .adm-act-meta { margin: 3px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.5; }
+.pv .adm-act-meta > span + span::before { content: "·"; margin: 0 8px; }
+.pv .adm-act-reason { margin: 6px 0 0; color: var(--adm-text-muted); font-size: 13px; line-height: 1.5; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
+.pv .adm-act-reason b { color: var(--ink); font-weight: 600; }
+.pv .adm-act-detail { display: inline-block; margin-top: 6px; font-size: 12.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--adm-rule); }
+.pv .adm-act-detail:hover { text-decoration-color: var(--ink); }
+.pv .adm-act-time { padding-top: 2px; color: var(--adm-text-muted); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.pv .adm-act-more { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; margin-top: 18px; padding-top: 14px; border-top: 1.5px solid var(--line); color: var(--adm-text-muted); font-size: 13px; }
+
+/* ───────────────────────── alterações administrativas ───────────────────────── */
+
+.pv .adm-act-audit { list-style: none; margin: 0; padding: 0; transition: opacity .2s; }
+.pv .adm-act-audit[aria-busy="true"] { opacity: .55; }
+.pv .adm-act-entry { border-top: 1.5px solid var(--line); }
+.pv .adm-act-audit > .adm-act-entry:first-child { border-top: 0; }
+
+.pv .adm-act-entry-head { display: grid; grid-template-columns: minmax(0, 1fr) auto 20px; align-items: start; gap: 4px 16px; width: 100%; padding: 16px 26px; text-align: left; transition: background .15s; }
+.pv .adm-act-entry-head:hover { background: rgba(5, 5, 5, .03); }
+.pv .adm-act-entry-head:focus-visible { outline-offset: -3px; border-radius: 0; }
+.pv .adm-act-entry-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pv .adm-act-entry-main b { font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.pv .adm-act-entry-sub { color: rgba(5, 5, 5, .72); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+.pv .adm-act-entry-reason { color: var(--adm-text-muted); font-size: 13px; line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .adm-act-entry-when { padding-top: 2px; color: var(--adm-text-muted); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pv .adm-act-entry-chev { padding-top: 2px; color: var(--adm-text-muted); display: inline-flex; }
+.pv .adm-act-entry-chev .ico { width: 16px; height: 16px; transform: rotate(90deg); transition: transform .25s var(--ease); }
+.pv .adm-act-entry[data-open="true"] .adm-act-entry-chev .ico { transform: rotate(-90deg); }
+.pv .adm-act-entry[data-open="true"] .adm-act-entry-reason { display: none; }
+
+.pv .adm-act-entry-body { display: flex; flex-direction: column; gap: 22px; padding: 4px 26px 24px; }
+.pv .adm-act-reason-full { white-space: pre-wrap; }
+.pv .adm-act-sub h4 { margin: 0 0 10px; font-size: 13px; font-weight: 600; }
+.pv .adm-act-sub-empty { margin: 0; color: var(--adm-text-muted); font-size: 13.5px; }
+
+/* antes → depois, campo a campo */
+.pv .adm-act-diff { display: grid; border: 1.5px solid var(--line); border-radius: 16px; overflow: hidden; }
+.pv .adm-act-diff-row { display: grid; grid-template-columns: minmax(110px, .8fr) minmax(0, 1fr) minmax(0, 1fr); gap: 4px 16px; padding: 10px 16px; border-top: 1.5px solid var(--line); font-size: 13.5px; line-height: 1.45; }
+.pv .adm-act-diff-head { border-top: 0; background: var(--bg); color: var(--adm-text-muted); font-size: 11.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
+.pv .adm-act-diff-field { color: var(--adm-text-muted); font-weight: 500; overflow-wrap: anywhere; }
+.pv .adm-act-diff-before { color: var(--adm-text-muted); overflow-wrap: anywhere; }
+.pv .adm-act-diff-after { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+.pv .adm-act-diff-before[data-empty="true"],
+.pv .adm-act-diff-after[data-empty="true"] { color: var(--adm-text-muted); font-weight: 400; }
+
+.pv .adm-act-facts { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px 24px; }
+.pv .adm-act-facts dt { color: var(--adm-text-muted); font-size: 12.5px; }
+.pv .adm-act-facts dd { margin: 2px 0 0; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+.pv .adm-act-entry-skeleton { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 26px; border-top: 1.5px solid var(--line); }
+.pv .adm-act-entry-skeleton:first-child { border-top: 0; }
+.pv .adm-act-entry-skeleton > div:first-child { flex: 1; min-width: 0; }
+.pv .adm-act-pager { border-top: 1.5px solid var(--line); }
+
+/* ───────────────────────── filtro de autor ───────────────────────── */
+/* O mesmo desenho do seletor de workspace (`AdminWorkspacePicker`), para os dois ficarem lado a lado iguais. */
+
+.pv .adm-act-actor { position: relative; flex: 0 1 300px; min-width: 220px; }
+.pv .adm-act-actor-field { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 8px 0 16px; border-radius: 999px; background: #fff; color: var(--ink); font-size: 14px; transition: box-shadow .2s, background .25s, color .25s; }
+.pv .adm-act-actor-field:focus-within { box-shadow: inset 0 0 0 2px var(--brand); }
+.pv .adm-act-actor-k { flex: none; color: var(--adm-text-muted); font-weight: 500; white-space: nowrap; }
+.pv .adm-act-actor-field input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; font: inherit; font-size: 14px; font-weight: 600; color: inherit; text-overflow: ellipsis; }
+.pv .adm-act-actor-field input::placeholder { color: var(--ink); font-weight: 600; opacity: 1; }
+.pv .adm-act-actor-clear,
+.pv .adm-act-actor-chev { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--adm-text-muted); }
+.pv .adm-act-actor-chev .ico { width: 14px; height: 14px; transform: rotate(90deg); }
+.pv .adm-act-actor-clear { transition: background .2s, color .2s; }
+.pv .adm-act-actor-clear:hover { background: var(--bg); color: var(--ink); }
+.pv .adm-act-actor-clear:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+.pv .adm-act-actor[data-active="true"] .adm-act-actor-field { background: var(--ink); color: #fff; }
+.pv .adm-act-actor[data-active="true"] .adm-act-actor-k { color: rgba(255, 255, 255, .62); }
+.pv .adm-act-actor[data-active="true"] .adm-act-actor-field input::placeholder { color: #fff; }
+.pv .adm-act-actor[data-active="true"] .adm-act-actor-clear { color: rgba(255, 255, 255, .8); }
+.pv .adm-act-actor[data-active="true"] .adm-act-actor-clear:hover { background: rgba(255, 255, 255, .16); color: #fff; }
+
+.pv .adm-act-actor-pop { position: absolute; z-index: 40; left: 0; top: calc(100% + 6px); width: max(100%, 320px); max-width: min(420px, calc(100vw - 32px)); overflow: hidden; border-radius: 20px; background: #fff; color: var(--ink); box-shadow: 0 18px 40px -12px rgba(5, 5, 5, .3), inset 0 0 0 1.5px var(--adm-rule); }
+.pv .adm-act-actor-list { list-style: none; margin: 0; padding: 6px; max-height: 320px; overflow-y: auto; scrollbar-width: thin; }
+.pv .adm-act-actor-opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 14px; cursor: pointer; }
+.pv .adm-act-actor-opt[data-active="true"] { background: var(--bg); }
+.pv .adm-act-actor-opt-text { min-width: 0; }
+.pv .adm-act-actor-opt b { display: block; font-size: 14px; font-weight: 600; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .adm-act-actor-opt small { display: block; margin-top: 1px; color: var(--adm-text-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .adm-act-actor-opt .ico { flex: none; color: var(--brand); }
+.pv .adm-act-actor-status { margin: 0; padding: 10px 18px 12px; color: var(--adm-text-muted); font-size: 12.5px; }
+.pv .adm-act-actor-list:not([hidden]) + .adm-act-actor-status { border-top: 1.5px solid var(--line); }
+.pv .adm-act-actor-error { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 14px 18px; color: var(--adm-bad); font-size: 13px; line-height: 1.45; }
+
+/* ───────────────────────── celular ───────────────────────── */
+
+@media (max-width: 760px) {
+  .pv .adm-act-item { grid-template-columns: 36px minmax(0, 1fr); }
+  .pv .adm-act-time { grid-column: 2; padding-top: 0; }
+  .pv .adm-act-entry-head { grid-template-columns: minmax(0, 1fr) 20px; padding: 14px 20px; }
+  .pv .adm-act-entry-when { grid-column: 1; grid-row: 2; padding-top: 0; }
+  .pv .adm-act-entry-chev { grid-column: 2; grid-row: 1; }
+  .pv .adm-act-entry-body { padding: 4px 20px 20px; }
+  .pv .adm-act-entry-skeleton { padding: 16px 20px; }
+  .pv .adm-act-diff-head { display: none; }
+  .pv .adm-act-diff-row { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .pv .adm-act-diff-before::before,
+  .pv .adm-act-diff-after::before { content: attr(data-label) ": "; color: var(--adm-text-muted); font-weight: 500; }
+  /* o seletor ocupa a linha inteira e vai para baixo da busca e do botão "Filtros" (como o de workspace) */
+  .pv .adm-act-actor { flex: 1 1 100%; order: 5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-act-refresh[aria-busy="true"] .ico { animation: none; }
+  .pv .adm-act-actor-field,
+  .pv .adm-act-actor-clear,
+  .pv .adm-act-days,
+  .pv .adm-act-audit,
+  .pv .adm-act-entry-chev .ico { transition: none; }
+}

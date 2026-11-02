@@ -5,6 +5,10 @@ import { WorkspaceProvider } from "@/contexts/workspace-context";
 import { Sidebar } from "@/components/sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 import { Header } from "@/components/header";
+import {
+  WorkspaceStateContent,
+  WorkspaceStateTop,
+} from "@/components/workspace-state/workspace-state-slots";
 
 export const Route = createFileRoute("/(private)/(app)")({
   component: RouteComponent,
@@ -67,10 +71,14 @@ function RouteComponent() {
         <Sidebar />
 
         <div className="flex min-w-0 flex-col overflow-hidden">
-          {!detailOwnsTop && <Header title={title} />}
+          {/* Estado do workspace: suspenso troca o conteúdo pela tela de bloqueio (e tira o topo, que chama a
+              API do workspace); arquivado ganha a faixa "somente consulta". Ver components/workspace-state. */}
+          <WorkspaceStateTop>{!detailOwnsTop && <Header title={title} />}</WorkspaceStateTop>
 
           <main ref={mainRef} className="w-full flex-1 overflow-y-auto px-2 pb-10 pt-4 max-[900px]:px-5 max-[900px]:pb-32">
-            <Outlet />
+            <WorkspaceStateContent>
+              <Outlet />
+            </WorkspaceStateContent>
           </main>
         </div>
       </div>

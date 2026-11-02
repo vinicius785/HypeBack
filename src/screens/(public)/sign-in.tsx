@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,7 +7,9 @@ import { z } from "zod";
 
 import { signIn } from "@/shared/services/auth";
 import { saveAuthToken } from "@/lib/utils/api";
+import { readWorkspaceStateError } from "@/lib/workspace-state/lifecycle-errors";
 
+import { AccountSuspendedNotice } from "@/components/workspace-state/account-suspended-notice";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InputPassword } from "@/components/ui/input-password";
@@ -44,6 +47,9 @@ function RouteComponent() {
     },
   });
 
+  // Conta suspensa (403 ACCOUNT_SUSPENDED): o aviso fica na tela, com o caminho para o suporte.
+  const [suspendedMessage, setSuspendedMessage] = useState<string | null>(null);
+
   const { mutate: signInMutation, isPending: isSigningIn } = useMutation({
     mutationFn: signIn,
     onSuccess: async ({ token }) => {
@@ -51,6 +57,11 @@ function RouteComponent() {
       navigate({ to: "/" });
     },
     onError: (error) => {
+      const state = readWorkspaceStateError(error);
+      if (state?.code === "ACCOUNT_SUSPENDED") {
+        setSuspendedMessage(state.message);
+        return;
+      }
       toast.error(error.message || "Erro ao entrar na conta");
     },
   });
@@ -58,7 +69,10 @@ function RouteComponent() {
   return (
     <form
       className="flex w-full max-w-[400px] flex-col gap-7"
-      onSubmit={handleSubmit((data) => signInMutation(data))}
+      onSubmit={handleSubmit((data) => {
+        setSuspendedMessage(null);
+        signInMutation(data);
+      })}
     >
       <div className="flex flex-col gap-2.5">
         <h1 className="text-[34px] font-semibold leading-[1.08] tracking-[-0.045em] text-neutral-950">
@@ -69,6 +83,8 @@ function RouteComponent() {
           Entre para continuar no HypeApp.
         </p>
       </div>
+
+      {suspendedMessage ? <AccountSuspendedNotice message={suspendedMessage} /> : null}
 
       <div className="flex flex-col gap-4">
         <Input

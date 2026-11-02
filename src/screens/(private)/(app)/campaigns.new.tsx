@@ -20,7 +20,7 @@ import { activateMural } from "@/shared/services/mural";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/(private)/(app)/campaigns/new" as "/(private)/(app)/campaigns/new")({
+export const Route = createFileRoute("/(private)/(app)/campaigns/new")({
   component: CreateCampaignPage,
 });
 
