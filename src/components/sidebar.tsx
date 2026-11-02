@@ -20,6 +20,7 @@ import { getCampaignStatusValue } from "@/shared/utils/campaign-status";
 import type { Workspace, WorkspaceRole } from "@/shared/types";
 
 import "@/styles/admin-platform.css";
+import "@/styles/admin-sidebar-motion.css";
 
 export const ROLE_LABEL: Record<WorkspaceRole, string> = {
   owner: "Proprietário",
@@ -196,6 +197,16 @@ export function useNavItems(scope: NavScope = "workspace") {
 }
 
 /**
+ * Posição de cada título e item na cascata de entrada do menu do Admin (CSS `--i`, ver
+ * `admin-sidebar-motion.css`): os grupos seguem um ao outro, e `total` é a vez do "Voltar ao app".
+ */
+function cascadeOf(groups: readonly AdminNavGroup[]) {
+  let i = 0;
+  const positions = groups.map((g) => ({ head: i++, items: g.items.map(() => i++) }));
+  return { positions, total: i };
+}
+
+/**
  * Menu lateral — marcação e CSS idênticos ao protótipo.
  *
  * `scope="platform"` (layout do Admin): no lugar do seletor de workspace entra um bloco fixo "Admin da
@@ -209,6 +220,8 @@ export function Sidebar({ scope = "workspace" }: { scope?: NavScope }) {
   const { workspaces, selectedWorkspace, selectWorkspace } = useWorkspaceContext();
   const { menus, adminGroups, isOn } = useNavItems(scope);
   const platform = scope === "platform";
+  // Só o Admin anima a entrada; no app o menu fica como sempre.
+  const cascade = platform ? cascadeOf(adminGroups) : null;
   const [open, setOpen] = useState(false);
   const wswRef = useRef<HTMLDivElement>(null);
   const doLogout = useLogout();
@@ -375,10 +388,12 @@ export function Sidebar({ scope = "workspace" }: { scope?: NavScope }) {
                 ))}
             </div>
           ) : null}
-          {adminGroups.map((group) => (
+          {adminGroups.map((group, gi) => (
             <div key={group.id} className="adm-nav-group" role="group" aria-labelledby={`adm-nav-${group.id}`}>
-              <h6 id={`adm-nav-${group.id}`}>{group.label}</h6>
-              {group.items.map(({ label, icon, href }) => (
+              <h6 id={`adm-nav-${group.id}`} style={cascade ? { ["--i" as string]: cascade.positions[gi].head } : undefined}>
+                {group.label}
+              </h6>
+              {group.items.map(({ label, icon, href }, ii) => (
                 <button
                   key={href}
                   type="button"
@@ -386,6 +401,7 @@ export function Sidebar({ scope = "workspace" }: { scope?: NavScope }) {
                   aria-label={label}
                   aria-current={isOn(href) ? "page" : undefined}
                   title={label}
+                  style={cascade ? { ["--i" as string]: cascade.positions[gi].items[ii] } : undefined}
                   onClick={() => go(href)}
                 >
                   <I n={icon} />
@@ -399,7 +415,14 @@ export function Sidebar({ scope = "workspace" }: { scope?: NavScope }) {
         <div className="spacer" />
 
         {platform ? (
-          <button type="button" className="adm-nav-exit" aria-label="Voltar ao app" title="Voltar ao app" onClick={() => go("/")}>
+          <button
+            type="button"
+            className="adm-nav-exit"
+            aria-label="Voltar ao app"
+            title="Voltar ao app"
+            style={cascade ? { ["--i" as string]: cascade.total } : undefined}
+            onClick={() => go("/")}
+          >
             <I n="back" />
             <span>Voltar ao app</span>
           </button>

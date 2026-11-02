@@ -130,6 +130,11 @@ describe("Sidebar (escopo do workspace, como no app)", () => {
     expect(ctx.navigate).toHaveBeenCalledWith({ to: "/admin/dashboard" });
   });
 
+  it("o menu do app não leva a cascata de entrada (a animação é só do Admin)", () => {
+    render(<Sidebar />);
+    for (const el of within(nav()).getAllByRole("button")) expect(el.style.getPropertyValue("--i")).toBe("");
+  });
+
   it("quem não é admin da plataforma não vê o Admin, nem a porta de entrada", () => {
     ctx.user = { name: "Cliente", email: "cliente@marca.com" };
     render(<Sidebar />);
@@ -183,6 +188,14 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
   it("não busca as campanhas do workspace (o contador não existe no Admin)", () => {
     render(<Sidebar scope="platform" />);
     expect(ctx.useCampaigns).toHaveBeenCalledWith({ enabled: false });
+  });
+
+  it("títulos e itens levam a posição na cascata de entrada (`--i`), na ordem do menu, e 'Voltar ao app' fecha a sequência", () => {
+    render(<Sidebar scope="platform" />);
+    const position = (el: HTMLElement) => el.style.getPropertyValue("--i");
+    expect(within(nav()).getAllByRole("heading", { level: 6 }).map(position)).toEqual(["0", "8"]);
+    expect(within(nav()).getAllByRole("button").map(position)).toEqual(["1", "2", "3", "4", "5", "6", "7", "9", "10", "11"]);
+    expect(position(screen.getByRole("button", { name: "Voltar ao app" }))).toBe("12");
   });
 
   it("'Voltar ao app' leva ao início do app", async () => {

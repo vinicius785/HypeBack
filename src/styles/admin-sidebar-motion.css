@@ -1,0 +1,57 @@
+/*
+ * Entrada do menu do Admin ("Visão ADM"). O menu do Admin é montado quando se abre o Admin (é outro layout, com
+ * o próprio <Sidebar scope="platform" />), então a animação roda uma vez a cada entrada e não se repete ao trocar
+ * de página dentro do Admin. `--i` (definido no JSX) é a posição do título/item na cascata.
+ *
+ * Os itens entram vindo da esquerda, e não da direita ou de baixo: a lista de itens (`.adm-nav`) rola por dentro,
+ * e um deslocamento que passa da borda direita ou de baixo aumenta a área rolável e faz a barra de rolagem
+ * piscar durante a animação. Para a esquerda e para cima o excesso não conta.
+ */
+
+@keyframes adm-side-in { from { opacity: 0; transform: translateX(-14px); } }
+@keyframes adm-side-rise { from { opacity: 0; transform: translateY(10px); } }
+@keyframes adm-side-block { from { opacity: 0; transform: translateX(-12px) scale(.96); } }
+@keyframes adm-side-shield {
+  0% { opacity: 0; transform: scale(.4) rotate(-24deg); }
+  60% { opacity: 1; transform: scale(1.12) rotate(4deg); }
+  100% { transform: none; }
+}
+@keyframes adm-side-glow { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Um brilho roxo que varre o canto do menu e some: sinaliza que a área mudou (por baixo do conteúdo). */
+.pv .side.adm-side { position: relative; isolation: isolate; }
+.pv .side.adm-side::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(120% 55% at 0% 0%, rgba(158, 44, 250, .5), rgba(158, 44, 250, 0) 62%);
+  opacity: 0;
+  animation: adm-side-glow 1.1s ease-out .05s both;
+}
+
+/* O bloco "Admin da plataforma" entra primeiro, com o escudo "estalando" no lugar. */
+.pv .side .adm-ws-static { animation: adm-side-block .5s var(--ease) .04s both; }
+.pv .side .adm-ws-static .brand { animation: adm-side-shield .7s var(--ease) .16s both; }
+
+/* Títulos e itens em cascata, na ordem do menu; "Voltar ao app" fecha a sequência. */
+.pv .side.adm-side .adm-nav h6,
+.pv .side.adm-side .adm-nav button {
+  animation: adm-side-in .42s var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 30ms + 120ms);
+}
+.pv .side.adm-side .adm-nav-exit {
+  animation: adm-side-rise .45s var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 30ms + 200ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv .side.adm-side::before,
+  .pv .side .adm-ws-static,
+  .pv .side .adm-ws-static .brand,
+  .pv .side.adm-side .adm-nav h6,
+  .pv .side.adm-side .adm-nav button,
+  .pv .side.adm-side .adm-nav-exit { animation: none; }
+}
