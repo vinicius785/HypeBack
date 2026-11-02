@@ -13,6 +13,8 @@ import { useAdminWorkspaceMembers } from "@/hooks/admin/use-admin-workspaces";
 import { formatDate, formatDateTime, formatInt, formatRelativeTime } from "@/lib/admin/format";
 import type { AdminWorkspaceDetail, AdminWorkspaceMember } from "@/shared/admin-platform.types";
 
+import { useAdminCapabilities } from "@/hooks/admin/use-admin-team";
+
 import { roleLabel } from "./workspace-constants";
 import { WorkspaceMemberDialogs, type MemberDialogState } from "./workspace-member-dialogs";
 
@@ -29,7 +31,9 @@ export function WorkspaceMembersTab({ workspace }: { workspace: AdminWorkspaceDe
   useAdminPageClamp(page, meta?.total_pages, setPage);
 
   // O Admin não muda membros de um workspace excluído (a máquina de estados do contrato: `can.update`).
-  const editable = workspace.can.update;
+  // Mudar acesso é só do administrador da plataforma (suporte e somente leitura veem a lista).
+  const capabilities = useAdminCapabilities();
+  const editable = workspace.can.update && capabilities.isAdmin;
   // "Com acesso" = contas que não foram excluídas: o mesmo número do selo da aba e do cabeçalho
   // (`counts.members`). A lista traz também as contas excluídas, para auditoria, e `meta.total` as inclui.
   const withAccess = workspace.counts.members;

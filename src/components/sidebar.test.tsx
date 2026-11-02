@@ -61,6 +61,7 @@ describe("ADMIN_NAV_GROUPS", () => {
       ["Dashboard", "/admin/dashboard"],
       ["Workspaces", "/admin/workspaces"],
       ["Usuários", "/admin/users"],
+      ["Equipe", "/admin/team"],
       ["Campanhas", "/admin/campaigns"],
       ["Criadores", "/admin/creators"],
       ["Financeiro", "/admin/financial"],
@@ -119,7 +120,7 @@ describe("Sidebar (escopo do workspace, como no app)", () => {
     const items = within(nav());
     expect(items.queryByRole("group", { name: "Administração" })).not.toBeInTheDocument();
     expect(items.queryByRole("group", { name: "Monitoramento" })).not.toBeInTheDocument();
-    for (const label of ["Dashboard", "Workspaces", "Usuários", "Comunidade", "Atividades", "Notificações", "Saúde da plataforma"]) {
+    for (const label of ["Dashboard", "Workspaces", "Usuários", "Equipe", "Comunidade", "Atividades", "Notificações", "Saúde da plataforma"]) {
       expect(items.queryByRole("button", { name: label })).not.toBeInTheDocument();
     }
   });
@@ -177,7 +178,7 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
     render(<Sidebar scope="platform" />);
     const items = within(screen.getByRole("navigation", { name: "Navegação do Admin" }));
     for (const label of ["Início", "Lives"]) expect(items.queryByRole("button", { name: label })).not.toBeInTheDocument();
-    expect(items.getAllByRole("button")).toHaveLength(10);
+    expect(items.getAllByRole("button")).toHaveLength(11);
     expect(items.getByRole("group", { name: "Administração" })).toBeInTheDocument();
     expect(items.getByRole("group", { name: "Monitoramento" })).toBeInTheDocument();
     // dentro do Admin a porta de entrada não faz sentido: já se está nele
@@ -193,9 +194,9 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
   it("títulos e itens levam a posição na cascata de entrada (`--i`), na ordem do menu, e 'Voltar ao app' fecha a sequência", () => {
     render(<Sidebar scope="platform" />);
     const position = (el: HTMLElement) => el.style.getPropertyValue("--i");
-    expect(within(nav()).getAllByRole("heading", { level: 6 }).map(position)).toEqual(["0", "8"]);
-    expect(within(nav()).getAllByRole("button").map(position)).toEqual(["1", "2", "3", "4", "5", "6", "7", "9", "10", "11"]);
-    expect(position(screen.getByRole("button", { name: "Voltar ao app" }))).toBe("12");
+    expect(within(nav()).getAllByRole("heading", { level: 6 }).map(position)).toEqual(["0", "9"]);
+    expect(within(nav()).getAllByRole("button").map(position)).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "10", "11", "12"]);
+    expect(position(screen.getByRole("button", { name: "Voltar ao app" }))).toBe("13");
   });
 
   it("'Voltar ao app' leva ao início do app", async () => {

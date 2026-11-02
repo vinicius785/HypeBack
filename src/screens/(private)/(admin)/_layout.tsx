@@ -4,7 +4,7 @@ import { createFileRoute, Outlet, useLocation, useNavigate } from "@tanstack/rea
 import { WorkspaceProvider } from "@/contexts/workspace-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useAdminSessionGuard } from "@/hooks/admin/use-admin-session-guard";
-import { isPlatformAdmin } from "@/lib/utils/platform-admin";
+import { isPlatformStaff } from "@/lib/utils/platform-admin";
 import { Sidebar } from "@/components/sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 
@@ -32,7 +32,7 @@ const KEEP_SCROLL_PREFIXES = ["/admin/groups"];
  * - As requisições do Admin NÃO enviam `Workspace-Id` (ver `src/lib/admin/admin-client.ts`).
  * - Sessão vencida ou conta suspensa no meio do uso (401 do Admin): `useAdminSessionGuard` faz o mesmo
  *   que o app faz quando `/me` volta 401 e leva para o login.
- * - O guard de acesso é feito em runtime via `useAuth` + `isPlatformAdmin` — ele depende do `User`
+ * - O guard de acesso é feito em runtime via `useAuth` + `isPlatformStaff` — ele depende do `User`
  *   carregado em `(private)/_layout.tsx`, então `beforeLoad` ainda não tem acesso ao usuário. A segurança
  *   de verdade é o `PlatformAdminGuard` do backend (403).
  * - Celular (≤ 900px): sem sidebar, com a barra inferior; o <main> rola até o topo a cada página nova.
@@ -44,7 +44,7 @@ function AdminLayout() {
   useAdminSessionGuard();
 
   useEffect(() => {
-    if (user && !isPlatformAdmin(user)) {
+    if (user && !isPlatformStaff(user)) {
       navigate({ to: "/", replace: true });
     }
   }, [user, navigate]);
@@ -60,7 +60,7 @@ function AdminLayout() {
     mainRef.current?.scrollTo({ top: 0 });
   }, [pathname]);
 
-  if (!user || !isPlatformAdmin(user)) {
+  if (!user || !isPlatformStaff(user)) {
     return null;
   }
 

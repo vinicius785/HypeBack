@@ -198,6 +198,10 @@ export const BLOCKER_LABEL: Record<AdminDeleteBlockerCode, string> = {
   HAS_PENDING_CHARGES: "Cobranças pendentes",
   HAS_WITHDRAWALS_IN_FLIGHT: "Saques em andamento",
   HAS_PUBLISHED_CAMPAIGNS: "Campanhas publicadas",
+  // Exclusão de CONTA (usuário ou criador)
+  IS_SOLE_WORKSPACE_OWNER: "Único proprietário de workspace",
+  HAS_OPEN_BALANCE: "Saldo do criador em aberto",
+  HAS_PENDING_WITHDRAWAL: "Saque pendente",
 };
 
 /** Status do lançamento (ledger) em texto. Status novo do servidor aparece cru, nunca some. */

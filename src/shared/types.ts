@@ -15,6 +15,11 @@ export interface User {
    * enquanto backend não implementa. Ver `docs/api-super-admin-dashboard.md`.
    */
   is_platform_admin?: boolean;
+  /**
+   * Papel na equipe da plataforma (`users.platform_role`): `admin`, `support` ou `viewer`. Só `admin` acende
+   * `is_platform_admin`; `support` e `viewer` entram no Admin com menos permissões (`GET /admin/me`).
+   */
+  platform_role?: "admin" | "support" | "viewer";
 }
 
 export interface AdminPeriod {

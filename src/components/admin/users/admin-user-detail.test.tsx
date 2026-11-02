@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   adminGet: vi.fn(),
   adminPost: vi.fn(),
   toastSuccess: vi.fn(),
-  auth: { user: { id: 1, name: "Marina Albuquerque" } as { id: number; name: string } | null },
+  auth: { user: { id: 1, name: "Marina Albuquerque", is_platform_admin: true, platform_role: "admin" } as { id: number; name: string; is_platform_admin?: boolean; platform_role?: string } | null },
 }));
 
 vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
@@ -90,7 +90,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(NOW_ISO));
   for (const mock of [mocks.adminList, mocks.adminGet, mocks.adminPost, mocks.toastSuccess]) mock.mockReset();
-  mocks.auth.user = { id: 1, name: "Marina Albuquerque" };
+  mocks.auth.user = { id: 1, name: "Marina Albuquerque", is_platform_admin: true, platform_role: "admin" };
   server.detail = makeUserDetail();
   server.target = [makeAuditEntry()];
   server.actor = [];
@@ -576,7 +576,7 @@ describe("detalhe do usuário: quais ações a conta aceita", () => {
   });
 
   it("a própria conta: nenhuma ação, só a explicação (mesmo sendo administrador)", async () => {
-    mocks.auth.user = { id: 9, name: "Bernardo Medeiros Moraes" };
+    mocks.auth.user = { id: 9, name: "Bernardo Medeiros Moraes", is_platform_admin: true, platform_role: "admin" };
     server.detail = makeUserDetail({ kind: "admin", is_platform_admin: true });
     await renderDetail();
     expect(actionButtons()).toEqual([]);
@@ -585,7 +585,7 @@ describe("detalhe do usuário: quais ações a conta aceita", () => {
   });
 
   it("a própria conta, sendo de marca: também nenhuma ação", async () => {
-    mocks.auth.user = { id: 9, name: "Bernardo Medeiros Moraes" };
+    mocks.auth.user = { id: 9, name: "Bernardo Medeiros Moraes", is_platform_admin: true, platform_role: "admin" };
     await renderDetail();
     expect(actionButtons()).toEqual([]);
     expect(screen.getByText(/Esta é a sua conta/)).toBeInTheDocument();
