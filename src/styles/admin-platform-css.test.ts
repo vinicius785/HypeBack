@@ -112,3 +112,15 @@ describe("botão Suspender (contorno vermelho)", () => {
     expect(filled).toBeGreaterThan(out);
   });
 });
+
+describe("texto só para leitor de tela (.adm-sr)", () => {
+  // `position: absolute` sem top/left fica onde estaria no fluxo, que no fim de uma página longa é bem abaixo da janela.
+  // Com o documento como bloco de contenção, o <main> (que rola) não o recorta e a janela ganha uma segunda barra de rolagem.
+  it("a página (`.adm-page`) é posicionada: é ela o bloco de contenção do `.adm-sr`, que é absoluto e sem top/left", () => {
+    const sr = platformCss.match(/\.pv \.adm-sr \{([^}]*)\}/)?.[1] ?? "";
+    const page = platformCss.match(/\.pv \.adm-page \{([^}]*)\}/)?.[1] ?? "";
+    expect(sr).toMatch(/position:\s*absolute/);
+    expect(sr).not.toMatch(/(^|[\s;])(top|left|right|bottom|inset):/);
+    expect(page).toMatch(/position:\s*relative/);
+  });
+});

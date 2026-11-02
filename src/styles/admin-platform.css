@@ -32,7 +32,10 @@
 
 /* ───────────────────────── página ───────────────────────── */
 
-.pv .adm-page { display: flex; flex-direction: column; gap: 24px; width: 100%; min-width: 0; }
+/* `relative`: a página é o bloco de contenção do que é `position: absolute` e não tem âncora própria (o `.adm-sr` abaixo).
+   Sem isso esses elementos ficam presos ao documento, escapam do recorte do <main> que rola e esticam a janela inteira:
+   segunda barra de rolagem e uma área vazia no fim da página. */
+.pv .adm-page { display: flex; flex-direction: column; gap: 24px; width: 100%; min-width: 0; position: relative; }
 .pv .adm-page > * { min-width: 0; }
 
 .pv .adm-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
