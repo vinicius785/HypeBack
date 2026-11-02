@@ -40,7 +40,7 @@ vi.mock("@/shared/services/auth", () => ({ logout: vi.fn() }));
 // A geometria de rolagem não existe no jsdom: o teste diz se a lista continua além das bordas.
 vi.mock("@/hooks/admin/use-scroll-edges", () => ({ useScrollEdges: () => ({ ref: { current: null }, edges: ctx.edges }) }));
 
-import { ADMIN_NAV_GROUPS, Sidebar } from "./sidebar";
+import { ADMIN_NAV_GROUPS, BACKOFFICE_NAV_GROUP, Sidebar } from "./sidebar";
 
 beforeEach(() => {
   ctx.pathname = "/";
@@ -89,22 +89,52 @@ describe("ADMIN_NAV_GROUPS", () => {
   });
 });
 
+describe("BACKOFFICE_NAV_GROUP", () => {
+  it("um divisor 'Backoffice' com uma entrada só, 'Visão ADM', que abre o Admin", () => {
+    expect(BACKOFFICE_NAV_GROUP.label).toBe("Backoffice");
+    expect(BACKOFFICE_NAV_GROUP.items.map((i) => [i.label, i.href])).toEqual([["Visão ADM", "/admin/dashboard"]]);
+  });
+
+  it("o ícone existe no mapa do protótipo (`I`)", async () => {
+    const src = (await import("@/components/prototype/ui?raw")).default as string;
+    expect(src).toMatch(new RegExp(`\\b${BACKOFFICE_NAV_GROUP.items[0].icon}: "`));
+  });
+});
+
 describe("Sidebar (escopo do workspace, como no app)", () => {
-  it("mostra o seletor de workspace, os itens do workspace e as duas áreas do Admin para quem é admin", () => {
+  it("mostra o seletor de workspace, os itens do workspace e, para quem é admin, só a entrada 'Visão ADM' do Backoffice", () => {
     render(<Sidebar />);
     expect(screen.getByRole("button", { name: /Acme/ })).toHaveAttribute("aria-haspopup", "listbox");
     const items = within(nav());
     for (const label of ["Início", "Campanhas", "Criadores", "Lives", "Financeiro"]) {
       expect(items.getAllByRole("button", { name: label }).length).toBeGreaterThan(0);
     }
-    expect(items.getByRole("group", { name: "Administração" })).toBeInTheDocument();
-    expect(items.getByRole("group", { name: "Monitoramento" })).toBeInTheDocument();
-    expect(items.getByRole("button", { name: "Saúde da plataforma" })).toBeInTheDocument();
+    const backoffice = within(items.getByRole("group", { name: "Backoffice" }));
+    expect(backoffice.getAllByRole("button")).toHaveLength(1);
+    expect(backoffice.getByRole("button", { name: "Visão ADM" })).toBeInTheDocument();
   });
 
-  it("quem não é admin da plataforma não vê o Admin", () => {
+  it("as áreas do Admin só existem dentro do Admin: no app não aparece nenhuma delas", () => {
+    render(<Sidebar />);
+    const items = within(nav());
+    expect(items.queryByRole("group", { name: "Administração" })).not.toBeInTheDocument();
+    expect(items.queryByRole("group", { name: "Monitoramento" })).not.toBeInTheDocument();
+    for (const label of ["Dashboard", "Workspaces", "Usuários", "Comunidade", "Atividades", "Notificações", "Saúde da plataforma"]) {
+      expect(items.queryByRole("button", { name: label })).not.toBeInTheDocument();
+    }
+  });
+
+  it("'Visão ADM' leva ao Admin", async () => {
+    render(<Sidebar />);
+    await userEvent.click(within(nav()).getByRole("button", { name: "Visão ADM" }));
+    expect(ctx.navigate).toHaveBeenCalledWith({ to: "/admin/dashboard" });
+  });
+
+  it("quem não é admin da plataforma não vê o Admin, nem a porta de entrada", () => {
     ctx.user = { name: "Cliente", email: "cliente@marca.com" };
     render(<Sidebar />);
+    expect(screen.queryByRole("group", { name: "Backoffice" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Visão ADM" })).not.toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Administração" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Workspaces" })).not.toBeInTheDocument();
   });
@@ -145,6 +175,9 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
     expect(items.getAllByRole("button")).toHaveLength(10);
     expect(items.getByRole("group", { name: "Administração" })).toBeInTheDocument();
     expect(items.getByRole("group", { name: "Monitoramento" })).toBeInTheDocument();
+    // dentro do Admin a porta de entrada não faz sentido: já se está nele
+    expect(items.queryByRole("group", { name: "Backoffice" })).not.toBeInTheDocument();
+    expect(items.queryByRole("button", { name: "Visão ADM" })).not.toBeInTheDocument();
   });
 
   it("não busca as campanhas do workspace (o contador não existe no Admin)", () => {

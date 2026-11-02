@@ -137,6 +137,16 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
   },
 ];
 
+/**
+ * No app do workspace o Admin é uma entrada só: "Visão ADM", sob o divisor "Backoffice". Ela leva ao Admin,
+ * onde o menu passa para o escopo `platform` e mostra todas as áreas (`ADMIN_NAV_GROUPS`).
+ */
+export const BACKOFFICE_NAV_GROUP: AdminNavGroup = {
+  id: "backoffice",
+  label: "Backoffice",
+  items: [{ label: "Visão ADM", icon: "shield", href: "/admin/dashboard" }],
+};
+
 /** Itens de navegação (e permissões) compartilhados pela sidebar e pelo menu do celular. */
 export function useNavItems(scope: NavScope = "workspace") {
   const permissions = useWorkspacePermissions();
@@ -175,7 +185,12 @@ export function useNavItems(scope: NavScope = "workspace") {
           ["Lives", "video", "/lives", !!permissions.community_lives_read],
           ["Financeiro", "wallet", "/financial", !!permissions.financial_read],
         ];
-  const adminGroups: readonly AdminNavGroup[] = showPlatformAdmin ? ADMIN_NAV_GROUPS : [];
+  // Fora do Admin, só a porta de entrada; dentro dele, todas as áreas.
+  const adminGroups: readonly AdminNavGroup[] = !showPlatformAdmin
+    ? []
+    : scope === "platform"
+      ? ADMIN_NAV_GROUPS
+      : [BACKOFFICE_NAV_GROUP];
 
   return { menus, adminGroups, showPlatformAdmin, isOn };
 }
