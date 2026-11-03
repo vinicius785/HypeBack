@@ -730,7 +730,7 @@ function CampaignGroupPanel({
                     <p style={{ whiteSpace: "pre-wrap" }}>{post.content}</p>
                     <small>
                       {post.author_name} · {formatPostDate(post.created_at)}
-                      {post.origin === "backoffice" ? " · Backoffice" : ""}
+                      {post.origin === "backoffice" ? " · Plataforma" : ""}
                     </small>
                   </div>
                 ))
