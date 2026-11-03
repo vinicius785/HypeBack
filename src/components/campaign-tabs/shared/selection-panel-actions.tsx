@@ -216,13 +216,14 @@ export function SelectionPanelActions({
               <small>@{row.username}</small>
               {showCost && (
                 <em className={blocked ? "bad" : ""}>
+                  <span>Valor</span>
                   {cost != null ? fmtBRL(cost) : "A definir"}
                 </em>
               )}
             </div>
             {blocked && (
               <small className="drw-hint bad">
-                Saldo insuficiente ({fmtBRL(availableCents ?? 0)} disponível).
+                Saldo insuficiente: {fmtBRL(availableCents ?? 0)} disponível.
               </small>
             )}
             <div className="kb2-r">
