@@ -17,8 +17,13 @@ export const ADMIN_AUDIT_RESOURCE = "audit-log";
 export const ADMIN_USER_AUDIT_PER_PAGE = 10;
 
 /** Lista global de usuários. `params` sai de `useAdminListQueryState().params` (página, busca, filtros, ordenação). */
-export function useAdminUsers(params: AdminQuery) {
-  return useAdminList<AdminUserListItem>({ resource: ADMIN_USERS_RESOURCE, path: "/admin/users", params });
+export function useAdminUsers(params: AdminQuery, options: { enabled?: boolean } = {}) {
+  return useAdminList<AdminUserListItem>({
+    resource: ADMIN_USERS_RESOURCE,
+    path: "/admin/users",
+    params,
+    enabled: options.enabled,
+  });
 }
 
 /** Detalhe de um usuário. Sem id (rota com id inválido), a consulta nem sai. */

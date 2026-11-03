@@ -12,7 +12,7 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { useScrollEdges } from "@/hooks/admin/use-scroll-edges";
 import { useCampaigns } from "@/hooks/use-campaigns";
-import { isPlatformAdmin } from "@/lib/utils/platform-admin";
+import { isPlatformStaff } from "@/lib/utils/platform-admin";
 import { getUploadUrl } from "@/lib/utils/api";
 import { clearClientSession } from "@/lib/utils/session";
 import { logout } from "@/shared/services/auth";
@@ -113,6 +113,9 @@ export interface AdminNavGroup {
  * Comunidade segue em `/admin/groups`. Ícones do mapa `I`, todos distintos entre si (Comunidade não repete
  * o de Criadores nem o de Usuários).
  */
+/** Papel na equipe da plataforma, curto, para o perfil do menu (uma linha só). Sem papel conhecido, "Administrador". */
+const PLATFORM_ROLE_SHORT = { admin: "Administrador", support: "Suporte", viewer: "Somente leitura" } as const;
+
 export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
   {
     id: "administracao",
@@ -121,6 +124,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       { label: "Dashboard", icon: "chart", href: "/admin/dashboard" },
       { label: "Workspaces", icon: "box", href: "/admin/workspaces" },
       { label: "Usuários", icon: "user", href: "/admin/users" },
+      { label: "Equipe", icon: "users", href: "/admin/team" },
       { label: "Campanhas", icon: "mega", href: "/admin/campaigns" },
       { label: "Criadores", icon: "star", href: "/admin/creators" },
       { label: "Financeiro", icon: "banknote", href: "/admin/financial" },
@@ -155,7 +159,7 @@ export function useNavItems(scope: NavScope = "workspace") {
   const { user } = useAuth();
   const { pathname } = useLocation();
   const { selectedWorkspace } = useWorkspaceContext();
-  const showPlatformAdmin = isPlatformAdmin(user);
+  const showPlatformAdmin = isPlatformStaff(user);
 
   // O número de campanhas ativas é do workspace: no Admin nem se busca (nem com o workspace suspenso, que
   // recusa toda chamada).
@@ -498,7 +502,7 @@ export function Sidebar({ scope = "workspace" }: { scope?: NavScope }) {
           />
           <div>
             <b>{user?.name ?? "—"}</b>
-            <small>{platform ? "Administrador" : roleOf(selectedWorkspace)}</small>
+            <small>{platform ? PLATFORM_ROLE_SHORT[user?.platform_role ?? "admin"] : roleOf(selectedWorkspace)}</small>
           </div>
           <button
             type="button"

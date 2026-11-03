@@ -8,13 +8,14 @@
 import { useQueryClient } from "@tanstack/react-query";
 
 import { adminPath, adminPost } from "@/lib/admin/admin-client";
-import type { AdminUserActionBody, AdminUserDetail } from "@/shared/admin-platform.types";
+import type { AdminUserActionBody, AdminUserDeleteBody, AdminUserDetail } from "@/shared/admin-platform.types";
 
 import { adminKeys } from "./admin-query-keys";
 import { useAdminMutation } from "./use-admin-mutation";
 import { ADMIN_AUDIT_RESOURCE, ADMIN_USERS_RESOURCE } from "./use-admin-users";
 
-export type AdminUserActionName = "suspend" | "reactivate" | "revoke-sessions";
+/** `delete` anonimiza a conta, sem volta (`POST /admin/users/:userId/delete`, corpo com `confirm_email`). */
+export type AdminUserActionName = "suspend" | "reactivate" | "revoke-sessions" | "delete";
 
 export function adminUserActionPath(userId: number, action: AdminUserActionName): string {
   return adminPath`/admin/users/${userId}/${action}`;
@@ -36,7 +37,7 @@ const AFTER_USER_ACTION = [
 
 export function useAdminUserAction(userId: number, action: AdminUserActionName) {
   const queryClient = useQueryClient();
-  return useAdminMutation<AdminUserDetail, AdminUserActionBody>({
+  return useAdminMutation<AdminUserDetail, AdminUserActionBody | AdminUserDeleteBody>({
     mutationFn: async (body, idempotencyKey) => {
       const detail = await adminPost<AdminUserDetail>(adminUserActionPath(userId, action), body, { idempotencyKey });
       queryClient.setQueryData(adminKeys.detail(ADMIN_USERS_RESOURCE, userId), detail);

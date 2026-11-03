@@ -68,6 +68,7 @@ describe("ADMIN_NAV_GROUPS", () => {
       ["Dashboard", "/admin/dashboard"],
       ["Workspaces", "/admin/workspaces"],
       ["Usuários", "/admin/users"],
+      ["Equipe", "/admin/team"],
       ["Campanhas", "/admin/campaigns"],
       ["Criadores", "/admin/creators"],
       ["Financeiro", "/admin/financial"],
@@ -125,7 +126,7 @@ describe("Sidebar (escopo do workspace, como no app)", () => {
     render(<Sidebar />);
     const items = within(nav());
     expect(items.queryByRole("group", { name: "Monitoramento" })).not.toBeInTheDocument();
-    for (const label of ["Dashboard", "Workspaces", "Usuários", "Comunidade", "Atividades", "Notificações", "Saúde da plataforma"]) {
+    for (const label of ["Dashboard", "Workspaces", "Usuários", "Equipe", "Comunidade", "Atividades", "Notificações", "Saúde da plataforma"]) {
       expect(items.queryByRole("button", { name: label })).not.toBeInTheDocument();
     }
   });
@@ -183,9 +184,9 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
     render(<Sidebar scope="platform" />);
     const items = within(screen.getByRole("navigation", { name: "Navegação do Admin" }));
     for (const label of ["Início", "Lives"]) expect(items.queryByRole("button", { name: label })).not.toBeInTheDocument();
-    expect(items.getAllByRole("button")).toHaveLength(10);
-    // "Administração" aqui é a área com as 7 páginas, não o divisor da porta de entrada do app (que tem uma entrada só)
-    expect(within(items.getByRole("group", { name: "Administração" })).getAllByRole("button")).toHaveLength(7);
+    expect(items.getAllByRole("button")).toHaveLength(11);
+    // "Administração" aqui é a área com as 8 páginas (com a Equipe), não o divisor da porta de entrada do app (que tem uma entrada só)
+    expect(within(items.getByRole("group", { name: "Administração" })).getAllByRole("button")).toHaveLength(8);
     expect(items.getByRole("group", { name: "Monitoramento" })).toBeInTheDocument();
     // dentro do Admin a porta de entrada não faz sentido: já se está nele
     expect(items.queryByRole("button", { name: "Backoffice" })).not.toBeInTheDocument();
@@ -199,9 +200,9 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
   it("títulos e itens levam a posição na cascata de entrada (`--i`), na ordem do menu, e 'Voltar ao app' fecha a sequência", () => {
     render(<Sidebar scope="platform" />);
     const position = (el: HTMLElement) => el.style.getPropertyValue("--i");
-    expect(within(nav()).getAllByRole("heading", { level: 6 }).map(position)).toEqual(["0", "8"]);
-    expect(within(nav()).getAllByRole("button").map(position)).toEqual(["1", "2", "3", "4", "5", "6", "7", "9", "10", "11"]);
-    expect(position(screen.getByRole("button", { name: "Voltar ao app" }))).toBe("12");
+    expect(within(nav()).getAllByRole("heading", { level: 6 }).map(position)).toEqual(["0", "9"]);
+    expect(within(nav()).getAllByRole("button").map(position)).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "10", "11", "12"]);
+    expect(position(screen.getByRole("button", { name: "Voltar ao app" }))).toBe("13");
   });
 
   it("o perfil mostra \"Administrador\" (curto, numa linha só; o bloco de cima já diz que é a plataforma), não o papel num workspace", () => {
@@ -302,8 +303,9 @@ describe("Sidebar (volta ao app: o menu do Admin sai e o do app entra)", () => {
 
   it("a saída conta para trás a partir do 'Voltar ao app': `--n` é a vez dele na cascata", () => {
     render(<Sidebar scope="platform" />);
-    expect(aside().style.getPropertyValue("--n")).toBe("12");
-    expect(back().style.getPropertyValue("--i")).toBe("12");
+    // 11 itens + 2 títulos de área + o "Voltar ao app" (com a Equipe no menu)
+    expect(aside().style.getPropertyValue("--n")).toBe("13");
+    expect(back().style.getPropertyValue("--i")).toBe("13");
   });
 
   it("enquanto o menu sai, outros cliques não navegam e um segundo clique não agenda outra volta", () => {
