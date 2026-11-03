@@ -1,0 +1,59 @@
+/*
+ * Comunidade do Admin (`src/components/admin/community`): o Feed, com as publicações dos criadores dentro e fora de
+ * grupos, para acompanhar e remover.
+ *
+ * Mesmas regras do kit (`admin-platform.css`): prefixo `adm-com-`, tudo sob `.pv`, nenhuma classe curta do
+ * protótipo usada nem redefinida. Visual de Início: cartão branco com divisores, preto/cinza, roxo só como foco;
+ * sem gradiente nem cor decorativa (o ponto do grupo é a cor que o próprio grupo escolheu).
+ */
+
+.pv .adm-com-stack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.pv .adm-com-stack > * { min-width: 0; }
+
+.pv .adm-com-refresh .ico { transition: transform .3s var(--ease); }
+.pv .adm-com-refresh[aria-busy="true"] .ico { animation: adm-com-spin 1s linear infinite; }
+@keyframes adm-com-spin { to { transform: rotate(360deg); } }
+
+/* ───────────────────────── publicações ───────────────────────── */
+
+.pv .adm-com-list { list-style: none; margin: 0; padding: 0; transition: opacity .2s; }
+.pv .adm-com-list[aria-busy="true"] { opacity: .55; }
+
+.pv .adm-com-item { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: start; gap: 6px 16px; padding: 18px 26px; border-top: 1.5px solid var(--line); }
+.pv .adm-com-list > .adm-com-item:first-child,
+.pv .adm-com-skeleton > .adm-com-item:first-child { border-top: 0; }
+.pv .adm-com-body { min-width: 0; }
+
+.pv .adm-com-meta { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-height: 24px; font-size: 14.5px; line-height: 1.4; }
+.pv .adm-com-meta b { font-weight: 600; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.pv .adm-com-meta time { color: var(--adm-text-muted); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.pv .adm-com-group { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; height: 24px; padding: 0 10px 0 9px; border-radius: 999px; background: var(--bg); color: var(--ink); font-size: 12px; font-weight: 600; text-decoration: none; transition: background .2s; }
+.pv .adm-com-group:hover { background: #e4e4e4; }
+.pv .adm-com-group:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+.pv .adm-com-group i { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.pv .adm-com-group span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.pv .adm-com-text { margin: 6px 0 0; font-size: 14px; line-height: 1.5; color: rgba(5, 5, 5, .85); white-space: pre-wrap; overflow-wrap: anywhere; }
+.pv .adm-com-media { display: block; margin-top: 10px; max-width: min(100%, 420px); max-height: 320px; border-radius: 16px; background: #000; }
+.pv .adm-com-stats { margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--adm-text-muted); font-size: 12.5px; }
+.pv .adm-com-stats span { display: inline-flex; align-items: center; gap: 6px; }
+
+.pv .adm-com-more { display: flex; justify-content: center; padding: 18px 26px 22px; border-top: 1.5px solid var(--line); }
+
+/* trecho da publicação dentro do diálogo de remover */
+.pv .adm-com-quote { margin: 0; padding: 12px 14px; border-radius: 16px; background: var(--bg); color: rgba(5, 5, 5, .8); font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+
+/* ───────────────────────── celular ───────────────────────── */
+
+@media (max-width: 760px) {
+  .pv .adm-com-item { grid-template-columns: 44px minmax(0, 1fr); padding: 16px 20px; }
+  /* o botão desce para baixo do texto; a margem negativa alinha o ícone dele à borda do texto */
+  .pv .adm-com-item > .btn { grid-column: 2; justify-self: start; margin: 2px 0 0 -14px; }
+  .pv .adm-com-more { padding: 16px 20px 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-com-refresh[aria-busy="true"] .ico { animation: none; }
+  .pv .adm-com-list { transition: none; }
+}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 
+import { GROUPS_TAB_SEARCH } from "@/components/admin/community/community-search";
 import { I } from "@/components/prototype/ui";
 import {
   AccessPicker,
@@ -33,8 +34,9 @@ function NewGroup() {
   const [step, setStep] = useState(0);
 
   const isSubmitting = createMutation.isPending || uploadCover.isPending;
+  // Volta para a aba Grupos (sem a busca, a Comunidade abriria no Feed).
   const close = () => {
-    if (!isSubmitting) navigate({ to: "/admin/groups" });
+    if (!isSubmitting) navigate({ to: "/admin/groups", search: GROUPS_TAB_SEARCH });
   };
 
   const step0Bad = !!(f.errors.name || f.errors.description || f.errors.rules);

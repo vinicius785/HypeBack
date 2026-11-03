@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 
+import { GROUPS_TAB_SEARCH } from "@/components/admin/community/community-search";
 import { Av, I } from "@/components/prototype/ui";
 import {
   AccessPicker,
@@ -50,7 +51,8 @@ function GroupDetailRoute() {
   const { groupId } = Route.useParams();
   const navigate = useNavigate();
   const { data: group, isLoading, error } = useGroup(groupId);
-  const close = () => navigate({ to: "/admin/groups" });
+  // Volta para a aba Grupos (sem a busca, a Comunidade abriria no Feed).
+  const close = () => navigate({ to: "/admin/groups", search: GROUPS_TAB_SEARCH });
 
   if (isLoading || error || !group) {
     return (

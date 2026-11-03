@@ -3,6 +3,7 @@
  * (super-admin), como `use-groups.ts`.
  */
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQueryClient,
@@ -39,6 +40,8 @@ export function useCommunityPosts(
     initialPageParam: null as string | null,
     getNextPageParam: (last) =>
       last.meta.has_more ? last.meta.next_cursor : undefined,
+    // Trocar o filtro ou digitar na busca mantém a lista anterior na tela (esmaecida) até a nova chegar.
+    placeholderData: keepPreviousData,
     staleTime: 15 * 1000,
     refetchOnWindowFocus: false,
   });
