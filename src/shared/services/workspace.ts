@@ -329,6 +329,8 @@ export interface InviteWorkspaceMemberResult {
   email: string;
   role: string;
   created_account: boolean;
+  /** O convite ficou pendente: a pessoa só entra no time quando aceitar na plataforma. */
+  pending: boolean;
 }
 
 function parseMembersInviteErrorMessage(errorData: unknown): string {
@@ -363,6 +365,7 @@ function normalizeInviteMemberResult(
     email: String(o.email ?? ""),
     role: String(o.role ?? "member"),
     created_account: o.created_account === true,
+    pending: o.pending === true,
   };
 }
 

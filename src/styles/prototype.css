@@ -2460,3 +2460,4 @@
 .pv .pvx-tl, .pv .pvx-tl li { flex: none; }
 .pv .pvx-tl li { align-items: center; }
 .pv .pvx-gn { align-items: start; }
+.pv .wkx-pend { margin-top: 28px; } .pv .wkx-pend h4 { font-size: 14px; font-weight: 700; letter-spacing: -.01em; color: var(--muted); margin: 0 0 10px; }

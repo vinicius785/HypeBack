@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 
-import { WorkspaceProvider } from "@/contexts/workspace-context";
+import { WorkspaceProvider, useWorkspaceContext } from "@/contexts/workspace-context";
+import { MyInvitesPanel } from "@/components/workspace-invites/my-invites";
 import { Sidebar } from "@/components/sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 import { Header } from "@/components/header";
@@ -13,6 +14,12 @@ import {
 export const Route = createFileRoute("/(private)/(app)")({
   component: RouteComponent,
 });
+
+/** Quem já tem marca e recebe outro convite o vê aqui, em qualquer tela; sem marca, o convite fica na tela inicial. */
+function InvitesBanner() {
+  const { selectedWorkspace } = useWorkspaceContext();
+  return selectedWorkspace ? <MyInvitesPanel compact /> : null;
+}
 
 function RouteComponent() {
   const { pathname } = useLocation();
@@ -76,6 +83,7 @@ function RouteComponent() {
           <WorkspaceStateTop>{!detailOwnsTop && <Header title={title} />}</WorkspaceStateTop>
 
           <main ref={mainRef} className="w-full flex-1 overflow-y-auto px-2 pb-10 pt-4 max-[900px]:px-5 max-[900px]:pb-32">
+            <InvitesBanner />
             <WorkspaceStateContent>
               <Outlet />
             </WorkspaceStateContent>

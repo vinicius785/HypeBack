@@ -2,6 +2,8 @@ import { useState } from "react";
 
 import { I, Av } from "@/components/prototype/ui";
 import type { WorkspaceMember } from "@/shared/types";
+import type { PendingWorkspaceInvite } from "@/shared/services/workspace-invites";
+import { expiryLabel } from "@/components/workspace-invites/my-invites";
 
 import { ROLE_LABEL } from "./constants";
 
@@ -14,6 +16,10 @@ interface Props {
   canManagePermissions: boolean;
   canRemoveMember: (m: WorkspaceMember) => boolean;
   removing: boolean;
+  /** Convites enviados que a pessoa ainda não aceitou. */
+  pendingInvites?: PendingWorkspaceInvite[];
+  cancelingInvite?: boolean;
+  onCancelInvite?: (invite: PendingWorkspaceInvite) => void;
   onInvite: () => void;
   onEdit: (m: WorkspaceMember) => void;
   onRemove: (m: WorkspaceMember) => void;
@@ -28,6 +34,9 @@ export function TeamTab({
   canManagePermissions,
   canRemoveMember,
   removing,
+  pendingInvites = [],
+  cancelingInvite = false,
+  onCancelInvite,
   onInvite,
   onEdit,
   onRemove,
@@ -115,6 +124,40 @@ export function TeamTab({
               </div>
             );
           })}
+        </div>
+      )}
+      {pendingInvites.length > 0 && (
+        <div className="wkx-pend">
+          <h4>Convites aguardando resposta</h4>
+          <div className="wkx-ml">
+            {pendingInvites.map((invite) => (
+              <div key={invite.id} className="wkx-mr">
+                <Av name={invite.email} size={50} />
+                <div className="wkx-mn">
+                  <b>{invite.email}</b>
+                  <small>
+                    {[invite.invitedByName ? `Convidado por ${invite.invitedByName}` : "", expiryLabel(invite.expiresAt)]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </small>
+                </div>
+                <span className={`wkx-rl ${invite.role}`}>{ROLE_LABEL[invite.role as keyof typeof ROLE_LABEL] ?? invite.roleLabel}</span>
+                <div className="wkx-ma">
+                  {canInvite && onCancelInvite && (
+                    <button
+                      type="button"
+                      className="btn out"
+                      disabled={cancelingInvite}
+                      aria-label={`Cancelar convite de ${invite.email}`}
+                      onClick={() => onCancelInvite(invite)}
+                    >
+                      Cancelar convite
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

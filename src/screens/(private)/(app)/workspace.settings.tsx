@@ -19,6 +19,7 @@ import {
   useUpdateWorkspaceMemberRole,
   useWorkspaceMembersQuery,
 } from "@/hooks/use-workspace-members";
+import { useCancelWorkspaceInvite, useWorkspaceInvitesQuery } from "@/hooks/use-workspace-invites";
 import { useNiches } from "@/hooks/use-niches";
 import { removeWorkspaceId, saveWorkspaceId } from "@/lib/utils/api";
 import { getDeleteBlockers } from "@/lib/workspace-state/delete-blockers";
@@ -149,6 +150,8 @@ function WorkspaceSettingsScreen() {
   });
 
   const inviteMutation = useInviteWorkspaceMember(workspaceId ?? "");
+  const { data: pendingInvites = [] } = useWorkspaceInvitesQuery(workspaceId, canInvite);
+  const cancelInviteMutation = useCancelWorkspaceInvite(workspaceId ?? "");
   const roleMutation = useUpdateWorkspaceMemberRole(workspaceId ?? "");
   const removeMutation = useRemoveWorkspaceMember(workspaceId ?? "");
 
@@ -201,7 +204,13 @@ function WorkspaceSettingsScreen() {
       },
       {
         onSuccess: (result) => {
-          if (result.created_account) {
+          if (result.pending && result.created_account) {
+            toast.success(
+              "Convite enviado. A pessoa receberá um e-mail com o código de 6 dígitos para definir a senha e poderá aceitar o convite ao entrar.",
+            );
+          } else if (result.pending) {
+            toast.success("Convite enviado. A pessoa entra na equipe quando aceitar, ao abrir o Hype.");
+          } else if (result.created_account) {
             toast.success(
               "Conta criada. A pessoa receberá um e-mail com o código de 6 dígitos para definir a senha em Redefinir senha.",
             );
@@ -309,6 +318,14 @@ function WorkspaceSettingsScreen() {
               canManagePermissions={canRoleWrite}
               canRemoveMember={canRemoveMember}
               removing={removeMutation.isPending}
+              pendingInvites={pendingInvites}
+              cancelingInvite={cancelInviteMutation.isPending}
+              onCancelInvite={(invite) =>
+                cancelInviteMutation.mutate(invite.id, {
+                  onSuccess: () => toast.success(`Convite para ${invite.email} cancelado.`),
+                  onError: (e) => toast.error(apiErr(e)),
+                })
+              }
               onInvite={() => setInviteOpen(true)}
               onEdit={setPermMember}
               onRemove={(m) =>

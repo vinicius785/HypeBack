@@ -4,6 +4,8 @@ import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
 
 import { Icon } from "@/components/ui/icon";
+import { MyInvitesPanel } from "@/components/workspace-invites/my-invites";
+import { MY_INVITES_KEY } from "@/hooks/use-workspace-invites";
 
 /**
  * Painel de quem ainda não faz parte de nenhuma marca: criar o perfil não obriga a criar uma marca (a pessoa pode
@@ -22,6 +24,8 @@ export function NoWorkspaceState() {
         </h1>
         <p className="text-[15px] text-neutral-500">Seu perfil está pronto. Você ainda não faz parte de nenhuma marca: como quer começar?</p>
       </div>
+
+      <MyInvitesPanel />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <section className="flex flex-col gap-4 rounded-[28px] bg-white p-7">
@@ -51,16 +55,20 @@ export function NoWorkspaceState() {
             <h2 className="text-[20px] font-semibold tracking-[-0.03em]">Entrar em uma marca</h2>
             <p className="text-[14px] leading-relaxed text-neutral-500">
               Peça a quem administra a marca para te convidar usando o e-mail{" "}
-              <b className="break-words font-semibold text-neutral-950">{user?.email}</b>. Ao aceitar, ela aparece aqui.
+              <b className="break-words font-semibold text-neutral-950">{user?.email}</b>. O convite aparece aqui para
+              você aceitar.
             </p>
           </div>
           <button
             type="button"
-            onClick={() => void queryClient.invalidateQueries({ queryKey: ["me-workspaces"] })}
+            onClick={() => {
+              void queryClient.invalidateQueries({ queryKey: ["me-workspaces"] });
+              void queryClient.invalidateQueries({ queryKey: MY_INVITES_KEY });
+            }}
             className="inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-neutral-100 px-6 text-sm font-bold text-neutral-950 transition-colors hover:bg-neutral-200"
           >
             <Icon name="RefreshCw" size={16} color="currentColor" />
-            Já aceitei o convite
+            Verificar convites
           </button>
         </section>
       </div>

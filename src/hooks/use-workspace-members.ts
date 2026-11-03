@@ -25,6 +25,9 @@ export function useInviteWorkspaceMember(workspaceId: string) {
       void queryClient.invalidateQueries({
         queryKey: ["workspace-members", workspaceId],
       });
+      void queryClient.invalidateQueries({
+        queryKey: ["workspace-invites", workspaceId],
+      });
     },
   });
 }

@@ -6,6 +6,12 @@ vi.mock("@/contexts/auth-context", () => ({
   useAuth: () => ({ user: { name: "Marina Costa", email: "marina@casaaurora.com.br" } }),
 }));
 
+vi.mock("@/shared/services/workspace-invites", () => ({
+  listMyWorkspaceInvites: vi.fn().mockResolvedValue([]),
+  acceptWorkspaceInvite: vi.fn(),
+  declineWorkspaceInvite: vi.fn(),
+}));
+
 import { renderAdminRoute, stubRoute } from "@/test/render-admin-route";
 
 import { NoWorkspaceState } from "./no-workspace-state";
@@ -30,13 +36,14 @@ describe("NoWorkspaceState", () => {
     expect(await screen.findByTestId("stub:/onboarding/create-workspace")).toBeInTheDocument();
   });
 
-  it("mostra o e-mail que a marca deve usar no convite e deixa atualizar depois de aceitar", async () => {
+  it("mostra o e-mail que a marca deve usar no convite e deixa verificar se ele já chegou", async () => {
     const { queryClient } = open();
     const spy = vi.spyOn(queryClient, "invalidateQueries");
     const user = userEvent.setup();
     expect(await screen.findByText("marina@casaaurora.com.br")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /Já aceitei o convite/ }));
+    await user.click(screen.getByRole("button", { name: /Verificar convites/ }));
     expect(spy).toHaveBeenCalledWith({ queryKey: ["me-workspaces"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["my-workspace-invites"] });
   });
 });

@@ -22,6 +22,7 @@ vi.mock("@/contexts/workspace-context", () => ({
   WorkspaceProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   useWorkspaceContext: () => ({ selectedWorkspace: { id: "w1", name: "Acme", status: ctx.status } }),
 }));
+vi.mock("@/components/workspace-invites/my-invites", () => ({ MyInvitesPanel: () => null }));
 vi.mock("@/components/sidebar", () => ({ Sidebar: () => <aside data-testid="sidebar" /> }));
 vi.mock("@/components/mobile-nav", () => ({ MobileNav: () => <nav data-testid="mobile-nav" /> }));
 vi.mock("@/components/header", () => ({ Header: ({ title }: { title?: string }) => <div data-testid="header" data-title={title} /> }));
