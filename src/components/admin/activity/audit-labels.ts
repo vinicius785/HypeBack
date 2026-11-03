@@ -23,6 +23,8 @@ export const AUDIT_ACTION_LABEL: Record<AdminActionCode, string> = {
   "user.reactivate": "Usuário reativado",
   "user.sessions_revoke": "Sessões encerradas",
   "user.merge": "Usuários mesclados",
+  "user.delete": "Conta excluída",
+  "user.platform_role_change": "Papel na equipe alterado",
   "balance.manual_credit": "Crédito manual de saldo a um criador",
   "balance.topup": "Recarga de saldo de workspace criada por administrador",
   "balance.simulate_payment": "Pagamento simulado por administrador",

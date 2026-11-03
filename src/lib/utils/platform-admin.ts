@@ -11,3 +11,12 @@ import type { User } from "@/shared/types";
 export function isPlatformAdmin(user: User | null | undefined): boolean {
   return user?.is_platform_admin === true;
 }
+
+/**
+ * Faz parte da equipe da plataforma (admin, suporte ou somente leitura)? É o que decide se o Admin aparece no
+ * menu e se a rota abre. O que cada papel PODE fazer vem de `GET /admin/me` (`useAdminCapabilities`); a API
+ * valida o papel em cada rota.
+ */
+export function isPlatformStaff(user: User | null | undefined): boolean {
+  return isPlatformAdmin(user) || user?.platform_role === "support" || user?.platform_role === "viewer";
+}

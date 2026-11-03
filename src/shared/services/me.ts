@@ -29,6 +29,11 @@ function mapUserFromApi(raw: unknown): User {
     updated_at: String(o.updated_at ?? ""),
     avatar: typeof av === "string" && av.trim() ? av : null,
     is_platform_admin: isPlatformAdmin || undefined,
+    platform_role: isPlatformAdmin
+      ? "admin"
+      : platformRole === "support" || platformRole === "viewer"
+        ? platformRole
+        : undefined,
   };
 }
 

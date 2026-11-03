@@ -204,6 +204,8 @@ const DEFAULT_MESSAGE: Record<string, string> = {
   CANNOT_ACT_ON_SELF: "Você não pode fazer isso na sua própria conta.",
   CANNOT_ACT_ON_PLATFORM_ADMIN: "Não é possível agir sobre outro administrador da plataforma.",
   LAST_OWNER: "Este é o último proprietário do workspace.",
+  USER_DELETE_BLOCKED: "A exclusão da conta está bloqueada: resolva os impedimentos listados.",
+  LAST_PLATFORM_ADMIN: "Esta é a única conta administradora ativa. Promova outra conta a administrador antes.",
   IDEMPOTENCY_CONFLICT: "Esta solicitação já foi enviada com outros dados. Recarregue e tente de novo.",
   // Genéricos do cliente.
   UNAUTHENTICATED: "Sua sessão expirou. Entre novamente.",

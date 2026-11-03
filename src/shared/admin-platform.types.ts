@@ -117,11 +117,13 @@ export const ADMIN_ERROR_CODES = [
   // específicos do Admin
   'INVALID_STATE_TRANSITION', // 409
   'WORKSPACE_DELETE_BLOCKED', // 409, `details.blockers`
+  'USER_DELETE_BLOCKED', // 409, `details.blockers` (conta com saldo, saque em andamento ou único proprietário)
   'IMPACT_TOKEN_MISMATCH', // 409: o impacto mudou desde que o resumo foi mostrado
   'CONFIRMATION_MISMATCH', // 422: o nome digitado não confere
   'CANNOT_ACT_ON_SELF', // 409
   'CANNOT_ACT_ON_PLATFORM_ADMIN', // 409
   'LAST_OWNER', // 409
+  'LAST_PLATFORM_ADMIN', // 409: tirar o papel do último administrador ativo da plataforma
   'IDEMPOTENCY_CONFLICT', // 409
 ] as const;
 export type AdminErrorCode = (typeof ADMIN_ERROR_CODES)[number];
@@ -358,6 +360,60 @@ export interface AdminReasonBody {
 /** POST .../suspend | .../reactivate | .../unarchive | .../restore */
 export type AdminWorkspaceTransitionBody = AdminReasonBody;
 
+/** POST /admin/users/:userId/delete — irreversível (anonimiza); exige o e-mail atual da conta digitado. */
+export interface AdminUserDeleteBody extends AdminReasonBody {
+  confirm_email: string;
+}
+
+// ─── Equipe da plataforma (papéis) ──────────────────────────────────────────
+
+/** Papéis de `users.platform_role`. Espelha `src/common/platform-roles.ts` (um teste confere os dois). */
+export const ADMIN_PLATFORM_ROLES = ['admin', 'support', 'viewer'] as const;
+export type AdminPlatformRole = (typeof ADMIN_PLATFORM_ROLES)[number];
+
+export const ADMIN_PLATFORM_PERMISSIONS = ['read', 'users.moderate', 'workspaces.moderate'] as const;
+export type AdminPlatformPermission = (typeof ADMIN_PLATFORM_PERMISSIONS)[number];
+
+export interface AdminPlatformRoleInfo {
+  role: AdminPlatformRole;
+  label: string; // pt-BR
+  description: string; // pt-BR
+  permissions: AdminPlatformPermission[];
+}
+
+/** GET /admin/me — quem sou eu na equipe e o que posso (o frontend esconde o que não puder). */
+export interface AdminMe {
+  user_id: number;
+  role: AdminPlatformRole;
+  permissions: AdminPlatformPermission[];
+}
+
+export interface AdminPlatformTeamMember {
+  user_id: number;
+  name: string;
+  email: string;
+  role: AdminPlatformRole;
+  status: AdminUserStatus;
+}
+
+/** GET /admin/platform-team */
+export interface AdminPlatformTeam {
+  roles: AdminPlatformRoleInfo[];
+  members: AdminPlatformTeamMember[];
+}
+
+/** Resposta do PATCH /admin/users/:userId/platform-role. `role: null` = a pessoa saiu da equipe. */
+export interface AdminPlatformRoleChange {
+  user_id: number;
+  role: AdminPlatformRole | null;
+  previous_role: AdminPlatformRole | null;
+}
+
+/** PATCH /admin/users/:userId/platform-role — `role: null` retira o papel (volta a ser só usuário). */
+export interface AdminPlatformRoleBody extends AdminReasonBody {
+  role: AdminPlatformRole | null;
+}
+
 /** POST .../archive | .../delete — exigem confirmação digitada e o resumo de impacto visto pela pessoa. */
 export interface AdminWorkspaceDangerBody extends AdminReasonBody {
   /** Nome do workspace, idêntico (sem diferenciar maiúsculas nas pontas). */
@@ -402,7 +458,16 @@ export const WORKSPACE_DELETE_BLOCKER_CODES = [
   'HAS_WITHDRAWALS_IN_FLIGHT', // saques de criadores ainda pendentes ligados a campanhas do workspace
   'HAS_PUBLISHED_CAMPAIGNS', // campanhas com status 'published'
 ] as const;
-export type AdminDeleteBlockerCode = (typeof WORKSPACE_DELETE_BLOCKER_CODES)[number];
+/** Impedimentos da exclusão de CONTA (POST /admin/users/:userId/delete). */
+export const USER_DELETE_BLOCKER_CODES = [
+  'IS_SOLE_WORKSPACE_OWNER', // único proprietário de um workspace que ainda existe
+  'HAS_OPEN_BALANCE', // saldo do criador reservado, em carência ou disponível para saque
+  'HAS_PENDING_WITHDRAWAL', // saque do criador ainda pendente
+] as const;
+export type AdminUserDeleteBlockerCode = (typeof USER_DELETE_BLOCKER_CODES)[number];
+export type AdminDeleteBlockerCode =
+  | (typeof WORKSPACE_DELETE_BLOCKER_CODES)[number]
+  | AdminUserDeleteBlockerCode;
 
 export interface AdminDeleteBlocker {
   code: AdminDeleteBlockerCode;
@@ -915,6 +980,10 @@ export const ADMIN_ACTION_CODES = [
   'user.reactivate',
   'user.sessions_revoke',
   'user.merge',
+  /** Exclusão (anonimização LGPD) de conta de usuário ou criador pelo Admin. */
+  'user.delete',
+  /** Papel da equipe da plataforma concedido, trocado ou retirado (`users.platform_role`). */
+  'user.platform_role_change',
   /** Operações de dinheiro feitas por administrador da plataforma (rotas de saldo): sempre com registro. */
   'balance.manual_credit',
   'balance.topup',
@@ -1072,6 +1141,10 @@ export const ADMIN_ENDPOINTS = [
   { key: 'users.suspend', method: 'POST', path: '/admin/users/:userId/suspend' },
   { key: 'users.reactivate', method: 'POST', path: '/admin/users/:userId/reactivate' },
   { key: 'users.revokeSessions', method: 'POST', path: '/admin/users/:userId/revoke-sessions' },
+  { key: 'users.delete', method: 'POST', path: '/admin/users/:userId/delete' },
+  { key: 'team.me', method: 'GET', path: '/admin/me' },
+  { key: 'team.list', method: 'GET', path: '/admin/platform-team' },
+  { key: 'team.setRole', method: 'PATCH', path: '/admin/users/:userId/platform-role' },
   { key: 'users.merge', method: 'POST', path: '/admin/users/:duplicateId/merge-into/:survivorId' },
   { key: 'campaigns.list', method: 'GET', path: '/admin/campaigns' },
   { key: 'campaigns.detail', method: 'GET', path: '/admin/campaigns/:campaignId' },

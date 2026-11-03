@@ -4,11 +4,14 @@ import { toast } from "sonner";
 
 import { AdminConfirmDialog, type AdminConfirmValues } from "@/components/admin/platform";
 import { I } from "@/components/prototype/ui";
+import { WorkspaceBlockers } from "@/components/admin/workspaces/workspace-impact";
 import { adminKeys } from "@/hooks/admin/admin-query-keys";
+import { useAdminCapabilities } from "@/hooks/admin/use-admin-team";
 import { ADMIN_USERS_RESOURCE } from "@/hooks/admin/use-admin-users";
 import { useAdminUserAction, type AdminUserActionName } from "@/hooks/admin/use-admin-users-actions";
+import { getDeleteBlockers } from "@/lib/admin/admin-errors";
 import { formatInt } from "@/lib/admin/format";
-import type { AdminUserDetail } from "@/shared/admin-platform.types";
+import type { AdminDeleteBlocker, AdminUserDetail } from "@/shared/admin-platform.types";
 
 import { describeUserActionError, userActionErrorOutdatesScreen } from "./admin-user-errors";
 import { sessionClientText } from "./admin-users-format";
@@ -16,14 +19,24 @@ import { sessionClientText } from "./admin-users-format";
 import "@/styles/admin-users.css";
 
 /** Por que a conta não aceita ação alguma (a tela explica em vez de oferecer um botão que o servidor recusaria). */
-export type UserActionBlockedReason = "self" | "platform_admin" | "deleted";
+export type UserActionBlockedReason = "self" | "platform_admin" | "deleted" | "read_only";
 
 export interface UserActionAvailability {
   suspend: boolean;
   reactivate: boolean;
   revokeSessions: boolean;
+  /** Excluir (anonimizar) a conta: sem volta, só para administrador. */
+  delete: boolean;
   blockedReason: UserActionBlockedReason | null;
 }
+
+/** O que o papel de quem está logado permite (`users.moderate` e a exclusão, que é só do administrador). */
+export interface UserActionPermissions {
+  moderate: boolean;
+  delete: boolean;
+}
+
+const ALL_PERMISSIONS: UserActionPermissions = { moderate: true, delete: true };
 
 /**
  * Quais ações a conta aceita, pelas mesmas regras que o servidor aplica (`CANNOT_ACT_ON_SELF`,
@@ -31,15 +44,22 @@ export interface UserActionAvailability {
  * então a tela deduz do que sabe; se a dedução ficar velha, o servidor recusa e o diálogo traduz o erro.
  * Encerrar sessões só aparece com sessão aberta: sem nenhuma, não há o que encerrar.
  */
-export function userActionAvailability(user: AdminUserDetail, selfId: number | undefined): UserActionAvailability {
-  const none = { suspend: false, reactivate: false, revokeSessions: false };
+export function userActionAvailability(
+  user: AdminUserDetail,
+  selfId: number | undefined,
+  permissions: UserActionPermissions = ALL_PERMISSIONS,
+): UserActionAvailability {
+  const none = { suspend: false, reactivate: false, revokeSessions: false, delete: false };
   if (selfId !== undefined && selfId === user.id) return { ...none, blockedReason: "self" };
   if (user.is_platform_admin) return { ...none, blockedReason: "platform_admin" };
   if (user.status === "deleted") return { ...none, blockedReason: "deleted" };
+  // Papel só de leitura: nenhum botão, e a tela explica por quê (em vez de esconder sem dizer nada).
+  if (!permissions.moderate && !permissions.delete) return { ...none, blockedReason: "read_only" };
   return {
-    suspend: user.status === "active",
-    reactivate: user.status === "suspended",
-    revokeSessions: user.sessions.active_count > 0,
+    suspend: permissions.moderate && user.status === "active",
+    reactivate: permissions.moderate && user.status === "suspended",
+    revokeSessions: permissions.moderate && user.sessions.active_count > 0,
+    delete: permissions.delete,
     blockedReason: null,
   };
 }
@@ -49,6 +69,7 @@ const BLOCKED_TEXT: Record<UserActionBlockedReason, string> = {
   platform_admin:
     "Esta pessoa é administradora da plataforma: o servidor não permite suspender a conta nem encerrar as sessões de outro administrador.",
   deleted: "Conta excluída: não há ações disponíveis.",
+  read_only: "O seu papel na equipe só permite ver esta conta, sem executar ações.",
 };
 
 interface ActionCopy {
@@ -122,6 +143,24 @@ const ACTION_COPY: Record<AdminUserActionName, ActionCopy> = {
     pending: "Encerrando…",
     success: "Sessões encerradas.",
   },
+  delete: {
+    title: (user) => `Excluir a conta de ${user.name}`,
+    description: "Esta ação é permanente e não pode ser desfeita.",
+    consequences: (user) => [
+      "Nome, e-mail, telefone, documento, foto e endereços são apagados, e a conta nunca mais consegue entrar.",
+      user.sessions.active_count > 0
+        ? sessionsEnd(user)
+        : "Não há sessão aberta agora.",
+      "A pessoa sai de todos os workspaces em que está.",
+      "Campanhas e registros financeiros continuam no histórico, sem os dados pessoais (LGPD).",
+      "Se a ideia é só bloquear o acesso por um tempo, use Suspender: ela pode ser reativada.",
+      "A ação fica registrada na trilha de auditoria, com o seu nome e o motivo. O registro não guarda o nome nem o e-mail da conta.",
+    ],
+    tone: "danger",
+    confirm: "Excluir conta para sempre",
+    pending: "Excluindo…",
+    success: "Conta excluída.",
+  },
 };
 
 function AdminUserActionDialog({
@@ -137,11 +176,14 @@ function AdminUserActionDialog({
   const queryClient = useQueryClient();
   const mutation = useAdminUserAction(user.id, action);
   const [error, setError] = useState<string | null>(null);
+  // Impedimentos da exclusão (saldo, saque pendente, único proprietário): o servidor é quem decide, a tela lista.
+  const [blockers, setBlockers] = useState<AdminDeleteBlocker[]>([]);
 
-  const confirm = ({ reason }: AdminConfirmValues) => {
+  const confirm = ({ reason, confirmText }: AdminConfirmValues) => {
     setError(null);
+    setBlockers([]);
     mutation.mutate(
-      { reason },
+      action === "delete" ? { reason, confirm_email: confirmText.trim() } : { reason },
       {
         onSuccess: () => {
           toast.success(copy.success);
@@ -149,6 +191,7 @@ function AdminUserActionDialog({
         },
         onError: (failure) => {
           setError(describeUserActionError(failure, action));
+          setBlockers(getDeleteBlockers(failure));
           // O estado da tela ficou velho (outra pessoa agiu antes): mostra o de agora por baixo do diálogo.
           if (userActionErrorOutdatesScreen(failure)) {
             void queryClient.invalidateQueries({ queryKey: adminKeys.detail(ADMIN_USERS_RESOURCE, user.id) });
@@ -170,20 +213,43 @@ function AdminUserActionDialog({
       pendingLabel={copy.pending}
       pending={mutation.isPending}
       error={error}
+      typedConfirmation={
+        action === "delete"
+          ? {
+              expected: user.email,
+              label: (
+                <>
+                  Para confirmar, digite o e-mail da conta: <b>{user.email}</b>
+                </>
+              ),
+              hint: "Sem diferenciar maiúsculas e minúsculas.",
+            }
+          : undefined
+      }
       onConfirm={confirm}
       onClose={onClose}
-    />
+    >
+      {blockers.length > 0 ? <WorkspaceBlockers blockers={blockers} /> : null}
+    </AdminConfirmDialog>
   );
 }
 
 /**
- * As ações do cabeçalho do usuário: Suspender / Reativar e Encerrar sessões, cada uma com o seu diálogo de
+ * As ações do cabeçalho do usuário: Suspender / Reativar, Encerrar sessões e Excluir conta, cada uma com o seu diálogo de
  * confirmação (motivo de 5 a 500 caracteres, consequências e erro do servidor traduzido). Conta que não aceita
  * ação (a própria, outro administrador da plataforma, excluída) mostra só uma explicação discreta.
  */
 export function AdminUserActions({ user, selfId }: { user: AdminUserDetail; selfId: number | undefined }) {
   const [dialog, setDialog] = useState<AdminUserActionName | null>(null);
-  const availability = userActionAvailability(user, selfId);
+  const capabilities = useAdminCapabilities();
+  // Enquanto o papel não chegou, nenhum botão aparece (evita mostrar um botão que o servidor vai recusar).
+  const availability = userActionAvailability(
+    user,
+    selfId,
+    capabilities.loading
+      ? { moderate: false, delete: false }
+      : { moderate: capabilities.can("users.moderate"), delete: capabilities.isAdmin },
+  );
 
   return (
     <>
@@ -202,7 +268,12 @@ export function AdminUserActions({ user, selfId }: { user: AdminUserDetail; self
           Reativar
         </button>
       ) : null}
-      {availability.blockedReason ? (
+      {availability.delete ? (
+        <button type="button" className="btn adm-btn-danger-out" onClick={() => setDialog("delete")}>
+          <I n="trash" cls="sm" /> Excluir conta
+        </button>
+      ) : null}
+      {availability.blockedReason && !capabilities.loading ? (
         <p className="adm-users-note">
           <I n="lock" cls="sm" />
           <span>{BLOCKED_TEXT[availability.blockedReason]}</span>

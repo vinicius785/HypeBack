@@ -10,12 +10,14 @@ const SELF_TEXT: Record<AdminUserActionName, string> = {
   suspend: "Você não pode suspender a sua própria conta.",
   reactivate: "Você não pode reativar a sua própria conta.",
   "revoke-sessions": "Você não pode encerrar as sessões da sua própria conta.",
+  delete: "Você não pode excluir a sua própria conta por aqui.",
 };
 
 const PLATFORM_ADMIN_TEXT: Record<AdminUserActionName, string> = {
   suspend: "Esta pessoa é administradora da plataforma: não é possível suspender a conta de outro administrador.",
   reactivate: "Esta pessoa é administradora da plataforma: não é possível reativar a conta de outro administrador.",
   "revoke-sessions": "Esta pessoa é administradora da plataforma: não é possível encerrar as sessões de outro administrador.",
+  delete: "Esta pessoa é administradora da plataforma: tire o papel de administrador antes de excluir a conta.",
 };
 
 /**
@@ -44,7 +46,14 @@ export function describeUserActionError(error: unknown, action: AdminUserActionN
     case "INVALID_STATE_TRANSITION":
       if (action === "suspend") return "Só é possível suspender uma conta ativa. O estado desta conta mudou: confira os dados na tela.";
       if (action === "reactivate") return "Só é possível reativar uma conta suspensa. O estado desta conta mudou: confira os dados na tela.";
+      if (action === "delete") return "Esta conta já foi excluída. Os dados na tela vão ser atualizados.";
       return "Não é possível encerrar as sessões de uma conta excluída.";
+    case "CONFIRMATION_MISMATCH":
+      return "O e-mail digitado não confere com o e-mail da conta.";
+    case "USER_DELETE_BLOCKED":
+      return "A exclusão está bloqueada. Veja os impedimentos acima e resolva cada um antes de tentar de novo.";
+    case "FORBIDDEN":
+      return "O seu papel na equipe não permite esta ação.";
     case "NOT_FOUND":
       return "Não encontramos esta conta. Ela pode ter sido removida.";
     case "ENDPOINT_UNAVAILABLE":

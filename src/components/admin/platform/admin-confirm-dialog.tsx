@@ -47,7 +47,7 @@ export interface AdminConfirmDialogProps {
   /** Campo de motivo (5 a 500). Padrão: pede, porque toda mutação do Admin exige. `false` tira o campo. */
   reason?: false | AdminReasonConfig;
   /** Confirmação digitada (o nome do workspace): o botão só habilita quando confere. */
-  typedConfirmation?: { expected: string; label?: string; hint?: string };
+  typedConfirmation?: { expected: string; label?: ReactNode; hint?: string };
   /** Trava extra (ex.: o resumo de impacto ainda não chegou ou há impedimentos). */
   confirmDisabled?: boolean;
   wide?: boolean;

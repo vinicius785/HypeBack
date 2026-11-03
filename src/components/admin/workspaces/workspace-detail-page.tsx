@@ -33,6 +33,8 @@ import {
 } from "./workspace-constants";
 import { WorkspaceEditDialog } from "./workspace-edit-dialog";
 import { WorkspaceFinancialTab } from "./workspace-financial-tab";
+import { useAdminCapabilities } from "@/hooks/admin/use-admin-team";
+
 import { WorkspaceActionDialog } from "./workspace-lifecycle-dialogs";
 import { WorkspaceMembersTab } from "./workspace-members-tab";
 import { WorkspaceSummaryTab } from "./workspace-summary-tab";
@@ -116,6 +118,7 @@ function DetailSkeleton() {
  */
 export function WorkspaceDetailPage({ workspaceId }: { workspaceId: string }) {
   const query = useAdminWorkspace(workspaceId);
+  const capabilities = useAdminCapabilities();
   const [tab, setTab] = useAdminSearchParam<WorkspaceTabId>("tab", "resumo", WORKSPACE_TAB_IDS);
   const [action, setAction] = useState<WorkspaceAction | null>(null);
   const [editing, setEditing] = useState(false);
@@ -140,7 +143,12 @@ export function WorkspaceDetailPage({ workspaceId }: { workspaceId: string }) {
   }
 
   const { can, counts, lifecycle } = workspace;
-  const actions = availableActions(can);
+  // Suporte só suspende e reativa; somente leitura não age; o administrador faz tudo (a API valida o papel).
+  const actions = availableActions(can).filter(
+    (candidate) =>
+      capabilities.isAdmin ||
+      ((candidate === "suspend" || candidate === "reactivate") && capabilities.can("workspaces.moderate")),
+  );
   const tabs: AdminTabItem<WorkspaceTabId>[] = WORKSPACE_TAB_IDS.map((id) => ({
     id,
     label: WORKSPACE_TAB_LABEL[id],
@@ -162,9 +170,11 @@ export function WorkspaceDetailPage({ workspaceId }: { workspaceId: string }) {
         meta={<WorkspaceMeta workspace={workspace} />}
         actions={
           <>
-            <button type="button" className="btn" disabled={!can.update} onClick={() => setEditing(true)}>
-              Editar dados
-            </button>
+            {capabilities.isAdmin ? (
+              <button type="button" className="btn" disabled={!can.update} onClick={() => setEditing(true)}>
+                Editar dados
+              </button>
+            ) : null}
             <WorkspaceActionsMenu actions={actions} onSelect={setAction} />
           </>
         }
