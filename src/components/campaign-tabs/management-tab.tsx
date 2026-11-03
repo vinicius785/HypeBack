@@ -16,12 +16,7 @@ import type {
   DragEndEvent,
   DragOverEvent,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/ui/icon";
@@ -32,6 +27,19 @@ import type { CampaignManagementParticipant } from "@/shared/services/campaign-m
 import { mapUserStatusToKanbanColumn } from "./management-status-map";
 import { Av, I } from "@/components/prototype/ui";
 import {
+  DragOverlayCard,
+  SortableInfluencerCard,
+  idleDaysOf,
+  type CardHandlers,
+} from "./kanban/influencer-card";
+import {
+  PanelFinancial,
+  PanelHistory,
+  PanelIdentity,
+  PanelPerformance,
+  PanelSection,
+} from "./kanban/panel-sections";
+import {
   ACTION_LABEL,
   ACTION_TARGET,
   COLUMN_LABEL,
@@ -41,9 +49,6 @@ import {
   NEEDME,
   STAGES,
   STAGE_SHORT,
-  WAITING,
-  formatEngagement,
-  formatFollowers,
   stageOf,
   type FlowId,
   type StageKey,
@@ -110,117 +115,6 @@ interface ManagementTabProps {
 // StatusHistory, ExtendedInfluencer, kanbanColumns, idToString e participantToExtended
 // foram extraídos para management-kanban-config.ts
 
-/** Dias desde a última mudança de status de um criador. */
-function idleDaysOf(inf: ExtendedInfluencer): number | undefined {
-  const last = inf.statusHistory?.length
-    ? inf.statusHistory[inf.statusHistory.length - 1]
-    : null;
-  if (!last) return undefined;
-  const t = new Date(last.timestamp).getTime();
-  return Number.isNaN(t) ? undefined : Math.floor((Date.now() - t) / 86_400_000);
-}
-
-const netIcon = (network?: string) => {
-  const n = (network || "").toLowerCase();
-  return n === "tiktok" || n === "youtube" || n === "instagram" ? n : "instagram";
-};
-
-// Componente de Card Arrastável (markup idêntico ao protótipo: `.kc`)
-function SortableInfluencerCard({
-  influencer,
-  column,
-  dim,
-  selected,
-  onSelect,
-  onAction,
-}: {
-  influencer: ExtendedInfluencer;
-  column: string;
-  dim: boolean;
-  selected: boolean;
-  onSelect: (influencer: ExtendedInfluencer) => void;
-  onAction: (influencer: ExtendedInfluencer, column: string) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: influencer.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.35 : undefined,
-  };
-
-  const action = ACTION_LABEL[column];
-  const idle = idleDaysOf(influencer);
-  const late = LATE_COLUMNS.includes(column) && (idle ?? 0) >= LATE_AFTER_DAYS;
-
-  return (
-    <article
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={`kc ${dim ? "dim" : ""} ${selected ? "sel" : ""}`}
-      onClick={() => onSelect(influencer)}
-    >
-      <div className="kc-h">
-        <Av name={influencer.name} src={influencer.avatar} size={34} />
-        <div className="kc-n">
-          <b>
-            <span>{influencer.name}</span>
-          </b>
-          <small>@{influencer.username}</small>
-        </div>
-        <button
-          type="button"
-          className="kc-m"
-          aria-label="Mais ações"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect(influencer);
-          }}
-        >
-          <I n="more" cls="sm" />
-        </button>
-      </div>
-      <div className="kc-s">
-        <span>
-          <I n={netIcon(influencer.socialNetwork)} cls="sm" />
-          {formatFollowers(influencer.followers)}
-        </span>
-        <span>
-          <I n="trend" cls="sm" />
-          {formatEngagement(influencer.engagement)}
-        </span>
-        {influencer.isExternal && <em className="ext">Externo</em>}
-      </div>
-      {action ? (
-        <button
-          type="button"
-          className="kc-a"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAction(influencer, column);
-          }}
-        >
-          {action}
-        </button>
-      ) : (
-        <div className={`kc-w ${late ? "lateflag" : ""}`}>
-          {late ? (
-            <>
-              <I n="clock" cls="sm" />
-              {idle} {idle === 1 ? "dia" : "dias"} sem avanço
-            </>
-          ) : (
-            WAITING[column] || ""
-          )}
-        </div>
-      )}
-    </article>
-  );
-}
-
 // Componente de Coluna do Kanban (`.kcol`)
 function KanbanColumn({
   column,
@@ -228,18 +122,21 @@ function KanbanColumn({
   influencerIds,
   getCurrentStatus,
   selectedId,
+  movingId,
+  dropState,
   isDimmed,
-  onSelect,
-  onAction,
+  handlers,
 }: {
   column: KanbanColumn;
   influencers: ExtendedInfluencer[];
   influencerIds: string[];
   getCurrentStatus: (inf: ExtendedInfluencer) => string;
   selectedId: string | null;
+  movingId: string | null;
+  /** Durante o arrasto: `ok` = o cartão pode ser solto aqui, `no` = movimento não permitido. */
+  dropState?: "ok" | "no";
   isDimmed: (inf: ExtendedInfluencer, column: string) => boolean;
-  onSelect: (inf: ExtendedInfluencer) => void;
-  onAction: (inf: ExtendedInfluencer, column: string) => void;
+  handlers: CardHandlers;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
@@ -247,7 +144,8 @@ function KanbanColumn({
     <section
       ref={setNodeRef}
       data-col={column.id}
-      className={`kcol ${HOT_COLUMNS.includes(column.id) ? "hot" : ""} ${isOver ? "over" : ""}`}
+      aria-label={`${COLUMN_LABEL[column.id] ?? column.label}: ${influencers.length}`}
+      className={`kcol ${HOT_COLUMNS.includes(column.id) ? "hot" : ""} ${isOver ? "over" : ""} ${dropState ? `drop-${dropState}` : ""}`}
     >
       <header>
         <h4>{COLUMN_LABEL[column.id] ?? column.label}</h4>
@@ -262,31 +160,22 @@ function KanbanColumn({
               column={getCurrentStatus(influencer)}
               dim={isDimmed(influencer, column.id)}
               selected={selectedId === idToString(influencer.id)}
-              onSelect={onSelect}
-              onAction={onAction}
+              moving={movingId === idToString(influencer.id)}
+              handlers={handlers}
             />
           ))}
-          {influencers.length === 0 && <div className="kz">Ninguém aqui</div>}
+          {influencers.length === 0 && (
+            <div className={`kz ${dropState ?? ""}`}>
+              {dropState === "ok"
+                ? "Solte aqui"
+                : dropState === "no"
+                  ? "Movimento não permitido"
+                  : "Nenhum criador nesta etapa"}
+            </div>
+          )}
         </div>
       </SortableContext>
     </section>
-  );
-}
-
-// Card exibido durante o arrasto
-function DragOverlayCard({ influencer }: { influencer: ExtendedInfluencer }) {
-  return (
-    <article className="kc" style={{ boxShadow: "0 0 0 2px var(--brand)", transform: "rotate(2deg)" }}>
-      <div className="kc-h">
-        <Av name={influencer.name} src={influencer.avatar} size={34} />
-        <div className="kc-n">
-          <b>
-            <span>{influencer.name}</span>
-          </b>
-          <small>@{influencer.username}</small>
-        </div>
-      </div>
-    </article>
   );
 }
 
@@ -409,6 +298,9 @@ export function ManagementTab({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [flt, setFlt] = useState<"all" | "me" | "late" | "ext">("all");
   const [fpopOpen, setFpopOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [net, setNet] = useState<string>("all");
+  const [movingId, setMovingId] = useState<string | null>(null);
   const [panelId, setPanelId] = useState<string | null>(null);
   const [stage, setStage] = useState<StageKey>("sel");
   const kbxRef = useRef<HTMLDivElement>(null);
@@ -734,6 +626,7 @@ export function ManagementTab({
               : draggedInfluencer.social_networks[0].id
             : undefined;
 
+        setMovingId(idToString(draggedInfluencer.id));
         updateStatus(
           {
             influencer_id: idToString(draggedInfluencer.id),
@@ -742,13 +635,14 @@ export function ManagementTab({
             network_id: networkId,
           },
           {
+            onSettled: () => setMovingId(null),
             onSuccess: () => {
               updateInfluencerStatus(
                 idToString(draggedInfluencer.id),
                 targetStatus,
                 notes,
               );
-              toast.success("Status do usuário atualizado com sucesso!");
+              toast.success(`Movido para "${getStatusLabel(targetStatus)}"`);
             },
             onError: (error: Error) => {
               toast.error(
@@ -861,20 +755,43 @@ export function ManagementTab({
   const isLateInf = (inf: ExtendedInfluencer) =>
     LATE_COLUMNS.includes(getCurrentStatus(inf)) &&
     (idleDaysOf(inf) ?? 0) >= LATE_AFTER_DAYS;
+  const normalized = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const matchesQuery = (inf: ExtendedInfluencer) => {
+    const t = normalized(q.trim().replace(/^@/, ""));
+    return !t || normalized(inf.name).includes(t) || normalized(inf.username ?? "").includes(t);
+  };
+  const networkOf = (inf: ExtendedInfluencer) =>
+    new Set(
+      [inf.socialNetwork, ...(inf.social_networks ?? []).map((n) => n.type)]
+        .filter(Boolean)
+        .map((t) => getNetworkLabel(t as string, t as string)),
+    );
+  const matchesNetwork = (inf: ExtendedInfluencer) => net === "all" || networkOf(inf).has(net);
   const passes = (inf: ExtendedInfluencer, f: typeof flt) =>
-    f === "all" ||
-    (f === "me" && NEEDME.includes(getCurrentStatus(inf))) ||
-    (f === "late" && isLateInf(inf)) ||
-    (f === "ext" && !!inf.isExternal);
+    matchesQuery(inf) &&
+    matchesNetwork(inf) &&
+    (f === "all" ||
+      (f === "me" && NEEDME.includes(getCurrentStatus(inf))) ||
+      (f === "late" && isLateInf(inf)) ||
+      (f === "ext" && !!inf.isExternal));
   const isDimmed = (inf: ExtendedInfluencer) => !passes(inf, flt);
   const nfl = (f: typeof flt) =>
     extendedInfluencers.filter((i) => passes(i, f)).length;
+  const networksInUse = Array.from(
+    new Set(extendedInfluencers.flatMap((i) => [...networkOf(i)])),
+  ).sort();
+  const activeFilters = (flt !== "all" ? 1 : 0) + (net !== "all" ? 1 : 0) + (q.trim() ? 1 : 0);
+  const clearFilters = () => {
+    setFlt("all");
+    setNet("all");
+    setQ("");
+  };
 
   const FLT: Array<[typeof flt, string, string]> = [
+    ["all", "Todos", "Todos"],
     ["me", "Precisa da minha ação", "Minha ação"],
     ["late", "Atrasados", "Atrasados"],
     ["ext", "Externos", "Externos"],
-    ["all", "Todos", "Filtrar"],
   ];
 
   const visibleColumnIds = new Set(kanbanColumns.map((c) => c.id));
@@ -937,7 +854,26 @@ export function ManagementTab({
     return n === 0 ? "hoje" : n > 0 ? `em ${n} ${n === 1 ? "dia" : "dias"}` : `há ${-n} ${n === -1 ? "dia" : "dias"}`;
   };
 
-  const stageName = (col: string) => stageOf(col)?.[1] ?? "";
+  const draggedInf = activeId
+    ? extendedInfluencers.find((inf) => idToString(inf.id) === activeId)
+    : undefined;
+  const dropStateFor = (colId: string): "ok" | "no" | undefined => {
+    if (!draggedInf) return undefined;
+    const from = getCurrentStatus(draggedInf);
+    if (from === colId) return undefined;
+    return validateUserStatusTransition(from, colId) ? "ok" : "no";
+  };
+
+  const cardHandlers: CardHandlers = {
+    onSelect: (inf) => setPanelId(idToString(inf.id)),
+    onAction: handleCardAction,
+    onChat: openChat,
+    onProfile: openProfile,
+    onReject: (inf) => {
+      setSelectedInfluencer(inf);
+      setIsRejectModalOpen(true);
+    },
+  };
 
   return (
     <>
@@ -978,30 +914,64 @@ export function ManagementTab({
                   <div className={`pop fpop ${fpopOpen ? "open" : ""}`} ref={fpopRef}>
                     <button
                       type="button"
-                      className={`fbtn ${flt !== "all" ? "act" : ""}`}
-                      aria-label="Filtrar"
+                      className={`fbtn ${activeFilters > 0 ? "act" : ""}`}
+                      aria-label={activeFilters > 0 ? `Filtros (${activeFilters} ativos)` : "Filtros"}
+                      aria-expanded={fpopOpen}
                       onClick={() => setFpopOpen((v) => !v)}
                     >
                       <I n="funnel" cls="sm" />
-                      <span id="fpl">{FLT.find((f) => f[0] === flt)?.[2]}</span>
-                      <i className="fdot" />
+                      <span id="fpl">Filtros</span>
+                      {activeFilters > 0 ? <em className="fcnt">{activeFilters}</em> : null}
                     </button>
-                    <div className="popm">
-                      {FLT.map(([k, l]) => (
-                        <button
-                          key={k}
-                          type="button"
-                          className={flt === k ? "on" : ""}
-                          onClick={() => {
-                            setFlt(k);
-                            setFpopOpen(false);
-                          }}
-                        >
-                          <span>{l}</span>
-                          <em>{nfl(k)}</em>
+                    <div className="popm fpm" role="dialog" aria-label="Filtros do quadro">
+                      <label className="fp-q">
+                        <I n="search" cls="sm" />
+                        <input
+                          type="search"
+                          value={q}
+                          placeholder="Buscar por nome ou @usuário"
+                          aria-label="Buscar criador"
+                          onChange={(e) => setQ(e.target.value)}
+                        />
+                      </label>
+                      <div className="fp-g" role="group" aria-label="Situação">
+                        <small>Situação</small>
+                        {FLT.filter(([k]) => k !== "ext").map(([k, l]) => (
+                          <button key={k} type="button" className={flt === k ? "on" : ""} onClick={() => setFlt(k)}>
+                            <span>{l}</span>
+                            <em>{nfl(k)}</em>
+                            <I n="check" cls="sm" />
+                          </button>
+                        ))}
+                      </div>
+                      <div className="fp-g" role="group" aria-label="Origem">
+                        <small>Origem</small>
+                        <button type="button" className={flt === "ext" ? "on" : ""} onClick={() => setFlt(flt === "ext" ? "all" : "ext")}>
+                          <span>Criadores externos</span>
+                          <em>{nfl("ext")}</em>
                           <I n="check" cls="sm" />
                         </button>
-                      ))}
+                      </div>
+                      {networksInUse.length > 1 ? (
+                        <div className="fp-g" role="group" aria-label="Rede social">
+                          <small>Rede social</small>
+                          <div className="fp-chips">
+                            {["all", ...networksInUse].map((n) => (
+                              <button key={n} type="button" className={net === n ? "on" : ""} onClick={() => setNet(n)}>
+                                {n === "all" ? "Todas" : n}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      <div className="fp-f">
+                        <button type="button" className="lnk" disabled={activeFilters === 0} onClick={clearFilters}>
+                          Limpar filtros
+                        </button>
+                        <button type="button" className="btn" onClick={() => setFpopOpen(false)}>
+                          Ver {extendedInfluencers.filter((i) => passes(i, flt)).length} criadores
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1054,9 +1024,10 @@ export function ManagementTab({
                                   influencerIds={list.map((i) => idToString(i.id))}
                                   getCurrentStatus={getCurrentStatus}
                                   selectedId={panelId}
+                                  movingId={movingId}
+                                  dropState={dropStateFor(colId)}
                                   isDimmed={isDimmed}
-                                  onSelect={(inf) => setPanelId(idToString(inf.id))}
-                                  onAction={handleCardAction}
+                                  handlers={cardHandlers}
                                 />
                               );
                             })}
@@ -1066,13 +1037,10 @@ export function ManagementTab({
                     })}
                   </div>
                   <DragOverlay>
-                    {activeId ? (
+                    {activeId && draggedInf ? (
                       <DragOverlayCard
-                        influencer={
-                          extendedInfluencers.find(
-                            (inf) => idToString(inf.id) === activeId,
-                          )!
-                        }
+                        influencer={draggedInf!}
+                        column={getCurrentStatus(draggedInf!)}
                       />
                     ) : null}
                   </DragOverlay>
@@ -1081,7 +1049,7 @@ export function ManagementTab({
 
               <div id="s2h">
               {panelInfluencer ? (
-                <aside className="side2 pf fade">
+                <aside className="side2 pf fade" aria-label={`Detalhes de ${panelInfluencer.name}`}>
                   <div className="s2-nav">
                     <button type="button" className="lnk" onClick={() => setPanelId(null)}>
                       <I n="back" cls="sm" />
@@ -1093,108 +1061,67 @@ export function ManagementTab({
                       {COLUMN_LABEL[getCurrentStatus(panelInfluencer)]}
                     </span>
                   </div>
-                  <div className="drw-h" style={{ paddingTop: 0 }}>
-                    <Av name={panelInfluencer.name} src={panelInfluencer.avatar} size={68} />
-                    <h2 style={{ fontSize: 22 }}>
-                      {panelInfluencer.name}
-                      {panelInfluencer.isExternal && <em className="ext">Externo</em>}
-                    </h2>
-                    <p>
-                      @{panelInfluencer.username} · <I n={netIcon(panelInfluencer.socialNetwork)} cls="sm" />
-                    </p>
-                    {isLateInf(panelInfluencer) && (
-                      <span className="lt2 flag">
-                        <I n="clock" cls="sm" />
-                        {idleDaysOf(panelInfluencer)} dias sem avanço
-                      </span>
-                    )}
-                  </div>
-                  <div className="drw-st">
-                    <div>
-                      <small>Seguidores</small>
-                      <b>{formatFollowers(panelInfluencer.followers)}</b>
-                    </div>
-                    <div>
-                      <small>Engaj.</small>
-                      <b>{formatEngagement(panelInfluencer.engagement)}</b>
-                    </div>
-                    <div>
-                      <small>Etapa</small>
-                      <b>{stageName(getCurrentStatus(panelInfluencer)).split(" ")[0]}</b>
-                    </div>
-                  </div>
-                  <div className="drw-b">
-                    {isSelectionColumn(getCurrentStatus(panelInfluencer)) ? (
-                      <SelectionPanelActions
-                        key={panelInfluencer.id}
-                        campaignId={campaignId}
-                        influencerId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
-                        column={getCurrentStatus(panelInfluencer) as SelectionColumn}
-                        paymentType={paymentType}
-                        phasesWithFormats={phasesWithFormats}
-                      />
-                    ) : isScriptColumn(getCurrentStatus(panelInfluencer)) ? (
-                      <ScriptPanelActions
-                        key={panelInfluencer.id}
-                        campaignId={campaignId}
-                        influencerId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
-                        influencer={{
-                          id: idToString(panelInfluencer.id),
-                          name: panelInfluencer.name,
-                          username: panelInfluencer.username,
-                          avatar: panelInfluencer.avatar,
-                        }}
-                      />
-                    ) : isContentColumn(getCurrentStatus(panelInfluencer)) ? (
-                      <ContentPanelActions
-                        key={panelInfluencer.id}
-                        campaignId={campaignId}
-                        influencerId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
-                        highlightContentId={panelHighlight}
-                      />
-                    ) : isShipmentColumn(getCurrentStatus(panelInfluencer)) ? (
-                      <ShipmentPanelActions
-                        key={panelInfluencer.id}
-                        campaignId={campaignId}
-                        userId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
-                      />
-                    ) : ACTION_LABEL[getCurrentStatus(panelInfluencer)] && (
-                      <button
-                        type="button"
-                        className="btn"
-                        onClick={() =>
-                          handleCardAction(panelInfluencer, getCurrentStatus(panelInfluencer))
-                        }
-                      >
-                        {ACTION_LABEL[getCurrentStatus(panelInfluencer)]}
-                      </button>
-                    )}
-                    {panelInfluencer.price_negotiation && (
-                      <PriceNegotiationSection
-                        campaignId={campaignId}
-                        userId={panelInfluencer.user_id}
-                        status={panelInfluencer.status}
-                        negotiation={panelInfluencer.price_negotiation}
-                      />
-                    )}
-                    <div className="kb2-r">
-                      <button
-                        type="button"
-                        className="btn out"
-                        onClick={() => {
-                          openChat(panelInfluencer);
-                        }}
-                      >
-                        <I n="msg" cls="sm" />
-                        Abrir chat
-                      </button>
-                      <button type="button" className="btn out" onClick={() => openProfile(panelInfluencer)}>
-                        <I n="user" cls="sm" />
-                        Ver perfil
-                      </button>
-                    </div>
-                    <hr className="kb2-d" />
-                    <div className="kb2-x">
+                  <PanelIdentity
+                    inf={panelInfluencer}
+                    late={isLateInf(panelInfluencer)}
+                    idle={idleDaysOf(panelInfluencer)}
+                  />
+                  <PanelPerformance inf={panelInfluencer} />
+                  <PanelFinancial inf={panelInfluencer}>
+                    <PriceNegotiationSection
+                      campaignId={campaignId}
+                      userId={panelInfluencer.user_id}
+                      status={panelInfluencer.status}
+                      negotiation={panelInfluencer.price_negotiation}
+                    />
+                  </PanelFinancial>
+                  <PanelSection title="Decisão">
+                    <div className="drw-b">
+                      {isSelectionColumn(getCurrentStatus(panelInfluencer)) ? (
+                        <SelectionPanelActions
+                          key={panelInfluencer.id}
+                          campaignId={campaignId}
+                          influencerId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
+                          column={getCurrentStatus(panelInfluencer) as SelectionColumn}
+                          paymentType={paymentType}
+                          phasesWithFormats={phasesWithFormats}
+                        />
+                      ) : isScriptColumn(getCurrentStatus(panelInfluencer)) ? (
+                        <ScriptPanelActions
+                          key={panelInfluencer.id}
+                          campaignId={campaignId}
+                          influencerId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
+                          influencer={{
+                            id: idToString(panelInfluencer.id),
+                            name: panelInfluencer.name,
+                            username: panelInfluencer.username,
+                            avatar: panelInfluencer.avatar,
+                          }}
+                        />
+                      ) : isContentColumn(getCurrentStatus(panelInfluencer)) ? (
+                        <ContentPanelActions
+                          key={panelInfluencer.id}
+                          campaignId={campaignId}
+                          influencerId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
+                          highlightContentId={panelHighlight}
+                        />
+                      ) : isShipmentColumn(getCurrentStatus(panelInfluencer)) ? (
+                        <ShipmentPanelActions
+                          key={panelInfluencer.id}
+                          campaignId={campaignId}
+                          userId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
+                        />
+                      ) : ACTION_LABEL[getCurrentStatus(panelInfluencer)] ? (
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() =>
+                            handleCardAction(panelInfluencer, getCurrentStatus(panelInfluencer))
+                          }
+                        >
+                          {ACTION_LABEL[getCurrentStatus(panelInfluencer)]}
+                        </button>
+                      ) : null}
                       {getCurrentStatus(panelInfluencer) === "rejected" ? (
                         <button
                           type="button"
@@ -1218,23 +1145,20 @@ export function ManagementTab({
                         </button>
                       )}
                     </div>
-                  </div>
-                  <div className="drw-hist">
-                    <small>Histórico</small>
-                    {[...(panelInfluencer.statusHistory ?? [])]
-                      .reverse()
-                      .slice(0, 4)
-                      .map((h, k) => (
-                        <div key={h.id} className={`hi ${k ? "" : "cur"}`}>
-                          <i />
-                          {COLUMN_LABEL[h.status] ?? h.status} ·{" "}
-                          {new Date(h.timestamp).toLocaleDateString("pt-BR", {
-                            day: "2-digit",
-                            month: "2-digit",
-                          })}
-                        </div>
-                      ))}
-                  </div>
+                  </PanelSection>
+                  <PanelSection title="Relacionamento">
+                    <div className="kb2-r">
+                      <button type="button" className="btn out" onClick={() => openChat(panelInfluencer)}>
+                        <I n="msg" cls="sm" />
+                        Abrir chat
+                      </button>
+                      <button type="button" className="btn out" onClick={() => openProfile(panelInfluencer)}>
+                        <I n="user" cls="sm" />
+                        Perfil completo
+                      </button>
+                    </div>
+                  </PanelSection>
+                  <PanelHistory inf={panelInfluencer} />
                 </aside>
               ) : (
                 <aside className="side2 fade">
