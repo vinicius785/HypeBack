@@ -1,0 +1,345 @@
+/*
+ * Configuração da conta (`/onboarding`): faixa escura com as etapas à esquerda e o cartão do formulário à direita,
+ * na mesma pele do app (fundo cinza, menu preto arredondado, cartão branco de 28px, campos cinza de 18px).
+ *
+ * Os campos são os componentes compartilhados (`Input`, `Select`, `Textarea`), que pintam o próprio fundo com
+ * utilitários do Tailwind. Em vez de mexer neles (o login e o resto do app dependem do visual atual), tudo o que é
+ * só desta tela fica sob `.ob-form`: CSS sem camada ganha dos utilitários (que ficam em `@layer utilities`).
+ */
+.ob {
+  --ob-ink: #050505;
+  --ob-muted: #6b6b6b;
+  --ob-brand: #9e2cfa;
+  --ob-danger: #dc2626;
+  --ob-ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ── Etapas (faixa escura; no celular, só as barrinhas do topo) ─────────────────────────────────────────────── */
+.ob-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ob-step {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 14px;
+  padding: 12px 16px 12px 12px;
+  border-radius: 24px;
+  color: rgba(255, 255, 255, 0.58);
+  transition: background-color 0.45s var(--ob-ease), color 0.45s var(--ob-ease);
+}
+.ob-step-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.24);
+  transition: background-color 0.45s var(--ob-ease), box-shadow 0.45s var(--ob-ease), color 0.45s var(--ob-ease);
+}
+.ob-step-title {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.ob-step-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.5);
+}
+.ob-step[data-status="done"] {
+  color: rgba(255, 255, 255, 0.82);
+}
+.ob-step[data-status="done"] .ob-step-dot {
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+  color: #fff;
+}
+.ob-step[data-status="done"] .ob-step-hint {
+  color: rgba(255, 255, 255, 0.55);
+}
+.ob-step[data-status="current"] {
+  background: var(--ob-brand);
+  color: #fff;
+}
+.ob-step[data-status="current"] .ob-step-dot {
+  background: #fff;
+  color: var(--ob-brand);
+  box-shadow: none;
+}
+.ob-step[data-status="current"] .ob-step-hint {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.ob-seg {
+  height: 6px;
+  flex: 1;
+  border-radius: 99px;
+  background: rgba(5, 5, 5, 0.12);
+  transition: background-color 0.45s var(--ob-ease);
+}
+.ob-seg[data-status="done"] {
+  background: var(--ob-ink);
+}
+.ob-seg[data-status="current"] {
+  background: var(--ob-brand);
+}
+
+/* ── Cartão ─────────────────────────────────────────────────────────────────────────────────────────────── */
+.ob-card {
+  width: 100%;
+  max-width: 560px;
+  background: #fff;
+  border-radius: 28px;
+  padding: 36px;
+  box-shadow: 0 1px 0 rgba(5, 5, 5, 0.04), 0 28px 56px -32px rgba(5, 5, 5, 0.28);
+}
+/* Cada tela (e cada metade da criação da marca) entra com um leve deslizar: o cartão fica parado e o conteúdo troca. */
+.ob-screen {
+  animation: ob-in 0.5s var(--ob-ease) both;
+}
+@media (max-width: 640px) {
+  .ob-card {
+    padding: 26px 20px 28px;
+    border-radius: 24px;
+  }
+}
+@keyframes ob-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ob-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ob-brand);
+}
+
+/* ── Formulário ────────────────────────────────────────────────────────────────────────────────────────── */
+.ob-form {
+  --ob-field: #efefef;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.ob-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.ob-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 460px) {
+  .ob-pair {
+    grid-template-columns: 1fr;
+  }
+}
+/* Bloco recuado (endereço): os campos dentro dele ficam brancos para não sumirem no cinza do bloco. */
+.ob-group {
+  --ob-field: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 24px;
+  background: #f6f6f6;
+  animation: ob-in 0.4s var(--ob-ease) both;
+}
+
+/* Rótulos e mensagens de erro iguais em todos os componentes (cada um traz o seu tamanho). */
+.ob-form label {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ob-ink);
+}
+.ob-form [role="alert"] {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ob-danger);
+}
+
+/* Input: o cartão do campo (`div.bg-white`). */
+.ob-form div.bg-white {
+  background-color: var(--ob-field);
+  height: 52px;
+  border-radius: 18px;
+  padding: 0 18px;
+}
+.ob-form div.bg-white:focus-within {
+  --tw-ring-color: var(--ob-ink);
+}
+.ob-form input {
+  font-size: 15px;
+  color: var(--ob-ink);
+}
+.ob-form input::placeholder,
+.ob-form textarea::placeholder {
+  color: #9a9a9a;
+}
+/*
+ * O preenchimento automático do navegador só pinta a caixa do <input>, que fica dentro do cartão do campo: a tinta
+ * tem de ser a mesma cor opaca do cartão, senão o campo preenchido aparece em dois tons (como acontecia no login).
+ */
+.ob-form input:-webkit-autofill,
+.ob-form input:-webkit-autofill:hover,
+.ob-form input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ob-ink);
+  caret-color: var(--ob-ink);
+  box-shadow: 0 0 0 1000px var(--ob-field) inset;
+  border-radius: 12px;
+  transition: background-color 600000s 0s;
+}
+
+/* Select e Textarea. */
+.ob-form button.bg-neutral-100 {
+  background-color: var(--ob-field);
+  height: 52px;
+  border-radius: 18px;
+  padding: 0 18px;
+  font-size: 15px;
+}
+.ob-form button.bg-neutral-100:focus-visible,
+.ob-form textarea:focus {
+  box-shadow: inset 0 0 0 2px var(--ob-ink);
+}
+.ob-form textarea {
+  background-color: var(--ob-field);
+  border-radius: 18px;
+  padding: 14px 18px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ob-ink);
+  min-height: 96px;
+}
+
+/* Campo com erro: contorno vermelho. */
+.ob-form div:has(> [role="alert"]) > div.bg-white {
+  --tw-ring-color: var(--ob-danger);
+}
+.ob-form div:has(> [role="alert"]) > div > button.bg-neutral-100,
+.ob-form div:has(> [role="alert"]) > textarea {
+  box-shadow: inset 0 0 0 2px var(--ob-danger);
+}
+
+/* Foto da marca: linha com o seletor e o texto de apoio. */
+.ob-logo {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.ob-logo b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+.ob-logo small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ob-muted);
+}
+
+/* ── Botões ────────────────────────────────────────────────────────────────────────────────────────────── */
+.ob .ob-primary {
+  width: 100%;
+  height: 52px;
+  font-size: 15px;
+}
+.ob-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ob-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  align-self: center;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 99px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ob-muted);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+.ob-link:hover:not(:disabled) {
+  background: #efefef;
+  color: var(--ob-ink);
+}
+.ob-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ob-link:focus-visible {
+  outline: 2px solid var(--ob-ink);
+  outline-offset: 2px;
+}
+.ob-back {
+  align-self: flex-start;
+  margin: -8px 0 0 -12px;
+}
+
+.ob-hint {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ob-muted);
+}
+
+/* ── Boas-vindas ───────────────────────────────────────────────────────────────────────────────────────── */
+.ob-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  text-align: center;
+}
+.ob-done-badge {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--ob-brand);
+  box-shadow: 0 0 0 8px rgba(158, 44, 250, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-screen,
+  .ob-group {
+    animation: none;
+  }
+  .ob-step,
+  .ob-step-dot,
+  .ob-seg {
+    transition: none;
+  }
+}

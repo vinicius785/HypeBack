@@ -3,7 +3,6 @@ import { useRef } from "react";
 import type { UseFormRegisterReturn } from "react-hook-form";
 import { clsx } from "clsx";
 
-import { Input } from "@/components/ui/input";
 import { Icon } from "@/components/ui/icon";
 import { ErrorMessage } from "@/components/ui/error-message";
 
@@ -16,6 +15,8 @@ interface ImageUploadProps {
   error?: string;
   id?: string;
   accept?: string;
+  /** Diâmetro do círculo, em px. */
+  size?: number;
 }
 
 export function ImageUpload({
@@ -27,8 +28,12 @@ export function ImageUpload({
   error,
   id = "photo",
   accept = "image/jpeg,image/jpg,image/png",
+  size = 128,
 }: ImageUploadProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const circle = { width: size, height: size };
+  // Em círculos pequenos só cabe o ícone.
+  const compact = size < 112;
 
   const handleFileSelect = (files: FileList | null) => {
     if (files && files.length > 0) {
@@ -54,57 +59,55 @@ export function ImageUpload({
   return (
     <div className="flex flex-col items-center gap-1">
       {preview ? (
-        <div className="flex justify-center">
-          <div className="relative w-32 h-32 rounded-full">
-            <img
-              src={preview}
-              alt="Preview"
-              className="w-full h-full object-cover rounded-full"
-            />
+        <div className="relative rounded-full" style={circle}>
+          <img
+            src={preview}
+            alt="Pré-visualização da foto"
+            className="h-full w-full rounded-full object-cover"
+          />
 
-            <div
-              className="absolute -top-1 -right-1 cursor-pointer bg-danger-600 rounded-full p-0.5"
-              onClick={handleRemove}
-            >
-              <Icon name="X" color="#FFFFFF" size={16} />
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={handleRemove}
+            aria-label="Remover foto"
+            className="absolute -right-1 -top-1 grid size-7 cursor-pointer place-items-center rounded-full bg-danger-600 outline-none transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2"
+          >
+            <Icon name="X" color="#FFFFFF" size={14} />
+          </button>
         </div>
       ) : (
-        <div
-          onClick={() => fileInputRef.current?.click()}
+        <label
+          htmlFor={id}
+          style={circle}
           className={clsx(
-            "relative w-32 h-32 rounded-full flex items-center justify-center cursor-pointer bg-neutral-100",
-            disabled && "opacity-50 cursor-not-allowed"
+            "relative flex flex-col items-center justify-center gap-1 rounded-full border-2 border-dashed border-neutral-300 bg-neutral-100 text-neutral-500 transition-colors focus-within:border-neutral-950",
+            disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:border-neutral-950 hover:text-neutral-950",
           )}
         >
-          <Input
+          <input
             id={id}
             type="file"
             accept={accept}
-            className="hidden sr-only"
+            className="sr-only"
             disabled={disabled}
             {...register}
             ref={(e) => {
               fileInputRef.current = e;
-              const { ref } = register;
-              if (typeof ref === "function") {
-                ref(e);
-              }
+              register.ref(e);
             }}
             onChange={(e) => {
-              const files = e.target.files;
-              handleFileSelect(files);
+              handleFileSelect(e.target.files);
               register.onChange(e);
             }}
           />
 
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none">
-            <Icon name="Camera" color="#A3A3A3" size={32} />
-
-            <p className="text-neutral-400 font-medium text-center">Enviar foto</p>
-          </div>
-        </div>
+          <Icon name="Camera" color="currentColor" size={compact ? 26 : 32} />
+          {compact ? (
+            <span className="sr-only">Enviar foto</span>
+          ) : (
+            <span className="text-sm font-medium">Enviar foto</span>
+          )}
+        </label>
       )}
 
       {error && <ErrorMessage message={error} />}

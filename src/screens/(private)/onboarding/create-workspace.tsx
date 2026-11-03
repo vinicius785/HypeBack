@@ -1,6 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useLocation,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,18 +13,27 @@ import { z } from "zod";
 
 import { createWorkspace, uploadWorkspacePhoto } from "@/shared/services/workspace";
 import { saveWorkspaceId } from "@/lib/utils/api";
+import { COMPANY_STEP_SEARCH } from "@/lib/onboarding/flow";
+import { formatCep, formatCnpj } from "@/lib/utils/format";
 import type { Workspace } from "@/shared/types";
 import { useNiches } from "@/hooks/use-niches";
 import { isNicheRoot } from "@/shared/utils/niche-tree";
 
 import { ImageUpload } from "@/components/image-upload";
+import { OnboardingHeader } from "@/components/onboarding/onboarding-header";
 import { Button } from "@/components/ui/button";
+import { ErrorMessage } from "@/components/ui/error-message";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/text-area";
 import { Select } from "@/components/ui/select";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/(private)/onboarding/create-workspace")({
+  // `?etapa=empresa` é a segunda metade da criação (dados da empresa): com URL própria, a faixa de etapas e o botão
+  // voltar do navegador acompanham a tela.
+  validateSearch: (search: Record<string, unknown>): { etapa?: typeof COMPANY_STEP_SEARCH.etapa } =>
+    search.etapa === COMPANY_STEP_SEARCH.etapa ? { etapa: COMPANY_STEP_SEARCH.etapa } : {},
   component: RouteComponent,
 });
 
@@ -142,14 +156,24 @@ async function lookupPostalCode(raw: string): Promise<ViaCepResponse | null> {
 
 function RouteComponent() {
   const navigate = useNavigate();
+  const router = useRouter();
   const queryClient = useQueryClient();
+  const { search } = useLocation();
+  const etapa = (search as { etapa?: unknown }).etapa;
 
-  const [step, setStep] = useState<1 | 2>(1);
   const [step1Data, setStep1Data] = useState<Step1Values | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
   const [addressVisible, setAddressVisible] = useState(false);
   const [postalCodeLoading, setPostalCodeLoading] = useState(false);
+
+  // Os dados da empresa só existem com a marca preenchida: abrir o link direto (ou recarregar a página) volta à marca.
+  const step: 1 | 2 = etapa === COMPANY_STEP_SEARCH.etapa && step1Data ? 2 : 1;
+  useEffect(() => {
+    if (etapa === COMPANY_STEP_SEARCH.etapa && !step1Data) {
+      navigate({ to: "/onboarding/create-workspace", search: {}, replace: true });
+    }
+  }, [etapa, step1Data, navigate]);
 
   const { data: niches = [], isLoading: loadingNiches } = useNiches();
 
@@ -228,7 +252,7 @@ function RouteComponent() {
 
   const onStep1Submit = (data: Step1Values) => {
     setStep1Data(data);
-    setStep(2);
+    navigate({ to: "/onboarding/create-workspace", search: { etapa: COMPANY_STEP_SEARCH.etapa } });
   };
 
   const onStep2Submit = (data: Step2Values) => {
@@ -267,59 +291,45 @@ function RouteComponent() {
     }
   };
 
-  // ── Step indicator ──
-  const StepIndicator = () => (
-    <div className="flex items-center gap-2 self-center">
-      {[1, 2].map((n) => (
-        <div key={n} className="flex items-center gap-2">
-          <div
-            className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
-              step === n
-                ? "bg-tertiary-500 text-white"
-                : step > n
-                  ? "bg-success-500 text-white"
-                  : "border border-neutral-300 text-neutral-400"
-            }`}
-          >
-            {n}
-          </div>
-          {n < 2 && <div className="h-px w-6 bg-neutral-300" />}
-        </div>
-      ))}
-    </div>
-  );
-
   // ── Step 1 ──
   if (step === 1) {
     return (
       <form
-        className="max-w-md w-full flex flex-col gap-6"
+        key="marca"
+        className="ob-form ob-screen"
         onSubmit={handleSubmit1(onStep1Submit)}
       >
-        <div className="flex flex-col items-center gap-3">
-          <StepIndicator />
-          <h1 className="text-2xl font-medium text-neutral-950">Criar marca</h1>
-          <p className="text-neutral-600 text-center">
-            Defina o nome e a foto da sua marca para continuar.
-          </p>
+        <OnboardingHeader
+          title="Crie sua marca"
+          description="Defina o nome, o nicho e a foto da sua marca para continuar."
+        />
+
+        <div className="ob-logo">
+          <ImageUpload
+            size={88}
+            register={register1("photo")}
+            preview={preview}
+            setPreview={setPreview}
+            onRemove={() => setValue1("photo", undefined)}
+          />
+
+          <div>
+            <b>Logo da marca</b>
+            {errors1.photo?.message ? (
+              <ErrorMessage message={errors1.photo.message} />
+            ) : (
+              <small>JPG ou PNG, até 10 MB. É opcional.</small>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <div className="my-6">
-            <ImageUpload
-              register={register1("photo")}
-              preview={preview}
-              setPreview={setPreview}
-              onRemove={() => setValue1("photo", new FileList())}
-              error={errors1.photo?.message}
-            />
-          </div>
-
+        <div className="ob-fields">
           <Input
             id="name"
             type="text"
             label="Nome da marca"
-            placeholder="Digite o nome da sua marca"
+            placeholder="Como sua marca se chama"
+            autoComplete="organization"
             error={errors1.name?.message}
             {...register1("name")}
           />
@@ -348,14 +358,15 @@ function RouteComponent() {
           <Textarea
             id="description"
             label="Sobre a marca"
-            placeholder="Digite uma breve descrição sobre a sua marca"
+            placeholder="Conte em poucas linhas o que a sua marca faz"
             error={errors1.description?.message}
             {...register1("description")}
           />
         </div>
 
-        <Button type="submit" className="min-w-max">
-          <p className="text-neutral-50 font-semibold">Continuar</p>
+        <Button type="submit" className="ob-primary">
+          Continuar
+          <Icon name="ArrowRight" size={18} color="currentColor" />
         </Button>
       </form>
     );
@@ -364,57 +375,88 @@ function RouteComponent() {
   // ── Step 2 ──
   return (
     <form
-      className="max-w-md w-full flex flex-col gap-6"
+      key="empresa"
+      className="ob-form ob-screen"
       onSubmit={handleSubmit2(onStep2Submit)}
     >
-      <div className="flex flex-col items-center gap-3">
-        <StepIndicator />
-        <h1 className="text-2xl font-medium text-neutral-950">Dados da empresa</h1>
-        <p className="text-neutral-600 text-center">
-          Informe os dados jurídicos da marca para finalizar o cadastro.
-        </p>
-      </div>
+      <button
+        type="button"
+        className="ob-link ob-back"
+        disabled={isPending}
+        onClick={() => router.history.back()}
+      >
+        <Icon name="ArrowLeft" size={16} color="currentColor" />
+        Voltar
+      </button>
 
-      <div className="flex flex-col gap-4">
+      <OnboardingHeader
+        title="Dados da empresa"
+        description="Informe os dados jurídicos da marca para finalizar o cadastro."
+      />
+
+      <div className="ob-fields">
         <Input
           id="legalName"
           type="text"
           label="Razão social"
           placeholder="Ex.: Empresa Exemplo Ltda."
+          autoComplete="organization"
           disabled={isPending}
           error={errors2.legalName?.message}
           {...register2("legalName")}
         />
 
-        <Input
-          id="taxId"
-          type="text"
-          label="CNPJ"
-          placeholder="00.000.000/0000-00"
-          disabled={isPending}
-          error={errors2.taxId?.message}
-          {...register2("taxId")}
+        <Controller
+          name="taxId"
+          control={control2}
+          render={({ field }) => (
+            <Input
+              id="taxId"
+              ref={field.ref}
+              type="text"
+              inputMode="numeric"
+              label="CNPJ"
+              placeholder="00.000.000/0000-00"
+              disabled={isPending}
+              error={errors2.taxId?.message}
+              value={field.value}
+              onChange={(event) => field.onChange(formatCnpj(event.target.value))}
+              onBlur={field.onBlur}
+            />
+          )}
         />
 
-        <div className="relative">
-          <Input
-            id="postalCode"
-            type="text"
-            label="CEP"
-            placeholder="00000-000"
-            disabled={isPending}
-            error={errors2.postalCode?.message}
-            {...register2("postalCode", { onBlur: handlePostalCodeBlur })}
-          />
-          {postalCodeLoading && (
-            <span className="absolute right-3 top-9 text-xs text-neutral-400">
-              Buscando…
-            </span>
+        <Controller
+          name="postalCode"
+          control={control2}
+          render={({ field }) => (
+            <Input
+              id="postalCode"
+              ref={field.ref}
+              type="text"
+              inputMode="numeric"
+              autoComplete="postal-code"
+              label="CEP"
+              placeholder="00000-000"
+              disabled={isPending}
+              error={errors2.postalCode?.message}
+              value={field.value}
+              onChange={(event) => field.onChange(formatCep(event.target.value))}
+              onBlur={(event) => {
+                field.onBlur();
+                handlePostalCodeBlur(event);
+              }}
+              icon={
+                postalCodeLoading ? (
+                  <Icon name="LoaderCircle" size={18} color="#7e7e7e" className="animate-spin" />
+                ) : undefined
+              }
+            />
           )}
-        </div>
+        />
 
         {addressVisible && (
-          <>
+          <div className="ob-group">
             <Input
               id="street"
               type="text"
@@ -425,7 +467,7 @@ function RouteComponent() {
               {...register2("street")}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="ob-pair">
               <Input
                 id="streetNumber"
                 type="text"
@@ -462,7 +504,7 @@ function RouteComponent() {
               {...register2("neighborhood")}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="ob-pair">
               <Input
                 id="city"
                 type="text"
@@ -490,26 +532,14 @@ function RouteComponent() {
                 )}
               />
             </div>
-          </>
+          </div>
         )}
       </div>
 
-      <div className="flex flex-col gap-3">
-        <Button type="submit" disabled={isPending} className="min-w-max">
-          <p className="text-neutral-50 font-semibold">
-            {isPending ? "Criando sua marca..." : "Criar marca"}
-          </p>
-        </Button>
-
-        <button
-          type="button"
-          disabled={isPending}
-          className="text-sm text-neutral-500 hover:text-neutral-700 disabled:opacity-50"
-          onClick={() => setStep(1)}
-        >
-          Voltar
-        </button>
-      </div>
+      <Button type="submit" disabled={isPending} className="ob-primary">
+        {isPending ? "Criando sua marca..." : "Criar marca"}
+        {!isPending && <Icon name="ArrowRight" size={18} color="currentColor" />}
+      </Button>
     </form>
   );
 }

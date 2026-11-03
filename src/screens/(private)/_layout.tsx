@@ -12,7 +12,9 @@ import {
 
 import { getAuthToken } from "@/lib/utils/api";
 import { clearClientSession } from "@/lib/utils/session";
+import { needsWorkspaceCheck, onboardingRedirectFor } from "@/lib/onboarding/flow";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useWorkspaces } from "@/hooks/use-workspaces";
 
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
@@ -54,11 +56,18 @@ function RouteComponent() {
     }
   }, [noUser, queryClient, navigate]);
 
+  // Conta nova cai na Configuração da conta. Com a confirmação do telefone desligada (lib/onboarding/flow.ts), é a
+  // falta de marca que decide, então a lista de marcas é consultada antes (só para quem pode ser conta nova).
+  const checkWorkspaces = needsWorkspaceCheck(user);
+  const { data: workspaces, isPending: workspacesPending } = useWorkspaces({ enabled: checkWorkspaces });
+  const onboardingTo = onboardingRedirectFor({
+    user,
+    workspaceCount: workspaces?.length,
+    pathname: location.pathname,
+  });
   useEffect(() => {
-    if (user && !user.phone && !location.pathname.startsWith("/onboarding")) {
-      navigate({ to: "/onboarding", replace: true });
-    }
-  }, [user, location.pathname, navigate]);
+    if (onboardingTo) navigate({ to: onboardingTo, replace: true });
+  }, [onboardingTo, navigate]);
 
   // Se houver erro e não for erro de autenticação, mostrar erro
   if (isError && error && !isLoading) {
@@ -93,6 +102,11 @@ function RouteComponent() {
   }
 
   if (!user) {
+    return <LoadingSpinner message="Preparando ambiente..." />;
+  }
+
+  // Conta nova: espera saber se já tem marca, para não piscar o app antes de levá-la à configuração.
+  if (checkWorkspaces && workspacesPending && !location.pathname.startsWith("/onboarding")) {
     return <LoadingSpinner message="Preparando ambiente..." />;
   }
 

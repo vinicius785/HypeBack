@@ -54,6 +54,7 @@ Cadastre no painel da hospedagem, nunca no código. Veja `.env.example`.
 | Variável | Exemplo | Observação |
 |---|---|---|
 | `VITE_SERVER_URL` | `https://api-v2.hypeapp.com.br/api/backoffice` | Termina em `/api/backoffice`, sem `/` final. |
+| `VITE_PHONE_VERIFICATION` | `on` | **Opcional, desligada por padrão.** Só `on` liga a confirmação do telefone por código no WhatsApp (etapas "Telefone" e "Confirmação" da Configuração da conta). Sem ela, conta nova vai direto criar a marca. Ligue quando a Hype tiver um número para enviar os códigos (na API, `WHATSAPP_ENABLED` e `WSENDER_KEY`). |
 
 Depois de mudar uma variável é preciso refazer o deploy (ela é gravada no build).
 

@@ -8,23 +8,22 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { logout } from "@/shared/services/auth";
 import { clearClientSession } from "@/lib/utils/session";
+import { currentOnboardingStep, onboardingSteps } from "@/lib/onboarding/flow";
 import { useAuth } from "@/contexts/auth-context";
+import { useWorkspaces } from "@/hooks/use-workspaces";
 
-import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
-import { ProgressBar } from "@/components/ui/progress-bar";
-
-import hypeappLogo from "@/assets/images/hypeapp-logo.png";
+import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
 
 export const Route = createFileRoute("/(private)/onboarding")({
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { setUser } = useAuth();
+  const { user, setUser } = useAuth();
   const queryClient = useQueryClient();
   const location = useLocation();
   const navigate = useNavigate();
+  const { data: workspaces } = useWorkspaces();
 
   const { mutate: logoutMutation, isPending: isLoggingOut } = useMutation({
     mutationFn: logout,
@@ -40,63 +39,16 @@ function RouteComponent() {
     },
   });
 
-  const getCurrentStep = () => {
-    const pathname = location.pathname;
-    if (pathname === "/onboarding") return 1;
-    if (pathname === "/onboarding/verify-phone") return 2;
-    if (pathname === "/onboarding/create-workspace") return 3;
-  };
-
-  const currentStep = getCurrentStep();
-  const totalSteps = 3;
-  const progressPercentage = currentStep ? (currentStep / totalSteps) * 100 : 0;
-
   return (
-    <div className="w-full min-h-screen bg-neutral-50 flex flex-col">
-      <header className="bg-neutral-950 px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-10">
-          <img src={hypeappLogo} alt="HypeApp Logo" className="h-10 w-auto" />
-
-          <h1 className="text-xl font-medium text-neutral-50">
-            Configuração da conta
-          </h1>
-        </div>
-
-        <div className="w-fit">
-          <Button
-            onClick={() => logoutMutation()}
-            variant="outline"
-            disabled={isLoggingOut}
-          >
-            <Icon name="LogOut" size={16} color="#000000" />
-
-            <p className="text-black font-medium">
-              {isLoggingOut ? "Saindo..." : "Sair"}
-            </p>
-          </Button>
-        </div>
-      </header>
-
-      <div className="w-full flex-1 flex flex-col items-center justify-center gap-14 pt-14">
-        <main className="w-full flex-1 flex items-center justify-center">
-          <Outlet />
-        </main>
-
-        {currentStep && currentStep <= totalSteps && (
-          <footer className="w-full max-w-md pb-8 shrink-0">
-            <div className="w-full flex items-center flex-col gap-1">
-              <ProgressBar
-                progressPercentage={progressPercentage}
-                color="bg-success-600"
-              />
-
-              <span className="text-xs text-neutral-600">
-                Passo {currentStep} de {totalSteps}
-              </span>
-            </div>
-          </footer>
-        )}
-      </div>
-    </div>
+    <OnboardingShell
+      steps={onboardingSteps()}
+      current={currentOnboardingStep(location.pathname, location.search as { etapa?: unknown })}
+      user={user}
+      canLeave={(workspaces?.length ?? 0) > 0}
+      onLogout={() => logoutMutation()}
+      isLoggingOut={isLoggingOut}
+    >
+      <Outlet />
+    </OnboardingShell>
   );
 }

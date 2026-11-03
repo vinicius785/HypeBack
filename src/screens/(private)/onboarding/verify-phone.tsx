@@ -1,19 +1,26 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { useAuth } from "@/contexts/auth-context";
+import { isPhoneVerificationOn } from "@/lib/onboarding/flow";
 import { formatPhoneNumber } from "@/lib/utils/format";
 import { updatePhone, verifyPhone } from "@/shared/services/me";
 import { getMyWorkspaces } from "@/shared/services/workspace";
 
+import { OnboardingHeader } from "@/components/onboarding/onboarding-header";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/(private)/onboarding/verify-phone")({
+  // Sem a confirmação do telefone (lib/onboarding/flow.ts) esta etapa não existe: segue direto para a marca.
+  beforeLoad: () => {
+    if (!isPhoneVerificationOn()) throw redirect({ to: "/onboarding/create-workspace", replace: true });
+  },
   component: RouteComponent,
 });
 
@@ -77,27 +84,31 @@ function RouteComponent() {
 
   return (
     <form
-      className="max-w-md w-full flex flex-col gap-6"
+      className="ob-form ob-screen"
       onSubmit={handleSubmit((data) =>
         verifyPhoneMutation({ ...data, phone: user?.phone || "" })
       )}
     >
-      <div className="flex flex-col items-center gap-2">
-        <h1 className="text-2xl font-medium text-neutral-950">
-          Código de verificação
-        </h1>
+      <OnboardingHeader
+        title="Confirme seu telefone"
+        description={
+          <>
+            Digite o código de 6 dígitos que enviamos por WhatsApp para{" "}
+            <span className="whitespace-nowrap font-semibold text-neutral-950">
+              {formatPhoneNumber(user?.phone || "")}
+            </span>
+            .
+          </>
+        }
+      />
 
-        <p className="text-neutral-600 text-center">
-          Digite o código de verificação enviado para seu número de telefone{" "}
-          <span className="font-medium text-neutral-950">
-            {formatPhoneNumber(user?.phone || "")}
-          </span>
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-4 mt-10">
+      <div className="ob-fields">
         <Input
+          id="code"
           type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
           label="Código de verificação"
           placeholder="123456"
           disabled={isVerifyingPhone}
@@ -106,34 +117,29 @@ function RouteComponent() {
         />
       </div>
 
-      <div className="flex flex-col gap-4">
-        <Button type="submit" disabled={isVerifyingPhone || isUpdatingPhone}>
-          <p className="text-neutral-50 font-semibold">
-            {isVerifyingPhone ? "Verificando..." : "Verificar"}
-          </p>
+      <div className="ob-actions">
+        <Button type="submit" className="ob-primary" disabled={isVerifyingPhone || isUpdatingPhone}>
+          {isVerifyingPhone ? "Verificando..." : "Verificar"}
+          {!isVerifyingPhone && <Icon name="ArrowRight" size={18} color="currentColor" />}
         </Button>
 
-        <Button
+        <button
           type="button"
-          variant="ghost"
+          className="ob-link"
           disabled={isVerifyingPhone || isUpdatingPhone}
           onClick={() => updatePhoneMutation({ phone: user?.phone || "" })}
         >
-          <p className="text-neutral-700 font-semibold">
-            {isUpdatingPhone ? "Reenviando código..." : "Reenviar código"}
-          </p>
-        </Button>
+          {isUpdatingPhone ? "Reenviando código..." : "Reenviar código"}
+        </button>
 
-        <Button
+        <button
           type="button"
-          variant="ghost"
+          className="ob-link"
           disabled={isVerifyingPhone || isUpdatingPhone}
           onClick={() => navigate({ to: "/onboarding" })}
         >
-          <p className="text-neutral-700 font-semibold">
-            Editar número de telefone
-          </p>
-        </Button>
+          Editar número de telefone
+        </button>
       </div>
     </form>
   );

@@ -1,18 +1,25 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { useAuth } from "@/contexts/auth-context";
+import { isPhoneVerificationOn } from "@/lib/onboarding/flow";
 import { updatePhone } from "@/shared/services/me";
 import { cleanPhoneNumber, formatPhoneNumber } from "@/lib/utils/format";
 
+import { OnboardingHeader } from "@/components/onboarding/onboarding-header";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/(private)/onboarding/")({
+  // Sem a confirmação do telefone (lib/onboarding/flow.ts) esta etapa não existe: segue direto para a marca.
+  beforeLoad: () => {
+    if (!isPhoneVerificationOn()) throw redirect({ to: "/onboarding/create-workspace", replace: true });
+  },
   component: RouteComponent,
 });
 
@@ -61,26 +68,25 @@ function RouteComponent() {
 
   return (
     <form
-      className="max-w-md w-full flex flex-col gap-6"
+      className="ob-form ob-screen"
       onSubmit={handleSubmit((data) => updatePhoneMutation(data))}
     >
-      <div className="flex flex-col items-center gap-2">
-        <h1 className="text-2xl font-medium text-neutral-950">
-          Número de telefone
-        </h1>
+      <OnboardingHeader
+        title="Qual é o seu telefone?"
+        description="Vamos enviar um código por WhatsApp para confirmar que o número é seu."
+      />
 
-        <p className="text-neutral-600 text-center">
-          Adicione seu número de telefone para continuar
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-4 mt-10">
+      <div className="ob-fields">
         <Controller
           control={control}
           name="phone"
           render={({ field: { onChange: onChangePhone, onBlur, value } }) => (
             <Input
+              id="phone"
               type="tel"
+              inputMode="tel"
+              autoComplete="tel-national"
+              label="Telefone com DDD"
               placeholder="(11) 99999-9999"
               disabled={isUpdatingPhone}
               error={errors.phone?.message}
@@ -95,10 +101,9 @@ function RouteComponent() {
         />
       </div>
 
-      <Button type="submit" disabled={isUpdatingPhone}>
-        <p className="text-neutral-50 font-semibold">
-          {isUpdatingPhone ? "Enviando código de verificação..." : "Continuar"}
-        </p>
+      <Button type="submit" className="ob-primary" disabled={isUpdatingPhone}>
+        {isUpdatingPhone ? "Enviando código..." : "Enviar código"}
+        {!isUpdatingPhone && <Icon name="ArrowRight" size={18} color="currentColor" />}
       </Button>
     </form>
   );
