@@ -24,6 +24,7 @@ import {
 } from "@/hooks/use-creators-catalog";
 import { useInfluencerAccounts } from "@/hooks/use-influencer-accounts";
 import { InviteNetworksModal } from "@/components/influencer-lists/invite-networks-modal";
+import { defaultCatalogOrder } from "@/shared/utils/creators-default-order";
 import { groupCreators, isSocialNetworkType, type CreatorGroup } from "@/shared/utils/group-creators";
 import type {
   CatalogItem,
@@ -873,7 +874,7 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
       followers_max: range?.max,
       gender: filters.gen || undefined,
       engagement_min: filters.eng ? Number(filters.eng) : undefined,
-      ...parseOrder(filters.sort),
+      ...defaultCatalogOrder(parseOrder(filters.sort), !!nearMeLocation),
       ...(nearMeLocation
         ? { lat: nearMeLocation.lat, lng: nearMeLocation.lng, radius_km: radiusKm }
         : {}),

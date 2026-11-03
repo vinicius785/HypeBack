@@ -48,7 +48,7 @@ export interface CatalogItem {
   approx_location?: CatalogApproxLocation | null;
 }
 
-export type CatalogOrderBy = "followers" | "engagement" | "name" | "recent";
+export type CatalogOrderBy = "followers" | "engagement" | "name" | "recent" | "activity";
 export type CatalogOrderDir = "asc" | "desc";
 
 export interface CreatorsCatalogFilters {
