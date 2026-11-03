@@ -1,6 +1,6 @@
 /**
- * Layout das telas privadas: quem cai na Configuração da conta. Com a confirmação do telefone desligada, conta nova
- * (sem telefone e sem marca) vai direto criar a marca; com ela ligada, conta sem telefone vai para o primeiro passo.
+ * Layout das telas privadas: quem cai no perfil. Com a confirmação do telefone desligada, conta nova
+ * (sem perfil e sem marca) vai preencher o perfil; com ela ligada, conta sem telefone vai para o primeiro passo.
  * A regra em si está em `lib/onboarding/flow.test.ts`; aqui fica a ligação com o layout (consulta das marcas, espera,
  * redirecionamento). Fica em `src/test`: tudo dentro de `src/screens` é lido pelo gerador de rotas.
  */
@@ -65,13 +65,13 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe("(private)/_layout e a Configuração da conta", () => {
+describe("(private)/_layout e o perfil", () => {
   describe("confirmação do telefone desligada (o padrão)", () => {
-    it("conta nova, sem marca, vai direto criar a marca", () => {
+    it("conta nova, sem marca, vai para o perfil", () => {
       setWorkspaces([]);
       render(createElement(Layout));
 
-      expect(ctx.navigate).toHaveBeenCalledWith({ to: "/onboarding/create-workspace", replace: true });
+      expect(ctx.navigate).toHaveBeenCalledWith({ to: "/onboarding", replace: true });
     });
 
     it("enquanto a lista de marcas não chega, espera (sem piscar o app e sem desviar ninguém)", () => {
@@ -84,7 +84,7 @@ describe("(private)/_layout e a Configuração da conta", () => {
       expect(lastEnabled()).toBe(true);
     });
 
-    it("se a lista de marcas falhar, o app abre como está (uma falha da API não manda ninguém criar marca)", () => {
+    it("se a lista de marcas falhar, o app abre como está (uma falha da API não manda ninguém para o perfil)", () => {
       setWorkspaces(undefined, false);
       render(createElement(Layout));
 
@@ -100,6 +100,15 @@ describe("(private)/_layout e a Configuração da conta", () => {
       expect(ctx.navigate).not.toHaveBeenCalled();
     });
 
+    it("quem já preencheu o perfil (nascimento, sem telefone) entra direto", () => {
+      ctx.user = { ...BASE, birth_date: "1992-03-25" };
+      setWorkspaces([]);
+      render(createElement(Layout));
+
+      expect(screen.getByTestId("outlet")).toBeInTheDocument();
+      expect(ctx.navigate).not.toHaveBeenCalled();
+    });
+
     it("quem tem telefone entra direto e a lista de marcas nem é consultada aqui", () => {
       ctx.user = { ...BASE, phone: "11992922135" };
       render(createElement(Layout));
@@ -109,7 +118,7 @@ describe("(private)/_layout e a Configuração da conta", () => {
       expect(lastEnabled()).toBe(false);
     });
 
-    it("a equipe da plataforma não é levada para a criação de marca", () => {
+    it("a equipe da plataforma não é levada para o perfil", () => {
       ctx.user = STAFF;
       ctx.pathname = "/admin/dashboard";
       setWorkspaces([]);

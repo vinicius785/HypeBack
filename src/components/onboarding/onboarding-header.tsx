@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 
 import { useLocation } from "@tanstack/react-router";
 
-import { currentOnboardingStep, onboardingSteps } from "@/lib/onboarding/flow";
+import { currentOnboardingStep, onboardingGroup, onboardingSteps } from "@/lib/onboarding/flow";
 
 /** Em que posição da lista de etapas a URL está (`index` -1 fora do fluxo ou na tela de boas-vindas). */
 export function useOnboardingProgress() {
   const { pathname, search } = useLocation();
-  const steps = onboardingSteps();
+  const steps = onboardingSteps(onboardingGroup(pathname));
   const current = currentOnboardingStep(pathname, search as { etapa?: unknown });
   return { index: steps.findIndex((step) => step.id === current), total: steps.length };
 }
@@ -18,7 +18,7 @@ export function OnboardingHeader({ title, description }: { title: string; descri
 
   return (
     <header className="flex flex-col gap-2.5">
-      {index >= 0 && (
+      {index >= 0 && total > 1 && (
         <p className="ob-eyebrow">
           Etapa {index + 1} de {total}
         </p>

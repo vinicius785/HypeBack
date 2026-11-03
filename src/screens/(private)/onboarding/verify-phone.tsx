@@ -8,7 +8,6 @@ import { useAuth } from "@/contexts/auth-context";
 import { isPhoneVerificationOn } from "@/lib/onboarding/flow";
 import { formatPhoneNumber } from "@/lib/utils/format";
 import { updatePhone, verifyPhone } from "@/shared/services/me";
-import { getMyWorkspaces } from "@/shared/services/workspace";
 
 import { OnboardingHeader } from "@/components/onboarding/onboarding-header";
 import { Button } from "@/components/ui/button";
@@ -17,9 +16,9 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/(private)/onboarding/verify-phone")({
-  // Sem a confirmação do telefone (lib/onboarding/flow.ts) esta etapa não existe: segue direto para a marca.
+  // Sem a confirmação do telefone (lib/onboarding/flow.ts) esta etapa não existe: volta para o perfil.
   beforeLoad: () => {
-    if (!isPhoneVerificationOn()) throw redirect({ to: "/onboarding/create-workspace", replace: true });
+    if (!isPhoneVerificationOn()) throw redirect({ to: "/onboarding", replace: true });
   },
   component: RouteComponent,
 });
@@ -56,15 +55,7 @@ function RouteComponent() {
       mutationFn: verifyPhone,
       onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: ["get-current-user"] });
-        const workspaces = await queryClient.fetchQuery({
-          queryKey: ["me-workspaces"],
-          queryFn: getMyWorkspaces,
-        });
-        if (workspaces.length > 0) {
-          navigate({ to: "/", replace: true });
-        } else {
-          navigate({ to: "/onboarding/create-workspace" });
-        }
+        navigate({ to: "/", replace: true });
       },
       onError: (error) => {
         toast.error(error.message);

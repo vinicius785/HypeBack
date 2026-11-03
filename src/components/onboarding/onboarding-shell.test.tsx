@@ -23,7 +23,8 @@ function renderShell(props: Partial<OnboardingShellProps> = {}) {
         path: "/onboarding",
         component: () => (
           <OnboardingShell
-            steps={onboardingSteps(false)}
+            group="brand"
+            steps={onboardingSteps("brand", false)}
             current="brand"
             user={USER}
             canLeave={false}
@@ -52,18 +53,13 @@ describe("OnboardingShell", () => {
   });
 
   it("lista as etapas em ordem, com a atual marcada para leitores de tela", async () => {
-    renderShell({ steps: onboardingSteps(true), current: "brand" });
+    renderShell({ steps: onboardingSteps("profile", true), group: "profile", current: "code" });
     const items = within(await screen.findByRole("list", { name: "Etapas" })).getAllByRole("listitem");
 
-    expect(items.map((li) => li.dataset.status)).toEqual(["done", "done", "current", "upcoming"]);
-    expect(items.map((li) => li.querySelector(".ob-step-title")?.textContent)).toEqual([
-      "Telefone",
-      "Confirmação",
-      "Sua marca",
-      "Dados da empresa",
-    ]);
+    expect(items.map((li) => li.dataset.status)).toEqual(["done", "current"]);
+    expect(items.map((li) => li.querySelector(".ob-step-title")?.textContent)).toEqual(["Seu perfil", "Confirmação"]);
     expect(items.filter((li) => li.getAttribute("aria-current") === "step")).toHaveLength(1);
-    expect(items[2]).toHaveAttribute("aria-current", "step");
+    expect(items[1]).toHaveAttribute("aria-current", "step");
   });
 
   it("etapa concluída ganha o aviso para leitores de tela e o ícone de check no lugar do número", async () => {
@@ -76,12 +72,18 @@ describe("OnboardingShell", () => {
     expect(company.querySelector(".ob-step-dot svg")).toBeNull();
   });
 
-  it("a frase da faixa conta as etapas que existem (sem o telefone, dois passos)", async () => {
-    renderShell({ steps: onboardingSteps(false) });
+  it("a frase da faixa conta as etapas da marca (dois passos)", async () => {
+    renderShell();
     expect(within(await rail()).getByText("Sua marca no Hype em dois passos")).toBeInTheDocument();
-    cleanup();
-    renderShell({ steps: onboardingSteps(true) });
-    expect(within(await rail()).getByText("Sua marca no Hype em quatro passos")).toBeInTheDocument();
+  });
+
+  it("no perfil (uma etapa só) a faixa fala do perfil e não mostra lista nem barrinhas", async () => {
+    const { container } = renderShell({ group: "profile", steps: onboardingSteps("profile", false), current: "profile" });
+    const aside = within(await rail());
+
+    expect(aside.getByText("Vamos montar o seu perfil")).toBeInTheDocument();
+    expect(aside.queryByRole("list", { name: "Etapas" })).not.toBeInTheDocument();
+    expect(container.querySelector(".ob-seg")?.parentElement).toHaveAttribute("hidden");
   });
 
   it("na tela de boas-vindas todas as etapas estão concluídas e a faixa muda de frase", async () => {
@@ -93,15 +95,10 @@ describe("OnboardingShell", () => {
   });
 
   it("as barrinhas do topo (celular) seguem as mesmas etapas", async () => {
-    const { container } = renderShell({ steps: onboardingSteps(true), current: "code" });
+    const { container } = renderShell({ current: "company" });
     await screen.findByText("conteúdo da etapa");
 
-    expect([...container.querySelectorAll(".ob-seg")].map((seg) => (seg as HTMLElement).dataset.status)).toEqual([
-      "done",
-      "current",
-      "upcoming",
-      "upcoming",
-    ]);
+    expect([...container.querySelectorAll(".ob-seg")].map((seg) => (seg as HTMLElement).dataset.status)).toEqual(["done", "current"]);
   });
 
   it("mostra quem está na conta", async () => {

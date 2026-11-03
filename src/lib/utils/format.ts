@@ -51,3 +51,28 @@ export const truncateText = (text: string, maxLength: number = 20): string => {
   }
   return `${text.slice(0, maxLength)}...`;
 };
+
+/** `01021990` → `01/02/1990`; digitado pela metade, só pontua o que já existe. */
+export function formatDateBr(value: string): string {
+  const d = value.replace(/\D/g, "").slice(0, 8);
+  let out = d.slice(0, 2);
+  if (d.length > 2) out += `/${d.slice(2, 4)}`;
+  if (d.length > 4) out += `/${d.slice(4, 8)}`;
+  return out;
+}
+
+/**
+ * `01/02/1990` → `1990-02-01` (o formato da API). `null` se não for uma data de verdade (31/02), se for do futuro ou
+ * de antes de 1900.
+ */
+export function parseBrDate(value: string, today: Date = new Date()): string | null {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
+  if (!m) return null;
+  const [day, month, year] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  if (year < 1900) return null;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  if (date.getTime() > todayUtc) return null;
+  return `${m[3]}-${m[2]}-${m[1]}`;
+}

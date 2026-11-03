@@ -28,6 +28,7 @@ function mapUserFromApi(raw: unknown): User {
     created_at: String(o.created_at ?? ""),
     updated_at: String(o.updated_at ?? ""),
     avatar: typeof av === "string" && av.trim() ? av : null,
+    birth_date: typeof o.birth_date === "string" && o.birth_date ? o.birth_date.slice(0, 10) : null,
     is_platform_admin: isPlatformAdmin || undefined,
     platform_role: isPlatformAdmin
       ? "admin"
@@ -40,6 +41,10 @@ function mapUserFromApi(raw: unknown): User {
 export interface UpdateProfileData {
   name?: string;
   email?: string;
+  /** Só dígitos (10 ou 11). A API grava sem confirmar; a confirmação por código é `updatePhone` + `verifyPhone`. */
+  phone?: string;
+  /** `YYYY-MM-DD`. */
+  birth_date?: string;
 }
 
 interface UpdatePhoneData {
@@ -169,4 +174,33 @@ export async function verifyPhone(data: VerifyPhoneData): Promise<void> {
     }
     throw errorData || "Failed to verify phone";
     }
+}
+
+/** Foto de perfil (`POST /me/photo`, campo `photo`): devolve o usuário atualizado. */
+export async function uploadProfilePhoto(file: File): Promise<User> {
+  const body = new FormData();
+  body.append("photo", file);
+  const request = await fetch(getApiUrl("/me/photo"), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Client-Type": "backoffice",
+      Authorization: `Bearer ${getAuthToken()}`,
+    },
+    body,
+  });
+
+  if (!request.ok) {
+    let message = "Não foi possível enviar a foto";
+    try {
+      const data = await request.json();
+      if (typeof data?.message === "string") message = data.message;
+    } catch {
+      /* corpo vazio */
+    }
+    throw new Error(message);
+  }
+
+  const response = await request.json();
+  return mapUserFromApi(response.data);
 }

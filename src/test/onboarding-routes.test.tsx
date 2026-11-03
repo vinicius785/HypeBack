@@ -14,6 +14,12 @@ const mocks = vi.hoisted(() => ({
   uploadWorkspacePhoto: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  updateProfile: vi.fn(),
+  uploadPhoto: vi.fn(),
+  updatePhone: vi.fn(),
+  verifyPhone: vi.fn(),
+  setUser: vi.fn(),
+  authUser: { id: 7, name: "Marina Costa", email: "marina@casaaurora.com.br", phone: null, created_at: "", updated_at: "" } as Record<string, unknown>,
 }));
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -36,6 +42,13 @@ vi.mock("@/hooks/use-niches", () => ({
     isLoading: false,
   }),
 }));
+vi.mock("@/shared/services/me", () => ({
+  updateCurrentUserProfile: mocks.updateProfile,
+  uploadProfilePhoto: mocks.uploadPhoto,
+  updatePhone: mocks.updatePhone,
+  verifyPhone: mocks.verifyPhone,
+}));
+vi.mock("@/contexts/auth-context", () => ({ useAuth: () => ({ user: mocks.authUser, setUser: mocks.setUser }) }));
 vi.mock("sonner", () => ({ toast: { success: mocks.toastSuccess, error: mocks.toastError } }));
 
 import { Route as CreateWorkspaceRoute } from "@/screens/(private)/onboarding/create-workspace";
@@ -63,6 +76,10 @@ beforeEach(() => {
   mocks.uploadWorkspacePhoto.mockReset();
   mocks.toastSuccess.mockReset();
   mocks.toastError.mockReset();
+  mocks.updateProfile.mockReset().mockImplementation(async (data: Record<string, unknown>) => ({ ...mocks.authUser, ...data }));
+  mocks.uploadPhoto.mockReset();
+  mocks.updatePhone.mockReset().mockResolvedValue(undefined);
+  mocks.setUser.mockReset();
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => VIACEP })));
   window.localStorage.clear();
 });
@@ -80,7 +97,7 @@ describe("ids das rotas (a árvore de rotas não muda)", () => {
   });
 });
 
-describe("passo do telefone", () => {
+describe("confirmação do telefone", () => {
   const redirectOf = (route: MockRoute): { to?: string; replace?: boolean } | null => {
     try {
       route.options.beforeLoad?.();
@@ -91,15 +108,149 @@ describe("passo do telefone", () => {
     return null;
   };
 
-  it("com a confirmação desligada (o padrão), /onboarding e /onboarding/verify-phone seguem direto para a marca", () => {
-    for (const route of [phone, verify]) {
-      expect(redirectOf(route)).toMatchObject({ to: "/onboarding/create-workspace", replace: true });
-    }
+  it("com a confirmação desligada (o padrão), a tela do código volta para o perfil", () => {
+    expect(redirectOf(verify)).toMatchObject({ to: "/onboarding", replace: true });
   });
 
-  it("com VITE_PHONE_VERIFICATION=on as duas telas abrem normalmente", () => {
+  it("com VITE_PHONE_VERIFICATION=on a tela do código abre normalmente", () => {
     vi.stubEnv("VITE_PHONE_VERIFICATION", "on");
-    for (const route of [phone, verify]) expect(redirectOf(route)).toBeNull();
+    expect(redirectOf(verify)).toBeNull();
+  });
+
+  it("o perfil (/onboarding) abre sempre, com a confirmação ligada ou não", () => {
+    expect(redirectOf(phone)).toBeNull();
+    vi.stubEnv("VITE_PHONE_VERIFICATION", "on");
+    expect(redirectOf(phone)).toBeNull();
+  });
+});
+
+describe("perfil da pessoa", () => {
+  const routes = () => [
+    { path: "/onboarding", component: phone.options.component },
+    stubRoute("/"),
+    stubRoute("/onboarding/verify-phone"),
+  ];
+  const open = () => renderAdminRoute(routes(), "/onboarding");
+
+  async function fill(user: ReturnType<typeof userEvent.setup>, { birth = "25/03/1992", tel = "" } = {}) {
+    const name = await screen.findByLabelText("Nome completo");
+    await user.clear(name);
+    await user.type(name, "Marina Costa");
+    await user.type(screen.getByLabelText("Data de nascimento"), birth.replace(/\D/g, ""));
+    if (tel) await user.type(screen.getByLabelText(/Telefone/), tel);
+  }
+
+  it("abre com o nome da conta, o e-mail fixo e sem 'Etapa X de Y' (o perfil é uma etapa só)", async () => {
+    open();
+    expect(await screen.findByRole("heading", { name: "Crie seu perfil" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome completo")).toHaveValue("Marina Costa");
+    expect(screen.getByLabelText("E-mail")).toHaveValue("marina@casaaurora.com.br");
+    expect(screen.getByLabelText("E-mail")).toBeDisabled();
+    expect(screen.queryByText(/^Etapa/)).not.toBeInTheDocument();
+  });
+
+  it("a data de nascimento ganha máscara enquanto se digita", async () => {
+    const user = userEvent.setup();
+    open();
+    await fill(user, { birth: "25031992" });
+    expect(screen.getByLabelText("Data de nascimento")).toHaveValue("25/03/1992");
+  });
+
+  it("sem data de nascimento (ou com data que não existe) não salva", async () => {
+    const user = userEvent.setup();
+    open();
+    await user.click(await screen.findByRole("button", { name: /Salvar e continuar/ }));
+    expect(await screen.findByText(/Informe uma data válida/)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Data de nascimento"), "31021990");
+    await user.click(screen.getByRole("button", { name: /Salvar e continuar/ }));
+    expect(await screen.findByText(/Informe uma data válida/)).toBeInTheDocument();
+    expect(mocks.updateProfile).not.toHaveBeenCalled();
+  });
+
+  it("telefone é opcional e, informado, vai direto no perfil (sem código); depois entra no app", async () => {
+    const user = userEvent.setup();
+    const { queryClient } = open();
+    const setQueryData = vi.spyOn(queryClient, "setQueryData");
+    await fill(user, { tel: "11992922135" });
+    await user.click(screen.getByRole("button", { name: /Salvar e continuar/ }));
+
+    await waitFor(() =>
+      expect(mocks.updateProfile).toHaveBeenCalledWith({ name: "Marina Costa", birth_date: "1992-03-25", phone: "11992922135" }),
+    );
+    expect(mocks.updatePhone).not.toHaveBeenCalled();
+    expect(mocks.setUser).toHaveBeenCalledWith(expect.objectContaining({ birth_date: "1992-03-25" }));
+    expect(setQueryData).toHaveBeenCalledWith(["get-current-user"], expect.objectContaining({ birth_date: "1992-03-25" }));
+    expect(await screen.findByTestId("stub:/")).toBeInTheDocument();
+  });
+
+  it("sem telefone, o perfil salva só nome e nascimento", async () => {
+    const user = userEvent.setup();
+    open();
+    await fill(user);
+    await user.click(screen.getByRole("button", { name: /Salvar e continuar/ }));
+
+    await waitFor(() => expect(mocks.updateProfile).toHaveBeenCalledWith({ name: "Marina Costa", birth_date: "1992-03-25" }));
+    expect(await screen.findByTestId("stub:/")).toBeInTheDocument();
+  });
+
+  it("telefone incompleto é recusado", async () => {
+    const user = userEvent.setup();
+    open();
+    await fill(user, { tel: "1199" });
+    await user.click(screen.getByRole("button", { name: /Salvar e continuar/ }));
+
+    expect(await screen.findByText("Telefone deve ter 10 ou 11 dígitos, com DDD")).toBeInTheDocument();
+    expect(mocks.updateProfile).not.toHaveBeenCalled();
+  });
+
+  it("a foto é enviada depois do perfil; se falhar, o perfil fica salvo e a pessoa segue", async () => {
+    mocks.uploadPhoto.mockRejectedValueOnce(new Error("falhou"));
+    const user = userEvent.setup();
+    open();
+    await fill(user);
+    await user.upload(document.getElementById("profile-photo") as HTMLInputElement, new File(["x"], "eu.png", { type: "image/png" }));
+    await user.click(screen.getByRole("button", { name: /Salvar e continuar/ }));
+
+    await waitFor(() => expect(mocks.uploadPhoto).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(expect.stringContaining("a foto não foi enviada")));
+    expect(await screen.findByTestId("stub:/")).toBeInTheDocument();
+  });
+
+  it("erro da API aparece como aviso e a pessoa fica no perfil", async () => {
+    mocks.updateProfile.mockRejectedValueOnce(new Error("Data de nascimento inválida"));
+    const user = userEvent.setup();
+    open();
+    await fill(user);
+    await user.click(screen.getByRole("button", { name: /Salvar e continuar/ }));
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith("Data de nascimento inválida"));
+    expect(screen.getByRole("heading", { name: "Crie seu perfil" })).toBeInTheDocument();
+  });
+
+  describe("com a confirmação do telefone ligada", () => {
+    beforeEach(() => vi.stubEnv("VITE_PHONE_VERIFICATION", "on"));
+
+    it("o telefone é obrigatório", async () => {
+      const user = userEvent.setup();
+      open();
+      await fill(user);
+      await user.click(screen.getByRole("button", { name: /Enviar código/ }));
+
+      expect(await screen.findByText(/Informe um telefone com DDD/)).toBeInTheDocument();
+      expect(mocks.updateProfile).not.toHaveBeenCalled();
+    });
+
+    it("o perfil é salvo sem o telefone, o código é pedido e a pessoa vai para a confirmação", async () => {
+      const user = userEvent.setup();
+      open();
+      await fill(user, { tel: "11992922135" });
+      await user.click(screen.getByRole("button", { name: /Enviar código/ }));
+
+      await waitFor(() => expect(mocks.updateProfile).toHaveBeenCalledWith({ name: "Marina Costa", birth_date: "1992-03-25" }));
+      expect(mocks.updatePhone).toHaveBeenCalledWith({ phone: "11992922135" });
+      expect(await screen.findByTestId("stub:/onboarding/verify-phone")).toBeInTheDocument();
+    });
   });
 });
 
@@ -127,17 +278,11 @@ describe("criação da marca em duas etapas", () => {
     await user.type(screen.getByLabelText("Número"), "1578");
   }
 
-  it("abre na marca, 'Etapa 1 de 2', sem a etapa do telefone", async () => {
+  it("abre na marca, 'Etapa 1 de 2', sem etapas do perfil", async () => {
     const { router } = open();
     expect(await screen.findByRole("heading", { name: "Crie sua marca" })).toBeInTheDocument();
     expect(screen.getByText("Etapa 1 de 2")).toBeInTheDocument();
     expect(currentSearch(router)).toEqual({});
-  });
-
-  it("com a confirmação ligada, a contagem inclui o telefone e o código (Etapa 3 de 4)", async () => {
-    vi.stubEnv("VITE_PHONE_VERIFICATION", "on");
-    open();
-    expect(await screen.findByText("Etapa 3 de 4")).toBeInTheDocument();
   });
 
   it("enviar a marca vazia mostra o que falta e não sai da etapa", async () => {

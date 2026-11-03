@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { Link } from "@tanstack/react-router";
 
-import { stepStatuses, type OnboardingStep, type OnboardingStepId } from "@/lib/onboarding/flow";
+import { stepStatuses, type OnboardingGroup, type OnboardingStep, type OnboardingStepId } from "@/lib/onboarding/flow";
 import { supportMailto, SUPPORT_EMAIL } from "@/lib/workspace-state/support-contact";
 import type { User } from "@/shared/types";
 
@@ -16,6 +16,7 @@ import "@/styles/onboarding.css";
 const COUNT_WORDS: Record<number, string> = { 1: "um", 2: "dois", 3: "três", 4: "quatro" };
 
 export interface OnboardingShellProps {
+  group: OnboardingGroup;
   steps: readonly OnboardingStep[];
   current: OnboardingStepId | "done" | null;
   user: Pick<User, "name" | "email" | "avatar"> | null;
@@ -30,10 +31,12 @@ export interface OnboardingShellProps {
  * Moldura da Configuração da conta: etapas numa faixa escura (no celular, um topo compacto com barrinhas) e o
  * formulário da etapa num cartão branco. As telas só cuidam do próprio conteúdo.
  */
-export function OnboardingShell({ steps, current, user, canLeave, onLogout, isLoggingOut, children }: OnboardingShellProps) {
+export function OnboardingShell({ group, steps, current, user, canLeave, onLogout, isLoggingOut, children }: OnboardingShellProps) {
   const statuses = stepStatuses(steps, current);
   const done = current === "done";
   const count = COUNT_WORDS[steps.length] ?? String(steps.length);
+  // O perfil tem uma etapa só: lista de etapas e barrinhas não dizem nada.
+  const showSteps = steps.length > 1;
 
   // Na tela de boas-vindas o botão "Começar agora" já leva ao painel: o atalho ali só duplicaria.
   const leaveLink = canLeave && !done && (
@@ -81,7 +84,7 @@ export function OnboardingShell({ steps, current, user, canLeave, onLogout, isLo
             {logoutButton}
           </div>
         </header>
-        <div aria-hidden className="flex gap-2 px-1">
+        <div aria-hidden hidden={!showSteps} className="flex gap-2 px-1">
           {statuses.map((status, i) => (
             <span key={steps[i].id} className="ob-seg" data-status={status} />
           ))}
@@ -97,16 +100,22 @@ export function OnboardingShell({ steps, current, user, canLeave, onLogout, isLo
         <div>
           <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-white/60">Configuração da conta</p>
           <p className="mt-3 text-[28px] font-semibold leading-[1.08] tracking-[-0.04em]">
-            {done ? "Tudo pronto por aqui" : `Sua marca no Hype em ${count} passos`}
+            {done
+              ? "Tudo pronto por aqui"
+              : group === "profile"
+                ? "Vamos montar o seu perfil"
+                : `Sua marca no Hype em ${count} passos`}
           </p>
           <p className="mt-3 text-[14px] leading-relaxed text-white/60">
             {done
               ? "Sua conta está configurada. Agora é só começar."
-              : "Depois disso, é só criar a primeira campanha e encontrar os criadores certos."}
+              : group === "profile"
+                ? "Leva menos de um minuto. Depois você escolhe se quer criar uma marca ou entrar em uma que já existe."
+                : "Depois disso, é só criar a primeira campanha e encontrar os criadores certos."}
           </p>
         </div>
 
-        <ol className="ob-steps" aria-label="Etapas">
+        <ol className="ob-steps" aria-label="Etapas" hidden={!showSteps}>
           {steps.map((step, i) => {
             const status = statuses[i];
             return (

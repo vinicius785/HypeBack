@@ -213,6 +213,12 @@
   transition: background-color 600000s 0s;
 }
 
+/* Campo só de leitura (e-mail da conta). */
+.ob-form input:disabled {
+  -webkit-text-fill-color: var(--ob-muted);
+  cursor: not-allowed;
+}
+
 /* Select e Textarea. */
 .ob-form button.bg-neutral-100 {
   background-color: var(--ob-field);

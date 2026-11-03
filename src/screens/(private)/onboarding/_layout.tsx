@@ -8,7 +8,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { logout } from "@/shared/services/auth";
 import { clearClientSession } from "@/lib/utils/session";
-import { currentOnboardingStep, onboardingSteps } from "@/lib/onboarding/flow";
+import { currentOnboardingStep, onboardingGroup, onboardingSteps } from "@/lib/onboarding/flow";
 import { useAuth } from "@/contexts/auth-context";
 import { useWorkspaces } from "@/hooks/use-workspaces";
 
@@ -39,9 +39,12 @@ function RouteComponent() {
     },
   });
 
+  const group = onboardingGroup(location.pathname);
+
   return (
     <OnboardingShell
-      steps={onboardingSteps()}
+      group={group}
+      steps={onboardingSteps(group)}
       current={currentOnboardingStep(location.pathname, location.search as { etapa?: unknown })}
       user={user}
       canLeave={(workspaces?.length ?? 0) > 0}

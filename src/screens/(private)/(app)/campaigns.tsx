@@ -191,12 +191,12 @@ function RouteComponent() {
                 Nenhum workspace encontrado
               </p>
               <span className="text-neutral-600">
-                Crie um workspace no onboarding para começar a gerenciar suas campanhas.
+                Crie uma marca (ou peça um convite a quem já tem uma) para começar a gerenciar suas campanhas.
               </span>
             </div>
-            <Link to="/onboarding">
+            <Link to="/onboarding/create-workspace">
               <Button>
-                <p className="text-neutral-50 font-semibold">Ir para onboarding</p>
+                <p className="text-neutral-50 font-semibold">Criar marca</p>
               </Button>
             </Link>
           </div>

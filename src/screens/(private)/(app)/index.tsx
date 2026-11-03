@@ -11,6 +11,7 @@ import {
 import type { CampaignListItem } from "@/shared/services/campaign";
 import { getUploadUrl } from "@/lib/utils/api";
 import { Button } from "@/components/ui/button";
+import { NoWorkspaceState } from "@/components/onboarding/no-workspace-state";
 import { I } from "@/components/prototype/ui";
 import { CampaignTile, type CampaignBrand } from "@/components/campaign-card";
 
@@ -34,7 +35,7 @@ type TableRow = {
 
 function RouteComponent() {
   const navigate = useNavigate();
-  const { selectedWorkspace } = useWorkspaceContext();
+  const { selectedWorkspace, isInitialized } = useWorkspaceContext();
   const permissions = useWorkspacePermissions();
   const { data: campaignsData = [], isLoading, error } = useCampaigns({
     enabled: !!selectedWorkspace,
@@ -207,6 +208,9 @@ function RouteComponent() {
         .sort((a, b) => a.at - b.at),
     [displayedTableRows],
   );
+
+  // Sem marca (conta nova que só criou o perfil): a pessoa escolhe entre criar uma e entrar em uma existente.
+  if (isInitialized && !selectedWorkspace) return <NoWorkspaceState />;
 
   if (isLoading) {
     return (

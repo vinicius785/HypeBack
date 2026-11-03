@@ -8,6 +8,8 @@ export interface User {
   updated_at: string;
   /** Foto de perfil (path relativo ou URL) — `avatar`, `photo` na API. */
   avatar?: string | null;
+  /** `YYYY-MM-DD`; vazio em conta que ainda não preencheu o perfil. */
+  birth_date?: string | null;
   /**
    * Papel de plataforma (escopo global, fora de workspace).
    * Backend deve retornar `true` em `GET /me` quando o usuário tem `platform_role = 'admin'`

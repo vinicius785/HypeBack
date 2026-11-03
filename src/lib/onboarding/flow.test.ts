@@ -4,8 +4,10 @@ import type { User } from "@/shared/types";
 
 import {
   currentOnboardingStep,
+  hasProfile,
   isPhoneVerificationOn,
   needsWorkspaceCheck,
+  onboardingGroup,
   onboardingRedirectFor,
   onboardingSteps,
   stepStatuses,
@@ -39,23 +41,35 @@ describe("isPhoneVerificationOn", () => {
   });
 });
 
+describe("onboardingGroup", () => {
+  it("o perfil e a confirmação são de um grupo; criar marca e boas-vindas, de outro", () => {
+    expect(onboardingGroup("/onboarding")).toBe("profile");
+    expect(onboardingGroup("/onboarding/")).toBe("profile");
+    expect(onboardingGroup("/onboarding/verify-phone")).toBe("profile");
+    expect(onboardingGroup("/onboarding/create-workspace")).toBe("brand");
+    expect(onboardingGroup("/onboarding/welcome")).toBe("brand");
+  });
+});
+
 describe("onboardingSteps", () => {
-  it("sem a confirmação: só as etapas da marca", () => {
-    expect(onboardingSteps(false).map((s) => s.id)).toEqual(["brand", "company"]);
+  it("o perfil é uma etapa só; a marca tem duas", () => {
+    expect(onboardingSteps("profile", false).map((s) => s.id)).toEqual(["profile"]);
+    expect(onboardingSteps("brand", false).map((s) => s.id)).toEqual(["brand", "company"]);
   });
 
-  it("com a confirmação: telefone e código vêm antes", () => {
-    expect(onboardingSteps(true).map((s) => s.id)).toEqual(["phone", "code", "brand", "company"]);
+  it("com a confirmação ligada o código vem depois do perfil; a marca não muda", () => {
+    expect(onboardingSteps("profile", true).map((s) => s.id)).toEqual(["profile", "code"]);
+    expect(onboardingSteps("brand", true).map((s) => s.id)).toEqual(["brand", "company"]);
   });
 
   it("o padrão segue a chave", () => {
-    expect(onboardingSteps().map((s) => s.id)).toEqual(["brand", "company"]);
+    expect(onboardingSteps("profile")).toHaveLength(1);
     vi.stubEnv("VITE_PHONE_VERIFICATION", "on");
-    expect(onboardingSteps()).toHaveLength(4);
+    expect(onboardingSteps("profile")).toHaveLength(2);
   });
 
   it("toda etapa tem título e descrição", () => {
-    for (const step of onboardingSteps(true)) {
+    for (const step of [...onboardingSteps("profile", true), ...onboardingSteps("brand", true)]) {
       expect(step.title).not.toBe("");
       expect(step.hint).not.toBe("");
     }
@@ -64,7 +78,7 @@ describe("onboardingSteps", () => {
 
 describe("currentOnboardingStep", () => {
   it("cada tela do fluxo corresponde a uma etapa", () => {
-    expect(currentOnboardingStep("/onboarding")).toBe("phone");
+    expect(currentOnboardingStep("/onboarding")).toBe("profile");
     expect(currentOnboardingStep("/onboarding/verify-phone")).toBe("code");
     expect(currentOnboardingStep("/onboarding/create-workspace")).toBe("brand");
     expect(currentOnboardingStep("/onboarding/welcome")).toBe("done");
@@ -77,28 +91,36 @@ describe("currentOnboardingStep", () => {
   });
 
   it("ignora a barra final e responde null fora do fluxo", () => {
-    expect(currentOnboardingStep("/onboarding/")).toBe("phone");
+    expect(currentOnboardingStep("/onboarding/")).toBe("profile");
     expect(currentOnboardingStep("/onboarding/create-workspace/")).toBe("brand");
     expect(currentOnboardingStep("/campaigns")).toBeNull();
   });
 });
 
 describe("stepStatuses", () => {
-  const steps = onboardingSteps(true);
+  const steps = onboardingSteps("brand", false);
 
   it("marca o que ficou para trás, a etapa atual e o que falta", () => {
-    expect(stepStatuses(steps, "brand")).toEqual(["done", "done", "current", "upcoming"]);
-    expect(stepStatuses(steps, "phone")).toEqual(["current", "upcoming", "upcoming", "upcoming"]);
-    expect(stepStatuses(steps, "company")).toEqual(["done", "done", "done", "current"]);
+    expect(stepStatuses(steps, "brand")).toEqual(["current", "upcoming"]);
+    expect(stepStatuses(steps, "company")).toEqual(["done", "current"]);
   });
 
   it("na tela de boas-vindas tudo está concluído", () => {
-    expect(stepStatuses(steps, "done")).toEqual(["done", "done", "done", "done"]);
+    expect(stepStatuses(steps, "done")).toEqual(["done", "done"]);
   });
 
   it("numa etapa que a lista não tem (ou fora do fluxo) nada está concluído", () => {
-    expect(stepStatuses(onboardingSteps(false), "phone")).toEqual(["upcoming", "upcoming"]);
-    expect(stepStatuses(steps, null)).toEqual(["upcoming", "upcoming", "upcoming", "upcoming"]);
+    expect(stepStatuses(steps, "profile")).toEqual(["upcoming", "upcoming"]);
+    expect(stepStatuses(steps, null)).toEqual(["upcoming", "upcoming"]);
+  });
+});
+
+describe("hasProfile", () => {
+  it("vale telefone ou data de nascimento", () => {
+    expect(hasProfile(NEW_ACCOUNT)).toBe(false);
+    expect(hasProfile(WITH_PHONE)).toBe(true);
+    expect(hasProfile({ ...NEW_ACCOUNT, birth_date: "1992-03-25" })).toBe(true);
+    expect(hasProfile(null)).toBe(false);
   });
 });
 
@@ -123,37 +145,38 @@ describe("onboardingRedirectFor", () => {
   describe("com a confirmação desligada", () => {
     const off = { phoneVerification: false };
 
-    it("conta nova, sem marca, vai direto criar a marca", () => {
-      expect(onboardingRedirectFor({ user: NEW_ACCOUNT, workspaceCount: 0, ...at("/"), ...off })).toBe(
-        "/onboarding/create-workspace",
-      );
-      expect(onboardingRedirectFor({ user: NEW_ACCOUNT, workspaceCount: 0, ...at("/campaigns"), ...off })).toBe(
-        "/onboarding/create-workspace",
-      );
+    it("conta nova, sem marca, vai para o perfil", () => {
+      expect(onboardingRedirectFor({ user: NEW_ACCOUNT, workspaceCount: 0, ...at("/"), ...off })).toBe("/onboarding");
+      expect(onboardingRedirectFor({ user: NEW_ACCOUNT, workspaceCount: 0, ...at("/campaigns"), ...off })).toBe("/onboarding");
     });
 
     it("espera a lista de marcas chegar: sem ela (ou com erro na API) ninguém é desviado", () => {
       expect(onboardingRedirectFor({ user: NEW_ACCOUNT, workspaceCount: undefined, ...at("/"), ...off })).toBeNull();
     });
 
-    it("quem já tem marca entra no app, mesmo sem telefone", () => {
+    it("quem já tem marca entra no app, mesmo sem perfil", () => {
       expect(onboardingRedirectFor({ user: NEW_ACCOUNT, workspaceCount: 1, ...at("/"), ...off })).toBeNull();
     });
 
-    it("a equipe da plataforma nunca é levada para a criação de marca", () => {
+    it("a equipe da plataforma nunca é levada para o perfil", () => {
       expect(onboardingRedirectFor({ user: STAFF, workspaceCount: 0, ...at("/admin/dashboard"), ...off })).toBeNull();
+    });
+
+    it("quem já preencheu o perfil (data de nascimento, sem telefone) não volta para ele", () => {
+      const user = { ...NEW_ACCOUNT, birth_date: "1992-03-25" };
+      expect(onboardingRedirectFor({ user, workspaceCount: 0, ...at("/"), ...off })).toBeNull();
     });
 
     it("quem tem telefone, quem está sem sessão e quem já está no fluxo ficam onde estão", () => {
       expect(onboardingRedirectFor({ user: WITH_PHONE, workspaceCount: 0, ...at("/"), ...off })).toBeNull();
       expect(onboardingRedirectFor({ user: null, workspaceCount: 0, ...at("/"), ...off })).toBeNull();
-      expect(onboardingRedirectFor({ user: NEW_ACCOUNT, workspaceCount: 0, ...at("/onboarding/create-workspace"), ...off })).toBeNull();
+      expect(onboardingRedirectFor({ user: NEW_ACCOUNT, workspaceCount: 0, ...at("/onboarding"), ...off })).toBeNull();
     });
   });
 
   it("o padrão segue a chave de ambiente", () => {
     const input = { user: NEW_ACCOUNT, workspaceCount: 0, pathname: "/" };
-    expect(onboardingRedirectFor(input)).toBe("/onboarding/create-workspace");
+    expect(onboardingRedirectFor(input)).toBe("/onboarding");
     vi.stubEnv("VITE_PHONE_VERIFICATION", "on");
     expect(onboardingRedirectFor(input)).toBe("/onboarding");
   });

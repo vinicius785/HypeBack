@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatCep, formatCnpj } from "./format";
+import { formatCep, formatCnpj, formatDateBr, parseBrDate } from "./format";
 
 describe("formatCnpj", () => {
   it("pontua os 14 dígitos", () => {
@@ -39,5 +39,41 @@ describe("formatCep", () => {
     expect(formatCep("01a310b100")).toBe("01310-100");
     expect(formatCep("0131010099")).toBe("01310-100");
     expect(formatCep("")).toBe("");
+  });
+});
+
+describe("formatDateBr", () => {
+  it("pontua só o que já foi digitado", () => {
+    expect(formatDateBr("")).toBe("");
+    expect(formatDateBr("2")).toBe("2");
+    expect(formatDateBr("25")).toBe("25");
+    expect(formatDateBr("250")).toBe("25/0");
+    expect(formatDateBr("25031")).toBe("25/03/1");
+    expect(formatDateBr("25031992")).toBe("25/03/1992");
+    expect(formatDateBr("25/03/1992")).toBe("25/03/1992");
+    expect(formatDateBr("250319929999")).toBe("25/03/1992");
+  });
+});
+
+describe("parseBrDate", () => {
+  const today = new Date(2026, 10, 3);
+
+  it("converte para o formato da API", () => {
+    expect(parseBrDate("25/03/1992", today)).toBe("1992-03-25");
+    expect(parseBrDate("29/02/2000", today)).toBe("2000-02-29");
+  });
+
+  it("recusa data incompleta, inexistente, futura ou antes de 1900", () => {
+    expect(parseBrDate("25/03/92", today)).toBeNull();
+    expect(parseBrDate("31/02/1990", today)).toBeNull();
+    expect(parseBrDate("29/02/2001", today)).toBeNull();
+    expect(parseBrDate("00/10/1990", today)).toBeNull();
+    expect(parseBrDate("04/11/2026", today)).toBeNull();
+    expect(parseBrDate("31/12/1899", today)).toBeNull();
+    expect(parseBrDate("", today)).toBeNull();
+  });
+
+  it("aceita hoje", () => {
+    expect(parseBrDate("03/11/2026", today)).toBe("2026-11-03");
   });
 });
