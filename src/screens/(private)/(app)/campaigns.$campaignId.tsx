@@ -20,12 +20,6 @@ import {
 } from "@/components/campaign-tabs/campaign-flow";
 import { ManagementTab } from "@/components/campaign-tabs/management-tab";
 import { InfluencerSelectionTab } from "@/components/campaign-tabs/influencer-selection-tab";
-import { ApplicationsTab } from "@/components/campaign-tabs/applications-tab";
-import { ProposalsTab } from "@/components/campaign-tabs/proposals-tab";
-import { CurationTab } from "@/components/campaign-tabs/curation-tab";
-import { ShipmentTab } from "@/components/campaign-tabs/shipment-tab";
-import { ContentApprovalTab } from "@/components/campaign-tabs/content-approval-tab";
-import { ScriptApprovalTab } from "@/components/campaign-tabs/script-approval-tab";
 import { ContractsTab } from "@/components/campaign-tabs/contracts-tab";
 import { MetricsTab } from "@/components/campaign-tabs/metrics-tab";
 import { GroupsTab } from "@/components/campaign-tabs/groups-tab";
@@ -73,30 +67,9 @@ const CAMPAIGN_TAB_DEFS: Array<{
       label: "Seleção de influenciadores",
       visible: (p) => p.influencers_read,
     },
-    // Só aparece em campanhas "valor individual por criador" (gate por
-    // payment_method no filtro de visibleTabs, além da permissão).
-    {
-      id: "proposals",
-      label: "Propostas",
-      visible: (p) => p.influencers_read,
-    },
-    { id: "applications", label: "Inscrições", visible: (p) => p.campaigns_read },
-    { id: "curation", label: "Curadoria", visible: (p) => p.influencers_approve || p.influencers_reject },
     { id: "management", label: "Gerenciamento", visible: (p) => p.campaigns_read },
     { id: "groups", label: "Comunidade", visible: (p) => p.campaigns_read },
     { id: "contracts", label: "Contratos", visible: (p) => p.contracts_read },
-    {
-      id: "script-approval",
-      label: "Aprovações de roteiro",
-      visible: (p) => p.scripts_read,
-    },
-    // Envio ocorre após a aprovação do roteiro e antes da aprovação do conteúdo
-    { id: "shipment", label: "Envios", visible: (p) => p.campaigns_read },
-    {
-      id: "approval",
-      label: "Aprovações de conteúdo",
-      visible: (p) => p.content_read,
-    },
     {
       id: "metrics",
       label: "Métricas e conteúdos",
@@ -141,21 +114,10 @@ function RouteComponent() {
     error: campaignError,
   } = useCampaign(campaignId);
 
-  const isSwapCampaign = campaign?.payment_method === "swap";
-  const isIndividualPrice = campaign?.payment_method === "individual_price";
-
   const visibleTabs = useMemo(
     () =>
-      CAMPAIGN_TAB_DEFS.filter((t) => {
-        if (t.id === "shipment" && !isSwapCampaign) return false;
-        // Aba de propostas só faz sentido em "valor individual por criador".
-        if (t.id === "proposals" && !isIndividualPrice) return false;
-        // …e só para quem tem permissão de ver valores dos criadores.
-        if (t.id === "proposals" && !permissions.influencer_values_read)
-          return false;
-        return t.visible(permissions);
-      }).map(({ id, label }) => ({ id, label })),
-    [permissions, isSwapCampaign, isIndividualPrice],
+      CAMPAIGN_TAB_DEFS.filter((t) => t.visible(permissions)).map(({ id, label }) => ({ id, label })),
+    [permissions],
   );
 
   useEffect(() => {
@@ -178,8 +140,6 @@ function RouteComponent() {
     const decision = decideIncomingCampaignDeepLink({
       link,
       visibleTabIds: new Set(visibleTabs.map((t) => t.id)),
-      // "Envios" e "Propostas" só existem depois que a campanha carrega.
-      campaignReady: !!campaign || !!campaignError,
     });
     if (decision.type !== "apply") return;
 
@@ -204,8 +164,6 @@ function RouteComponent() {
     location.pathname,
     navigate,
     visibleTabs,
-    campaign,
-    campaignError,
   ]);
 
   const checkPublicationTrackingMutation = useMutation({
@@ -623,6 +581,11 @@ function RouteComponent() {
             onOpenFlow={openFlow}
             progress={progressPercentage}
             phases={phases}
+            phasesWithFormats={phases}
+            focusCampaignUserId={pendingFocusCampaignUser}
+            onFocusUserConsumed={handleFocusUserConsumed}
+            highlightContentId={pendingContentId}
+            onHighlightContentConsumed={handleHighlightContentConsumed}
           />
         );
       case "groups":
@@ -645,44 +608,6 @@ function RouteComponent() {
             phasesWithFormats={phases}
             onOpenMuralModal={() => setShowMuralDateModal(true)}
             paymentMethod={campaign?.payment_method}
-          />
-        );
-      case "proposals":
-        return <ProposalsTab campaignId={campaignId} />;
-      case "applications":
-        return (
-          <ApplicationsTab
-            focusCampaignUserId={pendingFocusCampaignUser}
-            onFocusUserConsumed={handleFocusUserConsumed}
-            paymentType={campaign?.payment_method}
-            phasesWithFormats={phases}
-          />
-        );
-      case "curation":
-        return (
-          <CurationTab
-            focusCampaignUserId={pendingFocusCampaignUser}
-            onFocusUserConsumed={handleFocusUserConsumed}
-            paymentType={campaign?.payment_method}
-            phasesWithFormats={phases}
-          />
-        );
-      case "shipment":
-        return (
-          <ShipmentTab campaignId={campaignId} />
-        );
-      case "approval":
-        return (
-          <ContentApprovalTab
-            campaignPhases={phases}
-            highlightContentId={pendingContentId}
-            onHighlightContentConsumed={handleHighlightContentConsumed}
-          />
-        );
-      case "script-approval":
-        return (
-          <ScriptApprovalTab
-            campaignPhases={phases}
           />
         );
       case "contracts":
@@ -719,12 +644,6 @@ function RouteComponent() {
   const statusValue = getCampaignStatusValue(campaign?.status) ?? "";
   const FLOWS = [
     "selection",
-    "proposals",
-    "applications",
-    "curation",
-    "script-approval",
-    "shipment",
-    "approval",
   ];
   const GEST_IDS = ["groups", "contracts", "metrics"];
   const GEST_LABEL: Record<string, string> = {

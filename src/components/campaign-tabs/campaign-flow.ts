@@ -96,30 +96,14 @@ export const ACTION_LABEL: Record<string, string> = {
   script_pending: "Revisar roteiro",
   awaiting_shipment: "Marcar enviado",
   pending_approval: "Revisar conteúdo",
-  payment_pending: "Pagar",
 };
 
 /** Fluxos (telas de trabalho) que existem fora do quadro. */
-export type FlowId =
-  | "selection"
-  | "proposals"
-  | "applications"
-  | "curation"
-  | "script-approval"
-  | "shipment"
-  | "approval";
+export type FlowId = "selection";
 
 /** Para onde cada ação do card leva. `contracts` é uma sub-aba de Gestão. */
 export const ACTION_TARGET: Record<string, FlowId | "contracts"> = {
-  applications: "applications",
-  pre_selection_curation: "curation",
-  curation: "curation",
-  price_countered: "proposals",
   contract_pending: "contracts",
-  script_pending: "script-approval",
-  awaiting_shipment: "shipment",
-  pending_approval: "approval",
-  payment_pending: "approval",
 };
 
 export const STAGE_OF_TILE: Record<string, StageKey> = {

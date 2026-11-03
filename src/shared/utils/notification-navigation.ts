@@ -4,20 +4,17 @@ import type { Notification } from "@/shared/services/notifications";
 export const CAMPAIGN_TAB_IDS = [
   "dashboard",
   "selection",
-  "proposals",
-  "applications",
-  "curation",
-  "shipment",
   "management",
   "contracts",
-  "script-approval",
-  "approval",
   "metrics",
 ] as const;
 
 export type CampaignTabId = (typeof CAMPAIGN_TAB_IDS)[number];
 
 const TAB_SET = new Set<string>(CAMPAIGN_TAB_IDS);
+
+/** Telas removidas: tudo é feito no quadro de Gerenciamento e no painel do card. */
+const LEGACY_BOARD_TABS = new Set(["applications", "curation", "proposals", "script-approval", "shipment", "approval"]);
 
 function normalizeTab(tab: string | undefined): CampaignTabId | null {
   if (!tab) return null;
@@ -60,7 +57,20 @@ export function resolveNotificationCampaignDeepLink(
 
   // Conteúdo pendente de aprovação — prioridade sobre target_tab genérico
   if (m.content_id) {
-    return { tab: "approval", contentId: m.content_id };
+    const focus = focusFromMetadata(m);
+    return {
+      tab: "management",
+      contentId: m.content_id,
+      ...(focus ? { focusCampaignUser: focus } : {}),
+    };
+  }
+
+  // Inscrições, Curadoria e Propostas não são mais telas: o criador abre no painel do quadro.
+  const rawTab = (m.target_tab ?? "").trim().toLowerCase();
+  if (rawTab === "applications" || rawTab === "curation" || rawTab === "proposals" ||
+    rawTab === "script-approval" || rawTab === "shipment" || rawTab === "approval") {
+    const focus = focusFromMetadata(m);
+    return { tab: "management", ...(focus ? { focusCampaignUser: focus } : {}) };
   }
 
   // API manda a aba explicitamente
@@ -92,15 +102,17 @@ export function resolveNotificationCampaignDeepLink(
     case "content_approved":
     case "content_adjustment_requested":
     case "content_submitted":
-    case "new_content_submission":
-      return { tab: "approval" };
+    case "new_content_submission": {
+      const focus = focusFromMetadata(m);
+      return { tab: "management", ...(focus ? { focusCampaignUser: focus } : {}) };
+    }
     case "shipment_receipt_confirmed": {
       const focus = focusFromMetadata(m);
-      return { tab: "shipment", ...(focus ? { focusCampaignUser: focus } : {}) };
+      return { tab: "management", ...(focus ? { focusCampaignUser: focus } : {}) };
     }
     case "campaign_price_countered": {
       const focus = focusFromMetadata(m);
-      return { tab: "proposals", ...(focus ? { focusCampaignUser: focus } : {}) };
+      return { tab: "management", ...(focus ? { focusCampaignUser: focus } : {}) };
     }
     default:
       break;
@@ -113,7 +125,7 @@ export function resolveNotificationCampaignDeepLink(
     haystack.includes("curat")
   ) {
     const focus = focusFromMetadata(m);
-    return { tab: "curation", ...(focus ? { focusCampaignUser: focus } : {}) };
+    return { tab: "management", ...(focus ? { focusCampaignUser: focus } : {}) };
   }
   if (
     haystack.includes("contraproposta") ||
@@ -121,7 +133,7 @@ export function resolveNotificationCampaignDeepLink(
     haystack.includes("negocia")
   ) {
     const focus = focusFromMetadata(m);
-    return { tab: "proposals", ...(focus ? { focusCampaignUser: focus } : {}) };
+    return { tab: "management", ...(focus ? { focusCampaignUser: focus } : {}) };
   }
   if (
     /\binscri/.test(haystack) ||
@@ -130,13 +142,14 @@ export function resolveNotificationCampaignDeepLink(
     haystack.includes("pre-selection")
   ) {
     const focus = focusFromMetadata(m);
-    return { tab: "applications", ...(focus ? { focusCampaignUser: focus } : {}) };
+    return { tab: "management", ...(focus ? { focusCampaignUser: focus } : {}) };
   }
   if (haystack.includes("contrat")) {
     return { tab: "contracts" };
   }
   if (haystack.includes("roteiro") || haystack.includes("script")) {
-    return { tab: "script-approval" };
+    const focus = focusFromMetadata(m);
+    return { tab: "management", ...(focus ? { focusCampaignUser: focus } : {}) };
   }
   if (haystack.includes("métrica") || haystack.includes("metric")) {
     return { tab: "metrics" };
@@ -163,42 +176,29 @@ export interface IncomingCampaignDeepLink {
 export type IncomingCampaignDeepLinkDecision =
   /** Nada a aplicar: sem parâmetros, ou sem aba nem destino que sirva. */
   | { type: "ignore" }
-  /** A aba pedida ainda não existe (campanha carregando): não consuma a URL. */
-  | { type: "wait" }
   /** Abrir `tab` (se houver), guardar os pendentes e limpar a URL. */
   | { type: "apply"; tab: string | null };
 
 /**
  * Decide o que a página da campanha faz com o deep link vindo da notificação.
- *
- * "Envios" e "Propostas" dependem do `payment_method` e só entram em
- * `visibleTabIds` depois que a campanha carrega. Consumir o link antes disso
- * mandaria o usuário para outra aba (ex.: Curadoria, via `focusCampaignUser`) e
- * apagaria a URL — por isso esperamos a campanha (`campaignReady`).
  */
 export function decideIncomingCampaignDeepLink({
   link,
   visibleTabIds,
-  campaignReady,
 }: {
   link: IncomingCampaignDeepLink;
   visibleTabIds: ReadonlySet<string>;
-  /** Campanha carregada (ou com erro: aí não adianta mais esperar). */
-  campaignReady: boolean;
 }): IncomingCampaignDeepLinkDecision {
-  const { tab, openChat, focusCampaignUser, contentId } = link;
+  const { openChat, focusCampaignUser, contentId } = link;
+  // Links antigos (home, e-mails) para telas que viraram o painel do quadro.
+  const tab = link.tab && LEGACY_BOARD_TABS.has(link.tab) ? "management" : link.tab;
 
   let target: string | null = tab && visibleTabIds.has(tab) ? tab : null;
 
-  if (!target && tab && TAB_SET.has(tab) && !campaignReady) {
-    return { type: "wait" };
-  }
-
   if (!target) {
     if (openChat && visibleTabIds.has("management")) target = "management";
-    else if (contentId && visibleTabIds.has("approval")) target = "approval";
-    else if (focusCampaignUser && visibleTabIds.has("curation"))
-      target = "curation";
+    else if ((contentId || focusCampaignUser) && visibleTabIds.has("management"))
+      target = "management";
   }
 
   if (!target && !openChat && !focusCampaignUser && !contentId) {
