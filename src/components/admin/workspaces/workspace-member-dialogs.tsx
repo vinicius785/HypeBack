@@ -1,7 +1,6 @@
 import { useId, useState } from "react";
-import { toast } from "sonner";
 
-import { AdminConfirmDialog, type AdminConfirmValues } from "@/components/admin/platform";
+import { adminToast, AdminConfirmDialog, type AdminConfirmValues } from "@/components/admin/platform";
 import {
   useRefreshOnStaleWorkspace,
   useWorkspaceMemberAddMutation,
@@ -77,7 +76,7 @@ function useMemberFailure(onClose: () => void, setError: (message: string) => vo
   const refreshIfStale = useRefreshOnStaleWorkspace();
   return (failure: unknown) => {
     if (refreshIfStale(failure)) {
-      toast.error(workspaceErrorMessage(failure));
+      adminToast.error(workspaceErrorMessage(failure));
       onClose();
       return;
     }
@@ -100,7 +99,7 @@ function AddMemberDialog({ workspace, onClose }: { workspace: AdminWorkspaceDeta
     setError(null);
     try {
       await mutation.mutateAsync({ reason, email: email.trim().toLowerCase(), role });
-      toast.success("Membro adicionado.");
+      adminToast.success("Membro adicionado.");
       onClose();
     } catch (failure) {
       fail(failure);
@@ -172,7 +171,7 @@ function ChangeRoleDialog({
     setError(null);
     try {
       await mutation.mutateAsync({ reason, role });
-      toast.success(`Papel de ${member.name} alterado para ${roleLabel(role)}.`);
+      adminToast.success(`Papel de ${member.name} alterado para ${roleLabel(role)}.`);
       onClose();
     } catch (failure) {
       fail(failure);
@@ -228,7 +227,7 @@ function RemoveMemberDialog({
     setError(null);
     try {
       await mutation.mutateAsync({ reason });
-      toast.success(`${member.name} foi removido do workspace.`);
+      adminToast.success(`${member.name} foi removido do workspace.`);
       onClose();
     } catch (failure) {
       fail(failure);

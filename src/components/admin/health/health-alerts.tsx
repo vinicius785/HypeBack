@@ -1,4 +1,4 @@
-import { AdminLink, AdminSkeleton, AdminStatusBadge, adminLinkFromContract } from "@/components/admin/platform";
+import { AdminLink, adminLinkFromContract } from "@/components/admin/platform";
 import { formatInt } from "@/lib/admin/format";
 import { ALERT_SEVERITY_LABEL } from "@/lib/admin/labels";
 import type { AdminAlert, AdminAlertSeverity } from "@/shared/admin-platform.types";
@@ -41,41 +41,68 @@ function Samples({ alert }: { alert: AdminAlert }) {
   );
 }
 
-/** Alerta: fato objetivo guardado no banco. Mostra a regra exata e a origem dos dados, sempre visíveis. */
+interface HealthDetailsProps {
+  alert: AdminAlert;
+  /** Rótulo da regra: o alerta tem "Regra"; a sugestão, "Limite e regra" (o limite é escolha do produto). */
+  ruleLabel: string;
+  /** A sugestão não é agrupada por gravidade, então a gravidade dela vai aqui; no alerta o grupo já diz. */
+  showSeverity?: boolean;
+}
+
+/**
+ * "Como é calculado": a regra exata e a origem dos dados, recolhidas. Em primeiro plano ficam o título, a contagem, os
+ * exemplos (quem é afetado: é o que a pessoa age em cima, não um cálculo) e o "Ver todos"; quem quer conferir de onde
+ * vem o número abre o detalhe.
+ */
+function HealthDetails({ alert, ruleLabel, showSeverity }: HealthDetailsProps) {
+  return (
+    <details className="adm-health-more">
+      <summary className="adm-summary">Como é calculado</summary>
+      <dl className="adm-health-rule">
+        <dt>{ruleLabel}</dt>
+        <dd>{alert.rule}</dd>
+        <dt>Origem</dt>
+        <dd>{alert.source}</dd>
+        {showSeverity ? (
+          <>
+            <dt>Gravidade</dt>
+            <dd>{ALERT_SEVERITY_LABEL[alert.severity] ?? alert.severity}</dd>
+          </>
+        ) : null}
+      </dl>
+    </details>
+  );
+}
+
+/** Alerta: fato objetivo guardado no banco. Título, descrição, contagem e "Ver todos" à vista; a regra e a origem recolhidas. */
 function HealthAlertCard({ alert }: { alert: AdminAlert }) {
   return (
     <article className="adm-health-alert" data-severity={alert.severity} aria-label={alert.title}>
       <div className="adm-health-main">
-        <div className="adm-health-tags">
-          <AdminStatusBadge kind="severity" value={alert.severity} size="sm" />
-          <AdminStatusBadge kind="alert-kind" value={alert.kind} size="sm" />
-        </div>
         <h4>{alert.title}</h4>
         <p className="adm-health-desc">{alert.description}</p>
-        <dl className="adm-health-rule">
-          <dt>Regra</dt>
-          <dd>{alert.rule}</dd>
-          <dt>Origem</dt>
-          <dd>{alert.source}</dd>
-        </dl>
       </div>
-      <div className="adm-health-count">
-        <b>{formatInt(alert.count)}</b>
-        <small>{plural(alert.count, "ocorrência", "ocorrências")}</small>
-      </div>
-      <Samples alert={alert} />
-      {alert.link ? (
-        <div className="adm-health-foot">
+      <div className="adm-health-side">
+        <div className="adm-health-count">
+          <b>{formatInt(alert.count)}</b>
+          <small>{plural(alert.count, "ocorrência", "ocorrências")}</small>
+        </div>
+        {alert.link ? (
           <AdminLink to={adminLinkFromContract(alert.link)} className="btn out adm-btn-sm">
             Ver todos
           </AdminLink>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
+      <Samples alert={alert} />
+      <HealthDetails alert={alert} ruleLabel="Regra" />
     </article>
   );
 }
 
-/** Alertas agrupados por gravidade (crítico, atenção, informativo); grupo sem alerta não aparece. */
+/**
+ * Alertas agrupados por gravidade (crítico, atenção, informativo); grupo sem alerta não aparece. A gravidade é dita uma
+ * vez, no título do grupo ("Crítico · 2"): o cartão não repete em selo.
+ */
 export function HealthAlertGroups({ alerts }: { alerts: readonly AdminAlert[] }) {
   const groups: Array<{ severity: AdminAlertSeverity; items: AdminAlert[] }> = ALERT_SEVERITIES.map((severity) => ({
     severity,
@@ -88,7 +115,7 @@ export function HealthAlertGroups({ alerts }: { alerts: readonly AdminAlert[] })
         <section className="adm-health-group" key={group.severity} aria-label={`Alertas: ${ALERT_SEVERITY_LABEL[group.severity]}`}>
           <h3>
             {ALERT_SEVERITY_LABEL[group.severity]}
-            <em>{formatInt(group.items.length)}</em>
+            <span> · {formatInt(group.items.length)}</span>
           </h3>
           <div className="adm-health-list">
             {group.items.map((alert) => (
@@ -103,24 +130,15 @@ export function HealthAlertGroups({ alerts }: { alerts: readonly AdminAlert[] })
 
 /**
  * Sugestão: heurística com limite escolhido pelo produto, não um fato confirmado. Visualmente mais discreta que o
- * alerta (sem cor de gravidade, número pequeno) e rotulada "Sugestão"; o limite e a regra ficam visíveis.
+ * alerta (número pequeno, sem destaque); a seção "Sugestões" já diz o que ela é, então não há selo. O limite, a regra, a
+ * origem e a gravidade ficam no detalhe recolhido.
  */
 function HealthSuggestionRow({ suggestion }: { suggestion: AdminAlert }) {
   return (
     <li className="adm-health-sug" aria-label={suggestion.title}>
       <div className="adm-health-sug-main">
-        <div className="adm-health-sug-head">
-          <AdminStatusBadge kind="alert-kind" value="suggestion" size="sm" />
-          <h4>{suggestion.title}</h4>
-        </div>
+        <h4>{suggestion.title}</h4>
         <p className="adm-health-desc">{suggestion.description}</p>
-        <p className="adm-health-sug-rule">
-          <b>Limite e regra:</b> {suggestion.rule}
-        </p>
-        <p className="adm-health-sug-src">
-          Origem: {suggestion.source} · Gravidade: {ALERT_SEVERITY_LABEL[suggestion.severity] ?? suggestion.severity}
-        </p>
-        <Samples alert={suggestion} />
       </div>
       <div className="adm-health-sug-side">
         <span className="adm-health-sug-count">
@@ -132,6 +150,8 @@ function HealthSuggestionRow({ suggestion }: { suggestion: AdminAlert }) {
           </AdminLink>
         ) : null}
       </div>
+      <Samples alert={suggestion} />
+      <HealthDetails alert={suggestion} ruleLabel="Limite e regra" showSeverity />
     </li>
   );
 }
@@ -143,24 +163,5 @@ export function HealthSuggestionList({ suggestions }: { suggestions: readonly Ad
         <HealthSuggestionRow key={suggestion.id} suggestion={suggestion} />
       ))}
     </ul>
-  );
-}
-
-/** Esqueleto de uma lista de alertas ou sugestões enquanto a primeira consulta não volta. */
-export function HealthSkeleton({ rows = 3 }: { rows?: number }) {
-  return (
-    <div className="adm-health-skeleton" role="status">
-      <span className="adm-sr">Carregando…</span>
-      {Array.from({ length: rows }, (_, index) => (
-        <div className="adm-health-skeleton-row" key={index} aria-hidden="true">
-          <div>
-            <AdminSkeleton height={14} width={90} radius={999} />
-            <AdminSkeleton height={16} width={`${52 - index * 8}%`} style={{ marginTop: 10 }} />
-            <AdminSkeleton height={12} width="72%" style={{ marginTop: 8 }} />
-          </div>
-          <AdminSkeleton height={28} width={44} />
-        </div>
-      ))}
-    </div>
   );
 }

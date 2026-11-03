@@ -109,3 +109,28 @@ describe("AdminTabs", () => {
     expect(screen.queryByText("Painel Membros")).not.toBeInTheDocument();
   });
 });
+
+describe("AdminTabPanel: className e as", () => {
+  it("sem as e className segue um div com papel tabpanel, id e aria-labelledby", () => {
+    render(<AdminTabPanel idPrefix="ws" id="resumo" active>conteúdo</AdminTabPanel>);
+    const panel = screen.getByRole("tabpanel");
+    expect(panel.tagName).toBe("DIV");
+    expect(panel).toHaveAttribute("id", "ws-panel-resumo");
+    expect(panel).toHaveAttribute("aria-labelledby", "ws-tab-resumo");
+    expect(panel).toHaveAttribute("tabindex", "0");
+    expect(panel).not.toHaveAttribute("class");
+  });
+
+  it("aceita className e as='section' sem perder o papel nem a ligação com a aba", () => {
+    render(<AdminTabPanel idPrefix="ws" id="membros" active className="adm-stack" as="section">conteúdo</AdminTabPanel>);
+    const panel = screen.getByRole("tabpanel");
+    expect(panel.tagName).toBe("SECTION");
+    expect(panel).toHaveClass("adm-stack");
+    expect(panel).toHaveAttribute("aria-labelledby", "ws-tab-membros");
+  });
+
+  it("inativo não monta nada", () => {
+    render(<AdminTabPanel idPrefix="ws" id="membros" active={false} className="x" as="section">conteúdo</AdminTabPanel>);
+    expect(screen.queryByRole("tabpanel")).not.toBeInTheDocument();
+  });
+});

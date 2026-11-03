@@ -61,7 +61,8 @@ describe("WorkspaceCampaignsTab", () => {
     const festival = rowOf("Festival Café Serra Verde");
     expect(within(festival).getByText("Publicada", { selector: ".adm-badge" })).toBeInTheDocument();
     expect(within(festival).getByText("5", { selector: "b" })).toBeInTheDocument();
-    expect(within(festival).getByText(/\/ 12/)).toBeInTheDocument();
+    expect(within(festival).getByText(/de 12/)).toBeInTheDocument();
+    expect(within(festival).getByText("em andamento")).toBeInTheDocument(); // dica visível, não só `title`
     expect(within(festival).getByText("R$ 2.500,00")).toBeInTheDocument();
     expect(within(festival).getByText("R$ 800,00")).toBeInTheDocument();
     expect(within(festival).getByText("10/09/2026")).toBeInTheDocument();

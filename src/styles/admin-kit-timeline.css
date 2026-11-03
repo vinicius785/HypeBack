@@ -1,0 +1,117 @@
+/*
+ * AdminTimeline / AdminTimelineItem (`platform/admin-timeline.tsx`): linha do tempo agrupada por dia.
+ * Tudo sob `.pv`, prefixo `adm-tl`. Sem sombra, sem caixa alta; o marcador e o fio ficam numa coluna fixa de 28px,
+ * então com ou sem ícone o texto começa no mesmo lugar.
+ */
+
+.pv .adm-tl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 24px; transition: opacity .2s; }
+.pv .adm-tl-list { list-style: none; margin: 0; padding: 0; transition: opacity .2s; }
+.pv .adm-tl[data-busy="true"],
+.pv .adm-tl-list[data-busy="true"] { opacity: .55; }
+
+/* cabeçalho do dia: frase normal, não rótulo em caixa alta */
+.pv .adm-tl-day-h { margin: 0 0 8px; color: var(--adm-text-muted); font-size: 13px; font-weight: 600; line-height: 1.4; }
+
+/* ───────────────────────── evento ───────────────────────── */
+
+.pv .adm-tl-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 0 12px;
+  padding-bottom: 16px;
+}
+.pv .adm-tl-item:last-child { padding-bottom: 0; }
+
+/* o fio liga um marcador ao próximo e para no último */
+.pv .adm-tl-item::after {
+  content: "";
+  position: absolute;
+  left: 13.25px;
+  top: 28px;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--adm-rule);
+}
+.pv .adm-tl-item:last-child::after { display: none; }
+
+/* marcador: ponto de 10px, ou círculo de 28px quando há ícone (mesma coluna, mesmo centro) */
+.pv .adm-tl-mark {
+  --adm-tl-c: var(--adm-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--adm-tl-c);
+}
+.pv .adm-tl-mark::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--adm-surface);
+  box-shadow: inset 0 0 0 2px var(--adm-tl-c);
+}
+.pv .adm-tl-mark[data-icon="true"] { border-radius: 50%; background: var(--bg); }
+.pv .adm-tl-mark[data-icon="true"]::before { display: none; }
+.pv .adm-tl-mark .ico { width: 15px; height: 15px; }
+
+.pv .adm-tl-item[data-tone="brand"] .adm-tl-mark { --adm-tl-c: var(--adm-brand-text); }
+.pv .adm-tl-item[data-tone="ok"] .adm-tl-mark { --adm-tl-c: var(--adm-ok); }
+.pv .adm-tl-item[data-tone="warn"] .adm-tl-mark { --adm-tl-c: var(--adm-warn); }
+.pv .adm-tl-item[data-tone="bad"] .adm-tl-mark { --adm-tl-c: var(--adm-bad); }
+/* o tom de marca preenche o ponto (sem ícone); os demais ficam vazados */
+.pv .adm-tl-item[data-tone="brand"] .adm-tl-mark:not([data-icon="true"])::before { background: var(--brand); box-shadow: none; }
+
+.pv .adm-tl-body { min-width: 0; padding-top: 4px; }
+.pv .adm-tl-title { margin: 0; font-size: 14px; font-weight: 500; line-height: 1.45; overflow-wrap: anywhere; }
+.pv .adm-tl-title a { color: inherit; text-decoration: none; border-radius: 4px; }
+.pv .adm-tl-title a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.pv .adm-tl-title a:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+
+.pv .adm-tl-meta { display: flex; flex-wrap: wrap; margin: 3px 0 0; color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.45; }
+/* o "·" é só visual: a forma com texto alternativo vazio o tira da leitura (navegador antigo fica com a primeira linha) */
+.pv .adm-tl-meta > * + *::before { content: "·"; content: "·" / ""; margin: 0 7px; }
+.pv .adm-tl-meta a { color: inherit; text-underline-offset: 3px; border-radius: 4px; }
+.pv .adm-tl-meta a:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+
+.pv .adm-tl-time { padding-top: 5px; color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.45; white-space: nowrap; }
+
+/* ───────────────────────── detalhe expansível ───────────────────────── */
+
+.pv .adm-tl-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--adm-hit);
+  margin: 2px 0 -6px -8px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--adm-r-sm);
+  background: transparent;
+  color: var(--adm-brand-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pv .adm-tl-toggle:hover { background: var(--adm-hover); }
+.pv .adm-tl-toggle:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+.pv .adm-tl-toggle .ico { transition: transform .15s; }
+.pv .adm-tl-toggle[aria-expanded="true"] .ico { transform: rotate(90deg); }
+
+.pv .adm-tl-detail { margin-top: 8px; padding: 12px 14px; border-radius: var(--adm-r-sm); background: var(--bg); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.pv .adm-tl-detail[hidden] { display: none; }
+
+/* celular: a hora desce para baixo do texto, alinhada com ele, para o título ter a largura toda */
+@media (max-width: 560px) {
+  .pv .adm-tl-item { grid-template-columns: 28px minmax(0, 1fr); }
+  .pv .adm-tl-time { grid-column: 2; grid-row: 2; padding-top: 2px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-tl,
+  .pv .adm-tl-list,
+  .pv .adm-tl-toggle .ico { transition: none; }
+}

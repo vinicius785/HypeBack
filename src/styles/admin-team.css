@@ -2,15 +2,23 @@
  * Admin da plataforma — Equipe (`src/components/admin/team`).
  *
  * Mesmas regras do kit (`admin-platform.css`): prefixo `adm-team-` e tudo sob `.pv`; a tabela, os cartões, os
- * diálogos e as etiquetas vêm do kit. Aqui só o que é próprio da Equipe: os cartões de papel, a escolha do
- * papel e da conta dentro do diálogo. Visual: cores chapadas, divisores finos, sem gradiente; roxo só no foco
- * e no estado escolhido.
+ * diálogos, o seletor de conta e as etiquetas vêm do kit. Aqui só o que é próprio da Equipe: o bloco recolhido
+ * com os cartões de papel e a escolha do papel dentro do diálogo. Visual: cores chapadas, divisores finos, sem
+ * gradiente; roxo só no foco e no estado escolhido.
  */
 
-/* ───────────────────────── cartões de papel ───────────────────────── */
+/* ───────────────────────── papéis (recolhidos) ───────────────────────── */
+
+/* o esqueleto tem a altura da linha do "O que cada papel pode fazer" recolhido: a página não pula ao carregar */
+.pv .adm-team-roles-skel { display: flex; align-items: center; min-height: 24px; }
+.pv .adm-team-roles-more > summary { position: relative; min-height: 24px; color: var(--ink); font-size: 15px; font-weight: 600; }
+/* alvo de toque do tamanho do kit, sem engordar a linha recolhida */
+.pv .adm-team-roles-more > summary::after { content: ""; position: absolute; left: -6px; right: -6px; top: calc((100% - var(--adm-hit)) / 2); bottom: calc((100% - var(--adm-hit)) / 2); }
+.pv .adm-team-roles-more[open] > summary { margin-bottom: 4px; }
+.pv .adm-team-roles-note { margin: 0 0 16px; color: var(--adm-text-muted); font-size: 13px; line-height: 1.5; }
 
 .pv .adm-team-roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-.pv .adm-team-role { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 18px 20px; border: 1.5px solid var(--line); border-radius: 20px; background: #fff; }
+.pv .adm-team-role { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 18px 20px; border: 1.5px solid var(--line); border-radius: var(--adm-r-md); background: var(--adm-surface); }
 .pv .adm-team-role header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pv .adm-team-role p { margin: 0; color: var(--adm-text-muted); font-size: 13px; line-height: 1.5; }
 .pv .adm-team-count { color: var(--adm-text-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -24,11 +32,11 @@
 
 .pv .adm-team-choices { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
 .pv .adm-team-choices legend { padding: 0; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--ink); }
-.pv .adm-team-choice { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 16px; background: #fff; cursor: pointer; }
+.pv .adm-team-choice { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: var(--adm-r-md); background: var(--adm-surface); cursor: pointer; }
 .pv .adm-team-choice:hover { border-color: var(--ink); }
 .pv .adm-team-choice[data-checked="true"] { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
 .pv .adm-team-choice[data-danger="true"][data-checked="true"] { border-color: var(--adm-bad); box-shadow: inset 0 0 0 1px var(--adm-bad); }
-.pv .adm-team-choice:focus-within { outline: 3px solid var(--brand); outline-offset: 2px; }
+.pv .adm-team-choice:focus-within { outline: none; box-shadow: var(--adm-ring); }
 .pv .adm-team-choice input { margin-top: 3px; accent-color: var(--brand); }
 .pv .adm-team-choice span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .pv .adm-team-choice b { font-size: 14px; font-weight: 600; color: var(--ink); }
@@ -36,16 +44,3 @@
 .pv .adm-team-choice small { color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.45; }
 .pv .adm-team-choices:disabled .adm-team-choice { opacity: .6; cursor: not-allowed; }
 .pv .adm-team-summary { margin: 0; }
-
-/* ───────────────────────── diálogo: escolha da conta ───────────────────────── */
-
-.pv .adm-team-results { display: flex; flex-direction: column; margin-top: 8px; border: 1.5px solid var(--line); border-radius: 16px; overflow: hidden; background: #fff; }
-.pv .adm-team-hint { margin: 0; padding: 14px 16px; color: var(--adm-text-muted); font-size: 13px; line-height: 1.45; }
-.pv .adm-team-result { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border: 0; border-top: 1.5px solid var(--line); background: #fff; text-align: left; cursor: pointer; }
-.pv .adm-team-result:first-child { border-top: 0; }
-.pv .adm-team-result:hover { background: #f4f4f4; }
-.pv .adm-team-result:focus-visible { outline: 3px solid var(--brand); outline-offset: -3px; }
-.pv .adm-team-result span, .pv .adm-team-picked span { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.pv .adm-team-result b, .pv .adm-team-picked b { font-size: 14px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv .adm-team-result small, .pv .adm-team-picked small { color: var(--adm-text-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv .adm-team-picked { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 16px; background: #fff; }

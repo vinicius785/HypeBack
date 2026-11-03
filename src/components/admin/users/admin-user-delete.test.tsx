@@ -2,7 +2,7 @@
  * Excluir conta e permissões por papel no detalhe do usuário.
  *
  * O QUE PRECISA FUNCIONAR:
- *   - o administrador vê "Excluir conta"; o diálogo explica que é permanente e pede o motivo E o e-mail da conta;
+ *   - o administrador vê "Excluir conta" no menu "Mais" do cabeçalho (separada das ações reversíveis, em vermelho); o diálogo explica que é permanente e pede o motivo E o e-mail da conta;
  *   - o botão só habilita com os dois; o envio leva `reason` e `confirm_email` e uma Idempotency-Key;
  *   - impedimentos do servidor (saldo, saque pendente, único proprietário) aparecem listados, com o diálogo aberto;
  *   - o suporte vê Suspender mas NÃO Excluir; o somente leitura não vê nenhuma ação e lê o porquê.
@@ -71,7 +71,9 @@ async function renderDetail() {
   return { ...view, user: userEvent.setup() };
 }
 
-const deleteButton = () => screen.queryByRole("button", { name: /Excluir conta/ });
+/** "Excluir conta" mora no menu "Mais": sem o menu (conta que não aceita ação ou papel sem permissão), não há como chegar nela. */
+const moreButton = () => screen.queryByRole("button", { name: "Mais" });
+const deleteItem = () => screen.queryByRole("menuitem", { name: /Excluir conta/ });
 
 beforeEach(() => {
   for (const mock of [mocks.adminList, mocks.adminGet, mocks.adminPost, mocks.toastSuccess]) mock.mockReset();
@@ -86,11 +88,25 @@ beforeEach(() => {
 describe("excluir conta (administrador)", () => {
   async function openDelete() {
     const ctx = await renderDetail();
-    await ctx.user.click(screen.getByRole("button", { name: /Excluir conta/ }));
+    await ctx.user.click(screen.getByRole("button", { name: "Mais" }));
+    await ctx.user.click(screen.getByRole("menuitem", { name: /Excluir conta/ }));
     const dialog = await screen.findByRole("alertdialog", { name: "Excluir a conta de Bernardo Medeiros Moraes" });
     return { ...ctx, dialog };
   }
   const confirm = () => screen.getByRole("button", { name: "Excluir conta para sempre" });
+
+  it("fica no menu 'Mais', fora dos botões reversíveis, em vermelho e sem ser um botão do cabeçalho", async () => {
+    const { user } = await renderDetail();
+    // as ações reversíveis seguem à vista; a que não tem volta só aparece depois de abrir o menu
+    expect(screen.getByRole("button", { name: "Suspender" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Excluir conta/ })).not.toBeInTheDocument();
+    expect(deleteItem()).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Mais" }));
+    const item = screen.getByRole("menuitem", { name: /Excluir conta/ });
+    expect(item).toHaveAttribute("data-tone", "danger");
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+  });
 
   it("o diálogo diz que é permanente, o que some e o que fica, e pede motivo e e-mail", async () => {
     const { dialog } = await openDelete();
@@ -134,7 +150,7 @@ describe("excluir conta (administrador)", () => {
     expect(path).toBe("/admin/users/9/delete");
     expect(body).toEqual({ reason: "Pedido do titular (LGPD)", confirm_email: "bernardo@cafeserraverde.com.br" });
     expect(options.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/i);
-    expect(mocks.toastSuccess).toHaveBeenCalledWith("Conta excluída.");
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Conta excluída.", expect.anything());
     await vi.waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
   });
 
@@ -181,19 +197,21 @@ describe("quem pode ver o botão de excluir", () => {
   it("não aparece para a própria conta, para outro administrador nem para conta excluída", async () => {
     server.detail = makeUserDetail({ id: 1, name: "Marina", email: "marina@x.com" });
     const own = await renderDetail();
-    expect(deleteButton()).not.toBeInTheDocument();
+    expect(moreButton()).not.toBeInTheDocument();
     own.unmount();
 
     server.detail = makeUserDetail({ kind: "admin", is_platform_admin: true });
     const other = await renderDetail();
-    expect(deleteButton()).not.toBeInTheDocument();
+    expect(moreButton()).not.toBeInTheDocument();
     expect(screen.getByText(/administradora da plataforma/)).toBeInTheDocument();
     other.unmount();
 
     server.detail = makeUserDetail({ status: "deleted", deleted_at: NOW_ISO });
     await renderDetail();
-    expect(deleteButton()).not.toBeInTheDocument();
+    expect(moreButton()).not.toBeInTheDocument();
     expect(screen.getByText("Conta excluída: não há ações disponíveis.")).toBeInTheDocument();
+    // o aviso fica abaixo do cabeçalho, fora do meio dos botões de ação
+    expect(within(screen.getAllByRole("banner")[0]).queryByText("Conta excluída: não há ações disponíveis.")).not.toBeInTheDocument();
   });
 });
 
@@ -204,7 +222,7 @@ describe("papéis da equipe no detalhe do usuário", () => {
     await renderDetail();
     expect(await screen.findByRole("button", { name: "Suspender" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Encerrar sessões" })).toBeInTheDocument();
-    expect(deleteButton()).not.toBeInTheDocument();
+    expect(moreButton()).not.toBeInTheDocument();
     expect(mocks.adminGet).toHaveBeenCalledWith("/admin/me", undefined, expect.anything());
   });
 
@@ -216,7 +234,7 @@ describe("papéis da equipe no detalhe do usuário", () => {
     for (const name of ["Suspender", "Reativar", "Encerrar sessões"]) {
       expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
     }
-    expect(deleteButton()).not.toBeInTheDocument();
+    expect(moreButton()).not.toBeInTheDocument();
   });
 
   it("enquanto o papel carrega, nenhum botão de ação aparece (sem piscar)", async () => {
@@ -229,6 +247,7 @@ describe("papéis da equipe no detalhe do usuário", () => {
     });
     await renderDetail();
     expect(screen.queryByRole("button", { name: "Suspender" })).not.toBeInTheDocument();
+    expect(moreButton()).not.toBeInTheDocument();
     expect(screen.queryByText(/só permite ver esta conta/)).not.toBeInTheDocument();
     release({ user_id: 2, role: "support", permissions: ["read", "users.moderate"] });
     expect(await screen.findByRole("button", { name: "Suspender" })).toBeInTheDocument();

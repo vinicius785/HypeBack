@@ -1,5 +1,5 @@
 /** Vocabulário da tela de criadores do Admin (rótulos pt-BR do contrato e opções dos filtros). */
-import type { AdminAlertKind, AdminDuplicateReason } from "@/shared/admin-platform.types";
+import type { AdminDuplicateReason } from "@/shared/admin-platform.types";
 import { getNetworkLabel } from "@/shared/constants/network-labels";
 import { ADMIN_CREATOR_NETWORKS } from "@/hooks/admin/use-admin-creators";
 import type { AdminFilterOption } from "@/components/admin/platform";
@@ -35,8 +35,8 @@ export const NETWORK_FILTER_OPTIONS: readonly AdminFilterOption[] = [
 ];
 
 /**
- * Cadastro, na linguagem do filtro e da etiqueta. "Conta externa" é o `stub` do contrato (criada por convite e nunca
- * assumida pela pessoa).
+ * Perfil (o estado dos dados do cadastro), na linguagem do segmento e da etiqueta; na URL é `registration`. "Conta
+ * externa" é o `stub` do contrato (criada por convite e nunca assumida pela pessoa).
  */
 export const REGISTRATION_FILTER_OPTIONS: readonly AdminFilterOption[] = [
   { value: "", label: "Todos" },
@@ -44,6 +44,12 @@ export const REGISTRATION_FILTER_OPTIONS: readonly AdminFilterOption[] = [
   { value: "incomplete", label: "Incompleto" },
   { value: "stub", label: "Conta externa" },
 ];
+
+/**
+ * O aviso que vale para as três abas e fica sempre à vista, no subtítulo da página: aqui nada é fundido, alterado nem
+ * decidido pelo sistema.
+ */
+export const CREATORS_READ_ONLY_NOTE = "Somente leitura: nada é fundido ou alterado automaticamente.";
 
 export const EXTERNAL_ACCOUNT_LABEL = "Conta externa";
 export const EXTERNAL_ACCOUNT_HELP = "Conta criada por convite e nunca assumida pela pessoa.";
@@ -100,17 +106,3 @@ export const DUPLICATE_CONFIDENCE_HELP = {
   high: "Alta: o valor em comum é idêntico depois de normalizado.",
   possible: "Possível: valor parecido ou sinal indireto, a confirmar.",
 } as const;
-
-// ---------------------------------------------------------------------------
-// Inconsistências
-// ---------------------------------------------------------------------------
-
-export const INCONSISTENCY_KIND_LABEL: Record<AdminAlertKind, string> = {
-  alert: "Alerta objetivo",
-  suggestion: "Sugestão",
-};
-
-export const INCONSISTENCY_KIND_HELP: Record<AdminAlertKind, string> = {
-  alert: "Fato objetivo armazenado no banco de dados.",
-  suggestion: "Heurística: o critério foi escolhido pelo produto e pode não ser um problema de verdade.",
-};

@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { toast } from "sonner";
 
 import { I } from "@/components/prototype/ui";
 import {
@@ -12,10 +11,13 @@ import {
   AdminNotificationPreview,
   CHANNEL_LABEL,
 } from "@/components/admin/admin-notification-preview";
+import { adminErrorMessage, adminToast } from "@/components/admin/platform";
+import { useModalBehavior } from "@/hooks/admin/use-modal-behavior";
 import {
   useCreateAdminNotification,
   useEstimateAdminAudience,
 } from "@/hooks/use-admin-notifications";
+import { formatInt } from "@/lib/admin/format";
 import type {
   AdminAudienceEstimate,
   AdminAudienceFilter,
@@ -77,12 +79,21 @@ interface AdminNotificationFormProps {
   onClose: () => void;
 }
 
+/**
+ * Diálogo "Nova notificação", em três passos (mensagem, destino, envio). Gravando, Esc, o fundo e "Fechar" não
+ * fecham. Com algo digitado ou escolhido, o clique no fundo não fecha (Esc e "Fechar" continuam fechando).
+ */
 export function AdminNotificationForm({
   initial,
   onClose,
 }: AdminNotificationFormProps) {
   const [step, setStep] = useState(0);
   const [tried, setTried] = useState(false);
+  const dialogRef = useRef<HTMLElement>(null);
+  const titleDomId = useId();
+  const titleFieldId = useId();
+  const bodyFieldId = useId();
+  const linkFieldId = useId();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [body, setBody] = useState(initial?.body ?? "");
   const [ctaUrl, setCtaUrl] = useState(initial?.ctaUrl ?? "");
@@ -105,6 +116,22 @@ export function AdminNotificationForm({
     y: tomorrow.getFullYear(),
     m: tomorrow.getMonth(),
   });
+
+  // Há algo mexido desde que o diálogo abriu (em relação ao que veio preenchido, no "Duplicar"): o fundo não fecha.
+  const baseline = useRef({
+    title,
+    body,
+    ctaUrl,
+    channels: JSON.stringify(channels),
+    audience: JSON.stringify(audience),
+  });
+  const dirty =
+    title !== baseline.current.title ||
+    body !== baseline.current.body ||
+    ctaUrl !== baseline.current.ctaUrl ||
+    JSON.stringify(channels) !== baseline.current.channels ||
+    JSON.stringify(audience) !== baseline.current.audience ||
+    when !== "now";
 
   const estimateMutation = useEstimateAdminAudience();
   const createMutation = useCreateAdminNotification();
@@ -147,19 +174,27 @@ export function AdminNotificationForm({
     return () => clearTimeout(t);
   }, [audienceKey, audienceOk, estimateAsync, retry]);
 
+  // Diálogo de verdade: foco preso e devolvido, rolagem travada, `aria-modal`. Gravando, o Esc só é engolido; com a
+  // confirmação de envio aberta, o Esc volta ao resumo em vez de fechar tudo.
+  useModalBehavior({
+    open: true,
+    containerRef: dialogRef,
+    onEscape: sending ? undefined : () => (confirming ? setConfirming(false) : onClose()),
+  });
+
+  // Ao começar a gravar o botão acionado fica desabilitado e o navegador larga o foco no <body>: fica no painel.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || sending) return;
-      // Com a confirmação aberta, Esc volta ao resumo em vez de fechar tudo.
-      if (confirming) setConfirming(false);
-      else onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose, sending, confirming]);
+    if (!sending) return;
+    const dialog = dialogRef.current;
+    const active = document.activeElement;
+    if (!dialog) return;
+    if (!active || active === document.body || !dialog.contains(active) || (active as HTMLElement).matches?.(":disabled")) {
+      dialog.focus();
+    }
+  }, [sending]);
 
   const reach = estimate?.total_recipients ?? 0;
-  const fmt = (n: number) => n.toLocaleString("pt-BR");
+  const fmt = formatInt;
   const reachLabel = estimate ? `${fmt(reach)} criadores` : null;
   const channelsLabel = channels.map((c) => CHANNEL_LABEL[c]).join(", ");
   const confirmText = `Enviar agora para ${fmt(reach)} ${
@@ -194,7 +229,7 @@ export function AdminNotificationForm({
     if (step === 0 && !step0Ok) return setTried(true);
     if (step === 1 && !step1Ok) {
       setTried(true);
-      if (estimating) toast.error("Aguarde o cálculo do alcance.");
+      if (estimating) adminToast.error("Aguarde o cálculo do alcance.");
       return;
     }
     go(step + 1);
@@ -204,7 +239,7 @@ export function AdminNotificationForm({
     const scheduledAt =
       when === "sched" ? new Date(`${date}T${time || "00:00"}:00`) : null;
     if (scheduledAt && scheduledAt.getTime() < Date.now()) {
-      toast.error("A data/hora do agendamento deve estar no futuro.");
+      adminToast.error("A data/hora do agendamento deve estar no futuro.");
       return;
     }
     const payload: AdminNotificationCreatePayload = {
@@ -220,16 +255,12 @@ export function AdminNotificationForm({
         payload,
         idempotencyKey: idempotencyKeyFor(JSON.stringify(payload)),
       });
-      toast.success(
+      adminToast.success(
         when === "now" ? "Notificação enviada para a fila." : "Envio agendado.",
       );
       onClose();
     } catch (err) {
-      toast.error(
-        err instanceof Error
-          ? err.message
-          : "Não foi possível criar a notificação.",
-      );
+      adminToast.error(adminErrorMessage(err, "Não foi possível criar a notificação."));
     }
   };
 
@@ -291,48 +322,72 @@ export function AdminNotificationForm({
       return (
         <>
           <div className={`n4c ${tried && !title.trim() ? "bad" : ""}`}>
-            <label className="n4l">Título</label>
+            <label className="n4l" htmlFor={titleFieldId}>
+              Título
+            </label>
             <input
+              id={titleFieldId}
               className="cm-in"
               maxLength={TITLE_MAX}
               placeholder="Ex.: Nova campanha aberta para você!"
               value={title}
+              aria-invalid={tried && !title.trim() ? true : undefined}
+              aria-describedby={tried && !title.trim() ? `${titleFieldId}-err` : undefined}
+              data-adm-autofocus
               onChange={(e) => setTitle(e.target.value)}
               autoComplete="off"
             />
             <small className="lvf-ct">
               {title.length}/{TITLE_MAX}
             </small>
-            {tried && !title.trim() ? <small className="nfe">Escreva um título</small> : null}
+            {tried && !title.trim() ? (
+              <small className="nfe" id={`${titleFieldId}-err`}>
+                Escreva um título
+              </small>
+            ) : null}
           </div>
           <div className={`n4c ${tried && !body.trim() ? "bad" : ""}`}>
-            <label className="n4l">Mensagem</label>
+            <label className="n4l" htmlFor={bodyFieldId}>
+              Mensagem
+            </label>
             <textarea
+              id={bodyFieldId}
               className="cm-ta"
               rows={4}
               maxLength={BODY_MAX}
               placeholder="Escreva o que os criadores vão ler."
               value={body}
+              aria-invalid={tried && !body.trim() ? true : undefined}
+              aria-describedby={tried && !body.trim() ? `${bodyFieldId}-err` : undefined}
               onChange={(e) => setBody(e.target.value)}
             />
             <small className="lvf-ct">
               {body.length}/{BODY_MAX}
             </small>
-            {tried && !body.trim() ? <small className="nfe">Escreva a mensagem</small> : null}
+            {tried && !body.trim() ? (
+              <small className="nfe" id={`${bodyFieldId}-err`}>
+                Escreva a mensagem
+              </small>
+            ) : null}
           </div>
           <div className={`n4c ${tried && urlBad ? "bad" : ""}`}>
-            <label className="n4l">
+            <label className="n4l" htmlFor={linkFieldId}>
               Link ao tocar <em>opcional</em>
             </label>
             <input
+              id={linkFieldId}
               className="cm-in"
               placeholder="https://… ou hypeapp://campanha/123"
               value={ctaUrl}
+              aria-invalid={tried && urlBad ? true : undefined}
+              aria-describedby={tried && urlBad ? `${linkFieldId}-err` : undefined}
               onChange={(e) => setCtaUrl(e.target.value)}
               autoComplete="off"
             />
             {tried && urlBad ? (
-              <small className="nfe">URL inválida — use http(s):// ou esquema com ://</small>
+              <small className="nfe" id={`${linkFieldId}-err`}>
+                URL inválida — use http(s):// ou esquema com ://
+              </small>
             ) : null}
           </div>
         </>
@@ -345,6 +400,8 @@ export function AdminNotificationForm({
           <AdminAudienceBuilder value={audience} onChange={setAudience} />
           <div
             className={`lvq-now ntw-rc ${reach ? "" : "z"} ${bad && !estimating ? "bad" : ""}`}
+            aria-live="polite"
+            aria-atomic="true"
           >
             <span>
               <I n="users" />
@@ -469,25 +526,32 @@ export function AdminNotificationForm({
 
   return createPortal(
     <div className="pv">
-      <div className="ovb on" onClick={() => !sending && onClose()} />
+      {/* O fundo não fecha gravando nem com algo digitado (um clique perdido jogaria o texto fora); Esc e "Fechar" fecham. */}
+      <div className="ovb on" aria-hidden="true" onClick={() => !sending && !dirty && onClose()} />
       <div className="ovw">
         <section
+          ref={dialogRef}
           className="ovd on wide lvfm ntm ntw"
           role="dialog"
-          aria-label="Nova notificação"
+          aria-modal="true"
+          aria-labelledby={titleDomId}
+          aria-busy={sending ? true : undefined}
+          tabIndex={-1}
         >
           <div className="sh-h cm-h">
             <div>
               <small>Notificações</small>
-              <h2>Nova notificação</h2>
+              <h2 id={titleDomId}>Nova notificação</h2>
             </div>
-            <button type="button" className="round" onClick={onClose} aria-label="Fechar">
+            <button type="button" className="round" onClick={onClose} disabled={sending} aria-label="Fechar">
               <I n="x" cls="sm" />
             </button>
           </div>
           <div className="ntw-w">
             <div
               className="sh-seg lvf-sg"
+              role="group"
+              aria-label="Passos da notificação"
               style={{ gridTemplateColumns: `repeat(${STEPS.length}, 1fr)` }}
             >
               {STEPS.map(([t], k) => (
@@ -495,6 +559,8 @@ export function AdminNotificationForm({
                   key={t}
                   type="button"
                   className={`${step === k ? "on" : ""} ${k < step ? "dn" : ""}`}
+                  aria-current={step === k ? "step" : undefined}
+                  disabled={sending}
                   onClick={() => k < step && go(k)}
                 >
                   <span>{k < step ? <I n="check" cls="sm" /> : k + 1}</span>
@@ -506,7 +572,7 @@ export function AdminNotificationForm({
               <div className="lvf-bd swp" key={step}>
                 {stepBody()}
               </div>
-              <aside className="ntw-pv">
+              <aside className="ntw-pv" aria-label="Prévia da notificação">
                 <AdminNotificationPreview
                   title={title}
                   body={body}

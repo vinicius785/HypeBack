@@ -2,13 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   addressLines,
-  countDays,
   detectPreset,
   digitsOnly,
   formatCep,
   formatCnpj,
   isValidCivilDate,
-  periodError,
   presetRange,
   shiftCivilDate,
   shortPublicId,
@@ -74,12 +72,6 @@ describe("dias civis", () => {
     expect(shiftCivilDate("2026-10-31", -29)).toBe("2026-10-02");
   });
 
-  it("conta os dias com as duas pontas", () => {
-    expect(countDays({ from: "2026-10-01", to: "2026-10-01" })).toBe(1);
-    expect(countDays({ from: "2026-10-02", to: "2026-10-31" })).toBe(30);
-    expect(countDays({ from: "2025-10-31", to: "2026-10-31" })).toBe(366);
-  });
-
   it("valida a data civil (dia que não existe não vale)", () => {
     expect(isValidCivilDate("2026-02-28")).toBe(true);
     expect(isValidCivilDate("2026-02-30")).toBe(false);
@@ -96,15 +88,5 @@ describe("dias civis", () => {
   it("reconhece o atalho de um período, ou nenhum", () => {
     expect(detectPreset({ from: "2026-10-02", to: "2026-10-31" }, "2026-10-31")).toBe("30d");
     expect(detectPreset({ from: "2026-10-01", to: "2026-10-31" }, "2026-10-31")).toBeNull();
-  });
-
-  it("periodError: ordem, futuro, limite de 366 dias e datas incompletas", () => {
-    const today = "2026-10-31";
-    expect(periodError({ from: "2026-10-01", to: "2026-10-31" }, today)).toBeNull();
-    expect(periodError({ from: "2025-10-31", to: "2026-10-31" }, today)).toBeNull();
-    expect(periodError({ from: "2025-10-30", to: "2026-10-31" }, today)).toMatch(/366 dias/);
-    expect(periodError({ from: "2026-10-20", to: "2026-10-10" }, today)).toMatch(/inicial/);
-    expect(periodError({ from: "2026-10-20", to: "2026-11-01" }, today)).toMatch(/hoje/);
-    expect(periodError({ from: "", to: "2026-10-10" }, today)).toMatch(/duas datas/);
   });
 });

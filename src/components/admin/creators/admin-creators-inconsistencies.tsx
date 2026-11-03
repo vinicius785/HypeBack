@@ -1,14 +1,13 @@
 import { useMemo } from "react";
 
-import { I } from "@/components/prototype/ui";
 import {
+  AdminAlertItem,
   AdminEmptyState,
   AdminErrorState,
-  AdminLink,
+  AdminListSkeleton,
+  AdminRefreshButton,
   AdminSection,
-  AdminSkeleton,
-  AdminSkeletonLines,
-  AdminStatusBadge,
+  type AdminAlertLike,
   type AdminLinkTarget,
 } from "@/components/admin/platform";
 import { useAdminCreatorInconsistencies } from "@/hooks/admin/use-admin-creators";
@@ -16,11 +15,10 @@ import { formatDateTime, formatInt } from "@/lib/admin/format";
 import type { AdminInconsistency } from "@/shared/admin-platform.types";
 
 import { campaignTarget, workspaceTarget } from "./admin-creators-cells";
-import { INCONSISTENCY_KIND_HELP, INCONSISTENCY_KIND_LABEL } from "./creator-labels";
 
 import "@/styles/admin-creators.css";
 
-type Sample = AdminInconsistency["samples"][number];
+type Sample = NonNullable<AdminAlertLike["samples"]>[number];
 
 /** Só leva a uma tela quem tem uma: workspace e campanha. O resto (lançamento, grupo, usuário) é texto. */
 function sampleTarget(sample: Sample): AdminLinkTarget | undefined {
@@ -35,78 +33,30 @@ function alertsFirst(items: readonly AdminInconsistency[]): AdminInconsistency[]
   return [...items.filter((item) => item.kind === "alert"), ...items.filter((item) => item.kind !== "alert")];
 }
 
-function InconsistencyItem({ item }: { item: AdminInconsistency }) {
+/**
+ * O item do contrato como o `AdminAlertItem` do kit o entende. Inconsistência não tem gravidade, regra nem origem
+ * (o servidor não manda), então só tipo, título, descrição, contagem e exemplos aparecem. Quando há mais ocorrências
+ * que exemplos, a descrição diz quantos exemplos estão à mostra (o kit ainda não tem esse aviso).
+ */
+function toAlert(item: AdminInconsistency): AdminAlertLike {
   const hidden = item.count - item.samples.length;
-  return (
-    <article className="adm-creators-inc" aria-label={item.title}>
-      <div className="adm-creators-inc-main">
-        <AdminStatusBadge
-          kind="alert-kind"
-          value={item.kind}
-          size="sm"
-          label={INCONSISTENCY_KIND_LABEL[item.kind]}
-          title={INCONSISTENCY_KIND_HELP[item.kind]}
-        />
-        <h3>{item.title}</h3>
-        <p className="adm-creators-inc-desc">{item.description}</p>
-      </div>
-      <div className="adm-creators-inc-count">
-        <b>{formatInt(item.count)}</b>
-        <small>{item.count === 1 ? "ocorrência" : "ocorrências"}</small>
-      </div>
-      {item.samples.length > 0 ? (
-        <div className="adm-creators-inc-samples">
-          <span>Exemplos:</span>
-          <ul>
-            {item.samples.map((sample) => {
-              const target = sampleTarget(sample);
-              return (
-                <li key={`${sample.type}:${sample.id}`}>
-                  {target ? (
-                    <AdminLink to={target} className="adm-creators-inc-sample">
-                      {sample.label}
-                    </AdminLink>
-                  ) : (
-                    <span className="adm-creators-inc-sample">{sample.label}</span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-          {hidden > 0 ? (
-            <small>
-              Mostrando {formatInt(item.samples.length)} de {formatInt(item.count)}
-            </small>
-          ) : null}
-        </div>
-      ) : null}
-    </article>
-  );
-}
-
-function InconsistenciesSkeleton() {
-  return (
-    <div className="adm-creators-incs" aria-hidden="true">
-      {[0, 1, 2].map((index) => (
-        <div key={index} className="adm-creators-inc">
-          <div className="adm-creators-inc-main">
-            <AdminSkeleton width={104} height={22} radius={999} />
-            <div className="adm-creators-inc-sk">
-              <AdminSkeleton width="52%" height={16} />
-              <AdminSkeletonLines lines={2} lastWidth="70%" />
-            </div>
-          </div>
-          <AdminSkeleton width={40} height={28} />
-        </div>
-      ))}
-    </div>
-  );
+  const shown =
+    hidden > 0 && item.samples.length > 0
+      ? ` Mostrando ${formatInt(item.samples.length)} de ${formatInt(item.count)} exemplos.`
+      : "";
+  return {
+    title: item.title,
+    kind: item.kind,
+    description: `${item.description}${shown}`,
+    count: item.count,
+    samples: item.samples,
+  };
 }
 
 /**
  * Aba "Inconsistências": o que o servidor achou de estranho na base (cadastros, e-mails repetidos, dinheiro sem
- * campanha…). Cada item diz se é um alerta objetivo (fato guardado no banco) ou uma sugestão (heurística) e mostra
- * alguns exemplos. Só leitura; "Atualizar" apenas refaz a consulta.
+ * campanha…). Cada item diz se é um alerta (fato guardado no banco) ou uma sugestão (heurística) e mostra alguns
+ * exemplos. Só leitura; o botão de atualizar (ícone, no canto da seção) apenas refaz a consulta.
  */
 export function AdminCreatorsInconsistencies() {
   const query = useAdminCreatorInconsistencies();
@@ -115,53 +65,36 @@ export function AdminCreatorsInconsistencies() {
   const hasItems = items.length > 0;
 
   return (
-    <div className="adm-creators-panel">
-      <AdminSection
-        title="Inconsistências"
-        description={
-          <>
-            Alerta objetivo é um fato guardado no banco; sugestão é uma heurística e pode não ser um problema.
-            {computedAt ? <> Calculado em {formatDateTime(computedAt)}.</> : null}
-          </>
-        }
-        actions={
-          <button
-            type="button"
-            className="btn out adm-btn-sm"
-            disabled={query.isFetching}
-            onClick={() => void query.refetch()}
-          >
-            <I n="refresh" cls="sm" />
-            {query.isFetching ? "Atualizando…" : "Atualizar"}
-          </button>
-        }
-      >
-        {query.isLoading ? (
-          <>
-            <span className="adm-sr" role="status">
-              Carregando…
-            </span>
-            <InconsistenciesSkeleton />
-          </>
-        ) : query.error && !hasItems ? (
-          <AdminErrorState compact error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />
-        ) : !hasItems ? (
-          <AdminEmptyState
-            compact
-            title="Nenhuma inconsistência encontrada"
-            description="O servidor não encontrou nenhuma inconsistência agora."
-          />
-        ) : (
-          <>
-            {query.error ? <AdminErrorState compact error={query.error} onRetry={() => void query.refetch()} /> : null}
-            <div className="adm-creators-incs">
-              {items.map((item) => (
-                <InconsistencyItem key={item.code} item={item} />
-              ))}
-            </div>
-          </>
-        )}
-      </AdminSection>
-    </div>
+    <AdminSection
+      title="Alertas e sugestões"
+      description={
+        <>
+          Alerta é um fato objetivo guardado no banco; sugestão é uma heurística e pode não ser um problema.
+          {computedAt ? <> Calculado em {formatDateTime(computedAt)}.</> : null}
+        </>
+      }
+      actions={<AdminRefreshButton iconOnly onClick={() => void query.refetch()} loading={query.isFetching} />}
+    >
+      {query.isLoading ? (
+        <AdminListSkeleton variant="alerts" rows={3} ariaLabel="Carregando inconsistências…" />
+      ) : query.error && !hasItems ? (
+        <AdminErrorState compact error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />
+      ) : !hasItems ? (
+        <AdminEmptyState
+          compact
+          title="Nenhuma inconsistência encontrada"
+          description="O servidor não encontrou nenhuma inconsistência agora."
+        />
+      ) : (
+        <>
+          {query.error ? <AdminErrorState compact error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
+          <div className="adm-alerts">
+            {items.map((item) => (
+              <AdminAlertItem key={item.code} alert={toAlert(item)} sampleLink={sampleTarget} />
+            ))}
+          </div>
+        </>
+      )}
+    </AdminSection>
   );
 }

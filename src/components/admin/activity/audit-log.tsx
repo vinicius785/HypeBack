@@ -1,16 +1,11 @@
-import { useId, useState, type ReactNode } from "react";
-
-import { I } from "@/components/prototype/ui";
 import {
-  AdminEmptyState,
-  AdminErrorState,
   AdminKeyValueList,
   AdminLink,
   AdminPager,
-  AdminSection,
-  AdminSkeleton,
+  AdminTable,
   type AdminKeyValueItem,
   type AdminLinkTarget,
+  type AdminTableColumn,
 } from "@/components/admin/platform";
 import { useAdminAuditLog } from "@/hooks/admin/use-admin-activity";
 import { useAdminPageClamp } from "@/hooks/admin/use-admin-list-query-state";
@@ -50,106 +45,33 @@ function actorName(actor: AdminAuditLogEntry["actor"]): string {
   return actor.user_id !== null ? `Usuário ${actor.user_id}` : "Usuário removido";
 }
 
+/** Antes e depois, campo a campo. Tabela com a semântica do kit (`table` › `rowgroup` › `row` › `columnheader`/`rowheader`/`cell`). */
 function DiffTable({ rows }: { rows: ReturnType<typeof buildAuditDiff> }) {
   return (
     <div className="adm-act-diff" role="table" aria-label="O que mudou">
-      <div className="adm-act-diff-row adm-act-diff-head" role="row">
-        <span role="columnheader">Campo</span>
-        <span role="columnheader">Antes</span>
-        <span role="columnheader">Depois</span>
-      </div>
-      {rows.map((row) => (
-        <div className="adm-act-diff-row" role="row" key={row.key}>
-          <span className="adm-act-diff-field" role="rowheader">
-            {row.label}
-          </span>
-          <span className="adm-act-diff-before" role="cell" data-label="Antes" data-empty={row.before === AUDIT_EMPTY ? "true" : undefined}>
-            {row.before}
-          </span>
-          <span className="adm-act-diff-after" role="cell" data-label="Depois" data-empty={row.after === AUDIT_EMPTY ? "true" : undefined}>
-            {row.after}
-          </span>
+      <div role="rowgroup">
+        <div className="adm-act-diff-row adm-act-diff-head" role="row">
+          <span role="columnheader">Campo</span>
+          <span role="columnheader">Antes</span>
+          <span role="columnheader">Depois</span>
         </div>
-      ))}
+      </div>
+      <div role="rowgroup">
+        {rows.map((row) => (
+          <div className="adm-act-diff-row" role="row" key={row.key}>
+            <span className="adm-act-diff-field" role="rowheader">
+              {row.label}
+            </span>
+            <span className="adm-act-diff-before" role="cell" data-label="Antes" data-empty={row.before === AUDIT_EMPTY ? "true" : undefined}>
+              {row.before}
+            </span>
+            <span className="adm-act-diff-after" role="cell" data-label="Depois" data-empty={row.after === AUDIT_EMPTY ? "true" : undefined}>
+              {row.after}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
-  );
-}
-
-function AuditEntry({ entry }: { entry: AdminAuditLogEntry }) {
-  const [open, setOpen] = useState(false);
-  const baseId = useId();
-  const headId = `${baseId}-head`;
-  const panelId = `${baseId}-panel`;
-
-  const target = targetLink(entry.target);
-  const targetType = isAuditTargetType(entry.target.type) ? AUDIT_TARGET_LABEL[entry.target.type] : entry.target.type;
-  const workspace = entry.workspace;
-
-  // O antes/depois e o impacto só são calculados quando a linha abre.
-  const detail = open ? (
-    <div className="adm-act-entry-body" id={panelId} role="region" aria-labelledby={headId}>
-      <AdminKeyValueList
-        items={
-          [
-            { label: "Motivo", value: <span className="adm-act-reason-full">{entry.reason}</span> },
-            {
-              label: "Alvo",
-              value: (
-                <span>
-                  {targetType} ·{" "}
-                  {target ? (
-                    <AdminLink to={target} className="adm-act-link">
-                      {targetText(entry.target)}
-                    </AdminLink>
-                  ) : (
-                    targetText(entry.target)
-                  )}
-                </span>
-              ),
-            },
-            {
-              label: "Workspace",
-              value: workspace ? (
-                <AdminLink to={{ to: "/admin/workspaces/$workspaceId", params: { workspaceId: workspace.id } }} className="adm-act-link">
-                  {workspace.name}
-                </AdminLink>
-              ) : null,
-            },
-            {
-              label: "Feito por",
-              value: actorName(entry.actor),
-              hint: [entry.actor.email, actorRoleLabel(entry.actor.role)].filter(Boolean).join(" · "),
-            },
-            { label: "Quando", value: `${formatDateTime(entry.created_at)} (horário de São Paulo)` },
-            { label: "IP", value: entry.ip ?? "Não registrado" },
-            { label: "Registro", value: `Alteração nº ${entry.id}` },
-          ] satisfies AdminKeyValueItem[]
-        }
-      />
-      <AuditChanges entry={entry} />
-    </div>
-  ) : null;
-
-  return (
-    <li className="adm-act-entry" data-open={open ? "true" : undefined}>
-      <button type="button" id={headId} className="adm-act-entry-head" aria-expanded={open} aria-controls={open ? panelId : undefined} onClick={() => setOpen((v) => !v)}>
-        <span className="adm-act-entry-main">
-          <b>{entry.action_label}</b>
-          <span className="adm-act-entry-sub">
-            {targetText(entry.target)}
-            {workspace && !(entry.target.label ?? "").includes(workspace.name) ? ` · ${workspace.name}` : ""} · por {actorName(entry.actor)}
-          </span>
-          <span className="adm-act-entry-reason">{entry.reason}</span>
-        </span>
-        <span className="adm-act-entry-when" title={`${formatDateTime(entry.created_at)}, horário de São Paulo`}>
-          {formatDateTime(entry.created_at)}
-        </span>
-        <span className="adm-act-entry-chev" aria-hidden="true">
-          <I n="chev" cls="sm" />
-        </span>
-      </button>
-      {detail}
-    </li>
   );
 }
 
@@ -180,22 +102,100 @@ function AuditChanges({ entry }: { entry: AdminAuditLogEntry }) {
   );
 }
 
-function AuditSkeleton() {
+/** A linha aberta: motivo inteiro, alvo, quem fez, IP, e o antes e depois. Só é montada (e calculada) com a linha aberta. */
+function AuditDetail({ entry }: { entry: AdminAuditLogEntry }) {
+  const target = targetLink(entry.target);
+  const targetType = isAuditTargetType(entry.target.type) ? AUDIT_TARGET_LABEL[entry.target.type] : entry.target.type;
+  const workspace = entry.workspace;
+
   return (
-    <div role="status">
-      <span className="adm-sr">Carregando…</span>
-      {Array.from({ length: 6 }, (_, index) => (
-        <div className="adm-act-entry-skeleton" key={index} aria-hidden="true">
-          <div>
-            <AdminSkeleton height={16} width={`${46 - (index % 3) * 8}%`} />
-            <AdminSkeleton height={12} width="64%" style={{ marginTop: 8 }} />
-          </div>
-          <AdminSkeleton height={14} width={110} />
-        </div>
-      ))}
+    <div className="adm-act-entry-body" role="region" aria-label={`Detalhes: ${entry.action_label}`}>
+      <AdminKeyValueList
+        items={
+          [
+            { label: "Motivo", value: <span className="adm-act-reason-full">{entry.reason}</span> },
+            {
+              label: "Alvo",
+              value: (
+                <span>
+                  {targetType} ·{" "}
+                  {target ? (
+                    <AdminLink to={target} textLink>
+                      {targetText(entry.target)}
+                    </AdminLink>
+                  ) : (
+                    targetText(entry.target)
+                  )}
+                </span>
+              ),
+            },
+            {
+              label: "Workspace",
+              value: workspace ? (
+                <AdminLink to={{ to: "/admin/workspaces/$workspaceId", params: { workspaceId: workspace.id } }} textLink>
+                  {workspace.name}
+                </AdminLink>
+              ) : null,
+            },
+            {
+              label: "Feito por",
+              value: actorName(entry.actor),
+              hint: [entry.actor.email, actorRoleLabel(entry.actor.role)].filter(Boolean).join(" · "),
+            },
+            { label: "Quando", value: `${formatDateTime(entry.created_at)} (horário de São Paulo)` },
+            { label: "IP", value: entry.ip ?? "Não registrado" },
+            { label: "Registro", value: `Alteração nº ${entry.id}` },
+          ] satisfies AdminKeyValueItem[]
+        }
+      />
+      <AuditChanges entry={entry} />
     </div>
   );
 }
+
+const COLUMNS: readonly AdminTableColumn<AdminAuditLogEntry>[] = [
+  {
+    key: "action",
+    header: "Alteração",
+    width: "minmax(0, 1.4fr)",
+    primary: true,
+    cell: (entry) => {
+      const { workspace } = entry;
+      const showWorkspace = workspace && !(entry.target.label ?? "").includes(workspace.name);
+      return (
+        <div className="adm-act-what">
+          <b>{entry.action_label}</b>
+          <span className="adm-sub">
+            {targetText(entry.target)}
+            {showWorkspace ? ` · ${workspace.name}` : ""}
+          </span>
+        </div>
+      );
+    },
+  },
+  { key: "actor", header: "Feito por", width: "minmax(0, 0.9fr)", cell: (entry) => actorName(entry.actor) },
+  {
+    key: "reason",
+    header: "Motivo",
+    width: "minmax(0, 1.5fr)",
+    cell: (entry) => <span className="adm-act-reason-cell">{entry.reason}</span>,
+  },
+  {
+    key: "created_at",
+    header: "Quando",
+    width: "120px",
+    nowrap: true,
+    cell: (entry) => {
+      const [date, time] = formatDateTime(entry.created_at).split(" ");
+      return (
+        <time className="adm-act-when" dateTime={entry.created_at}>
+          <span>{date}</span>
+          {time ? <small>{time}</small> : null}
+        </time>
+      );
+    },
+  },
+];
 
 interface AuditLogProps {
   /** Página, filtros e período já prontos para `GET /admin/audit-log`. */
@@ -203,18 +203,16 @@ interface AuditLogProps {
   page: number;
   setPage: (page: number) => void;
   setPerPage: (perPage: number) => void;
-  /** Barra de filtros desta visão. */
-  filterBar: ReactNode;
   filtered: boolean;
   onClearFilters: () => void;
 }
 
 /**
  * Alterações administrativas: quem mudou o quê, quando e por quê (`platform_admin_action_log`), da mais recente
- * para a mais antiga. Cada alteração abre para mostrar o motivo, o antes/depois campo a campo, o impacto
- * registrado e o IP.
+ * para a mais antiga. Cada alteração abre (o botão do início da linha) para mostrar o motivo inteiro, o antes/depois
+ * campo a campo, o impacto registrado e o IP.
  */
-export function AuditLog({ params, page, setPage, setPerPage, filterBar, filtered, onClearFilters }: AuditLogProps) {
+export function AuditLog({ params, page, setPage, setPerPage, filtered, onClearFilters }: AuditLogProps) {
   const query = useAdminAuditLog(params);
   const entries = query.data?.data;
   const meta = query.data?.meta;
@@ -222,47 +220,32 @@ export function AuditLog({ params, page, setPage, setPerPage, filterBar, filtere
 
   return (
     <div className="adm-act-stack">
-      {filterBar}
+      <p className="adm-act-note">Toda mudança feita pelo time da plataforma em workspaces, membros e usuários, com o motivo informado. Abra uma linha para ver o antes e o depois.</p>
 
-      <AdminSection
-        flush
-        title="Alterações administrativas"
-        description="Toda mudança feita pelo time da plataforma em workspaces, membros e usuários, com o motivo informado. Abra uma linha para ver o antes e o depois."
-        className="adm-act-card"
-      >
-        {query.isLoading ? (
-          <AuditSkeleton />
-        ) : query.error && !entries ? (
-          <AdminErrorState compact error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />
-        ) : !entries || entries.length === 0 ? (
-          <AdminEmptyState
-            compact
-            title={filtered ? "Nenhuma alteração com estes filtros" : "Nenhuma alteração no período"}
-            description={filtered ? "Tente outra ação, outro alvo ou um período maior." : "Tente um período maior."}
-            action={
-              filtered ? (
-                <button type="button" className="btn out adm-btn-sm" onClick={onClearFilters}>
-                  Limpar filtros
-                </button>
-              ) : undefined
-            }
-          />
-        ) : (
-          <>
-            {query.error ? (
-              <div className="adm-act-alert">
-                <AdminErrorState compact error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />
-              </div>
-            ) : null}
-            <ol className="adm-act-audit" aria-label="Alterações administrativas" aria-busy={query.isFetching ? true : undefined}>
-              {entries.map((entry) => (
-                <AuditEntry key={entry.id} entry={entry} />
-              ))}
-            </ol>
-          </>
-        )}
-        {meta && meta.total > 0 ? (
-          <div className="adm-act-pager">
+      <AdminTable
+        caption="Alterações administrativas"
+        columns={COLUMNS}
+        rows={entries}
+        rowKey={(entry) => entry.id}
+        renderExpanded={(entry) => <AuditDetail entry={entry} />}
+        expandLabel={(entry) => `Detalhes: ${entry.action_label}, ${targetText(entry.target)}`}
+        loading={query.isLoading}
+        refreshing={query.isFetching && !query.isLoading}
+        error={query.error}
+        onRetry={() => void query.refetch()}
+        retrying={query.isFetching}
+        skeletonRows={6}
+        empty={{
+          title: filtered ? "Nenhuma alteração com estes filtros" : "Nenhuma alteração no período",
+          description: filtered ? "Tente outra ação, outro alvo ou um período maior." : "Tente um período maior.",
+          action: filtered ? (
+            <button type="button" className="btn out adm-btn-sm" onClick={onClearFilters}>
+              Limpar filtros
+            </button>
+          ) : undefined,
+        }}
+        footer={
+          meta && meta.total > 0 ? (
             <AdminPager
               page={meta.page}
               perPage={meta.per_page}
@@ -271,9 +254,9 @@ export function AuditLog({ params, page, setPage, setPerPage, filterBar, filtere
               onPerPageChange={setPerPage}
               disabled={query.isFetching}
             />
-          </div>
-        ) : null}
-      </AdminSection>
+          ) : undefined
+        }
+      />
     </div>
   );
 }

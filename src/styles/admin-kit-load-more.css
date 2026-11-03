@@ -1,0 +1,50 @@
+/*
+ * AdminLoadMore (`platform/admin-load-more.tsx`): contador + botão "Carregar mais" no pé de uma lista.
+ * Tudo sob `.pv`, prefixo `adm-lm`. Sem sombra; foco com o anel do kit (`--adm-ring`).
+ */
+
+.pv .adm-lm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  padding-top: 16px;
+}
+
+.pv .adm-lm-text {
+  color: var(--adm-text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+  border-radius: var(--adm-r-sm);
+}
+/* o contador recebe foco por código (quando o botão some na última página): o anel mostra onde o foco foi parar */
+.pv .adm-lm-text:focus { outline: none; }
+.pv .adm-lm-text:focus-visible { box-shadow: var(--adm-ring); }
+
+/* alvo de toque do kit; `aria-disabled` em vez de `disabled` para o botão manter o foco enquanto carrega */
+.pv .adm-lm .btn.adm-lm-btn { min-height: var(--adm-hit); height: auto; gap: 8px; }
+.pv .adm-lm .btn.adm-lm-btn:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+.pv .adm-lm .btn.adm-lm-btn[aria-disabled="true"] { opacity: .7; cursor: progress; pointer-events: none; }
+
+.pv .adm-lm-spin {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: adm-lm-spin .8s linear infinite;
+}
+@keyframes adm-lm-spin { to { transform: rotate(360deg); } }
+
+/* celular: contador em cima e botão na largura toda */
+@media (max-width: 560px) {
+  .pv .adm-lm { flex-direction: column; align-items: stretch; }
+  .pv .adm-lm .btn.adm-lm-btn { justify-content: center; }
+}
+
+/* sem giro: o arco fica parado e o texto "Carregando…" continua dizendo o estado */
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-lm-spin { animation: none; }
+}

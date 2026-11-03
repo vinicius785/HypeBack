@@ -25,7 +25,7 @@ vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
 import { AdminApiError } from "@/lib/admin/admin-client";
 import { currentSearch } from "@/test/render-admin-route";
 
-import { DUPLICATES_READ_ONLY_NOTE } from "./admin-creators-duplicates";
+import { CREATORS_READ_ONLY_NOTE } from "./creator-labels";
 import { DUPLICATE_GROUP, POSSIBLE_DUPLICATE_GROUP, pageOf } from "./creator-fixtures";
 import { renderCreators } from "./creator-test-utils";
 
@@ -35,9 +35,14 @@ function lastParams(): Record<string, unknown> {
   return calls.at(-1)?.[1] as Record<string, unknown>;
 }
 
+/** As linhas de dados da tabela (um grupo por linha), sem o cabeçalho. */
+function groupRows(): HTMLElement[] {
+  return within(screen.getByRole("table", { name: "Duplicados" })).getAllByRole("row").slice(1);
+}
+
 async function renderLoaded(url = "/admin/creators?tab=duplicates") {
   const view = renderCreators(url);
-  await screen.findByRole("article", { name: /E-mail: j\*\*\*@outlook\.test/ });
+  await screen.findByText("Júlio Borges Mendes");
   return view;
 }
 
@@ -58,43 +63,116 @@ describe("Duplicados: grupos", () => {
     expect(client.adminGetEnvelope).not.toHaveBeenCalled();
   });
 
-  it("a nota 'Somente leitura: nada é fundido ou alterado automaticamente' está sempre à vista", async () => {
+  it("o aviso 'Somente leitura: nada é fundido ou alterado automaticamente' está sempre à vista (no subtítulo da página, como nas outras abas)", async () => {
     await renderLoaded();
-    expect(DUPLICATES_READ_ONLY_NOTE).toBe("Somente leitura: nada é fundido ou alterado automaticamente.");
-    expect(screen.getByRole("note")).toHaveTextContent("Somente leitura: nada é fundido ou alterado automaticamente.");
+    expect(CREATORS_READ_ONLY_NOTE).toBe("Somente leitura: nada é fundido ou alterado automaticamente.");
+    expect(screen.getByText(/Somente leitura: nada é fundido ou alterado automaticamente\./)).toBeInTheDocument();
   });
 
-  it("cada grupo mostra o motivo, a confiança, o valor em comum (mascarado) e as contas envolvidas", async () => {
+  it("é uma AdminTable (papéis ARIA do kit) com um grupo por linha e as colunas Grupo, Confiança e Contas", async () => {
     await renderLoaded();
-    const card = screen.getByRole("article", { name: /E-mail: j\*\*\*@outlook\.test/ });
+    const table = screen.getByRole("table", { name: "Duplicados" });
+    expect(within(table).getAllByRole("columnheader")).toHaveLength(3);
+    for (const name of ["Grupo", "Confiança", "Contas"]) {
+      expect(within(table).getByRole("columnheader", { name: new RegExp(`^${name}`) })).toBeInTheDocument();
+    }
+    expect(groupRows()).toHaveLength(2);
+    // nada de tabela feita à mão dentro do cartão: só a do kit
+    expect(screen.getAllByRole("table")).toHaveLength(1);
+  });
 
-    expect(within(card).getByText("E-mail", { selector: ".adm-badge" })).toBeInTheDocument();
-    const confidence = within(card).getByText("Confiança alta");
-    expect(confidence).toHaveAttribute("title", expect.stringContaining("idêntico depois de normalizado"));
-    expect(within(card).getByText("j***@outlook.test", { selector: "code" })).toBeInTheDocument();
-    expect(within(card).getByText("2 contas")).toBeInTheDocument();
+  it("cada grupo mostra o motivo, o valor em comum (mascarado), a confiança e as contas envolvidas", async () => {
+    await renderLoaded();
+    const [email] = groupRows();
 
-    const table = within(card).getByRole("table");
-    const [, julio, camila] = within(table).getAllByRole("row");
+    expect(within(email).getByText("E-mail", { selector: ".adm-badge" })).toBeInTheDocument();
+    expect(within(email).getByText("j***@outlook.test", { selector: "code" })).toBeInTheDocument();
+    expect(within(email).getByText("2 contas")).toBeInTheDocument();
+    expect(within(email).getByText("Alta", { selector: ".adm-badge" })).toBeInTheDocument();
+
+    const accounts = within(email).getByRole("list", { name: /Contas do grupo E-mail: j\*\*\*@outlook\.test/ });
+    const [julio, camila] = within(accounts).getAllByRole("listitem");
     expect(julio).toHaveTextContent("Júlio Borges Mendes");
     expect(julio).toHaveTextContent("#1031");
     expect(julio).toHaveTextContent("j***@outlook.test");
-    expect(julio).toHaveTextContent("17/12/2024");
+    expect(julio).toHaveTextContent("Cadastrado em 17/12/2024");
+    expect(julio).toHaveTextContent("1 rede");
+    expect(julio).not.toHaveTextContent("1 redes");
+    expect(julio).toHaveTextContent("6 campanhas");
     expect(within(julio).queryByText("Conta externa")).not.toBeInTheDocument();
-    // redes e campanhas, nesta ordem
-    expect(within(julio).getAllByRole("cell").slice(-2).map((cell) => cell.textContent)).toEqual(["1", "6"]);
 
     expect(camila).toHaveTextContent("Camila Prado");
     expect(within(camila).getByText("Conta externa")).toBeInTheDocument();
-    expect(within(camila).getAllByRole("cell").slice(-2).map((cell) => cell.textContent)).toEqual(["0", "2"]);
+    expect(camila).toHaveTextContent("0 redes");
+    expect(camila).toHaveTextContent("2 campanhas");
+  });
+
+  it("o nome de cada conta leva ao usuário (/admin/users/:id) e é o link de texto do kit", async () => {
+    await renderLoaded();
+    const [email] = groupRows();
+    expect(within(email).getByRole("link", { name: "Júlio Borges Mendes" })).toHaveAttribute("href", "/admin/users/1031");
+    expect(within(email).getByRole("link", { name: "Camila Prado" })).toHaveAttribute("href", "/admin/users/1071");
+    expect(within(email).getByRole("link", { name: "Camila Prado" })).toHaveClass("adm-textlink");
+  });
+
+  it("cada dado da conta (id, e-mail, cadastro, redes, campanhas) é um trecho próprio separado por '·', para a linha quebrar entre eles no celular", async () => {
+    await renderLoaded();
+    const [email] = groupRows();
+    const [julio] = within(within(email).getByRole("list", { name: /Contas do grupo/ })).getAllByRole("listitem");
+    const facts = [...julio.querySelectorAll("[data-fact]")];
+    expect(facts.map((fact) => fact.getAttribute("data-fact"))).toEqual(["id", "email", "created", "networks", "campaigns"]);
+    expect(facts.map((fact) => fact.textContent)).toEqual([
+      "#1031",
+      "j***@outlook.test",
+      "Cadastrado em 17/12/2024",
+      "1 rede",
+      "6 campanhas",
+    ]);
+    expect(julio.querySelector("small")?.textContent).toBe(
+      "#1031 · j***@outlook.test · Cadastrado em 17/12/2024 · 1 rede · 6 campanhas",
+    );
+  });
+
+  it("o 'i' do cabeçalho 'Confiança' explica Alta e Possível em parágrafos do kit (nada de <p> dentro do balão)", async () => {
+    await renderLoaded();
+    const info = screen.getByRole("button", { name: "Como é calculado: Confiança" });
+    const description = document.getElementById(info.getAttribute("aria-describedby") ?? "");
+    expect(description?.querySelectorAll(".adm-info-p")).toHaveLength(2);
+    expect(description?.querySelector("p")).toBeNull();
+    expect(description).toHaveTextContent("Alta: o valor em comum é idêntico depois de normalizado.");
+    expect(description).toHaveTextContent("Possível: valor parecido ou sinal indireto, a confirmar.");
+  });
+
+  it("a confiança fora de 'Todas' conta como filtro: vira chip e 'Limpar filtros' devolve a 'Todas'", async () => {
+    const { router } = await renderLoaded();
+    expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Alta" }));
+    await waitFor(() => expect(lastParams()).toMatchObject({ confidence: "high" }));
+    expect(screen.getByRole("button", { name: "Remover filtro Confiança: Alta" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    await waitFor(() => expect(lastParams()).not.toHaveProperty("confidence"));
+    expect(currentSearch(router)).toEqual({ tab: "duplicates" });
+    expect(screen.getByRole("button", { name: "Todas" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("a confiança é explicada num 'i' do cabeçalho (nunca só em dica de mouse): alta e possível", async () => {
+    await renderLoaded();
+    const info = screen.getByRole("button", { name: "Como é calculado: Confiança" });
+    expect(info).toHaveAccessibleDescription(expect.stringContaining("idêntico depois de normalizado"));
+    expect(info).toHaveAccessibleDescription(expect.stringContaining("parecido"));
+    expect(screen.getByRole("button", { name: "Como é calculado: Contas" })).toHaveAccessibleDescription(
+      "Conta criada por convite e nunca assumida pela pessoa.",
+    );
   });
 
   it("confiança 'possível' tem o próprio rótulo e o motivo 'Rede social'", async () => {
     await renderLoaded();
-    const card = screen.getByRole("article", { name: /Rede social/ });
-    expect(within(card).getByText("Rede social")).toBeInTheDocument();
-    expect(within(card).getByText("Confiança possível")).toHaveAttribute("title", expect.stringContaining("parecido"));
-    expect(within(card).queryByText("Confiança alta")).not.toBeInTheDocument();
+    const social = groupRows()[1];
+    expect(within(social).getByText("Rede social", { selector: ".adm-badge" })).toBeInTheDocument();
+    expect(within(social).getByText("Possível", { selector: ".adm-badge" })).toBeInTheDocument();
+    expect(within(social).queryByText("Alta", { selector: ".adm-badge" })).not.toBeInTheDocument();
   });
 
   it("cada motivo do contrato tem o seu nome em português", async () => {
@@ -106,14 +184,16 @@ describe("Duplicados: grupos", () => {
     }));
     client.adminList.mockImplementation(async () => pageOf(groups));
     renderCreators("/admin/creators?tab=duplicates");
-    await screen.findByRole("article", { name: /valor 4/ });
-    const names = screen.getAllByRole("article").map((card) => card.getAttribute("aria-label"));
+    await screen.findByText("valor 4");
+    const names = within(screen.getByRole("table", { name: "Duplicados" }))
+      .getAllByRole("list")
+      .map((list) => list.getAttribute("aria-label"));
     expect(names).toEqual([
-      "E-mail: valor 0",
-      "Telefone: valor 1",
-      "Documento: valor 2",
-      "Rede social: valor 3",
-      "Conflito de identidade: valor 4",
+      "Contas do grupo E-mail: valor 0",
+      "Contas do grupo Telefone: valor 1",
+      "Contas do grupo Documento: valor 2",
+      "Contas do grupo Rede social: valor 3",
+      "Contas do grupo Conflito de identidade: valor 4",
     ]);
   });
 });
@@ -125,6 +205,8 @@ describe("Duplicados: somente leitura", () => {
     expect(
       within(panel).queryByRole("button", { name: /fundir|mesclar|unir|merge|excluir|apagar|remover|editar|manter|descartar/i }),
     ).not.toBeInTheDocument();
+    // o único botão de ação é o de atualizar (refaz a leitura)
+    expect(within(panel).getByRole("button", { name: "Atualizar" })).toHaveAttribute("data-icon-only", "true");
     expect(client.adminPost).not.toHaveBeenCalled();
     expect(client.adminPatch).not.toHaveBeenCalled();
   });
@@ -155,6 +237,12 @@ describe("Duplicados: filtros e paginação", () => {
     await waitFor(() => expect(lastParams()).not.toHaveProperty("confidence"));
   });
 
+  it("o motivo fica na linha da barra, à vista (não escondido em 'Filtros'), e 'Filtros' nem existe nesta aba", async () => {
+    await renderLoaded();
+    expect(screen.getByLabelText("Motivo").closest(".adm-filters-inline")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: /^Filtros/ })).not.toBeInTheDocument();
+  });
+
   it("os motivos oferecidos são os do contrato", async () => {
     await renderLoaded();
     const select = screen.getByLabelText("Motivo") as HTMLSelectElement;
@@ -173,20 +261,20 @@ describe("Duplicados: filtros e paginação", () => {
       pageOf([DUPLICATE_GROUP], { page: Number(params.page), per_page: Number(params.per_page), total: 40, total_pages: 4 }),
     );
     renderCreators("/admin/creators?tab=duplicates&reason=document&confidence=possible&page=2");
-    await screen.findByRole("article");
+    await screen.findByText("Júlio Borges Mendes");
     expect(lastParams()).toEqual({ page: 2, per_page: 10, reason: "document", confidence: "possible" });
     expect(screen.getByLabelText("Motivo")).toHaveValue("document");
     expect(screen.getByRole("button", { name: "Possível" })).toHaveAttribute("aria-pressed", "true");
     cleanup();
 
     renderCreators("/admin/creators?tab=duplicates&reason=nome&confidence=baixa&sort_by=name");
-    await screen.findByRole("article");
+    await screen.findByText("Júlio Borges Mendes");
     expect(lastParams()).toEqual({ page: 1, per_page: 10 });
   });
 
   it("filtro de outra aba na URL não vaza para esta (rede, cadastro, ordenação)", async () => {
     renderCreators("/admin/creators?tab=duplicates&network=tiktok&registration=stub&sort_by=followers");
-    await screen.findByRole("article", { name: /E-mail/ });
+    await screen.findByText("Júlio Borges Mendes");
     expect(lastParams()).toEqual({ page: 1, per_page: 10 });
   });
 
@@ -210,23 +298,25 @@ describe("Duplicados: filtros e paginação", () => {
 });
 
 describe("Duplicados: estados", () => {
-  it("primeira carga: esqueleto, aviso para leitor de tela e a nota de somente leitura já à vista", async () => {
+  it("primeira carga: esqueleto, aviso para leitor de tela e o aviso de somente leitura já à vista; sem paginador", async () => {
     client.adminList.mockImplementation(() => new Promise(() => {}));
-    renderCreators("/admin/creators?tab=duplicates");
-    expect(await screen.findByRole("status")).toHaveTextContent("Carregando…");
-    expect(screen.getByRole("note")).toHaveTextContent("Somente leitura");
-    expect(screen.queryByRole("article")).not.toBeInTheDocument();
+    const { container } = renderCreators("/admin/creators?tab=duplicates");
+    expect(await screen.findByText("Carregando…")).toBeInTheDocument();
+    expect(screen.getByText(/Somente leitura/)).toBeInTheDocument();
+    expect(container.querySelectorAll(".adm-row .adm-sk").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Júlio Borges Mendes")).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Paginação" })).not.toBeInTheDocument();
   });
 
-  it("erro: mostra o motivo e 'Tentar de novo' consulta outra vez; a nota continua à vista", async () => {
+  it("erro: mostra o motivo e 'Tentar de novo' consulta outra vez; o aviso continua à vista", async () => {
     client.adminList.mockRejectedValue(new AdminApiError({ status: 500, code: "SERVER_ERROR", message: "O servidor teve um problema. Tente novamente em instantes." }));
     renderCreators("/admin/creators?tab=duplicates");
     expect(await screen.findByRole("alert")).toHaveTextContent("O servidor teve um problema");
-    expect(screen.getByRole("note")).toBeInTheDocument();
+    expect(screen.getByText(/Somente leitura/)).toBeInTheDocument();
 
     client.adminList.mockImplementation(async () => pageOf([DUPLICATE_GROUP]));
     await userEvent.click(screen.getByRole("button", { name: /Tentar de novo/ }));
-    expect(await screen.findByRole("article", { name: /E-mail/ })).toBeInTheDocument();
+    expect(await screen.findByText("Júlio Borges Mendes")).toBeInTheDocument();
   });
 
   it("o servidor ainda não tem a rota: diz isso", async () => {
@@ -237,11 +327,11 @@ describe("Duplicados: estados", () => {
     expect(alert).toHaveTextContent("Este recurso ainda não está disponível no servidor.");
   });
 
-  it("nenhum duplicado: diz isso; com filtro, oferece 'Mostrar todos os grupos'", async () => {
+  it("nenhum duplicado: diz isso; com filtro, oferece 'Limpar filtros'", async () => {
     client.adminList.mockImplementation(async () => pageOf([]));
     const first = renderCreators("/admin/creators?tab=duplicates");
     expect(await screen.findByText("Nenhum duplicado encontrado")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Mostrar todos os grupos" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
     first.unmount();
 
     client.adminList.mockImplementation(async (_path: string, params: Record<string, unknown>) =>
@@ -249,8 +339,10 @@ describe("Duplicados: estados", () => {
     );
     const { router } = renderCreators("/admin/creators?tab=duplicates&reason=phone");
     expect(await screen.findByText("Nenhum grupo com estes filtros")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Mostrar todos os grupos" }));
-    expect(await screen.findByRole("article", { name: /E-mail/ })).toBeInTheDocument();
+    // a barra tem o seu "Limpar filtros" e o estado vazio, o dele: os dois fazem o mesmo
+    expect(screen.getAllByRole("button", { name: "Limpar filtros" })).toHaveLength(2);
+    await userEvent.click(screen.getAllByRole("button", { name: "Limpar filtros" }).at(-1)!);
+    expect(await screen.findByText("Júlio Borges Mendes")).toBeInTheDocument();
     expect(currentSearch(router)).toEqual({ tab: "duplicates" });
   });
 });

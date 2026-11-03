@@ -14,6 +14,7 @@ vi.mock("@/lib/admin/admin-client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/admin/admin-client")>()),
   ...api,
 }));
+// o `adminToast` do kit é quem fala com o `sonner`: o aviso chega com o texto e as opções (duração)
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import { toast } from "sonner";
@@ -148,7 +149,7 @@ describe("WorkspaceEditDialog · envio", () => {
     expect(patch().path).toBe(`/admin/workspaces/${WS_ID}`);
     expect(patch().body).toEqual({ reason: "Cliente trocou o nome fantasia", name: "Café Novo" });
     expect(patch().key).toMatch(UUID_V4);
-    expect(toast.success).toHaveBeenCalledWith("Dados do workspace atualizados.");
+    expect(toast.success).toHaveBeenCalledWith("Dados do workspace atualizados.", expect.anything());
     expect(client.getQueryData(workspaceDetailKey(WS_ID))).toEqual(UPDATED);
   });
 
@@ -332,7 +333,7 @@ describe("WorkspaceEditDialog · erros do servidor", () => {
     await userEvent.click(save());
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/estado do workspace mudou/));
+    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/estado do workspace mudou/), expect.anything());
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["admin", "platform"] });
   });
 

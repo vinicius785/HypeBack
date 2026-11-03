@@ -119,28 +119,3 @@ export function resolvePeriod(raw: { from?: unknown; to?: unknown }, today: stri
   if (from > to || periodDays(period) > PERIOD_MAX_DAYS) return defaultPeriod(today);
   return period;
 }
-
-/**
- * Edição dos campos de data do período personalizado. Devolve sempre um período válido: o outro limite
- * acompanha quando o intervalo ficaria invertido ou passaria de 366 dias, e nada passa de hoje.
- */
-export function adjustCustomRange(
-  change: { from?: string; to?: string },
-  current: AdminDateRange,
-  today: string,
-): AdminDateRange {
-  const cap = (date: string) => (date > today ? today : date);
-  if (change.from !== undefined && isCivilDate(change.from)) {
-    const from = cap(change.from);
-    let to = current.to < from ? from : current.to;
-    if (periodDays({ from, to }) > PERIOD_MAX_DAYS) to = cap(addCivilDays(from, PERIOD_MAX_DAYS - 1));
-    return { from, to };
-  }
-  if (change.to !== undefined && isCivilDate(change.to)) {
-    const to = cap(change.to);
-    let from = current.from > to ? to : current.from;
-    if (periodDays({ from, to }) > PERIOD_MAX_DAYS) from = addCivilDays(to, -(PERIOD_MAX_DAYS - 1));
-    return { from, to };
-  }
-  return current;
-}

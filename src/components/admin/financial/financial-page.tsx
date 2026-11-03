@@ -1,17 +1,22 @@
 import { useCallback } from "react";
-import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { I } from "@/components/prototype/ui";
-import { AdminPage, AdminPageHeader, AdminTabPanel, AdminTabs, type AdminTabItem } from "@/components/admin/platform";
-import { adminKeys } from "@/hooks/admin/admin-query-keys";
-import { ADMIN_FINANCIAL_RESOURCE } from "@/hooks/admin/use-admin-financial";
+import {
+  AdminInfoPopover,
+  AdminPage,
+  AdminPageHeader,
+  AdminTabPanel,
+  AdminTabs,
+  type AdminTabItem,
+} from "@/components/admin/platform";
 import { useAdminFinancialPeriod } from "@/hooks/admin/use-admin-financial-period";
 
 import { FinancialByWorkspace } from "./financial-by-workspace";
 import { FinancialMovements } from "./financial-movements";
+import { FINANCIAL_READING_HELP } from "./financial-model";
 import { FinancialOverview } from "./financial-overview";
-import { FinancialPeriodSelect } from "./financial-period-select";
+import { FinancialPeriodControl } from "./financial-period-control";
+import { FinancialRefreshButton } from "./financial-refresh";
 import { FINANCIAL_TAB_LABEL, FINANCIAL_TABS, readFinancialTab, type FinancialTab } from "./financial-search";
 
 import "@/styles/admin-financial.css";
@@ -48,36 +53,37 @@ function useFinancialTab(): [FinancialTab, (tab: FinancialTab) => void] {
 
 /**
  * Financeiro global (`/admin/financial`): visão geral dos números, movimentações e distribuição por workspace.
- * O período (dias de São Paulo) e a aba ficam na URL e valem para as três abas.
+ * O período (dias de São Paulo) e a aba ficam na URL e valem para as três abas. O período é um só, no cabeçalho;
+ * "Atualizar" é o ícone no fim da barra de filtros das listas e, na visão geral (que não tem barra), fica ao lado
+ * do período.
  */
 export function FinancialPage() {
   const [tab, setTab] = useFinancialTab();
   const { period, today, preset, setPeriod } = useAdminFinancialPeriod();
-  const queryClient = useQueryClient();
-  const fetching = useIsFetching({ queryKey: adminKeys.resource(ADMIN_FINANCIAL_RESOURCE) }) > 0;
 
   return (
     <AdminPage>
       <AdminPageHeader
         title="Financeiro"
-        subtitle="O dinheiro que passa pela plataforma: aportes dos clientes, custódia, repasses aos criadores e conferências."
+        subtitle={
+          <>
+            O dinheiro que passa pela plataforma: aportes dos clientes, custódia, repasses aos criadores e conferências.{" "}
+            <AdminInfoPopover prefix="Como ler" label="Liberado e pago">
+              {FINANCIAL_READING_HELP.map((text) => (
+                <AdminInfoPopover.Paragraph key={text}>{text}</AdminInfoPopover.Paragraph>
+              ))}
+            </AdminInfoPopover>
+          </>
+        }
         actions={
-          <button
-            type="button"
-            className="btn out adm-btn-sm adm-fin-refresh"
-            disabled={fetching}
-            aria-busy={fetching ? true : undefined}
-            onClick={() => void queryClient.invalidateQueries({ queryKey: adminKeys.resource(ADMIN_FINANCIAL_RESOURCE) })}
-          >
-            <I n="refresh" cls="sm" />
-            {fetching ? "Atualizando…" : "Atualizar"}
-          </button>
+          <div className="adm-fin-tools">
+            <FinancialPeriodControl period={period} today={today} preset={preset} onChange={setPeriod} />
+            {tab === "overview" ? <FinancialRefreshButton /> : null}
+          </div>
         }
       />
 
       <AdminTabs tabs={TAB_ITEMS} value={tab} onChange={setTab} ariaLabel="Seções do financeiro" idPrefix={TAB_PREFIX} />
-
-      <FinancialPeriodSelect period={period} today={today} preset={preset} onChange={setPeriod} />
 
       <AdminTabPanel idPrefix={TAB_PREFIX} id="overview" active={tab === "overview"}>
         <FinancialOverview period={period} />

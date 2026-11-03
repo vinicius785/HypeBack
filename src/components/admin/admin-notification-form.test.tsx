@@ -8,11 +8,15 @@
  * - o agendamento, que dá para cancelar, ficar atrás de confirmação.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+// Digitar o conteúdo tecla a tecla é lento quando o computador está ocupado (todo o conjunto de testes em paralelo).
+vi.setConfig({ testTimeout: 20_000 });
 
 const createMutate = vi.fn();
 const estimateMutate = vi.fn();
+const sendingState = vi.hoisted(() => ({ pending: false }));
 const onClose = vi.fn();
 const toastError = vi.fn();
 const toastSuccess = vi.fn();
@@ -27,7 +31,7 @@ vi.mock("sonner", () => ({
 vi.mock("@/hooks/use-admin-notifications", () => ({
   useCreateAdminNotification: () => ({
     mutateAsync: createMutate,
-    isPending: false,
+    isPending: sendingState.pending,
   }),
   useEstimateAdminAudience: () => ({ mutateAsync: estimateMutate }),
   useAdminCampaignLookup: () => ({ data: [], isLoading: false }),
@@ -78,6 +82,7 @@ describe("AdminNotificationForm — envio", () => {
       by_channel: { push: 1200 },
     });
     onClose.mockReset();
+    sendingState.pending = false;
     toastError.mockReset();
     toastSuccess.mockReset();
   });
@@ -116,7 +121,7 @@ describe("AdminNotificationForm — envio", () => {
       },
       idempotencyKey: expect.stringMatching(UUID_RE),
     });
-    expect(toastSuccess).toHaveBeenCalledWith("Notificação enviada para a fila.");
+    expect(toastSuccess).toHaveBeenCalledWith("Notificação enviada para a fila.", expect.anything());
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -128,8 +133,9 @@ describe("AdminNotificationForm — envio", () => {
 
     await user.click(footerButton("Enviar agora"));
     await user.click(screen.getByRole("button", { name: "Confirmar envio" }));
+    // Erro técnico (sem status) nunca vai cru para a tela: o aviso é a frase do kit.
     await waitFor(() =>
-      expect(toastError).toHaveBeenCalledWith("Failed to fetch"),
+      expect(toastError).toHaveBeenCalledWith("Não foi possível criar a notificação.", expect.anything()),
     );
 
     // Continua na confirmação, pronto para tentar de novo.
@@ -173,7 +179,7 @@ describe("AdminNotificationForm — envio", () => {
     expect(createMutate.mock.calls[0][0].payload.scheduled_at).toEqual(
       expect.any(String),
     );
-    expect(toastSuccess).toHaveBeenCalledWith("Envio agendado.");
+    expect(toastSuccess).toHaveBeenCalledWith("Envio agendado.", expect.anything());
   });
 
   it("trocar para agendamento fecha a confirmação do envio imediato", async () => {
@@ -206,5 +212,128 @@ describe("AdminNotificationForm — envio", () => {
     await user.keyboard("{Escape}");
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("AdminNotificationForm — diálogo", () => {
+  beforeEach(() => {
+    createMutate.mockReset().mockResolvedValue({ id: "n-1" });
+    estimateMutate.mockReset().mockResolvedValue({ total_recipients: 1200, by_channel: { push: 1200 } });
+    onClose.mockReset();
+    sendingState.pending = false;
+    document.body.style.overflow = "";
+  });
+
+  it("é um diálogo modal nomeado pelo título, com o foco no primeiro campo e a rolagem da página travada", async () => {
+    render(<AdminNotificationForm onClose={onClose} />);
+
+    const dialog = screen.getByRole("dialog", { name: "Nova notificação" });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    await waitFor(() => expect(screen.getByLabelText("Título")).toHaveFocus());
+    expect(document.body.style.overflow).toBe("hidden");
+  });
+
+  it("os campos têm rótulo de verdade e o erro do campo vira a descrição dele", async () => {
+    const user = userEvent.setup();
+    render(<AdminNotificationForm onClose={onClose} />);
+
+    expect(screen.getByLabelText("Mensagem")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Link ao tocar/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Continuar/ }));
+
+    const title = screen.getByLabelText("Título");
+    expect(title).toHaveAttribute("aria-invalid", "true");
+    expect(title).toHaveAccessibleDescription("Escreva um título");
+  });
+
+  it("o passo atual é anunciado (aria-current=step)", async () => {
+    const user = userEvent.setup();
+    render(<AdminNotificationForm onClose={onClose} />);
+    await goToSendStep(user);
+
+    const steps = screen.getByRole("group", { name: "Passos da notificação" });
+    const buttons = within(steps).getAllByRole("button");
+    expect(buttons[2]).toHaveAttribute("aria-current", "step");
+    expect(buttons[0]).not.toHaveAttribute("aria-current");
+  });
+
+  it("o resumo de alcance é uma região viva (polite)", async () => {
+    const user = userEvent.setup();
+    render(<AdminNotificationForm onClose={onClose} />);
+    await user.type(screen.getByPlaceholderText(/Nova campanha aberta/), "Aviso");
+    await user.type(screen.getByPlaceholderText(/Escreva o que os criadores vão ler/), "Texto");
+    await user.click(screen.getByRole("button", { name: /Continuar/ }));
+
+    // O número também aparece no resumo da prévia; a região viva é a do bloco de alcance.
+    const matches = await screen.findAllByText("1.200 criadores");
+    const reach = matches.map((el) => el.closest("[aria-live]")).find(Boolean);
+    expect(reach).toHaveAttribute("aria-live", "polite");
+  });
+
+  it("clique no fundo fecha o formulário vazio, mas não quando há algo digitado (Esc e Fechar continuam fechando)", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<AdminNotificationForm onClose={onClose} />);
+    await user.click(document.querySelector(".ovb") as HTMLElement);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    unmount();
+
+    onClose.mockReset();
+    render(<AdminNotificationForm onClose={onClose} />);
+    await user.type(screen.getByPlaceholderText(/Nova campanha aberta/), "Aviso");
+    await user.click(document.querySelector(".ovb") as HTMLElement);
+    expect(onClose).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it("duplicar: o que veio preenchido não conta como digitado; mexer em algo conta", async () => {
+    const user = userEvent.setup();
+    render(
+      <AdminNotificationForm
+        onClose={onClose}
+        initial={{ title: "Aviso", body: "Texto", ctaUrl: "", channels: ["push"], audience: { type: "all" } }}
+      />,
+    );
+    await user.click(document.querySelector(".ovb") as HTMLElement);
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    onClose.mockReset();
+    await user.type(screen.getByPlaceholderText(/Nova campanha aberta/), "!");
+    await user.click(document.querySelector(".ovb") as HTMLElement);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("gravando, os botões de passo ficam desabilitados", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<AdminNotificationForm onClose={onClose} />);
+    await goToSendStep(user);
+    const steps = screen.getByRole("group", { name: "Passos da notificação" });
+    expect(within(steps).getAllByRole("button")[0]).toBeEnabled();
+
+    sendingState.pending = true;
+    rerender(<AdminNotificationForm onClose={onClose} />);
+
+    for (const button of within(steps).getAllByRole("button")) expect(button).toBeDisabled();
+  });
+
+  it("Esc fecha; gravando, Esc, o fundo e o botão de fechar não fecham", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<AdminNotificationForm onClose={onClose} />);
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    onClose.mockReset();
+    sendingState.pending = true;
+    rerender(<AdminNotificationForm onClose={onClose} />);
+
+    const dialog = screen.getByRole("dialog", { name: "Nova notificação" });
+    expect(dialog).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("button", { name: "Fechar" })).toBeDisabled();
+    await user.keyboard("{Escape}");
+    await user.click(document.querySelector(".ovb") as HTMLElement);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

@@ -1,11 +1,11 @@
 import {
   AdminEmptyState,
-  AdminEntityCell,
   AdminErrorState,
   AdminFigureCard,
   AdminFigureGrid,
   AdminKeyValueList,
   AdminLink,
+  AdminNotFound,
   AdminPage,
   AdminPageHeader,
   AdminSection,
@@ -88,7 +88,12 @@ function ScheduleSection({ campaign }: { campaign: AdminCampaignDetailData }) {
   );
 }
 
+/**
+ * Resumo: só o que o cabeçalho não diz (o workspace, o pagamento e a criação já estão lá). O responsável é o do
+ * workspace: a campanha não tem dono próprio no banco, e a definição diz isso.
+ */
 function SummarySection({ campaign }: { campaign: AdminCampaignDetailData }) {
+  const owner = campaign.workspace_owner;
   return (
     <AdminSection title="Resumo">
       <AdminKeyValueList
@@ -101,6 +106,12 @@ function SummarySection({ campaign }: { campaign: AdminCampaignDetailData }) {
           },
           { label: "Mural", value: campaign.mural_active ? "Ativo" : "Inativo" },
           { label: "Vagas para criadores", value: formatInt(campaign.max_influencers) },
+          {
+            label: "Responsável do workspace",
+            value: owner?.name ?? "Sem proprietário",
+            hint: owner?.email,
+            definition: CAMPAIGN_COLUMN_DEFINITIONS.owner,
+          },
         ]}
       />
       <div className="adm-campaigns-desc">
@@ -111,90 +122,61 @@ function SummarySection({ campaign }: { campaign: AdminCampaignDetailData }) {
   );
 }
 
-const FIGURE_LABELS = ["Comprometido", "Liberado a criadores", "Pago via PIX", "Orçamento"] as const;
+const FIGURE_LABELS = ["Comprometido", "Liberado a criadores", "Pago via PIX"] as const;
 
+/** Os três números do contrato. O orçamento (`budget`) não aparece: o banco não o guarda e a API devolve sempre "não apurado". */
 function FinancialSection({ campaign }: { campaign: AdminCampaignDetailData }) {
   const { figures } = campaign;
-  const [committed, released, paidPix, budget] = FIGURE_LABELS;
+  const [committed, released, paidPix] = FIGURE_LABELS;
   return (
     <AdminSection title="Financeiro" description="Reservas, liberações e PIX concluídos desta campanha.">
-      <AdminFigureGrid>
+      <AdminFigureGrid quiet>
         <AdminFigureCard variant="plain" label={committed} figure={figures.committed} />
         <AdminFigureCard variant="plain" label={released} figure={figures.released} />
         <AdminFigureCard variant="plain" label={paidPix} figure={figures.paid_pix} />
-        <AdminFigureCard variant="plain" label={budget} figure={campaign.budget} />
       </AdminFigureGrid>
     </AdminSection>
   );
 }
 
-function WorkspaceSection({ campaign }: { campaign: AdminCampaignDetailData }) {
-  const { workspace, workspace_owner: owner } = campaign;
-  return (
-    <AdminSection
-      title="Workspace"
-      actions={
-        <AdminLink to={campaignWorkspaceLink(workspace.id)} className="btn out adm-btn-sm">
-          Ver workspace
-        </AdminLink>
-      }
-    >
-      <div className="adm-campaigns-wscard">
-        <AdminEntityCell name={workspace.name} shape="square" size={44} />
-        {workspace.status !== "active" ? <AdminStatusBadge kind="workspace" value={workspace.status} /> : null}
-      </div>
-      <AdminKeyValueList
-        items={[
-          {
-            label: "Proprietário do workspace",
-            value: owner?.name ?? "Sem proprietário",
-            hint: owner?.email,
-            definition: CAMPAIGN_COLUMN_DEFINITIONS.owner,
-          },
-        ]}
-      />
-    </AdminSection>
-  );
-}
-
+/** Mesma anatomia do cabeçalho carregado (banner, título e linha de apoio), para a página não saltar ao chegar. */
 function DetailSkeleton() {
   return (
-    <>
+    <AdminPage>
+      <AdminPageHeader
+        breadcrumb={[{ label: "Campanhas", to: campaignsListLink() }, { label: "Campanha" }]}
+        leading={<AdminSkeleton width={160} height={64} radius="var(--adm-r-sm)" />}
+        title={<AdminSkeleton width={320} height={32} radius={10} />}
+        meta={<AdminSkeleton width={340} height={14} />}
+      />
       <span className="adm-sr" role="status">
         Carregando campanha…
       </span>
       <AdminSection>
-        <AdminFigureGrid>
+        <AdminSkeletonLines lines={5} />
+      </AdminSection>
+      <AdminSection>
+        <AdminFigureGrid quiet>
           {FIGURE_LABELS.map((label) => (
             <AdminFigureCard key={label} variant="plain" label={label} loading />
           ))}
         </AdminFigureGrid>
       </AdminSection>
       <div className="adm-campaigns-grid">
-        <div className="adm-campaigns-col">
-          <AdminSection>
-            <AdminSkeletonLines lines={5} />
-          </AdminSection>
-          <AdminSection>
-            <AdminSkeletonLines lines={3} />
-          </AdminSection>
-        </div>
-        <div className="adm-campaigns-col">
-          <AdminSection>
-            <AdminSkeletonLines lines={4} />
-          </AdminSection>
-          <AdminSection>
-            <AdminSkeletonLines lines={2} />
-          </AdminSection>
-        </div>
+        <AdminSection>
+          <AdminSkeletonLines lines={4} />
+        </AdminSection>
+        <AdminSection>
+          <AdminSkeletonLines lines={3} />
+        </AdminSection>
       </div>
-    </>
+    </AdminPage>
   );
 }
 
 /**
  * Detalhe de uma campanha (`/admin/campaigns/:campaignId`): cabeçalho com banner, estado, workspace e pagamento;
- * financeiro (os números com a definição de cada um), resumo, cronograma, participações por status e o workspace.
+ * resumo, financeiro (os números com a definição de cada um), cronograma e participações por status.
  * Só leitura.
  */
 export function AdminCampaignDetail({ campaignId }: { campaignId: string }) {
@@ -203,30 +185,14 @@ export function AdminCampaignDetail({ campaignId }: { campaignId: string }) {
   const back = [{ label: "Campanhas", to: campaignsListLink() }] as const;
 
   if (!campaign) {
-    const notFound = isAdminApiError(query.error, "NOT_FOUND");
+    if (!query.isError) return <DetailSkeleton />;
     return (
       <AdminPage>
-        <AdminPageHeader
-          breadcrumb={[...back, { label: "Campanha" }]}
-          title={query.isError ? "Campanha" : <AdminSkeleton width={320} height={32} radius={10} />}
-        />
-        {query.isError ? (
-          notFound ? (
-            <AdminEmptyState
-              boxed
-              title="Campanha não encontrada"
-              description="Ela pode ter sido excluída, ou o endereço está incorreto."
-              action={
-                <AdminLink to={campaignsListLink()} className="btn out adm-btn-sm">
-                  Voltar para campanhas
-                </AdminLink>
-              }
-            />
-          ) : (
-            <AdminErrorState boxed error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />
-          )
+        <AdminPageHeader breadcrumb={[...back, { label: "Campanha" }]} title="Campanha" />
+        {isAdminApiError(query.error, "NOT_FOUND") ? (
+          <AdminNotFound entity="campanha" backTo={campaignsListLink()} backLabel="Voltar para campanhas" />
         ) : (
-          <DetailSkeleton />
+          <AdminErrorState boxed error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />
         )}
       </AdminPage>
     );
@@ -245,11 +211,9 @@ export function AdminCampaignDetail({ campaignId }: { campaignId: string }) {
           <>
             <span>
               Workspace:{" "}
-              <b>
-                <AdminLink to={campaignWorkspaceLink(workspace.id)} className="adm-campaigns-link">
-                  {workspace.name}
-                </AdminLink>
-              </b>{" "}
+              <AdminLink to={campaignWorkspaceLink(workspace.id)} textLink>
+                {workspace.name}
+              </AdminLink>{" "}
               {workspace.status !== "active" ? <AdminStatusBadge kind="workspace" value={workspace.status} size="sm" /> : null}
             </span>
             <span>
@@ -262,17 +226,12 @@ export function AdminCampaignDetail({ campaignId }: { campaignId: string }) {
         }
       />
 
+      <SummarySection campaign={campaign} />
       <FinancialSection campaign={campaign} />
 
       <div className="adm-campaigns-grid">
-        <div className="adm-campaigns-col">
-          <SummarySection campaign={campaign} />
-          <ScheduleSection campaign={campaign} />
-        </div>
-        <div className="adm-campaigns-col">
-          <ParticipationsSection campaign={campaign} />
-          <WorkspaceSection campaign={campaign} />
-        </div>
+        <ScheduleSection campaign={campaign} />
+        <ParticipationsSection campaign={campaign} />
       </div>
     </AdminPage>
   );

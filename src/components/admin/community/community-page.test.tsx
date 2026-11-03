@@ -74,13 +74,18 @@ describe("CommunityPage: abre na comunidade padrão", () => {
     expect(await screen.findByText("Gravei um vídeo novo hoje!")).toBeInTheDocument();
   });
 
-  it("no Feed não busca os grupos e o botão do cabeçalho é Atualizar (e não Criar grupo)", async () => {
+  it("no Feed não busca os grupos e o cabeçalho não tem ação nenhuma (Atualizar mora na barra do Feed)", async () => {
     renderPage();
     await screen.findByText("Gravei um vídeo novo hoje!");
 
     expect(groups.list).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Atualizar" })).toBeInTheDocument();
+    const header = screen.getByRole("banner");
+    expect(within(header).queryByRole("button")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Criar grupo" })).not.toBeInTheDocument();
+    // "Atualizar" é um ícone no fim da barra de filtros, não um botão de texto do cabeçalho.
+    const refresh = screen.getByRole("button", { name: "Atualizar" });
+    expect(refresh.closest(".adm-filters")).not.toBeNull();
+    expect(refresh).toHaveTextContent("");
   });
 
   it("Atualizar busca o feed de novo", async () => {
@@ -127,14 +132,25 @@ describe("CommunityPage: a função dos grupos continua aqui", () => {
     expect(currentSearch(router).tab).toBeUndefined();
   });
 
-  it("o subtítulo acompanha a aba", async () => {
+  it("o subtítulo é fixo: não muda com a aba", async () => {
     renderPage();
     await screen.findByText("Gravei um vídeo novo hoje!");
-    expect(screen.getByText(/dentro e fora dos grupos/)).toBeInTheDocument();
+    const subtitle = screen.getByRole("banner").querySelector(".adm-head-sub")?.textContent;
+    expect(subtitle).toMatch(/publicam no app e os grupos deles/);
 
     await userEvent.click(tab("Grupos"));
+    await screen.findByText("Moda e Estilo");
 
-    expect(await screen.findByText(/Grupos dos criadores no app/)).toBeInTheDocument();
+    expect(screen.getByRole("banner").querySelector(".adm-head-sub")?.textContent).toBe(subtitle);
+  });
+
+  it("o cabeçalho só tem a ação primária da aba: Criar grupo nos Grupos, nenhuma no Feed", async () => {
+    renderPage("/admin/groups?tab=groups");
+    await screen.findByText("Moda e Estilo");
+
+    const buttons = within(screen.getByRole("banner")).getAllByRole("button");
+    expect(buttons.map((b) => b.textContent)).toEqual(["Criar grupo"]);
+    expect(screen.queryByRole("button", { name: "Atualizar" })).not.toBeInTheDocument();
   });
 
   it("Criar grupo leva ao diálogo de novo grupo", async () => {

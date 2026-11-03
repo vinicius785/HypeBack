@@ -47,8 +47,9 @@ interface CopyValueProps {
 }
 
 /**
- * Identificador que se copia com um clique (ids de origem das movimentações, para rastrear). O valor completo
- * fica no `title`; a resposta ("Copiado") é anunciada por uma região `status`, fora do botão.
+ * Identificador que se copia com um clique (ids de origem das movimentações, para rastrear). O valor aparece
+ * inteiro (quebra a linha se for comprido, sem depender de dica no mouse); a resposta ("Copiado") é anunciada por
+ * uma região `status`, fora do botão. O alvo de toque tem a altura mínima do Admin (`--adm-hit`).
  */
 export function CopyValue({ value, label }: CopyValueProps) {
   const [state, setState] = useState<CopyState>("idle");
@@ -70,7 +71,7 @@ export function CopyValue({ value, label }: CopyValueProps) {
 
   return (
     <span className="adm-fin-copy">
-      <button type="button" className="adm-fin-copy-btn" title={value} aria-label={`Copiar ${label}`} onClick={copy}>
+      <button type="button" className="adm-fin-copy-btn" aria-label={`Copiar ${label}`} onClick={copy}>
         <span className="adm-fin-copy-text">{value}</span>
         <I n={state === "copied" ? "check" : "copy"} cls="sm" />
       </button>

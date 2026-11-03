@@ -1,19 +1,24 @@
-import { useId, useState } from "react";
+import { useState } from "react";
 
 import {
   AdminEmptyState,
   AdminErrorState,
+  AdminFilterBar,
+  AdminListSkeleton,
+  AdminLoadMore,
+  AdminRefreshButton,
   AdminSection,
-  AdminSegmentedControl,
-  AdminSkeleton,
-  AdminSkeletonLines,
+  AdminTimeline,
+  AdminTimelineItem,
+  groupTimelineByDay,
 } from "@/components/admin/platform";
 import { useAdminWorkspaceActivity, useAdminWorkspaceAuditDay } from "@/hooks/admin/use-admin-workspaces";
-import { civilDateInSaoPaulo, formatDateTime, formatRelativeTime } from "@/lib/admin/format";
+import { ADMIN_TIME_ZONE, civilDateInSaoPaulo, formatDateTime } from "@/lib/admin/format";
 import { ACTIVITY_KIND_LABEL } from "@/lib/admin/labels";
 import type { AdminActivityEvent, AdminWorkspaceDetail } from "@/shared/admin-platform.types";
 
 import { findAuditEntry, WorkspaceAuditDiff } from "./workspace-audit-diff";
+import { timeOfDay } from "./workspace-format";
 
 import "@/styles/admin-workspaces.css";
 
@@ -22,107 +27,100 @@ const FILTER_OPTIONS = [
   { value: "admin", label: "Ações do Admin" },
 ] as const;
 
+const EVENT_NOUN = { singular: "evento", plural: "eventos" } as const;
+
 /**
- * "Ver antes e depois" de uma ação administrativa. Só consulta a auditoria depois que a pessoa expande (uma
- * consulta por dia de São Paulo serve a todas as ações daquele dia) e procura o registro pelo id do evento.
+ * "Antes e depois" de uma ação administrativa, no detalhe recolhido do evento. Só consulta a auditoria depois que
+ * a pessoa abre (uma consulta por dia de São Paulo serve a todas as ações daquele dia) e procura o registro pelo
+ * id do evento.
  */
-function AuditDetails({ workspaceId, event }: { workspaceId: string; event: AdminActivityEvent }) {
-  const [open, setOpen] = useState(false);
-  const panelId = useId();
+function AuditDetails({ workspaceId, event, open }: { workspaceId: string; event: AdminActivityEvent; open: boolean }) {
   const time = Date.parse(event.occurred_at);
   const day = Number.isNaN(time) ? "" : civilDateInSaoPaulo(time);
   const audit = useAdminWorkspaceAuditDay(workspaceId, day, open && day !== "");
   const entry = audit.data ? findAuditEntry(audit.data.data, event) : undefined;
 
+  // Recolhido e ainda sem ter consultado: nada para mostrar (o detalhe só existe no DOM, escondido).
+  if (!open && !audit.data && !audit.isError) return null;
+  if (audit.isLoading) return <AdminListSkeleton rows={2} ariaLabel="Carregando o registro da ação…" />;
+  if (audit.isError) {
+    return <AdminErrorState compact error={audit.error} onRetry={() => void audit.refetch()} retrying={audit.isRefetching} />;
+  }
+  if (entry) return <WorkspaceAuditDiff entry={entry} />;
+  return <p className="adm-workspaces-quiet">Não encontramos o registro desta ação na auditoria.</p>;
+}
+
+/** Um evento da linha do tempo. A ação do Admin traz o "antes e depois" em "Ver detalhes"; o motivo fica à vista. */
+function ActivityItem({ workspaceId, event }: { workspaceId: string; event: AdminActivityEvent }) {
+  const [open, setOpen] = useState(false);
+  const isAdminAction = event.kind === "admin_action";
   return (
-    <>
-      <button
-        type="button"
-        className="adm-textbtn adm-workspaces-expand"
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => setOpen((value) => !value)}
-      >
-        {open ? "Ocultar antes e depois" : "Ver antes e depois"}
-      </button>
-      <div id={panelId} hidden={!open}>
-        {open ? (
-          audit.isLoading ? (
-            <div role="status">
-              <span className="adm-sr">Carregando o registro da ação…</span>
-              <AdminSkeletonLines lines={3} />
-            </div>
-          ) : audit.isError ? (
-            <AdminErrorState compact error={audit.error} onRetry={() => void audit.refetch()} retrying={audit.isRefetching} />
-          ) : entry ? (
-            <WorkspaceAuditDiff entry={entry} />
-          ) : (
-            <p className="adm-workspaces-quiet">Não encontramos o registro desta ação na auditoria.</p>
-          )
-        ) : null}
-      </div>
-    </>
+    <AdminTimelineItem
+      tone={isAdminAction ? "brand" : "neutral"}
+      title={
+        <>
+          {event.title}
+          {event.reason ? <span className="adm-workspaces-reason">Motivo: {event.reason}</span> : null}
+        </>
+      }
+      meta={[ACTIVITY_KIND_LABEL[event.kind] ?? event.kind, event.actor ? `por ${event.actor.name}` : null]}
+      time={timeOfDay(event.occurred_at)}
+      dateTime={event.occurred_at}
+      timeTitle={`${formatDateTime(event.occurred_at)}, horário de São Paulo`}
+      detail={isAdminAction ? <AuditDetails workspaceId={workspaceId} event={event} open={open} /> : undefined}
+      onToggle={setOpen}
+    />
   );
 }
 
-/** Aba "Atividade": a linha do tempo do workspace (ações do Admin e fatos que o sistema guarda), por cursor. */
+/**
+ * Aba "Atividade": a linha do tempo do workspace (ações do Admin e fatos que o sistema guarda), por cursor, agrupada
+ * por dia de São Paulo (o cabeçalho do dia diz a data; cada evento mostra só a hora).
+ */
 export function WorkspaceActivityTab({ workspace }: { workspace: AdminWorkspaceDetail }) {
   const [filter, setFilter] = useState<"all" | "admin">("all");
   const feed = useAdminWorkspaceActivity(workspace.id, filter === "admin");
   const events = feed.data?.pages.flatMap((page) => page.data);
 
   return (
-    <div className="adm-workspaces-panel">
-      <div className="adm-workspaces-toolbar">
-        <AdminSegmentedControl
-          ariaLabel="O que mostrar na atividade"
-          options={FILTER_OPTIONS}
-          value={filter}
-          onChange={(value) => setFilter(value as "all" | "admin")}
-        />
-      </div>
+    <>
+      <AdminFilterBar
+        segment={{
+          options: FILTER_OPTIONS,
+          value: filter,
+          onChange: (value) => setFilter(value as "all" | "admin"),
+          ariaLabel: "O que mostrar na atividade",
+        }}
+        trailing={
+          <AdminRefreshButton iconOnly onClick={() => void feed.refetch()} loading={feed.isFetching && !feed.isFetchingNextPage} />
+        }
+      />
 
       <AdminSection>
         {feed.isLoading ? (
-          <div className="adm-workspaces-timeline" role="status">
-            <span className="adm-sr">Carregando a atividade…</span>
-            {Array.from({ length: 4 }, (_, index) => (
-              <div className="adm-workspaces-event" key={index} aria-hidden="true">
-                <AdminSkeleton width={112} height={14} />
-                <AdminSkeletonLines lines={2} lastWidth="40%" />
-              </div>
-            ))}
-          </div>
+          <AdminListSkeleton rows={4} variant="timeline" ariaLabel="Carregando a atividade…" />
         ) : feed.isError && !events?.length ? (
           <AdminErrorState compact error={feed.error} onRetry={() => void feed.refetch()} retrying={feed.isRefetching} />
         ) : events && events.length > 0 ? (
           <>
-            <ol className="adm-workspaces-timeline">
-              {events.map((event) => (
-                <li className="adm-workspaces-event" key={event.id}>
-                  <time dateTime={event.occurred_at} title={formatRelativeTime(event.occurred_at)}>
-                    {formatDateTime(event.occurred_at)}
-                  </time>
-                  <div className="adm-workspaces-event-main">
-                    <span className="adm-workspaces-event-kind">{ACTIVITY_KIND_LABEL[event.kind] ?? event.kind}</span>
-                    <p className="adm-workspaces-event-title">{event.title}</p>
-                    {event.actor ? <small>por {event.actor.name}</small> : null}
-                    {event.reason ? <p className="adm-workspaces-event-reason">Motivo: {event.reason}</p> : null}
-                    {event.kind === "admin_action" ? <AuditDetails workspaceId={workspace.id} event={event} /> : null}
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <AdminTimeline
+              ariaLabel="Atividade do workspace"
+              groups={groupTimelineByDay(events, (event) => event.occurred_at, { timeZone: ADMIN_TIME_ZONE }).map((day) => ({
+                key: day.key,
+                label: day.label,
+                items: day.items.map((event) => <ActivityItem key={event.id} workspaceId={workspace.id} event={event} />),
+              }))}
+            />
             {feed.isError ? (
               <AdminErrorState compact error={feed.error} onRetry={() => void feed.fetchNextPage()} retrying={feed.isFetchingNextPage} />
             ) : null}
-            {feed.hasNextPage ? (
-              <div className="adm-workspaces-loadmore">
-                <button type="button" className="btn out adm-btn-sm" disabled={feed.isFetchingNextPage} onClick={() => void feed.fetchNextPage()}>
-                  {feed.isFetchingNextPage ? "Carregando…" : "Carregar mais"}
-                </button>
-              </div>
-            ) : null}
+            <AdminLoadMore
+              loaded={events.length}
+              hasMore={!!feed.hasNextPage}
+              loading={feed.isFetchingNextPage}
+              onLoadMore={() => void feed.fetchNextPage()}
+              noun={EVENT_NOUN}
+            />
           </>
         ) : (
           <AdminEmptyState
@@ -133,9 +131,16 @@ export function WorkspaceActivityTab({ workspace }: { workspace: AdminWorkspaceD
                 ? "Quando alguém da plataforma alterar este workspace, a ação aparece aqui, com o motivo."
                 : "Ainda não há eventos deste workspace."
             }
+            action={
+              filter === "admin" ? (
+                <button type="button" className="btn out adm-btn-sm" onClick={() => setFilter("all")}>
+                  Mostrar tudo
+                </button>
+              ) : undefined
+            }
           />
         )}
       </AdminSection>
-    </div>
+    </>
   );
 }

@@ -2,6 +2,7 @@
  * Formatação e períodos da tela de Workspaces do Admin: CNPJ, CEP, endereço e dias civis de São Paulo.
  * Funções puras, sem React, para testar sem montar tela.
  */
+import { formatDateTime } from "@/lib/admin/format";
 import type { AdminDateRange, AdminWorkspaceAddress } from "@/shared/admin-platform.types";
 
 export function digitsOnly(value: string | null | undefined): string {
@@ -69,16 +70,6 @@ export function shiftCivilDate(date: string, days: number): string {
   return toCivil(new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + days)));
 }
 
-/** Quantos dias o intervalo tem, contando as duas pontas (`2026-10-01`..`2026-10-01` = 1). */
-export function countDays(range: AdminDateRange): number {
-  const start = CIVIL.exec(range.from);
-  const end = CIVIL.exec(range.to);
-  if (!start || !end) return 0;
-  const a = Date.UTC(Number(start[1]), Number(start[2]) - 1, Number(start[3]));
-  const b = Date.UTC(Number(end[1]), Number(end[2]) - 1, Number(end[3]));
-  return Math.round((b - a) / 86_400_000) + 1;
-}
-
 export type PeriodPreset = "7d" | "30d" | "90d";
 
 export const PERIOD_PRESET_DAYS: Record<PeriodPreset, number> = { "7d": 7, "30d": 30, "90d": 90 };
@@ -97,11 +88,8 @@ export function detectPreset(range: AdminDateRange, today: string): PeriodPreset
   return null;
 }
 
-/** Mensagem de erro de um intervalo digitado à mão; `null` quando vale. */
-export function periodError(range: { from: string; to: string }, today: string): string | null {
-  if (!isValidCivilDate(range.from) || !isValidCivilDate(range.to)) return "Informe as duas datas do período.";
-  if (range.from > range.to) return "A data inicial não pode ser depois da final.";
-  if (range.to > today) return "O período não pode passar de hoje.";
-  if (countDays({ from: range.from, to: range.to }) > MAX_PERIOD_DAYS) return `O período máximo é de ${MAX_PERIOD_DAYS} dias.`;
-  return null;
+/** Instante → "14:05" (hora de São Paulo), para eventos já agrupados por dia; inválido → "—". */
+export function timeOfDay(value: string | number | Date | null | undefined): string {
+  const text = formatDateTime(value);
+  return text.split(" ")[1] ?? text;
 }

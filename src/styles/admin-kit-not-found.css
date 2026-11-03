@@ -1,0 +1,26 @@
+/*
+ * AdminNotFound (`platform/admin-not-found.tsx`): "Não encontramos este <entidade>" com a saída para a lista.
+ * Tudo sob `.pv`, prefixo `adm-nf`. A moldura, o ícone e o texto vêm de `.adm-state` (admin-platform.css);
+ * aqui só entra o botão de voltar, que é um link `<a class="btn">` e por isso precisa do próprio foco e alvo de toque.
+ */
+
+/* alvo de toque do kit (40px no desktop, 44px no celular); `height: auto` solta os 36px de `.adm-btn-sm` */
+.pv .adm-state-action .btn.adm-nf-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--adm-hit);
+  height: auto;
+  text-decoration: none;
+}
+
+/* foco por teclado: o anel do kit (o `.btn` do protótipo não tem foco visível próprio) */
+.pv .adm-state-action .btn.adm-nf-back:focus-visible {
+  outline: none;
+  box-shadow: var(--adm-ring);
+}
+
+/* celular: o botão ocupa a largura útil, como os de rodapé de diálogo */
+@media (max-width: 560px) {
+  .pv .adm-state-action .btn.adm-nf-back { flex: 1 1 auto; }
+}

@@ -13,6 +13,8 @@ vi.mock("@tanstack/react-router", () => ({
 
 import type { AdminFigure, AdminFigureKind } from "@/shared/admin-platform.types";
 
+import { FIGURE_KIND_HELP } from "@/lib/admin/labels";
+
 import { AdminFigureCard, AdminFigureGrid, figureTextUnits } from "./admin-figure-card";
 
 // O testing-library normaliza espaços (inclusive o sem quebra do Intl) para um espaço comum.
@@ -28,6 +30,14 @@ describe("AdminFigureCard", () => {
     expect(screen.getByText("Aportes pagos")).toBeInTheDocument();
     expect(screen.getByText(BRL("2.500,00"))).toBeInTheDocument();
     expect(screen.getByText("Realizado")).toBeInTheDocument();
+  });
+
+  it("o conteúdo do popover usa parágrafos <span> em bloco: pode ficar dentro de um <p> sem aninhar", () => {
+    const { container } = render(<AdminFigureCard label="Aportes pagos" figure={figure()} hintInfo="Últimos 30 dias." />);
+    const paragraphs = container.querySelectorAll(".adm-info-p");
+    expect(paragraphs).toHaveLength(3);
+    for (const p of paragraphs) expect(p.tagName).toBe("SPAN");
+    expect(container.querySelector("p")).toBeNull();
   });
 
   it.each<[AdminFigureKind, string]>([
@@ -178,5 +188,120 @@ describe("AdminFigureCard", () => {
       </AdminFigureGrid>,
     );
     expect(within(container.querySelector(".adm-figs") as HTMLElement).getAllByText(/^[AB]$/)).toHaveLength(2);
+  });
+
+  describe("showKind e hintInfo", () => {
+    it("padrão: o selo de tipo aparece no cartão e o popover não repete 'Tipo:'", () => {
+      const { container } = render(<AdminFigureCard label="Aportes pagos" figure={figure()} />);
+      expect(container.querySelector(".adm-kind")).toHaveTextContent("Realizado");
+      expect(screen.getByRole("button", { name: "Como é calculado: Aportes pagos" })).not.toHaveAccessibleDescription(/Tipo:/);
+    });
+
+    it("showKind={false}: o selo sai do cartão e o tipo passa a ser uma linha do popover do 'i'", async () => {
+      const user = userEvent.setup();
+      const { container } = render(<AdminFigureCard label="Aportes pagos" figure={figure()} showKind={false} />);
+      expect(container.querySelector(".adm-kind")).toBeNull();
+      expect(screen.queryByText("Realizado")).not.toBeInTheDocument();
+
+      const info = screen.getByRole("button", { name: "Como é calculado: Aportes pagos" });
+      // leitor de tela: a descrição do botão traz a regra, o tipo e o significado do tipo
+      expect(info).toHaveAccessibleDescription(/Soma das cobranças pagas/);
+      expect(info).toHaveAccessibleDescription(/Tipo: Realizado/);
+      expect(info).toHaveAccessibleDescription(/Fato consolidado/);
+
+      await user.click(info);
+      const pop = document.querySelector(".adm-pop") as HTMLElement;
+      expect(pop.querySelector(".adm-fig-kindline")).toHaveTextContent("Tipo: Realizado");
+    });
+
+    it.each<[AdminFigureKind, string]>([
+      ["committed", "Comprometido"],
+      ["stock", "Posição atual"],
+      ["unavailable", "Não apurado"],
+    ])("showKind={false}: o tipo %s vira 'Tipo: %s' no popover", (kind, text) => {
+      render(<AdminFigureCard label="X" figure={figure({ kind, value: kind === "unavailable" ? null : 10, unit: "count" })} showKind={false} />);
+      const info = screen.getByRole("button", { name: "Como é calculado: X" });
+      expect(info).toHaveAccessibleDescription(new RegExp(`Tipo: ${text}`));
+      expect(info).toHaveAccessibleDescription(new RegExp(FIGURE_KIND_HELP[kind].slice(0, 20)));
+    });
+
+    it("sem selo e sem texto de apoio nem link, o rodapé nem existe (o cartão não ganha uma linha vazia)", () => {
+      const { container } = render(<AdminFigureCard label="X" figure={figure()} showKind={false} />);
+      expect(container.querySelector(".adm-fig-foot")).toBeNull();
+    });
+
+    it("sem selo, o cartão com link mantém o rodapé só para a seta", () => {
+      const { container } = render(<AdminFigureCard label="X" figure={figure()} showKind={false} to={{ to: "/admin/x" }} />);
+      expect(container.querySelector(".adm-kind")).toBeNull();
+      expect(container.querySelector(".adm-fig-foot .adm-fig-go")).not.toBeNull();
+    });
+
+    it("hintInfo entra no popover do rótulo: o texto de apoio não ganha um segundo 'i'", async () => {
+      const user = userEvent.setup();
+      render(<AdminFigureCard label="Aportes pagos" figure={figure()} showKind={false} hint="no período" hintInfo="Período = últimos 30 dias." />);
+      expect(screen.getByText("no período")).toBeInTheDocument();
+      expect(screen.getAllByRole("button")).toHaveLength(1);
+
+      const info = screen.getByRole("button", { name: "Como é calculado: Aportes pagos" });
+      expect(info).toHaveAccessibleDescription(/Período = últimos 30 dias\./);
+      await user.click(info);
+      expect(document.querySelector(".adm-pop")).toHaveTextContent("Período = últimos 30 dias.");
+    });
+
+    it("hintInfo também funciona com o selo visível (vai para o popover do mesmo jeito)", () => {
+      render(<AdminFigureCard label="X" figure={figure()} hint="no período" hintInfo="Últimos 30 dias." />);
+      expect(screen.getAllByRole("button")).toHaveLength(1);
+      expect(screen.getByRole("button", { name: "Como é calculado: X" })).toHaveAccessibleDescription(/Últimos 30 dias\./);
+    });
+
+    it("sem número ainda (sem 'i' do rótulo), o texto de apoio com hintInfo ganha o seu próprio 'i'", () => {
+      render(<AdminFigureCard label="Aportes pagos" hint="no período" hintInfo="Últimos 30 dias." />);
+      const info = screen.getByRole("button", { name: "Como é calculado: Aportes pagos" });
+      expect(info).toHaveAccessibleDescription("Últimos 30 dias.");
+    });
+
+    it("hintInfo sem hint não cria nada solto", () => {
+      render(<AdminFigureCard label="X" figure={figure()} hintInfo="Só no popover." />);
+      expect(screen.getAllByRole("button")).toHaveLength(1);
+      expect(screen.getByRole("button")).toHaveAccessibleDescription(/Só no popover\./);
+    });
+
+    it("grade quiet: nenhum cartão filho mostra o selo, sem repetir a prop; todos mantêm o tipo no popover", () => {
+      const { container } = render(
+        <AdminFigureGrid quiet>
+          <AdminFigureCard label="A" figure={figure()} />
+          <AdminFigureCard label="B" figure={figure({ kind: "stock" })} />
+        </AdminFigureGrid>,
+      );
+      expect(container.querySelector(".adm-kind")).toBeNull();
+      expect(container.querySelector(".adm-figs")).toHaveAttribute("data-quiet", "true");
+      expect(screen.getByRole("button", { name: "Como é calculado: A" })).toHaveAccessibleDescription(/Tipo: Realizado/);
+      expect(screen.getByRole("button", { name: "Como é calculado: B" })).toHaveAccessibleDescription(/Tipo: Posição atual/);
+    });
+
+    it("grade quiet: um cartão pode voltar a mostrar o selo com showKind", () => {
+      const { container } = render(
+        <AdminFigureGrid quiet>
+          <AdminFigureCard label="A" figure={figure()} showKind />
+          <AdminFigureCard label="B" figure={figure()} />
+        </AdminFigureGrid>,
+      );
+      expect(container.querySelectorAll(".adm-kind")).toHaveLength(1);
+    });
+
+    it("grade comum (sem quiet) segue mostrando o selo", () => {
+      const { container } = render(
+        <AdminFigureGrid>
+          <AdminFigureCard label="A" figure={figure()} />
+        </AdminFigureGrid>,
+      );
+      expect(container.querySelector(".adm-kind")).not.toBeNull();
+      expect(container.querySelector(".adm-figs")).not.toHaveAttribute("data-quiet");
+    });
+
+    it("o cartão carregando não vaza o hintInfo nem o 'i'", () => {
+      render(<AdminFigureCard label="X" figure={figure()} loading showKind={false} hint="no período" hintInfo="Últimos 30 dias." />);
+      expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    });
   });
 });

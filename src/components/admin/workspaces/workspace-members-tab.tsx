@@ -1,8 +1,9 @@
 import { useState } from "react";
 
 import {
-  AdminAvatar,
+  AdminActionMenu,
   AdminBadge,
+  AdminEntityCell,
   AdminPager,
   AdminStatusBadge,
   AdminTable,
@@ -47,36 +48,54 @@ export function WorkspaceMembersTab({ workspace }: { workspace: AdminWorkspaceDe
       primary: true,
       width: "minmax(0, 2.2fr)",
       cell: (member) => (
-        <div className="adm-workspaces-person">
-          <AdminAvatar name={member.name} photo={member.photo} size={36} />
-          <span className="adm-workspaces-person-text">
-            <span className="adm-workspaces-person-name">
-              <b title={member.name}>{member.name}</b>
-              {member.is_platform_admin ? (
-                <AdminBadge tone="outline" size="sm" title="Esta pessoa também é administradora da plataforma">
-                  Admin da plataforma
-                </AdminBadge>
+        <AdminEntityCell
+          name={member.name}
+          photo={member.photo}
+          size={36}
+          subtitleWrap
+          subtitle={
+            <>
+              {member.email}
+              {member.user_status === "deleted" ? (
+                <span className="adm-workspaces-deleted">Conta excluída: não conta como acesso</span>
               ) : null}
-            </span>
-            <small title={member.email}>{member.email}</small>
-            {member.user_status === "deleted" ? <small className="adm-workspaces-deleted">Conta excluída: não conta como acesso</small> : null}
-          </span>
-        </div>
+            </>
+          }
+          badge={
+            member.is_platform_admin ? (
+              <AdminBadge tone="outline" size="sm" title="Esta pessoa também é administradora da plataforma">
+                Admin da plataforma
+              </AdminBadge>
+            ) : undefined
+          }
+        />
       ),
     },
     {
       key: "role",
       header: "Papel",
-      width: "minmax(0, 1.2fr)",
+      width: "minmax(0, 1.4fr)",
       cell: (member) => (
-        <span>
-          {roleLabel(member.role)}
-          {member.has_custom_permissions ? (
-            <small className="adm-sub" title="As permissões desta pessoa sobrescrevem o padrão do papel">
-              permissões personalizadas
-            </small>
+        <div className="adm-workspaces-role">
+          <span>
+            {roleLabel(member.role)}
+            {member.has_custom_permissions ? (
+              <small className="adm-sub" title="As permissões desta pessoa sobrescrevem o padrão do papel">
+                permissões personalizadas
+              </small>
+            ) : null}
+          </span>
+          {editable ? (
+            <button
+              type="button"
+              className="adm-textbtn"
+              aria-label={`Alterar papel de ${member.name}`}
+              onClick={() => setDialog({ kind: "role", member })}
+            >
+              Alterar papel
+            </button>
           ) : null}
-        </span>
+        </div>
       ),
     },
     {
@@ -103,48 +122,16 @@ export function WorkspaceMembersTab({ workspace }: { workspace: AdminWorkspaceDe
         member.last_session_at ? (
           <span title={formatDateTime(member.last_session_at)}>{formatRelativeTime(member.last_session_at)}</span>
         ) : (
+          // visível (não só `title`): o traço sozinho não diz por que não há sessão
           <span className="adm-muted" title="Sem sessão registrada (a pessoa nunca entrou ou já saiu)">
-            —
+            Sem sessão
           </span>
         ),
     },
-    ...(editable
-      ? [
-          {
-            key: "actions",
-            header: "Ações",
-            mobileLabel: "",
-            wide: true,
-            width: "168px",
-            align: "right" as const,
-            cell: (member: AdminWorkspaceMember) => (
-              <div className="adm-workspaces-rowactions">
-                <button
-                  type="button"
-                  className="adm-textbtn"
-                  aria-label={`Alterar papel de ${member.name}`}
-                  onClick={() => setDialog({ kind: "role", member })}
-                >
-                  Alterar papel
-                </button>
-                <button
-                  type="button"
-                  className="adm-textbtn"
-                  data-danger="true"
-                  aria-label={`Remover ${member.name}`}
-                  onClick={() => setDialog({ kind: "remove", member })}
-                >
-                  Remover
-                </button>
-              </div>
-            ),
-          },
-        ]
-      : []),
   ];
 
   return (
-    <div className="adm-workspaces-panel">
+    <>
       <div className="adm-workspaces-toolbar">
         <p>
           {meta
@@ -178,6 +165,25 @@ export function WorkspaceMembersTab({ workspace }: { workspace: AdminWorkspaceDe
         retrying={query.isRefetching}
         skeletonRows={4}
         stickyHeader={false}
+        rowActions={
+          editable
+            ? (member) => (
+                <AdminActionMenu
+                  iconOnly
+                  label="Ações"
+                  ariaLabel={`Ações de ${member.name}`}
+                  items={[
+                    {
+                      id: "remove",
+                      label: "Remover do workspace",
+                      tone: "danger",
+                      onSelect: () => setDialog({ kind: "remove", member }),
+                    },
+                  ]}
+                />
+              )
+            : undefined
+        }
         empty={{
           title: "Nenhum usuário neste workspace",
           description: "Ninguém tem acesso a este workspace agora.",
@@ -190,6 +196,6 @@ export function WorkspaceMembersTab({ workspace }: { workspace: AdminWorkspaceDe
       />
 
       <WorkspaceMemberDialogs workspace={workspace} dialog={dialog} onClose={() => setDialog(null)} />
-    </div>
+    </>
   );
 }

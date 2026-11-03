@@ -1,0 +1,11 @@
+/*
+ * AdminInfoPopover (kit do Admin): parágrafo seguro do conteúdo do "i".
+ *
+ * `.adm-info-p` é um `<span>` em bloco: vale dentro de `<p>`/`<h2>` (um `<p>` ali geraria `<p>` aninhado).
+ * Faz no balão o que `.adm-pop p` faz para `<p>` (admin-platform.css): sem margem, e do segundo em diante
+ * espaço em cima e cor de apoio. `:where` mantém a especificidade baixa, para classes de realce
+ * (`.adm-fig-kindline`) continuarem ganhando. Tudo sob `.pv`.
+ */
+
+.pv .adm-info-p { display: block; margin: 0; }
+.pv .adm-pop :where(.adm-info-p + .adm-info-p) { margin-top: 8px; color: rgba(255, 255, 255, .62); }

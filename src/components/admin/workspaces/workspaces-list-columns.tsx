@@ -1,4 +1,4 @@
-import { AdminEntityCell, AdminStatusBadge, type AdminTableColumn } from "@/components/admin/platform";
+import { AdminBadge, AdminEntityCell, AdminStatusBadge, type AdminTableColumn } from "@/components/admin/platform";
 import {
   formatBRLFromCents,
   formatDate,
@@ -46,45 +46,53 @@ function WorkspaceNameCell({ workspace }: { workspace: AdminWorkspaceListItem })
 function OwnerCell({ workspace }: { workspace: AdminWorkspaceListItem }) {
   const { owner, owners_count: count } = workspace;
   if (!owner) {
+    // O texto é visível (não só dica): é uma inconsistência a investigar e quem lê a lista precisa ver isso.
     return (
-      <span className="adm-workspaces-noowner" title="Este workspace não tem nenhum proprietário: inconsistência a investigar.">
-        Sem responsável
+      <div className="adm-workspaces-noowner">
+        <AdminBadge tone="warn" size="sm">
+          Sem responsável
+        </AdminBadge>
+        <small>Nenhum proprietário: inconsistência a investigar</small>
+      </div>
+    );
+  }
+  const others = count - 1;
+  return (
+    <AdminEntityCell
+      name={owner.name}
+      subtitle={owner.email}
+      size={28}
+      badge={
+        others > 0 ? (
+          <AdminBadge tone="outline" size="sm" title={`${count} proprietários`}>
+            +{others}
+            <span className="adm-sr">{others === 1 ? " proprietário a mais" : " proprietários a mais"}</span>
+          </AdminBadge>
+        ) : undefined
+      }
+    />
+  );
+}
+
+/**
+ * A atividade REAL derivada (não é o status do ciclo de vida): texto cinza, "há 2 dias" ou "Sem atividade". O selo
+ * de estado da linha é o único "Ativo/Suspenso…"; aqui não se repete a palavra com outro sentido. Para leitor de tela
+ * o texto vem completo ("Teve atividade nos últimos 30 dias. Última atividade: há 2 dias").
+ */
+export function WorkspaceActivityLine({ activity }: { activity: AdminWorkspaceActivity }) {
+  const last = activity.last_activity_at;
+  const description = workspaceActivityDescription(activity.state, activity.window_days);
+  if (!last || activity.state === "never") {
+    return (
+      <span className="adm-workspaces-activity" data-state={activity.state}>
+        Sem atividade
       </span>
     );
   }
   return (
-    <div className="adm-workspaces-owner">
-      <span className="adm-workspaces-owner-text">
-        <b title={owner.name}>{owner.name}</b>
-        <small title={owner.email}>{owner.email}</small>
-      </span>
-      {count > 1 ? (
-        <span className="adm-workspaces-more" title={`${count} proprietários`}>
-          +{count - 1}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-const ACTIVITY_WORD: Record<AdminWorkspaceActivity["state"], string> = {
-  active: "Ativo",
-  inactive: "Inativo",
-  never: "Sem atividade",
-};
-
-/** A atividade REAL derivada (não é o status do ciclo de vida): "Ativo · há 2 dias", "Inativo · 12/03/2026", "Sem atividade". */
-export function WorkspaceActivityLine({ activity }: { activity: AdminWorkspaceActivity }) {
-  const last = activity.last_activity_at;
-  const description = workspaceActivityDescription(activity.state, activity.window_days);
-  return (
-    <span
-      className="adm-workspaces-activity"
-      data-state={activity.state}
-      title={last ? `${description}. Última atividade em ${formatDateTime(last)}.` : description}
-    >
-      {ACTIVITY_WORD[activity.state] ?? activity.state}
-      {last && activity.state !== "never" ? <> · {formatRelativeTime(last)}</> : null}
+    <span className="adm-workspaces-activity" data-state={activity.state} title={`Última atividade em ${formatDateTime(last)}`}>
+      <span className="adm-sr">{description}. Última atividade: </span>
+      {formatRelativeTime(last)}
     </span>
   );
 }
@@ -92,9 +100,9 @@ export function WorkspaceActivityLine({ activity }: { activity: AdminWorkspaceAc
 const SORT_NOTE = "Ordenar por esta coluna ordena pela atividade mais recente.";
 
 /**
- * Colunas da lista de Workspaces. Nove no desktop largo; `hideBelow` tira as menos decisivas conforme a
- * tabela estreita (os limites de largura desta tabela estão em `admin-workspaces.css`). No celular a linha
- * vira bloco com todos os dados e o seletor "Ordenar por" lista todas as colunas ordenáveis.
+ * Colunas da lista de Workspaces: seis (Workspace, Responsável, Status, Campanhas, Aportes, Criado em). Membros,
+ * Criadores e Em custódia ficam no detalhe (Resumo). `hideBelow` tira Campanhas e Criado em quando a tabela
+ * estreita; no celular a linha vira bloco com todos os dados e o seletor "Ordenar por" lista as colunas ordenáveis.
  */
 export function buildWorkspaceColumns(definitions: Record<string, string> | undefined): AdminTableColumn<AdminWorkspaceListItem>[] {
   const activityDefinition = definitionOf(definitions, "activity");
@@ -135,16 +143,6 @@ export function buildWorkspaceColumns(definitions: Record<string, string> | unde
       ),
     },
     {
-      key: "members",
-      header: "Membros",
-      sortKey: "members",
-      width: "84px",
-      align: "right",
-      hideBelow: "lg",
-      definition: defined(definitionOf(definitions, "members", "members_count")),
-      cell: (w) => <span className="adm-num">{formatInt(w.members_count)}</span>,
-    },
-    {
       key: "campaigns",
       header: "Campanhas",
       sortKey: "campaigns",
@@ -152,24 +150,14 @@ export function buildWorkspaceColumns(definitions: Record<string, string> | unde
       align: "right",
       hideBelow: "md",
       definition: defined(definitionOf(definitions, "campaigns", "campaigns_count")),
+      // "publicadas de" é visível (não só `title`): dica essencial, o primeiro número é só uma parte do segundo.
       cell: (w) => (
-        <span
-          className="adm-num"
-          title={`${formatInt(w.published_campaigns_count)} ${w.published_campaigns_count === 1 ? "publicada" : "publicadas"} de ${formatInt(w.campaigns_count)}`}
-        >
+        <span className="adm-num">
           <b>{formatInt(w.published_campaigns_count)}</b>
-          <span className="adm-muted"> / {formatInt(w.campaigns_count)}</span>
+          <span className="adm-muted"> de {formatInt(w.campaigns_count)}</span>
+          <small className="adm-sub">{w.published_campaigns_count === 1 ? "publicada" : "publicadas"}</small>
         </span>
       ),
-    },
-    {
-      key: "creators",
-      header: "Criadores",
-      width: "88px",
-      align: "right",
-      hideBelow: "lg",
-      definition: defined(definitionOf(definitions, "creators", "creators_count")),
-      cell: (w) => <span className="adm-num">{formatInt(w.creators_count)}</span>,
     },
     {
       key: "funded",
@@ -180,16 +168,6 @@ export function buildWorkspaceColumns(definitions: Record<string, string> | unde
       nowrap: true,
       definition: defined(definitionOf(definitions, "funded", "funded_cents")),
       cell: (w) => <span className="adm-num">{formatBRLFromCents(w.funded_cents)}</span>,
-    },
-    {
-      key: "custody",
-      header: "Em custódia",
-      width: "132px",
-      align: "right",
-      nowrap: true,
-      hideBelow: "md",
-      definition: defined(definitionOf(definitions, "custody", "custody_cents")),
-      cell: (w) => <span className="adm-num">{formatBRLFromCents(w.custody_cents)}</span>,
     },
     {
       key: "created",

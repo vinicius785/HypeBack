@@ -96,54 +96,67 @@ describe("WorkspaceFinancialTab · números", () => {
     expect(screen.getByText(/Dias de São Paulo · 02\/10\/2026 – 31\/10\/2026/)).toBeInTheDocument();
   });
 
-  it("agrupa os números do contrato: Entradas, Custódia e reservas, Criadores e Pendências", async () => {
+  it("oito indicadores em destaque, sem selo de tipo; os outros seis ficam em 'Ver detalhes', agrupados (nada some)", async () => {
     renderTab();
     await screen.findByText("Aportes recebidos (total)");
 
-    const groups = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
-    expect(groups).toEqual(["Entradas", "Custódia e reservas", "Criadores", "Pendências", "Movimentações"]);
-
-    const entradas = screen.getByRole("heading", { name: "Entradas" }).closest("section") as HTMLElement;
-    expect(within(entradas).getByText("Aportes recebidos (total)")).toBeInTheDocument();
-    expect(within(entradas).getByText("Aportes recebidos no período")).toBeInTheDocument();
-    const custodia = screen.getByRole("heading", { name: "Custódia e reservas" }).closest("section") as HTMLElement;
-    for (const label of ["Em custódia", "Comprometido", "Saldo livre"]) expect(within(custodia).getByText(label, { selector: ".adm-fig-label" })).toBeInTheDocument();
-    const criadores = screen.getByRole("heading", { name: "Criadores" }).closest("section") as HTMLElement;
-    for (const label of ["Liberado no período", "Liberado (total)", "Em carência", "Disponível para saque", "PIX concluído no período", "PIX concluído (total)"]) {
-      expect(within(criadores).getByText(label)).toBeInTheDocument();
+    const highlights = ["Aportes recebidos (total)", "Aportes recebidos no período", "Em custódia", "Comprometido", "Saldo livre", "Liberado no período", "Disponível para saque", "Cobranças pendentes"];
+    const details = screen.getByText("Ver detalhes").closest("details") as HTMLElement;
+    for (const label of highlights) {
+      const cardEl = card(label);
+      expect(details.contains(cardEl)).toBe(false);
+      expect(cardEl.querySelector(".adm-kind")).toBeNull();
     }
-    const pendencias = screen.getByRole("heading", { name: "Pendências" }).closest("section") as HTMLElement;
-    expect(within(pendencias).getByText("Saques em andamento")).toBeInTheDocument();
-    expect(within(pendencias).getByText("Cobranças pendentes")).toBeInTheDocument();
+    expect(details).not.toHaveAttribute("open");
+    const groups = within(details)
+      .getAllByRole("heading", { level: 3 })
+      .map((h) => h.textContent);
+    expect(groups).toEqual(["Entradas", "Criadores", "Pendências"]);
+    for (const label of ["Receita da plataforma", "Liberado (total)", "Em carência", "PIX concluído no período", "PIX concluído (total)", "Saques em andamento"]) {
+      expect(details.contains(card(label))).toBe(true);
+    }
+    expect(screen.getAllByText(/.*/, { selector: ".adm-fig-label" })).toHaveLength(14);
+    expect(screen.getByRole("heading", { level: 2, name: "Movimentações" })).toBeInTheDocument();
   });
 
-  it("cada número exato, com o tipo (kind) e a definição do servidor", async () => {
+  it("'Ver detalhes' abre e mostra os números restantes com valor exato", async () => {
+    renderTab();
+    await screen.findByText("R$ 1.234.567,89");
+    await userEvent.click(screen.getByText("Ver detalhes"));
+    expect(screen.getByText("Ver detalhes").closest("details")).toHaveAttribute("open");
+    expect(within(card("Em carência")).getByText("R$ 1.000,00")).toBeInTheDocument();
+    expect(within(card("Saques em andamento")).getByText("R$ 300,00")).toBeInTheDocument();
+  });
+
+  it("cada número exato; o tipo (kind) e a definição do servidor vivem no 'i' do rótulo", async () => {
     renderTab();
     await screen.findByText("R$ 1.234.567,89");
 
     expect(within(card("Aportes recebidos (total)")).getByText("R$ 1.234.567,89")).toBeInTheDocument();
-    expect(within(card("Aportes recebidos (total)")).getByText("Realizado")).toBeInTheDocument();
     expect(within(card("Em custódia")).getByText("R$ 45.000,50")).toBeInTheDocument();
-    expect(within(card("Em custódia")).getByText("Posição atual")).toBeInTheDocument();
-    expect(card("Comprometido").querySelector(".adm-kind")).toHaveAttribute("data-kind", "committed");
-    expect(within(card("Saldo livre")).getByText("Calculado")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Como é calculado: Em custódia" })).toHaveAccessibleDescription(/Definição de teste \(stock\)/);
+    const info = screen.getByRole("button", { name: "Como é calculado: Em custódia" });
+    expect(info).toHaveAccessibleDescription(/Definição de teste \(stock\)/);
+    expect(info).toHaveAccessibleDescription(/Tipo: Posição atual/);
+    expect(screen.getByRole("button", { name: "Como é calculado: Saldo livre" })).toHaveAccessibleDescription(/Tipo: Calculado/);
+    expect(screen.getByRole("button", { name: "Como é calculado: Comprometido" })).toHaveAccessibleDescription(/Tipo: Comprometido/);
   });
 
   it("número que não existe no banco é 'Não apurado', nunca R$ 0,00", async () => {
     renderTab();
     await screen.findByText("R$ 1.234.567,89");
 
+    await userEvent.click(screen.getByText("Ver detalhes"));
     const revenue = card("Receita da plataforma");
     expect(within(revenue).getByText("Não apurado", { selector: ".adm-fig-value" })).toBeInTheDocument();
     expect(revenue).not.toHaveTextContent("R$");
   });
 
-  it("os números que dependem do período dizem 'no período'", async () => {
+  it("os números que dependem do período dizem isso no nome (sem 'no período' repetido embaixo de cada um)", async () => {
     renderTab();
     await screen.findByText("R$ 1.234.567,89");
-    expect(within(card("Aportes recebidos no período")).getByText("no período")).toBeInTheDocument();
-    expect(within(card("Em custódia")).queryByText("no período")).not.toBeInTheDocument();
+    expect(card("Aportes recebidos no período")).toBeInTheDocument();
+    expect(card("Liberado no período")).toBeInTheDocument();
+    expect(document.querySelectorAll(".adm-fig-hint")).toHaveLength(0);
   });
 
   it("zero de verdade é R$ 0,00 (diferente de não apurado)", async () => {
@@ -155,7 +168,7 @@ describe("WorkspaceFinancialTab · números", () => {
   it("carregando mostra os cartões em esqueleto (sem números inventados)", async () => {
     api.adminGet.mockReturnValue(deferred<never>().promise);
     const { container } = renderTab();
-    expect(container.querySelectorAll(".adm-fig[aria-busy='true']").length).toBeGreaterThan(5);
+    expect(container.querySelectorAll(".adm-fig[aria-busy='true']").length).toBe(14);
     expect(screen.queryByText("R$ 0,00")).not.toBeInTheDocument();
   });
 
@@ -204,8 +217,8 @@ describe("WorkspaceFinancialTab · período", () => {
     await screen.findByText("Aportes recebidos (total)");
     await userEvent.click(screen.getByRole("button", { name: "Personalizado" }));
 
-    const from = screen.getByLabelText("Período: a partir de");
-    const to = screen.getByLabelText("Período: até");
+    const from = screen.getByLabelText("De");
+    const to = screen.getByLabelText("Até");
     expect(from).toHaveValue("2026-10-02");
     expect(to).toHaveValue("2026-10-31");
 
@@ -216,9 +229,9 @@ describe("WorkspaceFinancialTab · período", () => {
   });
 
   it.each([
-    ["mais de 366 dias", "Período: a partir de", "2025-01-01", "O período máximo é de 366 dias."],
-    ["fim antes do início", "Período: até", "2026-10-01", "A data inicial não pode ser depois da final."],
-    ["depois de hoje", "Período: até", "2026-11-05", "O período não pode passar de hoje."],
+    ["mais de 366 dias", "De", "2025-01-01", "O período pode ter no máximo 366 dias."],
+    ["fim antes do início", "Até", "2026-10-01", "A data inicial não pode ser depois da data final."],
+    ["depois de hoje", "Até", "2026-11-05", "As datas não podem passar de 31/10/2026."],
   ])("intervalo inválido (%s): mostra o aviso e mantém o período anterior, sem consultar", async (_name, field, value, message) => {
     renderTab();
     await screen.findByText("Aportes recebidos (total)");
@@ -238,12 +251,25 @@ describe("WorkspaceFinancialTab · período", () => {
     renderTab();
     await screen.findByText("Aportes recebidos (total)");
     await userEvent.click(screen.getByRole("button", { name: "Personalizado" }));
-    fireEvent.change(screen.getByLabelText("Período: a partir de"), { target: { value: "2025-01-01" } });
+    fireEvent.change(screen.getByLabelText("De"), { target: { value: "2025-01-01" } });
     expect(screen.getByRole("alert")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Período: a partir de"), { target: { value: "2026-10-20" } });
+    fireEvent.change(screen.getByLabelText("De"), { target: { value: "2026-10-20" } });
     await waitFor(() => expect(financialParams()).toEqual({ from: "2026-10-20", to: "2026-10-31" }));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+describe("WorkspaceFinancialTab · atualizar", () => {
+  it("o botão de atualizar (só ícone, ao lado do período) consulta de novo os números e as movimentações", async () => {
+    renderTab();
+    await screen.findByText("R$ 1.234.567,89");
+    const gets = api.adminGet.mock.calls.length;
+    const feeds = api.adminFeed.mock.calls.length;
+
+    await userEvent.click(screen.getByRole("button", { name: "Atualizar" }));
+    await waitFor(() => expect(api.adminGet.mock.calls.length).toBeGreaterThan(gets));
+    await waitFor(() => expect(api.adminFeed.mock.calls.length).toBeGreaterThan(feeds));
   });
 });
 
@@ -260,7 +286,9 @@ describe("WorkspaceFinancialTab · movimentações", () => {
     expect(within(entrada).getByText(/Paga/)).toBeInTheDocument();
     expect(within(entrada).getByText("Aporte via PIX")).toBeInTheDocument();
     expect(within(entrada).getByText("+R$ 2.500,00")).toBeInTheDocument();
-    expect(within(entrada).getByText("Realizado")).toBeInTheDocument();
+    // o tipo do valor é um selo junto do valor (não uma coluna à parte)
+    expect(within(entrada).getByText("Realizado", { selector: ".adm-kind" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: /Tipo do valor/ })).not.toBeInTheDocument();
     expect(within(entrada).getByText("28/10/2026 12:30")).toBeInTheDocument();
   });
 
@@ -271,26 +299,69 @@ describe("WorkspaceFinancialTab · movimentações", () => {
     const saque = screen.getByText("Saque", { selector: "b" }).closest('[role="row"]') as HTMLElement;
     expect(within(saque).getByText("−R$ 700,00")).toBeInTheDocument();
     const lancamento = screen.getByText("Lançamento", { selector: "b" }).closest('[role="row"]') as HTMLElement;
-    expect(within(lancamento).getByText("R$ 400,00")).toHaveAttribute("data-direction", "internal");
+    expect(within(lancamento).getByText("R$ 400,00").closest(".adm-workspaces-amount")).toHaveAttribute("data-direction", "internal");
     expect(within(lancamento).getByText("Comprometido", { selector: ".adm-kind" })).toBeInTheDocument();
   });
 
-  it("origem do valor (tipo + id), campanha e criador como links", async () => {
+  it("a barra de Movimentações é só o segmento (sem filtros nem valores vazios) e a coluna Data não leva largura ajustada à mão", async () => {
+    renderTab();
+    await screen.findByText("Aporte", { selector: "b" });
+    const bar = screen.getByRole("group", { name: "Tipo de movimentação" }).closest(".adm-filters") as HTMLElement;
+    expect(bar.querySelector(".adm-filters-row")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
+    // a tabela tem linha expansível: o kit soma o botão à coluna 0, então a tela passa só a largura do conteúdo (136px, não 176px)
+    const table = document.querySelector(".adm-table") as HTMLElement;
+    const columns = table.style.getPropertyValue("--adm-cols") || table.getAttribute("style") || "";
+    expect(columns).toMatch(/136px/);
+    expect(columns).not.toMatch(/176px/);
+  });
+
+  it("origem do valor (só o tipo na linha, sem id cru), campanha e criador como links", async () => {
     renderTab();
     await screen.findByText("Aporte", { selector: "b" });
 
     const entrada = screen.getByText("Aporte", { selector: "b" }).closest('[role="row"]') as HTMLElement;
     expect(within(entrada).getByText("Cobrança Asaas")).toBeInTheDocument();
-    expect(within(entrada).getByText("aa11-origem")).toBeInTheDocument();
-    expect(within(entrada).getByText("Cobrança Asaas").closest(".adm-workspaces-origin")).toHaveAttribute("title", "Identificador externo: pay_123");
+    expect(within(entrada).queryByText("aa11-origem")).not.toBeInTheDocument();
     expect(within(entrada).getByRole("link", { name: "Festival Café Serra Verde" })).toHaveAttribute(
       "href",
       "/admin/campaigns/ca3b0000-0000-4000-8000-000000000006",
     );
 
+    expect(within(entrada).getByRole("link", { name: "Festival Café Serra Verde" })).toHaveClass("adm-textlink");
+
     const saque = screen.getByText("Saque", { selector: "b" }).closest('[role="row"]') as HTMLElement;
-    expect(within(saque).getByText("Saque", { selector: ".adm-workspaces-origin" })).toBeInTheDocument();
+    expect(within(saque).getByText("Saque", { selector: ".adm-cell" })).toBeInTheDocument();
     expect(within(saque).getByRole("link", { name: "Vanessa Mendes" })).toHaveAttribute("href", "/admin/users/1002");
+  });
+
+  it("o identificador sai da linha e vai para os detalhes da movimentação, copiável (com o externo, quando há)", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    renderTab();
+    await screen.findByText("Aporte", { selector: "b" });
+
+    const entrada = () => screen.getByText("Aporte", { selector: "b" }).closest('[role="row"]') as HTMLElement;
+    await userEvent.click(within(entrada()).getByRole("button", { name: /^Detalhes da movimentação Aporte de 28\/10\/2026 12:30$/ }));
+
+    const details = screen.getByText("Identificador externo").closest("dl") as HTMLElement;
+    expect(within(details).getByText("aa11-origem")).toBeInTheDocument();
+    expect(within(details).getByText("pay_123")).toBeInTheDocument();
+    expect(within(details).getByText("Cobrança Asaas")).toBeInTheDocument();
+
+    await userEvent.click(within(details).getByRole("button", { name: "Copiar identificador" }));
+    expect(writeText).toHaveBeenCalledWith("aa11-origem");
+    await userEvent.click(within(details).getByRole("button", { name: "Copiar identificador externo" }));
+    expect(writeText).toHaveBeenLastCalledWith("pay_123");
+  });
+
+  it("movimentação sem identificador externo não mostra a linha dele", async () => {
+    renderTab();
+    await screen.findByText("Saque", { selector: "b" });
+    const saque = screen.getByText("Saque", { selector: "b" }).closest('[role="row"]') as HTMLElement;
+    await userEvent.click(within(saque).getByRole("button", { name: /^Detalhes da movimentação Saque/ }));
+    expect(screen.queryByText("Identificador externo")).not.toBeInTheDocument();
+    expect(screen.getByText("Identificador")).toBeInTheDocument();
   });
 
   it("'Carregar mais' pede a próxima página pelo cursor e acrescenta; some quando acaba", async () => {

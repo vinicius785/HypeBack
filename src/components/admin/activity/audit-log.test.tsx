@@ -13,12 +13,7 @@ vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
   return { ...actual, adminGet: client.adminGet, adminList: client.adminList, adminFeed: client.adminFeed };
 });
 
-vi.mock("@/components/admin/users/admin-workspace-picker", async () => ({
-  AdminWorkspacePicker: (await import("@/components/admin/financial/workspace-picker-stub")).WorkspacePickerStub,
-}));
-
-import { feedPage, listPage } from "@/components/admin/financial/financial-fixtures";
-import { PICKED_WORKSPACE } from "@/components/admin/financial/workspace-picker-stub";
+import { CAFE_WORKSPACE_DETAIL, CAFE_WORKSPACE_ITEM, feedPage, listPage } from "@/components/admin/financial/financial-fixtures";
 import { AdminApiError } from "@/lib/admin/admin-client";
 import { currentSearch } from "@/test/render-admin-route";
 
@@ -37,8 +32,14 @@ function lastQuery(): Record<string, unknown> {
 
 async function openChanges(url = "/admin/activity?tab=changes") {
   const view = renderActivity(url);
-  await screen.findByRole("heading", { name: "Alterações administrativas" });
-  return view;
+  const table = await screen.findByRole("table", { name: "Alterações administrativas" });
+  // a tabela existe já no esqueleto: as linhas só depois da primeira resposta
+  await waitFor(() => expect(table).not.toHaveAttribute("aria-busy", "true"));
+  return { ...view, table };
+}
+
+function entryRows(table: HTMLElement) {
+  return within(table).getAllByRole("row").slice(1);
 }
 
 const SUSPEND = makeAuditEntry();
@@ -61,11 +62,14 @@ beforeEach(() => {
   client.adminGet.mockReset();
   client.adminList.mockReset();
   client.adminFeed.mockReset();
-  client.adminGet.mockResolvedValue({ id: 7, name: "Marina Admin" });
+  // o seletor de workspace e o de autor de verdade: a busca e o nome de um id da URL
+  client.adminGet.mockImplementation(async (path: string) => (path.startsWith("/admin/workspaces/") ? CAFE_WORKSPACE_DETAIL : { id: 7, name: "Marina Admin" }));
   client.adminFeed.mockImplementation(async () => feedPage([]));
-  client.adminList.mockImplementation(async (path: string) =>
-    path === "/admin/audit-log" ? listPage([SUSPEND, MEMBER]) : listPage([]),
-  );
+  client.adminList.mockImplementation(async (path: string) => {
+    if (path === "/admin/audit-log") return listPage([SUSPEND, MEMBER]);
+    if (path === "/admin/workspaces") return listPage([CAFE_WORKSPACE_ITEM]);
+    return listPage([]);
+  });
 });
 
 afterEach(() => {
@@ -84,7 +88,7 @@ describe("Alterações administrativas: abas e consulta", () => {
     const { router } = renderActivity("/admin/activity?from=2026-10-20&to=2026-10-25");
     await screen.findByRole("heading", { name: "Linha do tempo" });
     await userEvent.click(screen.getByRole("tab", { name: "Alterações administrativas" }));
-    expect(await screen.findByRole("heading", { name: "Alterações administrativas" })).toBeInTheDocument();
+    expect(await screen.findByRole("table", { name: "Alterações administrativas" })).toBeInTheDocument();
     await waitFor(() => expect(lastQuery()).toMatchObject({ from: "2026-10-20", to: "2026-10-25" }));
     expect(currentSearch(router)).toMatchObject({ tab: "changes", from: "2026-10-20", to: "2026-10-25" });
 
@@ -106,16 +110,85 @@ describe("Alterações administrativas: abas e consulta", () => {
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Alvo" }), "workspace");
     await waitFor(() => expect(lastQuery()).toMatchObject({ target_type: "workspace", action: "workspace.suspend" }));
 
-    await userEvent.click(screen.getByRole("button", { name: "Escolher workspace" }));
-    await waitFor(() => expect(lastQuery()).toMatchObject({ workspace_id: PICKED_WORKSPACE.id }));
+    await userEvent.click(screen.getByRole("button", { name: /^Workspace:/ }));
+    await userEvent.click(await screen.findByRole("option", { name: /Café Serra Verde/ }));
+    await waitFor(() => expect(lastQuery()).toMatchObject({ workspace_id: CAFE_WORKSPACE_ITEM.id }));
     expect(currentSearch(router)).toMatchObject({ tab: "changes", action: "workspace.suspend", target_type: "workspace" });
+  });
+
+  it("o autor é escolhido numa busca de usuários (mesmo parâmetro da URL) e vira chip", async () => {
+    client.adminList.mockImplementation(async (path: string) => {
+      if (path === "/admin/audit-log") return listPage([SUSPEND, MEMBER]);
+      if (path === "/admin/users") return listPage([{ id: 7, name: "Marina Admin", email: "marina@hype.test", kind: "brand", is_platform_admin: true }]);
+      return listPage([]);
+    });
+    const { router } = await openChanges();
+    expect(screen.getByRole("button", { name: /^Autor:/ })).toHaveTextContent("Qualquer pessoa");
+    await userEvent.click(screen.getByRole("button", { name: /^Autor:/ }));
+    expect(client.adminList).toHaveBeenCalledWith("/admin/users", expect.objectContaining({ kind: "brand", status: "all", sort_by: "name" }), expect.anything());
+    await userEvent.click(await screen.findByRole("option", { name: /Marina Admin/ }));
+    await waitFor(() => expect(lastQuery()).toMatchObject({ actor_user_id: "7", page: 1 }));
+    expect(currentSearch(router)).toMatchObject({ tab: "changes", actor_user_id: "7" });
+    expect(screen.getByRole("button", { name: /^Autor:/ })).toHaveTextContent("Marina Admin");
+
+    await userEvent.click(screen.getByRole("button", { name: "Remover filtro Autor: Marina Admin" }));
+    await waitFor(() => expect(lastQuery().actor_user_id).toBeUndefined());
+    expect(currentSearch(router)).toEqual({ tab: "changes" });
+  });
+
+  it("o chip do autor recém-escolhido já traz o nome: não busca o usuário nem mostra 'Carregando…'", async () => {
+    client.adminList.mockImplementation(async (path: string) => {
+      if (path === "/admin/audit-log") return listPage([SUSPEND, MEMBER]);
+      if (path === "/admin/users") return listPage([{ id: 7, name: "Marina Admin", email: "marina@hype.test", kind: "brand", is_platform_admin: true }]);
+      return listPage([]);
+    });
+    const { router } = await openChanges();
+    await userEvent.click(screen.getByRole("button", { name: /^Autor:/ }));
+    await userEvent.click(await screen.findByRole("option", { name: /Marina Admin/ }));
+    // o chip aparece com o nome na primeira renderização com o id novo
+    expect(screen.getByRole("button", { name: "Remover filtro Autor: Marina Admin" })).toBeInTheDocument();
+    await waitFor(() => expect(currentSearch(router)).toMatchObject({ actor_user_id: "7" }));
+    expect(screen.queryByText(/Carregando…/)).not.toBeInTheDocument();
+    expect(client.adminGet).not.toHaveBeenCalledWith("/admin/users/7", expect.anything(), expect.anything());
+    expect(client.adminGet.mock.calls.some(([path]) => String(path).startsWith("/admin/users/"))).toBe(false);
+  });
+
+  it("a opção de autor diz o e-mail e quem é administrador da plataforma", async () => {
+    client.adminList.mockImplementation(async (path: string) =>
+      path === "/admin/users"
+        ? listPage([{ id: 7, name: "Marina Admin", email: "marina@hype.test", kind: "brand", is_platform_admin: true }])
+        : path === "/admin/audit-log"
+          ? listPage([SUSPEND])
+          : listPage([]),
+    );
+    await openChanges();
+    await userEvent.click(screen.getByRole("button", { name: /^Autor:/ }));
+    const option = await screen.findByRole("option", { name: /Marina Admin/ });
+    expect(option).toHaveTextContent("marina@hype.test · Administrador da plataforma");
+  });
+
+  it("uma só barra de filtros (workspace e autor na linha dela) e 'Limpar filtros' zera tudo menos o período", async () => {
+    const { container, router } = await openChanges(
+      `/admin/activity?tab=changes&action=workspace.suspend&target_type=workspace&actor_user_id=7&workspace_id=${CAFE_WORKSPACE_ITEM.id}&from=2026-10-20&to=2026-10-25`,
+    );
+    expect(container.querySelectorAll(".adm-filters")).toHaveLength(1);
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Autor:/ })).toHaveTextContent("Marina Admin"));
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Workspace:/ })).toHaveTextContent("Café Serra Verde"));
+    // filtros ligados: ação, alvo, workspace e autor (cada um com o seu chip)
+    expect(screen.getByRole("group", { name: "Filtros ativos" }).querySelectorAll("button")).toHaveLength(4);
+
+    await userEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    await waitFor(() => expect(currentSearch(router)).toEqual({ tab: "changes", from: "2026-10-20", to: "2026-10-25" }));
+    expect(lastQuery()).toEqual({ page: 1, per_page: 25, from: "2026-10-20", to: "2026-10-25" });
   });
 
   it("autor e registro específico vindos da URL entram na consulta", async () => {
     await openChanges(`/admin/activity?tab=changes&actor_user_id=7&target_type=user&target_id=1002`);
     expect(lastQuery()).toMatchObject({ actor_user_id: "7", target_type: "user", target_id: "1002" });
-    expect(await screen.findByDisplayValue("Marina Admin")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Autor:/ })).toHaveTextContent("Marina Admin"));
     expect(client.adminGet.mock.calls.some(([path]) => path === "/admin/users/7")).toBe(true);
+    // o alvo específico (link de outra tela) aparece como filtro ativo, com "×"
+    expect(screen.getByRole("button", { name: "Remover filtro Registro: 1002" })).toBeInTheDocument();
   });
 
   it("trocar o período volta para a página 1", async () => {
@@ -140,26 +213,41 @@ describe("Alterações administrativas: abas e consulta", () => {
 });
 
 describe("Alterações administrativas: lista e detalhe", () => {
-  it("cada alteração mostra a ação, o alvo, o autor e o motivo, ainda fechada", async () => {
-    await openChanges();
-    const list = await screen.findByRole("list", { name: "Alterações administrativas" });
-    const [suspend, member] = within(list).getAllByRole("listitem");
-    expect(within(suspend).getByText("Workspace suspenso")).toBeInTheDocument();
-    expect(within(suspend).getByText(/Café Serra Verde · por Marina Admin/)).toBeInTheDocument();
+  it("cada alteração mostra a ação em destaque, o alvo, o autor, o motivo e a data em coluna fixa, ainda fechada", async () => {
+    const { table } = await openChanges();
+    await screen.findByText("Workspace suspenso", { selector: "b" });
+    const [suspend, member] = entryRows(table);
+
+    // a ação é o texto em destaque; o alvo vem logo abaixo, em apoio
+    expect(within(suspend).getByText("Workspace suspenso").tagName).toBe("B");
+    expect(within(suspend).getByText("Café Serra Verde")).toBeInTheDocument();
+    expect(within(suspend).getByText("Marina Admin")).toBeInTheDocument();
     expect(within(suspend).getByText("Cobrança contestada, aguardando análise")).toBeInTheDocument();
-    expect(within(suspend).getByRole("button", { expanded: false })).toBeInTheDocument();
-    // autor removido: nunca "null"
-    expect(within(member).getByText(/por Usuário removido/)).toBeInTheDocument();
-    expect(within(suspend).queryByRole("region", { name: /Workspace suspenso/ })).not.toBeInTheDocument();
+    // 18:20 em UTC é 15:20 em São Paulo
+    expect(suspend.querySelector("time")).toHaveAttribute("datetime", "2026-10-29T18:20:00.000Z");
+    expect(within(suspend).getByText("29/10/2026")).toBeInTheDocument();
+    expect(within(suspend).getByText("15:20")).toBeInTheDocument();
+    expect(within(suspend).getByRole("button", { name: /^Detalhes: Workspace suspenso/, expanded: false })).toBeInTheDocument();
+    // workspace que não está no nome do alvo entra no apoio; autor removido: nunca "null"
+    expect(within(member).getByText("Vanessa Mendes · Café Serra Verde")).toBeInTheDocument();
+    expect(within(member).getByText("Usuário removido")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /Detalhes: Workspace suspenso/ })).not.toBeInTheDocument();
+  });
+
+  it("as colunas têm nome em frase normal (Alteração, Feito por, Motivo, Quando)", async () => {
+    const { table } = await openChanges();
+    const headers = within(table).getAllByRole("columnheader").map((h) => h.textContent);
+    expect(headers).toEqual(["Alteração", "Feito por", "Motivo", "Quando"]);
   });
 
   it("abrir mostra o motivo, o alvo, quem fez, o IP e o antes e depois campo a campo (sem JSON cru)", async () => {
-    await openChanges();
-    const list = await screen.findByRole("list", { name: "Alterações administrativas" });
-    const [suspend] = within(list).getAllByRole("listitem");
-    await userEvent.click(within(suspend).getByRole("button", { expanded: false }));
+    const { table } = await openChanges();
+    await screen.findByText("Workspace suspenso", { selector: "b" });
+    const expand = within(entryRows(table)[0]).getByRole("button", { name: /^Detalhes: Workspace suspenso/ });
+    await userEvent.click(expand);
+    expect(expand).toHaveAttribute("aria-expanded", "true");
 
-    const body = within(suspend).getByRole("region", { name: /Workspace suspenso/ });
+    const body = within(table).getByRole("region", { name: "Detalhes: Workspace suspenso" });
     expect(within(body).getByText("203.0.113.9")).toBeInTheDocument();
     expect(within(body).getByText("Alteração nº 41")).toBeInTheDocument();
     expect(within(body).getByText("marina@hype.test · Administrador", { exact: false })).toBeInTheDocument();
@@ -174,27 +262,39 @@ describe("Alterações administrativas: lista e detalhe", () => {
     expect(within(row).getByText("Suspenso")).toBeInTheDocument();
     expect(body.textContent).not.toMatch(/[{}]|undefined|null/);
 
-    await userEvent.click(within(suspend).getByRole("button", { expanded: true }));
-    expect(within(suspend).queryByRole("region", { name: /Workspace suspenso/ })).not.toBeInTheDocument();
+    await userEvent.click(expand);
+    expect(expand).toHaveAttribute("aria-expanded", "false");
+    expect(within(table).queryByRole("region", { name: "Detalhes: Workspace suspenso" })).not.toBeInTheDocument();
+  });
+
+  it("o antes e depois é uma tabela com semântica completa: cabeçalhos de coluna, grupos de linhas e cabeçalho de linha", async () => {
+    const { table } = await openChanges();
+    await screen.findByText("Workspace suspenso", { selector: "b" });
+    await userEvent.click(within(entryRows(table)[0]).getByRole("button", { name: /^Detalhes: Workspace suspenso/ }));
+    const diff = within(table).getByRole("table", { name: "O que mudou" });
+    expect(within(diff).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Campo", "Antes", "Depois"]);
+    expect(within(diff).getAllByRole("rowgroup")).toHaveLength(2);
+    expect(within(diff).getAllByRole("rowheader")).toHaveLength(1);
+    expect(within(diff).getAllByRole("cell")).toHaveLength(2);
   });
 
   it("sem IP registrado diz isso, e o link do membro leva ao usuário afetado", async () => {
-    await openChanges();
-    const list = await screen.findByRole("list", { name: "Alterações administrativas" });
-    const member = within(list).getAllByRole("listitem")[1];
-    await userEvent.click(within(member).getByRole("button", { expanded: false }));
-    const body = within(member).getByRole("region", { name: /Papel do membro alterado/ });
+    const { table } = await openChanges();
+    await screen.findByText("Papel do membro alterado", { selector: "b" });
+    await userEvent.click(within(entryRows(table)[1]).getByRole("button", { name: /^Detalhes: Papel do membro alterado/ }));
+    const body = within(table).getByRole("region", { name: "Detalhes: Papel do membro alterado" });
     expect(within(body).getByText("Não registrado")).toBeInTheDocument();
     expect(within(body).getByRole("link", { name: "Vanessa Mendes" })).toHaveAttribute("href", "/admin/users/1002");
   });
 
   it("mostra o impacto registrado quando há, e avisa quando a ação não registrou campos", async () => {
-    client.adminList.mockImplementation(async () =>
-      listPage([makeAuditEntry({ before_state: null, after_state: null, impact: { counts: { campaigns_active: 3 } } })]),
+    client.adminList.mockImplementation(async (path: string) =>
+      path === "/admin/audit-log"
+        ? listPage([makeAuditEntry({ before_state: null, after_state: null, impact: { counts: { campaigns_active: 3 } } })])
+        : listPage([]),
     );
-    await openChanges();
-    const list = await screen.findByRole("list", { name: "Alterações administrativas" });
-    await userEvent.click(within(list).getByRole("button", { expanded: false }));
+    const { table } = await openChanges();
+    await userEvent.click(await within(table).findByRole("button", { name: /^Detalhes: Workspace suspenso/ }));
     expect(screen.getByText("Esta ação não registrou campos alterados.")).toBeInTheDocument();
     const impact = screen.getByRole("region", { name: "Impacto no momento da ação" });
     expect(within(impact).getByText("3")).toBeInTheDocument();
@@ -205,13 +305,16 @@ describe("Alterações administrativas: estados", () => {
   it("carregando: esqueleto", async () => {
     client.adminList.mockReturnValue(new Promise(() => {}));
     const { container } = renderActivity("/admin/activity?tab=changes");
-    await waitFor(() => expect(container.querySelectorAll(".adm-act-entry-skeleton .adm-sk").length).toBeGreaterThan(0));
+    await waitFor(() => expect(container.querySelectorAll(".adm-row .adm-sk").length).toBeGreaterThan(0));
+    expect(screen.getByRole("table", { name: "Alterações administrativas" })).toHaveAttribute("aria-busy", "true");
   });
 
   it("vazio com filtro oferece limpar os filtros", async () => {
     client.adminList.mockResolvedValue(listPage([]));
     const { router } = await openChanges("/admin/activity?tab=changes&action=user.merge");
     expect(await screen.findByText("Nenhuma alteração com estes filtros")).toBeInTheDocument();
+    // a barra tem o seu "Limpar filtros" e o estado vazio, o dele: os dois fazem o mesmo
+    expect(screen.getAllByRole("button", { name: "Limpar filtros" })).toHaveLength(2);
     await userEvent.click(screen.getAllByRole("button", { name: "Limpar filtros" }).at(-1)!);
     await waitFor(() => expect(currentSearch(router)).not.toHaveProperty("action"));
   });
@@ -230,6 +333,6 @@ describe("Alterações administrativas: estados", () => {
     const alert = await screen.findByRole("alert");
     expect(within(alert).getByText("Recurso indisponível")).toBeInTheDocument();
     await userEvent.click(within(alert).getByRole("button", { name: "Tentar de novo" }));
-    expect(await screen.findByRole("list", { name: "Alterações administrativas" })).toBeInTheDocument();
+    expect(await screen.findByText("Workspace suspenso", { selector: "b" })).toBeInTheDocument();
   });
 });

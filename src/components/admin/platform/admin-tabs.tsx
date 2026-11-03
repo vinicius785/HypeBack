@@ -102,15 +102,19 @@ interface AdminTabPanelProps {
   id: string;
   active: boolean;
   children: ReactNode;
+  /** Classe do painel (espaçamento, grade): sem ela o painel não ganha classe nenhuma. */
+  className?: string;
+  /** Elemento do painel (padrão `div`). O papel `tabpanel`, o id e o `aria-labelledby` não mudam. */
+  as?: "div" | "section";
 }
 
 /** Painel de uma aba: só monta quando está ativa. Aponta de volta para a aba (`aria-labelledby`). */
-export function AdminTabPanel({ idPrefix, id, active, children }: AdminTabPanelProps) {
+export function AdminTabPanel({ idPrefix, id, active, children, className, as: Tag = "div" }: AdminTabPanelProps) {
   if (!active) return null;
   const { tabId, panelId } = adminTabIds(idPrefix, id);
   return (
-    <div role="tabpanel" id={panelId} aria-labelledby={tabId} tabIndex={0}>
+    <Tag role="tabpanel" id={panelId} aria-labelledby={tabId} tabIndex={0} className={className}>
       {children}
-    </div>
+    </Tag>
   );
 }

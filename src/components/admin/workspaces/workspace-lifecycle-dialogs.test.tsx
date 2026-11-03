@@ -13,6 +13,7 @@ vi.mock("@/lib/admin/admin-client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/admin/admin-client")>()),
   ...api,
 }));
+// o `adminToast` do kit é quem fala com o `sonner`: o aviso chega com o texto e as opções (duração)
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import { toast } from "sonner";
@@ -109,7 +110,7 @@ describe("Suspender, reativar, desarquivar e restaurar", () => {
     expect(path).toBe(`/admin/workspaces/${WS_ID}/suspend`);
     expect(body).toEqual({ reason: "Cobrança em aberto há 60 dias" });
     expect(key).toMatch(UUID_V4);
-    expect(toast.success).toHaveBeenCalledWith("Workspace suspenso.");
+    expect(toast.success).toHaveBeenCalledWith("Workspace suspenso.", expect.anything());
     expect(client.getQueryData(workspaceDetailKey(WS_ID))).toEqual(makeDetail("suspended"));
   });
 
@@ -147,7 +148,7 @@ describe("Suspender, reativar, desarquivar e restaurar", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(postCall().path).toBe(`/admin/workspaces/${WS_ID}/${route}`);
     expect(postCall().body).toEqual({ reason: "Cliente regularizou o pagamento" });
-    expect(toast.success).toHaveBeenCalledWith(done);
+    expect(toast.success).toHaveBeenCalledWith(done, expect.anything());
     expect(api.adminGet).not.toHaveBeenCalled();
   });
 
@@ -172,7 +173,7 @@ describe("Suspender, reativar, desarquivar e restaurar", () => {
     await userEvent.click(button("Suspender"));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/estado do workspace mudou/));
+    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/estado do workspace mudou/), expect.anything());
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["admin", "platform"] });
   });
 
@@ -308,7 +309,7 @@ describe("Arquivar", () => {
     expect(path).toBe(`/admin/workspaces/${WS_ID}/archive`);
     expect(body).toEqual({ reason: "Cliente pediu pausa", confirm_name: "café serra verde", impact_token: "token-1" });
     expect(key).toMatch(UUID_V4);
-    expect(toast.success).toHaveBeenCalledWith("Workspace arquivado.");
+    expect(toast.success).toHaveBeenCalledWith("Workspace arquivado.", expect.anything());
   });
 
   it("arquivar NÃO é travado por impedimentos de exclusão (a saída é justamente arquivar)", async () => {
@@ -391,7 +392,7 @@ describe("Excluir · confirmação", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(postCall().path).toBe(`/admin/workspaces/${WS_ID}/delete`);
     expect(postCall().body).toEqual({ reason: "Cliente encerrou o contrato", confirm_name: "Café Serra Verde", impact_token: "token-1" });
-    expect(toast.success).toHaveBeenCalledWith("Workspace excluído.");
+    expect(toast.success).toHaveBeenCalledWith("Workspace excluído.", expect.anything());
   });
 
   it("nome digitado errado (CONFIRMATION_MISMATCH do servidor): mensagem clara, diálogo aberto", async () => {
@@ -415,7 +416,7 @@ describe("Excluir · confirmação", () => {
     await userEvent.click(button("Excluir workspace"));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/estado do workspace mudou/));
+    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/estado do workspace mudou/), expect.anything());
   });
 
   it("WORKSPACE_DELETE_BLOCKED na recusa: os impedimentos entram na tela e excluir trava", async () => {

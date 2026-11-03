@@ -13,12 +13,7 @@ vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
   return { ...actual, adminGet: client.adminGet, adminList: client.adminList, adminFeed: client.adminFeed };
 });
 
-vi.mock("@/components/admin/users/admin-workspace-picker", async () => ({
-  AdminWorkspacePicker: (await import("@/components/admin/financial/workspace-picker-stub")).WorkspacePickerStub,
-}));
-
-import { feedPage } from "@/components/admin/financial/financial-fixtures";
-import { PICKED_WORKSPACE } from "@/components/admin/financial/workspace-picker-stub";
+import { CAFE_WORKSPACE_DETAIL, CAFE_WORKSPACE_ITEM, feedPage } from "@/components/admin/financial/financial-fixtures";
 import { AdminApiError } from "@/lib/admin/admin-client";
 import { currentSearch } from "@/test/render-admin-route";
 
@@ -49,8 +44,12 @@ beforeEach(() => {
   client.adminGet.mockReset();
   client.adminList.mockReset();
   client.adminFeed.mockReset();
-  client.adminGet.mockResolvedValue({ id: 7, name: "Marina Admin" });
-  client.adminList.mockResolvedValue({ data: [], meta: { page: 1, per_page: 25, total: 0, total_pages: 0 } });
+  // o seletor de workspace de verdade: a busca e o nome de um id da URL
+  client.adminGet.mockImplementation(async (path: string) => (path.startsWith("/admin/workspaces/") ? CAFE_WORKSPACE_DETAIL : { id: 7, name: "Marina Admin" }));
+  client.adminList.mockImplementation(async (path: string) => ({
+    data: path === "/admin/workspaces" ? [CAFE_WORKSPACE_ITEM] : [],
+    meta: { page: 1, per_page: 25, total: 0, total_pages: 0 },
+  }));
   client.adminFeed.mockImplementation(async () => feedPage(EVENTS));
 });
 
@@ -65,23 +64,82 @@ describe("Atividade: linha do tempo", () => {
     expect(lastQuery()).toEqual({ from: "2026-10-02", to: "2026-10-31", limit: 50 });
   });
 
-  it("mostra cada evento com o tipo e agrupa por dia, e avisa que não é um registro completo", async () => {
+  it("mostra cada evento com o tipo dito uma vez e agrupa por dia, e avisa que não é um registro completo", async () => {
     await openFeed();
     expect(await screen.findByText("Workspace Café Serra Verde criado")).toBeInTheDocument();
     expect(screen.getByText("Campanha Festival de Outono criada")).toBeInTheDocument();
     expect(screen.getByText("Workspace suspenso pelo time da plataforma")).toBeInTheDocument();
 
-    expect(screen.getByText(/Não é um registro completo: só estes tipos de evento/)).toBeInTheDocument();
-    // dois dias: 30/10 (dois eventos) e 29/10
-    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(2);
+    // a frase curta fica na página; a lista dos seis tipos está no "i"
+    expect(screen.getByText(/Não é um registro completo: mostra só alguns tipos de evento/)).toBeInTheDocument();
+    const info = screen.getByRole("button", { name: "Como ler: Linha do tempo" });
+    for (const kind of ["Workspace criado", "Campanha criada", "Aporte pago", "Saque pago", "Ação administrativa"]) {
+      expect(info).toHaveAccessibleDescription(expect.stringContaining(kind));
+    }
+    expect(info).toHaveAccessibleDescription(expect.stringContaining("registro de auditoria"));
+
+    // dois dias: 30/10 (dois eventos) e 29/10, numa linha do tempo de verdade
+    const timeline = screen.getByRole("list", { name: "Atividade da plataforma" });
+    expect(within(timeline).getAllByRole("heading", { level: 3 })).toHaveLength(2);
     expect(screen.getByText("3 eventos carregados · fim da lista")).toBeInTheDocument();
   });
 
-  it("a ação administrativa mostra o autor e o motivo", async () => {
+  it("os dias vêm do kit (Hoje/Ontem/dia por extenso, fuso de São Paulo) e cada evento mantém a hora", async () => {
+    client.adminFeed.mockResolvedValue(
+      feedPage([
+        makeEvent({ id: "a", title: "Evento de hoje", occurred_at: "2026-10-31T14:00:00.000Z" }),
+        // 02:30 UTC de 31/10 ainda é 23:30 de 30/10 em São Paulo: é "Ontem", e não "Hoje"
+        makeEvent({ id: "b", title: "Evento da noite", occurred_at: "2026-10-31T02:30:00.000Z" }),
+        makeEvent({ id: "c", title: "Evento da semana", occurred_at: "2026-10-28T15:00:00.000Z" }),
+      ]),
+    );
+    await openFeed();
+    await screen.findByText("Evento de hoje");
+    const timeline = screen.getByRole("list", { name: "Atividade da plataforma" });
+    const headings = within(timeline).getAllByRole("heading", { level: 3 });
+    expect(headings.map((h) => h.textContent)).toEqual(["Hoje", "Ontem", "Quarta-feira, 28 de outubro"]);
+    const night = screen.getByText("Evento da noite").closest("li")!;
+    expect(night.closest("li.adm-tl-day")).toHaveTextContent("Ontem");
+    expect(night.querySelector("time")).toHaveTextContent("23:30");
+  });
+
+  it("o tipo aparece uma vez, como texto, e o ícone é só decoração (fora da leitura)", async () => {
+    const { container } = await openFeed();
+    const item = (await screen.findByText("Campanha Festival de Outono criada")).closest("li")!;
+    expect(within(item).getByText("Campanha criada")).toBeInTheDocument();
+    const mark = item.querySelector(".adm-tl-mark")!;
+    expect(mark).toHaveAttribute("aria-hidden", "true");
+    expect(mark.querySelector("svg")).not.toBeNull();
+    // o tipo não se repete (nem no ícone nem num selo)
+    expect(item.textContent?.match(/Campanha criada/g)).toHaveLength(1);
+    expect(container.querySelector(".adm-act-ico")).toBeNull();
+  });
+
+  it("cada evento mostra a hora de São Paulo num <time>", async () => {
+    await openFeed();
+    const item = (await screen.findByText("Campanha Festival de Outono criada")).closest("li")!;
+    const time = item.querySelector("time")!;
+    expect(time).toHaveAttribute("datetime", "2026-10-30T12:00:00.000Z");
+    expect(time).toHaveTextContent("09:00");
+  });
+
+  it("a ação administrativa mostra o autor; o motivo vem no 'Ver detalhes' do evento", async () => {
     await openFeed();
     const item = (await screen.findByText("Workspace suspenso pelo time da plataforma")).closest("li")!;
     expect(within(item).getByRole("link", { name: "Marina Admin" })).toHaveAttribute("href", "/admin/users/7");
-    expect(within(item).getByText(/Cobrança contestada, aguardando análise/)).toBeInTheDocument();
+
+    const reason = within(item).getByText(/Cobrança contestada, aguardando análise/);
+    expect(reason).not.toBeVisible();
+    await userEvent.click(within(item).getByRole("button", { name: "Ver detalhes", expanded: false }));
+    expect(reason).toBeVisible();
+    expect(reason.closest("p")).toHaveTextContent("Motivo: Cobrança contestada, aguardando análise");
+  });
+
+  it("evento sem motivo não tem 'Ver detalhes'", async () => {
+    client.adminFeed.mockResolvedValue(feedPage([CAMPAIGN_EVENT]));
+    await openFeed();
+    await screen.findByText("Campanha Festival de Outono criada");
+    expect(screen.queryByRole("button", { name: "Ver detalhes" })).not.toBeInTheDocument();
   });
 
   it("linka workspace e campanha, e a ação administrativa leva para o que mudou", async () => {
@@ -117,14 +175,40 @@ describe("Atividade: filtros e período", () => {
     expect(currentSearch(router)).toMatchObject({ kind: "charge_paid" });
   });
 
-  it("o filtro de workspace vai para a API e limpar tira da consulta", async () => {
+  it("o filtro de workspace vai para a API e o chip tira da consulta", async () => {
     const { router } = await openFeed();
-    await userEvent.click(screen.getByRole("button", { name: "Escolher workspace" }));
-    await waitFor(() => expect(lastQuery()).toMatchObject({ workspace_id: PICKED_WORKSPACE.id }));
-    expect(currentSearch(router)).toMatchObject({ workspace_id: PICKED_WORKSPACE.id });
+    await userEvent.click(screen.getByRole("button", { name: /^Workspace:/ }));
+    await userEvent.click(await screen.findByRole("option", { name: /Café Serra Verde/ }));
+    await waitFor(() => expect(lastQuery()).toMatchObject({ workspace_id: CAFE_WORKSPACE_ITEM.id }));
+    expect(currentSearch(router)).toMatchObject({ workspace_id: CAFE_WORKSPACE_ITEM.id });
 
-    await userEvent.click(screen.getByRole("button", { name: "Limpar workspace" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remover filtro Workspace: Café Serra Verde" }));
     await waitFor(() => expect(lastQuery().workspace_id).toBeUndefined());
+  });
+
+  it("uma só barra de filtros, acima do painel, com workspace e tipo na linha dela (sem 'Atualizar' no cabeçalho)", async () => {
+    const { container } = await openFeed();
+    expect(container.querySelectorAll(".adm-filters")).toHaveLength(1);
+    const panel = screen.getByRole("tabpanel");
+    expect(panel.querySelector(".adm-filters")).toBeNull();
+    const bar = container.querySelector<HTMLElement>(".adm-filters")!;
+    expect(within(bar).getByRole("button", { name: /^Workspace:/ })).toBeInTheDocument();
+    expect(within(bar).getByRole("combobox", { name: "Tipo" })).toBeInTheDocument();
+    // o período é do cabeçalho e o "Atualizar" é o ícone no fim da barra
+    const header = screen.getByRole("heading", { name: "Atividades", level: 1 }).closest("header")!;
+    expect(within(header).getByRole("group", { name: "Período" })).toBeInTheDocument();
+    expect(within(header).queryByRole("button", { name: "Atualizar" })).not.toBeInTheDocument();
+    expect(within(bar).getByRole("button", { name: "Atualizar" })).toHaveAttribute("data-icon-only", "true");
+  });
+
+  it("o tipo escolhido vira chip e 'Limpar filtros' zera tipo e workspace, mantendo o período", async () => {
+    const { router } = await openFeed(`/admin/activity?kind=charge_paid&workspace_id=${CAFE_WORKSPACE_ITEM.id}&from=2026-10-20&to=2026-10-25`);
+    expect(screen.getByRole("button", { name: "Remover filtro Tipo: Aporte pago" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Workspace:/ })).toHaveTextContent("Café Serra Verde"));
+
+    await userEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    await waitFor(() => expect(lastQuery()).toEqual({ from: "2026-10-20", to: "2026-10-25", limit: 50 }));
+    expect(currentSearch(router)).toEqual({ from: "2026-10-20", to: "2026-10-25" });
   });
 
   it("filtro vindo da URL com valor inválido é descartado", async () => {
@@ -167,7 +251,8 @@ describe("Atividade: estados", () => {
   it("carregando: esqueleto", async () => {
     client.adminFeed.mockReturnValue(new Promise(() => {}));
     const { container } = renderActivity();
-    await waitFor(() => expect(container.querySelectorAll(".adm-act-skeleton .adm-sk").length).toBeGreaterThan(0));
+    await waitFor(() => expect(container.querySelectorAll(".adm-lsk[data-variant='timeline'] .adm-sk").length).toBeGreaterThan(0));
+    expect(container.querySelector(".adm-lsk")).toHaveTextContent("Carregando atividades…");
   });
 
   it("vazio sem filtro sugere um período maior", async () => {
@@ -197,7 +282,7 @@ describe("Atividade: estados", () => {
     await screen.findByText("Workspace Café Serra Verde criado");
   });
 
-  it("Atualizar refaz a consulta", async () => {
+  it("Atualizar (o ícone da barra) refaz a consulta", async () => {
     await openFeed();
     await screen.findByText("Workspace Café Serra Verde criado");
     const before = feedCalls().length;

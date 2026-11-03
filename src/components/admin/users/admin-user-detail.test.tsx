@@ -126,15 +126,18 @@ describe("detalhe do usuário: cabeçalho e dados", () => {
     expect(within(header).getByText("Administrador")).toBeInTheDocument();
   });
 
-  it("dados da conta: e-mail, telefone, e-mail verificado, documento mascarado, cadastro e identificador", async () => {
+  it("dados da conta (aba Resumo, a padrão): telefone, e-mail verificado, documento mascarado, cadastro e identificador; o e-mail só no cabeçalho", async () => {
     await renderDetail();
     const block = dataBlock();
-    expect(valueOf(block, "E-mail")).toHaveTextContent("bernardo@cafeserraverde.com.br");
+    expect(screen.getByRole("tab", { name: "Resumo" })).toHaveAttribute("aria-selected", "true");
+    // o e-mail é o subtítulo do cabeçalho e não se repete nos dados
+    expect(within(block).queryByText("E-mail", { selector: "dt" })).not.toBeInTheDocument();
+    expect(within(block).queryByText("bernardo@cafeserraverde.com.br")).not.toBeInTheDocument();
     expect(valueOf(block, "Telefone")).toHaveTextContent("(11) 98765-4321");
     expect(valueOf(block, "E-mail verificado")).toHaveTextContent("Sim");
     expect(valueOf(block, "Documento")).toHaveTextContent("***.***.***-45");
     expect(valueOf(block, "Documento")).toHaveTextContent("Mascarado: só os 2 últimos dígitos.");
-    expect(valueOf(block, "Cadastro")).toHaveTextContent("10/03/2025 09:00");
+    expect(valueOf(block, "Cadastrado em")).toHaveTextContent("10/03/2025 09:00");
     expect(valueOf(block, "Identificador")).toHaveTextContent("9");
     expect(within(block).queryByText("Excluída em")).not.toBeInTheDocument();
   });
@@ -199,13 +202,13 @@ describe("detalhe do usuário: estados da página", () => {
     expect(screen.getByRole("navigation", { name: "Navegação" })).toBeInTheDocument();
   });
 
-  it("usuário que não existe: diz isso, sem botão de tentar de novo (repetir não muda nada)", async () => {
+  it("usuário que não existe: 'não encontrado' com a saída para a lista, sem botão de tentar de novo (repetir não muda nada)", async () => {
     mocks.adminGet.mockRejectedValue(toAdminApiError(404, { message: "Usuário não encontrado." }));
     renderRoutes(ROUTES, "/admin/users/9");
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Não encontrado");
-    expect(alert).toHaveTextContent("Não encontramos um usuário com este identificador.");
-    expect(within(alert).queryByRole("button")).not.toBeInTheDocument();
+    expect(await screen.findByText("Não encontramos este usuário")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Tentar de novo/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Voltar para a lista" })).toHaveAttribute("href", "/admin/users");
     expect(screen.getByRole("link", { name: "Usuários" })).toHaveAttribute("href", "/admin/users");
   });
 
@@ -233,33 +236,39 @@ describe("detalhe do usuário: estados da página", () => {
 
   it.each(["abc", "0", "-3", "1.5", "9abc", "007x"])("id inválido na URL (%s): 'não encontrado' sem ir ao servidor", async (id) => {
     renderRoutes(ROUTES, `/admin/users/${id}`);
-    expect(await screen.findByRole("alert")).toHaveTextContent("Não encontramos um usuário com este identificador.");
+    expect(await screen.findByText("Não encontramos este usuário")).toBeInTheDocument();
     expect(mocks.adminGet).not.toHaveBeenCalled();
   });
 });
 
 describe("detalhe do usuário: abas na URL", () => {
-  it("validateSearch aceita só uma aba conhecida; a primeira é o padrão e não aparece", () => {
+  it("validateSearch aceita só uma aba conhecida; a primeira (Resumo) é o padrão e não aparece; os valores antigos seguem valendo", () => {
     expect(validateAdminUserSearch({ tab: "sessions" })).toEqual({ tab: "sessions" });
     expect(validateAdminUserSearch({ tab: "activity" })).toEqual({ tab: "activity" });
-    expect(validateAdminUserSearch({ tab: "links" })).toEqual({});
+    expect(validateAdminUserSearch({ tab: "links" })).toEqual({ tab: "links" });
+    expect(validateAdminUserSearch({ tab: "summary" })).toEqual({});
     expect(validateAdminUserSearch({ tab: "financeiro" })).toEqual({});
     expect(validateAdminUserSearch({ tab: 3 })).toEqual({});
     expect(validateAdminUserSearch({ page: 2 })).toEqual({});
   });
 
-  it("abre em Vínculos, com a contagem de vínculos e de sessões nas abas", async () => {
+  it("abre em Resumo, com a contagem de vínculos e de sessões nas abas", async () => {
     await renderDetail();
     const tabs = screen.getByRole("tablist", { name: "Seções do usuário" });
-    expect(within(tabs).getByRole("tab", { name: /Vínculos/ })).toHaveAttribute("aria-selected", "true");
+    expect(within(tabs).getByRole("tab", { name: "Resumo" })).toHaveAttribute("aria-selected", "true");
+    expect(within(tabs).getByRole("tab", { name: /Vínculos/ })).toHaveAttribute("aria-selected", "false");
     expect(within(tabs).getByRole("tab", { name: /Vínculos/ })).toHaveTextContent("2");
     expect(within(tabs).getByRole("tab", { name: /Sessões/ })).toHaveTextContent("2");
     expect(within(tabs).getByRole("tab", { name: "Atividade" })).toHaveAttribute("aria-selected", "false");
-    expect(screen.getByRole("tabpanel")).toHaveAccessibleName(/Vínculos/);
+    expect(screen.getByRole("tabpanel")).toHaveAccessibleName("Resumo");
   });
 
   it("trocar de aba muda a URL (só `?tab=`), e voltar para a primeira a tira", async () => {
     const { router, user } = await renderDetail();
+    await user.click(screen.getByRole("tab", { name: /Vínculos/ }));
+    await waitFor(() => expect(currentSearch(router)).toEqual({ tab: "links" }));
+    expect(screen.getByRole("table", { name: "Workspaces vinculados" })).toBeInTheDocument();
+
     await user.click(screen.getByRole("tab", { name: /Sessões/ }));
     await waitFor(() => expect(currentSearch(router)).toEqual({ tab: "sessions" }));
     expect(screen.getByRole("tab", { name: /Sessões/ })).toHaveAttribute("aria-selected", "true");
@@ -267,36 +276,40 @@ describe("detalhe do usuário: abas na URL", () => {
     await user.click(screen.getByRole("tab", { name: "Atividade" }));
     await waitFor(() => expect(currentSearch(router)).toEqual({ tab: "activity" }));
 
-    await user.click(screen.getByRole("tab", { name: /Vínculos/ }));
+    await user.click(screen.getByRole("tab", { name: "Resumo" }));
     await waitFor(() => expect(currentSearch(router)).toEqual({}));
-    expect(screen.getByRole("table", { name: "Workspaces vinculados" })).toBeInTheDocument();
+    expect(dataBlock()).toBeInTheDocument();
   });
 
-  it("um link com ?tab=sessions abre direto na aba; aba desconhecida cai em Vínculos", async () => {
+  it("um link com ?tab=sessions (ou ?tab=links) abre direto na aba; aba desconhecida cai em Resumo", async () => {
     const first = await renderDetail("/admin/users/9?tab=sessions");
     expect(screen.getByRole("tab", { name: /Sessões/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("region", { name: "Sessões" })).toBeInTheDocument();
     first.unmount();
 
-    await renderDetail("/admin/users/9?tab=xyz");
+    const second = await renderDetail("/admin/users/9?tab=links");
     expect(screen.getByRole("tab", { name: /Vínculos/ })).toHaveAttribute("aria-selected", "true");
+    second.unmount();
+
+    await renderDetail("/admin/users/9?tab=xyz");
+    expect(screen.getByRole("tab", { name: "Resumo" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("setas do teclado trocam de aba", async () => {
     const { router, user } = await renderDetail();
-    screen.getByRole("tab", { name: /Vínculos/ }).focus();
+    screen.getByRole("tab", { name: "Resumo" }).focus();
     await user.keyboard("{ArrowRight}");
-    await waitFor(() => expect(currentSearch(router)).toEqual({ tab: "sessions" }));
-    expect(screen.getByRole("tab", { name: /Sessões/ })).toHaveFocus();
+    await waitFor(() => expect(currentSearch(router)).toEqual({ tab: "links" }));
+    expect(screen.getByRole("tab", { name: /Vínculos/ })).toHaveFocus();
   });
 });
 
 describe("detalhe do usuário: aba Vínculos", () => {
-  it("todos os workspaces, com papel, permissões personalizadas, estado do workspace e entrada", async () => {
-    await renderDetail();
+  it("todos os workspaces, com o estado sob o nome, papel, permissões personalizadas e entrada (sem coluna só para o estado)", async () => {
+    await renderDetail("/admin/users/9?tab=links");
     const table = screen.getByRole("table", { name: "Workspaces vinculados" });
     const headers = within(table).getAllByRole("columnheader").map((h) => h.textContent);
-    expect(headers).toEqual(["Workspace", "Papel", "Status do workspace", "Entrada"]);
+    expect(headers).toEqual(["Workspace", "Papel", "Entrada"]);
 
     const rows = within(table)
       .getAllByRole("row")
@@ -305,20 +318,24 @@ describe("detalhe do usuário: aba Vínculos", () => {
 
     const [cafe, lume] = rows.map((row) => within(row).getAllByRole("cell"));
     expect(cafe[0]).toHaveTextContent("Café Serra Verde");
+    expect(cafe[0]).toHaveTextContent("Ativo");
     expect(cafe[1]).toHaveTextContent("Proprietário");
     expect(cafe[1]).not.toHaveTextContent("Permissões personalizadas");
-    expect(cafe[2]).toHaveTextContent("Ativo");
-    expect(cafe[3]).toHaveTextContent("10/03/2025");
+    expect(cafe[2]).toHaveTextContent("10/03/2025");
 
     expect(lume[0]).toHaveTextContent("Studio Lume Fotografia");
+    expect(lume[0]).toHaveTextContent("Suspenso");
     expect(lume[1]).toHaveTextContent("Financeiro");
     expect(lume[1]).toHaveTextContent("Permissões personalizadas");
-    expect(lume[2]).toHaveTextContent("Suspenso");
-    expect(lume[3]).toHaveTextContent("02/06/2025");
+    // a explicação não fica só num `title`: o "i" ao lado a descreve para teclado e leitor de tela
+    expect(within(lume[1]).getByRole("button", { name: "Permissões personalizadas de Bernardo Medeiros Moraes em Studio Lume Fotografia" })).toHaveAccessibleDescription(
+      "As permissões deste vínculo sobrescrevem o padrão do papel.",
+    );
+    expect(lume[2]).toHaveTextContent("02/06/2025");
   });
 
   it("cada linha abre o workspace", async () => {
-    const { router, user } = await renderDetail();
+    const { router, user } = await renderDetail("/admin/users/9?tab=links");
     const link = screen.getByRole("link", { name: /Studio Lume Fotografia/ });
     expect(link).toHaveAttribute("href", `/admin/workspaces/${WS_LUME}`);
     await user.click(link);
@@ -327,28 +344,30 @@ describe("detalhe do usuário: aba Vínculos", () => {
 
   it("sem nenhum vínculo: diz isso", async () => {
     server.detail = makeUserDetail({ workspaces: [] });
-    await renderDetail();
+    await renderDetail("/admin/users/9?tab=links");
     expect(screen.getByText("Sem vínculo com workspaces")).toBeInTheDocument();
   });
 
   it("papel desconhecido do backend aparece como veio", async () => {
     server.detail = makeUserDetail({ workspaces: [makeLink({ role: "estagiario" as never })] });
-    await renderDetail();
+    await renderDetail("/admin/users/9?tab=links");
     expect(screen.getByText("estagiario")).toBeInTheDocument();
   });
 });
 
 describe("detalhe do usuário: aba Sessões", () => {
-  it("quantas, a última sessão (aproximada), onde, e a explicação do que é aproximação", async () => {
+  it("quantas, a última sessão (aproximada), onde; a explicação do que é aproximação fica no \"i\", sem parágrafo", async () => {
     await renderDetail("/admin/users/9?tab=sessions");
     const block = screen.getByRole("region", { name: "Sessões" });
     expect(valueOf(block, "Sessões ativas")).toHaveTextContent("2");
     expect(valueOf(block, "Última sessão usada")).toHaveTextContent("aprox. 31/10/2026 09:00");
     expect(valueOf(block, "Última sessão usada")).toHaveTextContent("há 3 horas");
     expect(valueOf(block, "Conectada em")).toHaveTextContent("Backoffice (navegador), App (celular)");
-    expect(block).toHaveTextContent("Como é calculado.");
-    expect(block).toHaveTextContent("±5 minutos");
-    expect(block).toHaveTextContent("Quando a pessoa sai do app, a sessão é apagada e a data some.");
+    const info = within(block).getByRole("button", { name: "Como é calculado: Última sessão usada" });
+    expect(info).toHaveAccessibleDescription(/±5 minutos/);
+    expect(info).toHaveAccessibleDescription(/Quando a pessoa sai do app, a sessão é apagada e a data some\./);
+    // o texto longo não fica aberto na aba
+    expect(block).not.toHaveTextContent("Como é calculado.");
   });
 
   it("sem sessão aberta: diz isso e não inventa uma data", async () => {
@@ -361,6 +380,11 @@ describe("detalhe do usuário: aba Sessões", () => {
     expect(valueOf(block, "Conectada em")).toHaveTextContent("—");
   });
 });
+
+/** Os eventos de uma linha do tempo agrupada por dia (os `li` dos grupos também são `listitem`). */
+function timelineItems(scope: HTMLElement): HTMLElement[] {
+  return within(scope).getAllByRole("listitem").filter((li) => li.classList.contains("adm-tl-item"));
+}
 
 describe("detalhe do usuário: aba Atividade", () => {
   it("busca as duas visões da auditoria: sobre a conta (alvo) e feitas por ela (autor)", async () => {
@@ -376,25 +400,54 @@ describe("detalhe do usuário: aba Atividade", () => {
     );
   });
 
-  it("cada ação mostra o que foi feito, quando, por quem (com link) e o motivo", async () => {
+  it("cada ação mostra o que foi feito, a hora (o dia vai no cabeçalho), por quem (com link e e-mail visível) e o motivo", async () => {
     await renderDetail("/admin/users/9?tab=activity");
     const list = await screen.findByRole("list", { name: "Histórico de ações" });
-    const item = within(list).getByRole("listitem");
+    const item = timelineItems(list)[0];
     expect(within(item).getByText("Usuário suspenso")).toBeInTheDocument();
-    expect(within(item).getByText("30/10/2026 10:30")).toBeInTheDocument();
-    expect(within(item).getByRole("link", { name: "Marina Albuquerque" })).toHaveAttribute("href", "/admin/users/1");
+    // o dia (30/10, "Ontem" para o relógio do teste) é o cabeçalho do grupo; no evento fica só a hora, e o instante inteiro no `title`
+    expect(within(list).getByRole("heading", { level: 3, name: "Ontem" })).toBeInTheDocument();
+    const time = within(item).getByText("10:30");
+    expect(time).toHaveAttribute("datetime", "2026-10-30T13:30:00.000Z");
+    expect(time).toHaveAttribute("title", expect.stringContaining("30/10/2026 10:30"));
+    expect(within(item).queryByText("30/10/2026 10:30")).not.toBeInTheDocument();
+    const actor = within(item).getByRole("link", { name: "Marina Albuquerque" });
+    expect(actor).toHaveAttribute("href", "/admin/users/1");
+    expect(actor).toHaveClass("adm-textlink");
+    // o e-mail de quem agiu é texto da linha de apoio, não um `title` do nome
+    expect(actor).not.toHaveAttribute("title");
+    expect(within(item).getByText("marina@hype.com")).toBeVisible();
     expect(item).toHaveTextContent("Motivo: Suspeita de acesso indevido à conta");
     expect(item).toHaveTextContent("(administrador)");
   });
 
-  it("antes e depois ficam recolhidos e abrem sob demanda", async () => {
-    const { user } = await renderDetail("/admin/users/9?tab=activity");
-    const summary = await screen.findByText("Ver antes e depois");
-    const details = summary.closest("details") as HTMLDetailsElement;
-    expect(details.open).toBe(false);
+  it("os eventos são agrupados por dia no fuso de São Paulo, na ordem da API", async () => {
+    server.target = [
+      makeAuditEntry({ id: 1, created_at: "2026-10-31T13:00:00.000Z", action_label: "Sessões encerradas" }),
+      // 01:30 UTC de 31/10 ainda é noite de 30/10 em São Paulo (UTC-3): o mesmo dia do evento seguinte
+      makeAuditEntry({ id: 2, created_at: "2026-10-31T01:30:00.000Z", action_label: "Conta reativada" }),
+      makeAuditEntry({ id: 3, created_at: "2026-10-30T13:30:00.000Z", action_label: "Usuário suspenso" }),
+      makeAuditEntry({ id: 4, created_at: "2026-10-28T13:30:00.000Z", action_label: "Conta criada" }),
+    ];
+    await renderDetail("/admin/users/9?tab=activity");
+    const list = await screen.findByRole("list", { name: "Histórico de ações" });
+    const headings = within(list).getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(headings).toEqual(["Hoje", "Ontem", "Quarta-feira, 28 de outubro"]);
+    const yesterday = within(list).getByRole("heading", { name: "Ontem" }).closest("li") as HTMLElement;
+    expect(timelineItems(yesterday)).toHaveLength(2);
+    expect(within(yesterday).getByText("22:30")).toBeInTheDocument();
+  });
 
-    await user.click(summary);
-    expect(details.open).toBe(true);
+  it("o histórico é uma linha do tempo do kit; antes e depois ficam recolhidos e abrem sob demanda", async () => {
+    const { user } = await renderDetail("/admin/users/9?tab=activity");
+    const toggle = await screen.findByRole("button", { name: "Ver detalhes" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    const details = document.getElementById(toggle.getAttribute("aria-controls") as string) as HTMLElement;
+    expect(details).toHaveAttribute("hidden");
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(details).not.toHaveAttribute("hidden");
     const row = within(details).getByText("Status").closest("div") as HTMLElement;
     expect(row).toHaveAttribute("data-changed", "true");
     expect(within(row).getByText("Ativo")).toBeInTheDocument();
@@ -408,7 +461,7 @@ describe("detalhe do usuário: aba Atividade", () => {
       makeAuditEntry({ before_state: "antes cru", after_state: ["depois"], impact: { sessions_revoked: 3 } }),
     ];
     const { user } = await renderDetail("/admin/users/9?tab=activity");
-    await user.click(await screen.findByText("Ver antes e depois"));
+    await user.click(await screen.findByRole("button", { name: "Ver detalhes" }));
     expect(screen.getByText('"antes cru"')).toBeInTheDocument();
     expect(screen.getByText(/"depois"/)).toBeInTheDocument();
     expect(screen.getByText("Impacto")).toBeInTheDocument();
@@ -416,15 +469,14 @@ describe("detalhe do usuário: aba Atividade", () => {
     expect(screen.getByText("3")).toBeInTheDocument();
   });
 
-  it("ação sem estados gravados mas com IP: 'Ver detalhes'; sem nada disso, sem expansor", async () => {
+  it("ação com IP mas sem estados gravados também abre 'Ver detalhes'; sem nada disso, sem expansor", async () => {
     server.target = [
       makeAuditEntry({ id: 1, before_state: null, after_state: null, impact: null, ip: "203.0.113.7" }),
       makeAuditEntry({ id: 2, before_state: null, after_state: null, impact: null, ip: null }),
     ];
     await renderDetail("/admin/users/9?tab=activity");
     await screen.findAllByText("Usuário suspenso");
-    expect(screen.getAllByText("Ver detalhes")).toHaveLength(1);
-    expect(screen.queryByText("Ver antes e depois")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Ver detalhes" })).toHaveLength(1);
   });
 
   it("as contagens das duas visões aparecem no seletor", async () => {
@@ -465,7 +517,7 @@ describe("detalhe do usuário: aba Atividade", () => {
     await user.click(screen.getByRole("button", { name: /Feitas por esta pessoa/ }));
 
     const list = await screen.findByRole("list", { name: "Histórico de ações" });
-    const [suspend, member] = within(list).getAllByRole("listitem");
+    const [suspend, member] = timelineItems(list);
     expect(within(suspend).getByText("Workspace suspenso")).toBeInTheDocument();
     expect(suspend).toHaveTextContent("sobre workspace Café Serra Verde");
     expect(within(suspend).getAllByRole("link", { name: "Café Serra Verde" })[0]).toHaveAttribute("href", `/admin/workspaces/${WS_CAFE}`);
@@ -477,7 +529,7 @@ describe("detalhe do usuário: aba Atividade", () => {
     server.actor = [makeAuditEntry({ id: 12, target: { type: "workspace_member", id: `${WS_CAFE}:77`, label: null } })];
     const { user } = await renderDetail("/admin/users/9?tab=activity");
     await user.click(screen.getByRole("button", { name: /Feitas por esta pessoa/ }));
-    const item = within(await screen.findByRole("list", { name: "Histórico de ações" })).getByRole("listitem");
+    const item = timelineItems(await screen.findByRole("list", { name: "Histórico de ações" }))[0];
     expect(item).toHaveTextContent(`sobre vínculo de ${WS_CAFE}:77`);
     expect(within(item).queryByRole("link", { name: new RegExp(WS_CAFE) })).not.toBeInTheDocument();
   });
@@ -549,9 +601,10 @@ describe("detalhe do usuário: aba Atividade", () => {
 });
 
 describe("detalhe do usuário: quais ações a conta aceita", () => {
-  it("conta ativa com sessão: Encerrar sessões e Suspender (não Reativar), sem aviso", async () => {
+  it("conta ativa com sessão: Encerrar sessões e Suspender (não Reativar) à vista, 'Mais' com a exclusão e sem aviso", async () => {
     await renderDetail();
     expect(actionButtons()).toEqual(["Encerrar sessões", "Suspender"]);
+    expect(within(pageHeader()).getByRole("button", { name: "Mais" })).toBeInTheDocument();
     expect(screen.queryByText(/Esta é a sua conta/)).not.toBeInTheDocument();
     expect(screen.queryByText(/administradora da plataforma:/)).not.toBeInTheDocument();
   });
@@ -573,6 +626,9 @@ describe("detalhe do usuário: quais ações a conta aceita", () => {
     await renderDetail();
     expect(actionButtons()).toEqual([]);
     expect(screen.getByText(/Esta pessoa é administradora da plataforma: o servidor não permite suspender a conta nem encerrar as sessões de outro administrador\./)).toBeInTheDocument();
+    // o aviso fica abaixo do cabeçalho, não no meio dos botões
+    expect(within(pageHeader()).queryByText(/o servidor não permite suspender/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
   });
 
   it("a própria conta: nenhuma ação, só a explicação (mesmo sendo administrador)", async () => {
@@ -673,7 +729,7 @@ describe("detalhe do usuário: suspender", () => {
     expect(path).toBe("/admin/users/9/suspend");
     expect(body).toEqual({ reason: "Suspeita de fraude" });
     expect(options.idempotencyKey).toMatch(UUID_V4);
-    expect(mocks.toastSuccess).toHaveBeenCalledWith("Conta suspensa.");
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Conta suspensa.", expect.anything());
 
     // a tela já mostra a conta como suspensa, com o bloco da suspensão e a ação de reativar
     expect(within(pageHeader()).getByText("Suspenso")).toBeInTheDocument();
@@ -818,7 +874,7 @@ describe("detalhe do usuário: reativar", () => {
     expect(path).toBe("/admin/users/9/reactivate");
     expect(body).toEqual({ reason: "Acesso regularizado" });
     expect(options.idempotencyKey).toMatch(UUID_V4);
-    expect(mocks.toastSuccess).toHaveBeenCalledWith("Conta reativada.");
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Conta reativada.", expect.anything());
     expect(within(pageHeader()).getByText("Ativo")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Conta suspensa" })).not.toBeInTheDocument();
     expect(actionButtons()).toEqual(["Suspender"]);
@@ -859,7 +915,7 @@ describe("detalhe do usuário: encerrar sessões", () => {
     expect(path).toBe("/admin/users/9/revoke-sessions");
     expect(body).toEqual({ reason: "Computador compartilhado" });
     expect(options.idempotencyKey).toMatch(UUID_V4);
-    expect(mocks.toastSuccess).toHaveBeenCalledWith("Sessões encerradas.");
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Sessões encerradas.", expect.anything());
 
     // sem sessão, não há mais o que encerrar: o botão some e a aba mostra zero
     expect(actionButtons()).toEqual(["Suspender"]);

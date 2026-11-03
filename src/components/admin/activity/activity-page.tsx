@@ -1,12 +1,8 @@
 import { useCallback, useMemo } from "react";
-import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { FinancialPeriodSelect } from "@/components/admin/financial/financial-period-select";
+import { FinancialPeriodControl } from "@/components/admin/financial/financial-period-control";
 import { AdminPage, AdminPageHeader, AdminTabPanel, AdminTabs, type AdminTabItem } from "@/components/admin/platform";
-import { I } from "@/components/prototype/ui";
-import { adminKeys } from "@/hooks/admin/admin-query-keys";
-import { ADMIN_ACTIVITY_RESOURCE, ADMIN_AUDIT_RESOURCE } from "@/hooks/admin/use-admin-activity";
 import { useAdminFinancialPeriod } from "@/hooks/admin/use-admin-financial-period";
 import { useAdminListQueryState } from "@/hooks/admin/use-admin-list-query-state";
 
@@ -62,9 +58,6 @@ export function ActivityPage() {
   const { period, today, preset, setPeriod } = useAdminFinancialPeriod();
   const state = useAdminListQueryState(ACTIVITY_FILTER_CONFIG);
   const filters = readActivityFilters(state.filters);
-  const queryClient = useQueryClient();
-  const fetching =
-    useIsFetching({ queryKey: adminKeys.resource(ADMIN_ACTIVITY_RESOURCE) }) + useIsFetching({ queryKey: adminKeys.resource(ADMIN_AUDIT_RESOURCE) }) > 0;
 
   const filtered = activeActivityFilterCount(tab, filters) > 0;
   const clear = () => clearActivityFilters(tab, state);
@@ -85,36 +78,20 @@ export function ActivityPage() {
     [state.page, state.perPage, period.from, period.to, filters.workspaceId, filters.action, filters.targetType, filters.targetId, filters.actorUserId],
   );
 
-  const filterBar = <ActivityFilterBar tab={tab} filters={filters} state={state} />;
-
   return (
     <AdminPage>
       <AdminPageHeader
         title="Atividades"
         subtitle="O que aconteceu na plataforma e quem mudou o quê, com o motivo e o antes e depois."
-        actions={
-          <button
-            type="button"
-            className="btn out adm-btn-sm adm-act-refresh"
-            disabled={fetching}
-            aria-busy={fetching ? true : undefined}
-            onClick={() => {
-              void queryClient.invalidateQueries({ queryKey: adminKeys.resource(ADMIN_ACTIVITY_RESOURCE) });
-              void queryClient.invalidateQueries({ queryKey: adminKeys.resource(ADMIN_AUDIT_RESOURCE) });
-            }}
-          >
-            <I n="refresh" cls="sm" />
-            {fetching ? "Atualizando…" : "Atualizar"}
-          </button>
-        }
+        actions={<FinancialPeriodControl period={period} today={today} preset={preset} onChange={setPeriod} />}
       />
 
-      <AdminTabs tabs={TAB_ITEMS} value={tab} onChange={setTab} ariaLabel="Visões das atividades" idPrefix={TAB_PREFIX} />
+      <AdminTabs tabs={TAB_ITEMS} value={tab} onChange={setTab} ariaLabel="Seções das atividades" idPrefix={TAB_PREFIX} />
 
-      <FinancialPeriodSelect period={period} today={today} preset={preset} onChange={setPeriod} />
+      <ActivityFilterBar tab={tab} filters={filters} state={state} />
 
       <AdminTabPanel idPrefix={TAB_PREFIX} id="feed" active={tab === "feed"}>
-        <ActivityFeed filters={filters} period={period} today={today} filterBar={filterBar} filtered={filtered} onClearFilters={clear} />
+        <ActivityFeed filters={filters} period={period} filtered={filtered} onClearFilters={clear} />
       </AdminTabPanel>
       <AdminTabPanel idPrefix={TAB_PREFIX} id="changes" active={tab === "changes"}>
         <AuditLog
@@ -122,7 +99,6 @@ export function ActivityPage() {
           page={state.page}
           setPage={state.setPage}
           setPerPage={state.setPerPage}
-          filterBar={filterBar}
           filtered={filtered}
           onClearFilters={clear}
         />

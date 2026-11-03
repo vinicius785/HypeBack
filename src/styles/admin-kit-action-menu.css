@@ -1,0 +1,74 @@
+/*
+ * Admin da plataforma — menu de ações "⋯"/"Mais" (`admin-action-menu.tsx`).
+ *
+ * Mesmas regras do kit (`admin-platform.css`): prefixo `adm-`, tudo sob `.pv`, cores/raios/alvo de toque pelos
+ * tokens `--adm-*`. Sem sombra, exceto o popover (`--adm-shadow-pop`). Vermelho só no item destrutivo.
+ * O popover é um portal com `position: fixed` (o `.adm-card-flush` e a rolagem da tabela recortariam um absoluto).
+ */
+
+/*
+ * Botão destrutivo de contorno ("Suspender"): promovido de `admin-users.css`. Não usa `.btn.out.dng` do protótipo:
+ * `.pv .btn.dng` (fundo vermelho) vem depois de `.pv .btn.out`, tem a mesma especificidade e ganha. Aqui o
+ * estilo é explícito e não depende da ordem das regras do protótipo.
+ */
+.pv .btn.adm-btn-danger-out { background: var(--adm-surface); color: var(--adm-bad); box-shadow: inset 0 0 0 1.5px var(--adm-bad); }
+.pv .btn.adm-btn-danger-out:hover:not(:disabled) { background: var(--adm-bad); color: var(--adm-surface); }
+.pv .btn.adm-btn-danger-out:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+
+/* ───────────────────────── gatilho ───────────────────────── */
+
+.pv .adm-actmenu { display: inline-flex; }
+
+/* altura: a do `.btn` do kit (44), a mesma dos botões vizinhos no cabeçalho; nunca abaixo do alvo de toque */
+.pv .btn.adm-actmenu-btn { min-height: var(--adm-hit); padding: 0 18px; font-size: 14px; }
+.pv .btn.adm-actmenu-btn[data-variant="secondary"]:hover { background: var(--adm-hover); }
+.pv .btn.adm-actmenu-btn[data-variant="ghost"] { background: transparent; color: var(--ink); }
+.pv .btn.adm-actmenu-btn[data-variant="ghost"]:hover { background: var(--adm-hover); }
+.pv .btn.adm-actmenu-btn[data-icon-only="true"] { width: var(--adm-hit); height: var(--adm-hit); padding: 0; justify-content: center; border-radius: var(--adm-r-sm); }
+.pv .btn.adm-actmenu-btn[aria-expanded="true"] { background: var(--adm-hover); }
+.pv .btn.adm-actmenu-btn:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+
+.pv .adm-actmenu-chev { transform: rotate(90deg); margin-right: -4px; transition: transform .15s; }
+.pv .adm-actmenu-btn[aria-expanded="true"] .adm-actmenu-chev { transform: rotate(-90deg); }
+
+/* ───────────────────────── popover ───────────────────────── */
+
+.pv .adm-actmenu-list {
+  position: fixed; top: 0; left: 0; z-index: 300;
+  display: flex; flex-direction: column; gap: 2px;
+  min-width: 200px; max-width: calc(100vw - 16px); overflow-y: auto; overscroll-behavior: contain;
+  padding: 6px; border-radius: var(--adm-r-md);
+  background: var(--adm-surface); color: var(--ink);
+  box-shadow: var(--adm-shadow-pop), 0 0 0 1.5px var(--adm-rule);
+  outline: none;
+  animation: adm-actmenu-in .12s ease-out both;
+}
+@keyframes adm-actmenu-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+.pv .adm-actmenu-item {
+  /* `flex: none`: a lista é uma coluna com `max-height` e rolagem; sem isso o item encolheria até o `min-height` e cortaria o motivo */
+  flex: none; display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--adm-hit);
+  padding: 8px 12px; border-radius: var(--adm-r-sm);
+  font-size: 14px; font-weight: 600; text-align: left; color: var(--ink);
+}
+.pv .adm-actmenu-ico { display: inline-flex; flex: none; color: var(--adm-text-muted); }
+.pv .adm-actmenu-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pv .adm-actmenu-why { font-size: 12px; font-weight: 400; line-height: 1.35; color: var(--adm-text-muted); }
+
+/* o item com foco (teclado ou passagem do mouse) ganha fundo; o anel só aparece no foco por teclado */
+.pv .adm-actmenu-item:focus:not([aria-disabled="true"]) { outline: none; background: var(--adm-hover); }
+.pv .adm-actmenu-item:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+
+.pv .adm-actmenu-item[aria-disabled="true"] { color: var(--adm-text-muted); cursor: not-allowed; }
+.pv .adm-actmenu-item[aria-disabled="true"]:focus { outline: none; }
+
+.pv .adm-actmenu-item[data-tone="danger"] { color: var(--adm-bad); }
+.pv .adm-actmenu-item[data-tone="danger"] .adm-actmenu-ico { color: inherit; }
+.pv .adm-actmenu-item[data-tone="danger"]:focus:not([aria-disabled="true"]) { background: var(--adm-bad-bg); }
+
+.pv .adm-actmenu-sep { height: 1px; margin: 4px 6px; background: var(--adm-rule); flex: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-actmenu-list { animation: none; }
+  .pv .adm-actmenu-chev { transition: none; }
+}

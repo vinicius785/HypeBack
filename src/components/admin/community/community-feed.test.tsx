@@ -49,6 +49,7 @@ describe("CommunityFeed: a lista", () => {
     const item = (await screen.findByText("Gravei um vídeo novo hoje!")).closest("li") as HTMLElement;
     expect(within(item).getByText("Marina Alves")).toBeInTheDocument();
     expect(within(item).getByText(/há 2 horas/)).toBeInTheDocument();
+    // Curtidas e comentários com a palavra visível ao lado do número.
     expect(within(item).getByText("12 curtidas")).toBeInTheDocument();
     expect(within(item).getByText("3 comentários")).toBeInTheDocument();
   });
@@ -101,7 +102,18 @@ describe("CommunityFeed: a lista", () => {
     const video = await screen.findByLabelText("Vídeo da publicação");
     expect(video).toHaveAttribute("src", "https://cdn.test/post.mp4");
     expect(video).toHaveAttribute("poster", "https://cdn.test/poster.jpg");
+    // A lista pode ter dezenas de vídeos: nenhum baixa nada até a pessoa dar o play.
+    expect(video).toHaveAttribute("preload", "none");
     expect(screen.queryByAltText("Imagem da publicação")).not.toBeInTheDocument();
+  });
+
+  it("vídeo sem capa carrega o primeiro quadro (metadata), para não aparecer um retângulo preto", async () => {
+    posts.list.mockResolvedValue(postPage([makePost({ video_url: "https://cdn.test/post.mp4", video_thumbnail_url: null })]));
+    renderFeed();
+
+    const video = await screen.findByLabelText("Vídeo da publicação");
+    expect(video).not.toHaveAttribute("poster");
+    expect(video).toHaveAttribute("preload", "metadata");
   });
 
   it("imagem aparece quando não há vídeo", async () => {
@@ -135,6 +147,38 @@ describe("CommunityFeed: a lista", () => {
   });
 });
 
+describe("CommunityFeed: barra e remover por publicação", () => {
+  it("o Atualizar é um ícone no fim da barra de filtros e busca o feed de novo", async () => {
+    renderFeed();
+    await screen.findByText("Gravei um vídeo novo hoje!");
+    const before = posts.list.mock.calls.length;
+
+    const refresh = screen.getByRole("button", { name: "Atualizar" });
+    expect(refresh.closest(".adm-filters-trail")).not.toBeNull();
+    expect(refresh).toHaveTextContent("");
+    await userEvent.click(refresh);
+
+    await waitFor(() => expect(posts.list.mock.calls.length).toBeGreaterThan(before));
+  });
+
+  it("o Remover de cada publicação é só o ícone, com o nome de quem publicou (e a mesma ação de antes)", async () => {
+    renderFeed();
+    await screen.findByText("Gravei um vídeo novo hoje!");
+
+    const button = screen.getByRole("button", { name: "Remover a publicação de Marina Alves" });
+    expect(button).toHaveTextContent("");
+    expect(button).toHaveAttribute("data-tone", "danger");
+  });
+
+  it("o contador da lista conta o que está carregado e some o 'Carregar mais' no fim", async () => {
+    posts.list.mockResolvedValue(postPage([makePost({ id: "p1" }), makePost({ id: "p2", content: "Outra" })]));
+    renderFeed();
+
+    expect(await screen.findByText("2 publicações carregadas · fim da lista")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Carregar mais" })).not.toBeInTheDocument();
+  });
+});
+
 describe("CommunityFeed: filtros e paginação", () => {
   it("'Sem grupo' pede só o que está fora de grupos", async () => {
     renderFeed();
@@ -144,6 +188,21 @@ describe("CommunityFeed: filtros e paginação", () => {
 
     await waitFor(() => expect(lastQuery()).toMatchObject({ group: "none" }));
     expect(screen.getByRole("button", { name: "Sem grupo" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("'Sem grupo' conta como filtro (chip e 'Limpar filtros' voltam a Todas); Todas não", async () => {
+    renderFeed();
+    await screen.findByText("Gravei um vídeo novo hoje!");
+    expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Sem grupo" }));
+    await waitFor(() => expect(lastQuery()).toMatchObject({ group: "none" }));
+    expect(screen.getByRole("button", { name: "Remover filtro Origem das publicações: Sem grupo" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+
+    await waitFor(() => expect(lastQuery()).toMatchObject({ group: "all" }));
+    expect(screen.getByRole("button", { name: "Todas" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("a busca vai para a API com o texto aparado, e Enter busca na hora", async () => {
@@ -164,7 +223,7 @@ describe("CommunityFeed: filtros e paginação", () => {
 
     await userEvent.type(screen.getByRole("searchbox", { name: "Buscar publicações" }), "xyz{Enter}");
 
-    const empty = await screen.findByRole("status");
+    const empty = (await screen.findByText("Nenhuma publicação encontrada")).closest('[role="status"]') as HTMLElement;
     expect(within(empty).getByText("Nenhuma publicação encontrada")).toBeInTheDocument();
     expect(within(empty).getByText(/com “xyz”/)).toBeInTheDocument();
 
@@ -226,7 +285,7 @@ describe("CommunityFeed: estados", () => {
     posts.list.mockReturnValue(new Promise(() => {}));
     renderFeed();
 
-    expect(await screen.findByRole("status")).toHaveTextContent("Carregando…");
+    expect(await screen.findByText("Carregando publicações…")).toBeInTheDocument();
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 });
@@ -247,6 +306,9 @@ describe("CommunityFeed: remover", () => {
     expect(within(dialog).getByText("Gravei um vídeo novo hoje!")).toBeInTheDocument();
     expect(within(dialog).queryByRole("textbox")).not.toBeInTheDocument();
     expect(posts.remove).not.toHaveBeenCalled();
+    // Texto da confirmação: direto, e sem falar do "backoffice".
+    expect(within(dialog).getByText(/Esta ação não pode ser desfeita\./)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/backoffice/i)).not.toBeInTheDocument();
   });
 
   it("cancelar não remove nada", async () => {
@@ -266,7 +328,7 @@ describe("CommunityFeed: remover", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Remover" }));
 
     await waitFor(() => expect(posts.remove).toHaveBeenCalledWith("p1"));
-    await waitFor(() => expect(toasts.success).toHaveBeenCalledWith("Publicação removida"));
+    await waitFor(() => expect(toasts.success).toHaveBeenCalledWith("Publicação removida", expect.anything()));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(await screen.findByText("Nenhuma publicação ainda")).toBeInTheDocument();
     expect(posts.list.mock.calls.length).toBeGreaterThan(loadsBefore);

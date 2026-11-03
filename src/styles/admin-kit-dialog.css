@@ -1,0 +1,111 @@
+/*
+ * Kit do Admin — AdminDialog e AdminDrawer (`src/components/admin/platform/admin-dialog.tsx`).
+ *
+ * Tudo sob `.pv` e com prefixo `adm-modal`. Tokens `--adm-*` vêm de `admin-platform.css`.
+ * Visual de Início: cartão branco, raio por token, sem sombra (o fundo escurecido já separa), preto na ação
+ * principal (`.btn` do protótipo), título em frase normal, alvo de toque `--adm-hit`.
+ * Gaveta: encosta na direita e vira tela cheia em ≤560 (o breakpoint de celular do Admin).
+ */
+
+.pv .adm-modal {
+  --adm-modal-w: 520px;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(5, 5, 5, .34);
+  animation: adm-modal-fade .2s var(--ease) both;
+}
+.pv .adm-modal[data-variant="drawer"] { place-items: stretch end; padding: 0; }
+
+.pv .adm-modal-box {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--adm-modal-w), 100%);
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  background: var(--adm-surface);
+  color: var(--ink);
+  border-radius: var(--adm-r-lg);
+  overflow: hidden;
+  outline: none;
+  animation: adm-modal-rise .26s var(--ease) both;
+}
+.pv .adm-modal-box[aria-busy="true"] { cursor: progress; }
+
+/* diálogo: sm 400 · md 520 · lg 720 */
+.pv .adm-modal-box[data-variant="dialog"][data-size="sm"] { --adm-modal-w: 400px; }
+.pv .adm-modal-box[data-variant="dialog"][data-size="md"] { --adm-modal-w: 520px; }
+.pv .adm-modal-box[data-variant="dialog"][data-size="lg"] { --adm-modal-w: 720px; }
+
+/* gaveta: sm 380 · md 480 · lg 640, altura toda, só os cantos de dentro arredondados */
+.pv .adm-modal-box[data-variant="drawer"] {
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  border-radius: var(--adm-r-lg) 0 0 var(--adm-r-lg);
+  animation-name: adm-modal-slide;
+}
+.pv .adm-modal-box[data-variant="drawer"][data-size="sm"] { --adm-modal-w: 380px; }
+.pv .adm-modal-box[data-variant="drawer"][data-size="md"] { --adm-modal-w: 480px; }
+.pv .adm-modal-box[data-variant="drawer"][data-size="lg"] { --adm-modal-w: 640px; }
+
+/* cabeçalho */
+.pv .adm-modal-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 24px 24px 8px; }
+.pv .adm-modal-titles { min-width: 0; flex: 1; }
+.pv .adm-modal-title { margin: 0; font-size: 20px; line-height: 1.25; font-weight: 600; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.pv .adm-modal-desc { margin: 6px 0 0; font-size: 14px; line-height: 1.5; color: var(--adm-text-muted); }
+
+.pv .adm-modal-close {
+  flex: none;
+  width: var(--adm-hit);
+  height: var(--adm-hit);
+  margin: -6px -8px 0 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--adm-r-sm);
+  background: transparent;
+  color: var(--ink);
+  transition: background .2s;
+}
+.pv .adm-modal-close:hover:not(:disabled) { background: var(--adm-hover); }
+.pv .adm-modal-close:disabled { opacity: .45; cursor: not-allowed; }
+
+/* corpo (rola sozinho; cabeçalho e rodapé ficam à vista) */
+.pv .adm-modal-b { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 16px; padding: 8px 24px 24px; overflow-y: auto; scrollbar-width: thin; }
+
+/* rodapé: ação principal por último, à direita; a secundária fica ao lado */
+.pv .adm-modal-f { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 16px 24px 20px; border-top: 1.5px solid var(--line); }
+
+/* botões do protótipo dentro do painel (branco sobre branco não existe: o secundário vira cinza) */
+.pv .adm-modal-box .btn.out { background: var(--bg); }
+.pv .adm-modal-box .btn.out:hover:not(:disabled) { background: var(--adm-hover); }
+.pv .adm-modal-box .btn:disabled { opacity: .45; cursor: not-allowed; }
+.pv .adm-modal-box .btn:disabled:active { transform: none; }
+.pv .adm-modal-box a.btn { text-decoration: none; }
+
+/* foco por teclado: anel por dentro, que o overflow do painel não corta */
+.pv .adm-modal-close:focus-visible,
+.pv .adm-modal-box .btn:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+
+@keyframes adm-modal-fade { from { opacity: 0; } }
+@keyframes adm-modal-rise { from { opacity: 0; transform: translateY(12px) scale(.985); } }
+@keyframes adm-modal-slide { from { opacity: 0; transform: translateX(24px); } }
+
+/* celular (≤560): diálogo vira folha na base; gaveta vira tela cheia */
+@media (max-width: 560px) {
+  .pv .adm-modal { place-items: end center; padding: 0; }
+  .pv .adm-modal-box { width: 100%; max-height: 92vh; max-height: 92dvh; border-radius: var(--adm-r-lg) var(--adm-r-lg) 0 0; }
+  .pv .adm-modal-box[data-variant="drawer"] { height: 100vh; height: 100dvh; max-height: none; border-radius: 0; }
+  .pv .adm-modal-h { padding: 20px 20px 8px; }
+  .pv .adm-modal-b { padding: 8px 20px 20px; }
+  .pv .adm-modal-f { padding: 14px 20px calc(18px + env(safe-area-inset-bottom, 0px)); }
+  .pv .adm-modal-f .btn { flex: 1 1 auto; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-modal, .pv .adm-modal-box { animation: none; }
+  .pv .adm-modal-close { transition: none; }
+}

@@ -2,11 +2,12 @@
  * Peças compartilhadas de Admin › Grupos no padrão do protótipo (`gpx-*`):
  * capa, card, casca do diálogo e campos do formulário.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { toast } from "sonner";
 
+import { adminToast } from "@/components/admin/platform";
 import { I } from "@/components/prototype/ui";
+import { useModalBehavior } from "@/hooks/admin/use-modal-behavior";
 import { validateGroupCoverFile } from "@/shared/services/groups";
 
 import "@/styles/prototype-admin-groups.css";
@@ -115,7 +116,11 @@ export function GroupCardPv({
             tabIndex: 0,
             onClick: onOpen,
             onKeyDown: (e: React.KeyboardEvent) => {
-              if (e.key === "Enter") onOpen?.();
+              // Botão de verdade responde a Enter e a Espaço (e o Espaço não pode rolar a página).
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpen?.();
+              }
             },
           })}
     >
@@ -155,25 +160,73 @@ export function GroupCardPv({
   );
 }
 
-/** Backdrop + `ovw` do protótipo, em portal. */
-export function PvOverlay({
-  onClose,
-  children,
-}: {
+interface PvOverlayProps {
   onClose: () => void;
+  /** Gravando: Esc, clique no fundo e o botão de fechar do chamador não fecham, e o painel fica `aria-busy`. */
+  busy?: boolean;
+  /**
+   * Há dado digitado que se perderia: o clique no fundo (que costuma ser um engano) não fecha. Esc e o botão de
+   * fechar do chamador continuam fechando, porque são escolhas explícitas.
+   */
+  dirty?: boolean;
+  /** Classes do painel além de `ovd on` (`wide gpd`, `wide lvfm ntw gpf`). */
+  className?: string;
+  /** Nome do diálogo quando não há um título visível para apontar (`aria-label`). */
+  label?: string;
+  /** `id` do título do diálogo (`aria-labelledby`); tem prioridade sobre `label`. */
+  labelledBy?: string;
   children: React.ReactNode;
-}) {
+}
+
+/**
+ * Casca dos diálogos de grupo (backdrop + `ovw` + painel `ovd` do protótipo), em portal, com o comportamento
+ * de um diálogo de verdade (`useModalBehavior`): `role="dialog"` + `aria-modal`, foco preso e devolvido a quem
+ * abriu, rolagem da página travada e Esc que não vaza. Gravando (`busy`), Esc e o fundo não fecham; com dado
+ * digitado (`dirty`), o fundo não fecha.
+ *
+ * O painel (`section`) é desta casca; os filhos são o cabeçalho (`sh-h`), o corpo e o rodapé (`cm-f`).
+ */
+export function PvOverlay({ onClose, busy = false, dirty = false, className = "", label, labelledBy, children }: PvOverlayProps) {
+  const dialogRef = useRef<HTMLElement>(null);
+  // Sem `onEscape` (gravando) o hook só engole o Esc: nada fecha e a tela de baixo não o recebe.
+  useModalBehavior({ open: true, containerRef: dialogRef, onEscape: busy ? undefined : onClose });
+
+  // Ao começar a gravar, o botão acionado fica desabilitado e o navegador larga o foco no <body>: fica no painel.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+    if (!busy) return;
+    const dialog = dialogRef.current;
+    const active = document.activeElement;
+    if (!dialog) return;
+    // Um diálogo aberto de dentro deste (a confirmação de arquivar) tem o foco dele: não se rouba.
+    const other = Array.from(document.querySelectorAll('[aria-modal="true"]')).some((el) => el !== dialog);
+    if (other) return;
+    if (!active || active === document.body || !dialog.contains(active) || (active as HTMLElement).matches?.(":disabled")) {
+      dialog.focus();
+    }
+  }, [busy]);
+
+  // Clique no fundo: não fecha gravando nem com dado digitado (o Esc continua valendo, se não estiver gravando).
+  const requestBackdropClose = useCallback(() => {
+    if (!busy && !dirty) onClose();
+  }, [busy, dirty, onClose]);
+
   return createPortal(
     <div className="pv">
-      <div className="ovb on" onClick={onClose} />
-      <div className="ovw">{children}</div>
+      <div className="ovb on" aria-hidden="true" onClick={requestBackdropClose} />
+      <div className="ovw">
+        <section
+          ref={dialogRef}
+          className={`ovd on ${className}`.trim()}
+          role="dialog"
+          aria-modal="true"
+          aria-label={labelledBy ? undefined : label}
+          aria-labelledby={labelledBy}
+          aria-busy={busy ? true : undefined}
+          tabIndex={-1}
+        >
+          {children}
+        </section>
+      </div>
     </div>,
     document.body,
   );
@@ -213,7 +266,12 @@ export interface GroupFormInitial {
   cover?: string | null;
 }
 
+/** Ordem dos campos na tela: o primeiro com erro é o que recebe o foco. */
+const FIELD_ORDER = ["name", "description", "rules", "level", "hype"] as const;
+
 export function useGroupForm(initial?: GroupFormInitial) {
+  const uid = useId();
+  const [focusTick, setFocusTick] = useState(0);
   const [v, setV] = useState<GroupFormValues>(() => ({
     name: initial?.name ?? "",
     description: initial?.description ?? "",
@@ -230,6 +288,9 @@ export function useGroupForm(initial?: GroupFormInitial) {
   const [tried, setTried] = useState(false);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(initial?.cover ?? null);
+  // Valores com que o formulário abriu: o que a pessoa mexeu em relação a eles é "dado digitado".
+  const baseline = useRef(v);
+  const dirty = coverFile !== null || (Object.keys(v) as (keyof GroupFormValues)[]).some((key) => v[key] !== baseline.current[key]);
 
   useEffect(() => {
     if (!coverFile) return;
@@ -260,11 +321,23 @@ export function useGroupForm(initial?: GroupFormInitial) {
     return e;
   }, [v]);
 
+  /** `id` de cada campo (o rótulo, o erro e o foco dependem dele). */
+  const fieldId = (field: (typeof FIELD_ORDER)[number]) => `${uid}-${field}`;
+
+  /** Leva o foco ao primeiro campo com erro, depois do próximo render (o passo do formulário pode ter acabado de abrir). */
+  const focusFirstError = () => setFocusTick((tick) => tick + 1);
+  useEffect(() => {
+    if (focusTick === 0) return;
+    const first = FIELD_ORDER.find((field) => errors[field]);
+    if (first) document.getElementById(`${uid}-${first}`)?.focus();
+    // Só quando pedem o foco: o `errors` muda a cada tecla e não pode puxar o foco de volta.
+  }, [focusTick]);
+
   const pickCover = (file: File | undefined) => {
     if (!file) return;
     const err = validateGroupCoverFile(file);
     if (err) {
-      toast.error(err);
+      adminToast.error(err);
       return;
     }
     setCoverFile(file);
@@ -290,11 +363,15 @@ export function useGroupForm(initial?: GroupFormInitial) {
     errors,
     tried,
     setTried,
+    /** Algo foi digitado, escolhido ou trocado desde que o formulário abriu (inclui a capa nova). */
+    dirty,
     coverFile,
     preview,
     pickCover,
     removeCover,
     payload,
+    fieldId,
+    focusFirstError,
   };
 }
 
@@ -306,9 +383,12 @@ export type GroupFormApi = ReturnType<typeof useGroupForm>;
 
 export function CoverPicker({ f, label }: { f: GroupFormApi; label: string }) {
   const ref = useRef<HTMLInputElement>(null);
+  const labelId = useId();
   return (
-    <div className="lvf-cvc">
-      <label className="n4l">{label}</label>
+    <div className="lvf-cvc" role="group" aria-labelledby={labelId}>
+      <span className="n4l" id={labelId}>
+        {label}
+      </span>
       {f.preview ? (
         <div className="lvf-cv">
           <img src={f.preview} alt="Pré-visualização da capa" />
@@ -326,7 +406,7 @@ export function CoverPicker({ f, label }: { f: GroupFormApi; label: string }) {
                 type="button"
                 className="nbtn"
                 onClick={f.removeCover}
-                aria-label="Remover"
+                aria-label="Remover a capa escolhida"
               >
                 <I n="trash" cls="sm" />
               </button>
@@ -365,56 +445,86 @@ export function NameDescRules({
   f,
   className,
   rows = { d: 3, r: 2 },
+  autoFocusName = false,
 }: {
   f: GroupFormApi;
   className?: string;
   rows?: { d: number; r: number };
+  /** Foco no nome ao abrir o diálogo (o novo grupo começa por ele). */
+  autoFocusName?: boolean;
 }) {
-  const { v, set, errors, tried } = f;
+  const { v, set, errors, tried, fieldId } = f;
+  const showName = tried && !!errors.name;
+  const showDescription = tried && !!errors.description;
+  const showRules = tried && !!errors.rules;
   return (
     <div className={className}>
-      <div className={`n4c ${tried && errors.name ? "bad" : ""}`}>
-        <label className="n4l">Nome do grupo</label>
+      <div className={`n4c ${showName ? "bad" : ""}`}>
+        <label className="n4l" htmlFor={fieldId("name")}>
+          Nome do grupo
+        </label>
         <input
+          id={fieldId("name")}
           className="cm-in"
           maxLength={NAME_MAX + 1}
           placeholder="Ex.: Criadores de Games"
           value={v.name}
+          aria-invalid={showName ? true : undefined}
+          aria-describedby={showName ? `${fieldId("name")}-err` : undefined}
+          data-adm-autofocus={autoFocusName ? true : undefined}
           onChange={(e) => set({ name: e.target.value })}
           autoComplete="off"
         />
-        {tried && errors.name ? <small className="nfe">{errors.name}</small> : null}
+        {showName ? (
+          <small className="nfe" id={`${fieldId("name")}-err`}>
+            {errors.name}
+          </small>
+        ) : null}
       </div>
-      <div className={`n4c ${tried && errors.description ? "bad" : ""}`}>
-        <label className="n4l">Descrição</label>
+      <div className={`n4c ${showDescription ? "bad" : ""}`}>
+        <label className="n4l" htmlFor={fieldId("description")}>
+          Descrição
+        </label>
         <textarea
+          id={fieldId("description")}
           className="cm-ta"
           rows={rows.d}
           maxLength={DESC_MAX + 1}
           placeholder="Sobre o que é esse grupo."
           value={v.description}
+          aria-invalid={showDescription ? true : undefined}
+          aria-describedby={showDescription ? `${fieldId("description")}-err` : undefined}
           onChange={(e) => set({ description: e.target.value })}
         />
-        {tried && errors.description ? (
-          <small className="nfe">{errors.description}</small>
+        {showDescription ? (
+          <small className="nfe" id={`${fieldId("description")}-err`}>
+            {errors.description}
+          </small>
         ) : null}
         <small className="gpx-ct">
           {v.description.length}/{DESC_MAX}
         </small>
       </div>
-      <div className={`n4c ${tried && errors.rules ? "bad" : ""}`}>
-        <label className="n4l">
+      <div className={`n4c ${showRules ? "bad" : ""}`}>
+        <label className="n4l" htmlFor={fieldId("rules")}>
           Regras <em>opcional</em>
         </label>
         <textarea
+          id={fieldId("rules")}
           className="cm-ta"
           rows={rows.r}
           maxLength={RULES_MAX + 1}
           placeholder="Regras de convivência exibidas no grupo."
           value={v.rules}
+          aria-invalid={showRules ? true : undefined}
+          aria-describedby={showRules ? `${fieldId("rules")}-err` : undefined}
           onChange={(e) => set({ rules: e.target.value })}
         />
-        {tried && errors.rules ? <small className="nfe">{errors.rules}</small> : null}
+        {showRules ? (
+          <small className="nfe" id={`${fieldId("rules")}-err`}>
+            {errors.rules}
+          </small>
+        ) : null}
       </div>
     </div>
   );
@@ -431,7 +541,8 @@ export function AccessPicker({
   f: GroupFormApi;
   variant: "tm" | "opt";
 }) {
-  const { v, set, errors, tried } = f;
+  const { v, set, errors, tried, fieldId } = f;
+  const labelId = useId();
   const open = !v.levelOn && !v.hypeOn;
   const bad = tried && (errors.level || errors.hype);
   const opts: [string, string, string, boolean, () => void][] = [
@@ -458,12 +569,14 @@ export function AccessPicker({
     ],
   ];
   return (
-    <div className={`n4c ${bad ? "bad" : ""}`}>
-      <label className="n4l">Quem pode entrar</label>
+    <div className={`n4c ${bad ? "bad" : ""}`} role="group" aria-labelledby={labelId}>
+      <span className="n4l" id={labelId}>
+        Quem pode entrar
+      </span>
       {variant === "tm" ? (
         <div className="n4tm gpx-en3">
           {opts.map(([, , short, on, fn]) => (
-            <button key={short} type="button" className={on ? "on" : ""} onClick={fn}>
+            <button key={short} type="button" className={on ? "on" : ""} aria-pressed={on} onClick={fn}>
               {short}
             </button>
           ))}
@@ -471,7 +584,7 @@ export function AccessPicker({
       ) : (
         <div className="gpx-opt">
           {opts.map(([l, h, , on, fn]) => (
-            <button key={l} type="button" className={on ? "on" : ""} onClick={fn}>
+            <button key={l} type="button" className={on ? "on" : ""} aria-pressed={on} onClick={fn}>
               <b>{l}</b>
               <small>{h}</small>
             </button>
@@ -483,14 +596,21 @@ export function AccessPicker({
           <div className="gpx-ev">
             <span>Nível mínimo</span>
             <input
+              id={fieldId("level")}
               className="cm-in"
               inputMode="numeric"
               value={v.level}
               aria-label="Nível mínimo"
+              aria-invalid={tried && errors.level ? true : undefined}
+              aria-describedby={tried && errors.level ? `${fieldId("level")}-err` : undefined}
               onChange={(e) => set({ level: e.target.value.replace(/\D/g, "") })}
             />
           </div>
-          {tried && errors.level ? <small className="nfe">{errors.level}</small> : null}
+          {tried && errors.level ? (
+            <small className="nfe" id={`${fieldId("level")}-err`}>
+              {errors.level}
+            </small>
+          ) : null}
         </>
       )}
       {v.hypeOn && (
@@ -498,14 +618,21 @@ export function AccessPicker({
           <div className="gpx-ev">
             <span>HypePoints mínimos</span>
             <input
+              id={fieldId("hype")}
               className="cm-in"
               inputMode="numeric"
               value={v.hype}
               aria-label="HypePoints mínimos"
+              aria-invalid={tried && errors.hype ? true : undefined}
+              aria-describedby={tried && errors.hype ? `${fieldId("hype")}-err` : undefined}
               onChange={(e) => set({ hype: e.target.value.replace(/\D/g, "") })}
             />
           </div>
-          {tried && errors.hype ? <small className="nfe">{errors.hype}</small> : null}
+          {tried && errors.hype ? (
+            <small className="nfe" id={`${fieldId("hype")}-err`}>
+              {errors.hype}
+            </small>
+          ) : null}
         </>
       )}
     </div>

@@ -143,3 +143,83 @@ describe("MobileNav no escopo do workspace (app)", () => {
     expect(screen.queryByRole("button", { name: "Backoffice" })).not.toBeInTheDocument();
   });
 });
+
+describe("MobileNav: a gaveta 'Mais' se comporta como diálogo modal", () => {
+  const sheetEl = () => document.querySelector<HTMLElement>(".bms")!;
+  const firstNavButton = () => document.querySelector<HTMLElement>(".bms-sc button")!;
+
+  it("fechada, a gaveta está inerte e oculta da leitura de tela (nada dela entra na ordem de tabulação)", () => {
+    render(<MobileNav scope="platform" />);
+    expect(sheetEl()).toHaveAttribute("inert");
+    expect(sheetEl()).toHaveAttribute("aria-hidden", "true");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("aberta, deixa de ser inerte e o foco vai para o primeiro item de navegação", async () => {
+    render(<MobileNav scope="platform" />);
+    await userEvent.click(screen.getByRole("button", { name: "Mais opções" }));
+    expect(sheetEl()).not.toHaveAttribute("inert");
+    expect(sheetEl()).not.toHaveAttribute("aria-hidden");
+    expect(screen.getByRole("dialog", { name: "Mais opções" })).toBeInTheDocument();
+    expect(document.activeElement).toBe(firstNavButton());
+  });
+
+  it("no app do cliente o foco inicial não cai no seletor de workspace", async () => {
+    ctx.pathname = "/";
+    render(<MobileNav />);
+    await userEvent.click(screen.getByRole("button", { name: "Mais opções" }));
+    const active = document.activeElement as HTMLElement;
+    expect(active.closest(".bms-ws")).toBeNull();
+    expect(active).toBe(firstNavButton());
+    expect(active).toHaveAttribute("data-adm-autofocus");
+  });
+
+  it("Tab e Shift+Tab ficam presos dentro da gaveta", async () => {
+    render(<MobileNav scope="platform" />);
+    await userEvent.click(screen.getByRole("button", { name: "Mais opções" }));
+    const buttons = within(screen.getByRole("dialog", { name: "Mais opções" })).getAllByRole("button");
+    const first = buttons[0];
+    const last = buttons[buttons.length - 1];
+
+    expect(last).toHaveAccessibleName("Sair");
+    last.focus();
+    await userEvent.tab();
+    expect(document.activeElement).toBe(first);
+    await userEvent.tab({ shift: true });
+    expect(document.activeElement).toBe(last);
+    expect(sheetEl().contains(document.activeElement)).toBe(true);
+  });
+
+  it("Escape fecha a gaveta e devolve o foco ao botão 'Mais'", async () => {
+    render(<MobileNav scope="platform" />);
+    const more = screen.getByRole("button", { name: "Mais opções" });
+    await userEvent.click(more);
+    expect(more).toHaveAttribute("aria-expanded", "true");
+    await userEvent.keyboard("{Escape}");
+    expect(more).toHaveAttribute("aria-expanded", "false");
+    expect(sheetEl()).toHaveAttribute("inert");
+    expect(document.activeElement).toBe(more);
+  });
+
+  it("fechar pelo fundo escurecido também devolve o foco ao botão 'Mais'", async () => {
+    render(<MobileNav scope="platform" />);
+    const more = screen.getByRole("button", { name: "Mais opções" });
+    await userEvent.click(more);
+    await userEvent.click(document.querySelector<HTMLElement>(".bms-bd")!);
+    expect(more).toHaveAttribute("aria-expanded", "false");
+    expect(document.activeElement).toBe(more);
+  });
+
+  it("travar a rolagem da página só enquanto a gaveta está aberta", async () => {
+    render(<MobileNav scope="platform" />);
+    await userEvent.click(screen.getByRole("button", { name: "Mais opções" }));
+    expect(document.body.style.overflow).toBe("hidden");
+    await userEvent.keyboard("{Escape}");
+    expect(document.body.style.overflow).not.toBe("hidden");
+  });
+
+  it("montar a barra não rouba o foco da página (o foco só volta ao 'Mais' depois de ter aberto a gaveta)", () => {
+    render(<MobileNav scope="platform" />);
+    expect(document.activeElement).toBe(document.body);
+  });
+});

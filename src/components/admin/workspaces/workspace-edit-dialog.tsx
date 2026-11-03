@@ -1,7 +1,6 @@
 import { useId, useState } from "react";
-import { toast } from "sonner";
 
-import { AdminConfirmDialog, type AdminConfirmValues } from "@/components/admin/platform";
+import { adminToast, AdminConfirmDialog, type AdminConfirmValues } from "@/components/admin/platform";
 import {
   useRefreshOnStaleWorkspace,
   useWorkspaceUpdateMutation,
@@ -84,11 +83,11 @@ function WorkspaceEditDialogBody({ workspace, onClose }: Omit<WorkspaceEditDialo
     setError(null);
     try {
       await mutation.mutateAsync({ reason, ...buildUpdateFields(values, original) });
-      toast.success("Dados do workspace atualizados.");
+      adminToast.success("Dados do workspace atualizados.");
       onClose();
     } catch (failure) {
       if (refreshIfStale(failure)) {
-        toast.error(workspaceErrorMessage(failure));
+        adminToast.error(workspaceErrorMessage(failure));
         onClose();
         return;
       }

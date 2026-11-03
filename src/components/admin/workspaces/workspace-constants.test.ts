@@ -7,7 +7,10 @@ import {
   availableActions,
   sanitizeWorkspaceListSearch,
   validateWorkspaceListSearch,
+  WORKSPACE_ACTIVITY_OPTIONS,
+  WORKSPACE_DELETED_STATUS,
   WORKSPACE_LIST_CONFIG,
+  WORKSPACE_LIST_FILTERS,
   WORKSPACE_STATUS_OPTIONS,
 } from "./workspace-constants";
 import { canFor } from "./test-support";
@@ -90,11 +93,24 @@ describe("sanitizeWorkspaceListSearch (a barra de endereço é entrada de usuár
   });
 });
 
-describe("WORKSPACE_STATUS_OPTIONS (vocabulário do filtro)", () => {
-  it("o padrão do servidor não esconde que deixa de fora os excluídos; 'Todos' não é usado para o que exclui", () => {
+describe("WORKSPACE_STATUS_OPTIONS (segmento de estado)", () => {
+  it("'Todos' é o padrão do servidor (sem o parâmetro) e não inclui os excluídos; Ativos, Suspensos e Arquivados mantêm os valores da URL", () => {
     const byValue = Object.fromEntries(WORKSPACE_STATUS_OPTIONS.map((o) => [o.value, o.label]));
-    expect(byValue[""]).toBe("Todos, exceto excluídos");
-    expect(byValue.deleted).toBe("Excluídos");
-    expect(WORKSPACE_STATUS_OPTIONS.map((o) => o.label)).not.toContain("Todos");
+    expect(byValue).toEqual({ "": "Todos", active: "Ativos", suspended: "Suspensos", archived: "Arquivados" });
+  });
+
+  it("'Excluídos' é o quinto estado e sai do segmento: o valor da URL continua `deleted`", () => {
+    expect(WORKSPACE_STATUS_OPTIONS.map((o) => o.value)).not.toContain(WORKSPACE_DELETED_STATUS);
+    expect(WORKSPACE_DELETED_STATUS).toBe("deleted");
+    expect(sanitizeWorkspaceListSearch({ status: "deleted" }).status).toBe("deleted");
+  });
+});
+
+describe("WORKSPACE_LIST_FILTERS (vocabulário dos filtros)", () => {
+  it("'Atividade' virou 'Uso recente' com os mesmos valores de URL, e as respostas não repetem 'Ativos'", () => {
+    const filter = WORKSPACE_LIST_FILTERS.find((f) => f.kind === "select" && f.key === "activity");
+    expect(filter).toMatchObject({ label: "Uso recente" });
+    expect(WORKSPACE_ACTIVITY_OPTIONS.map((o) => o.value)).toEqual(["", "active", "inactive", "never"]);
+    expect(WORKSPACE_ACTIVITY_OPTIONS.map((o) => o.label)).not.toContain("Ativos");
   });
 });

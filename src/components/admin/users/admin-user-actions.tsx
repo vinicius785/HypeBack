@@ -1,8 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 
-import { AdminConfirmDialog, type AdminConfirmValues } from "@/components/admin/platform";
+import {
+  AdminActionMenu,
+  AdminConfirmDialog,
+  adminToast,
+  type AdminActionMenuItem,
+  type AdminConfirmValues,
+} from "@/components/admin/platform";
 import { I } from "@/components/prototype/ui";
 import { WorkspaceBlockers } from "@/components/admin/workspaces/workspace-impact";
 import { adminKeys } from "@/hooks/admin/admin-query-keys";
@@ -186,7 +191,7 @@ function AdminUserActionDialog({
       action === "delete" ? { reason, confirm_email: confirmText.trim() } : { reason },
       {
         onSuccess: () => {
-          toast.success(copy.success);
+          adminToast.success(copy.success);
           onClose();
         },
         onError: (failure) => {
@@ -235,14 +240,11 @@ function AdminUserActionDialog({
 }
 
 /**
- * As ações do cabeçalho do usuário: Suspender / Reativar, Encerrar sessões e Excluir conta, cada uma com o seu diálogo de
- * confirmação (motivo de 5 a 500 caracteres, consequências e erro do servidor traduzido). Conta que não aceita
- * ação (a própria, outro administrador da plataforma, excluída) mostra só uma explicação discreta.
+ * O que a conta aceita para quem está logado. Enquanto o papel não chegou, nada é oferecido (evita mostrar um botão
+ * que o servidor vai recusar) e o aviso de bloqueio também espera (`loading`).
  */
-export function AdminUserActions({ user, selfId }: { user: AdminUserDetail; selfId: number | undefined }) {
-  const [dialog, setDialog] = useState<AdminUserActionName | null>(null);
+function useUserActionAvailability(user: AdminUserDetail, selfId: number | undefined) {
   const capabilities = useAdminCapabilities();
-  // Enquanto o papel não chegou, nenhum botão aparece (evita mostrar um botão que o servidor vai recusar).
   const availability = userActionAvailability(
     user,
     selfId,
@@ -250,6 +252,22 @@ export function AdminUserActions({ user, selfId }: { user: AdminUserDetail; self
       ? { moderate: false, delete: false }
       : { moderate: capabilities.can("users.moderate"), delete: capabilities.isAdmin },
   );
+  return { availability, loading: capabilities.loading };
+}
+
+/**
+ * As ações do cabeçalho do usuário. As reversíveis ficam à vista (Suspender / Reativar e Encerrar sessões) e a que não
+ * tem volta, Excluir conta, fica no menu "Mais", separada e em vermelho. Cada uma tem o seu diálogo de confirmação
+ * (motivo de 5 a 500 caracteres, consequências e erro do servidor traduzido). Conta que não aceita ação (a própria,
+ * outro administrador da plataforma, excluída) não mostra botão nenhum: a explicação vem em `AdminUserActionNotice`.
+ */
+export function AdminUserActions({ user, selfId }: { user: AdminUserDetail; selfId: number | undefined }) {
+  const [dialog, setDialog] = useState<AdminUserActionName | null>(null);
+  const { availability } = useUserActionAvailability(user, selfId);
+
+  const moreItems: AdminActionMenuItem[] = availability.delete
+    ? [{ id: "delete", label: "Excluir conta", icon: "trash", tone: "danger", onSelect: () => setDialog("delete") }]
+    : [];
 
   return (
     <>
@@ -268,18 +286,24 @@ export function AdminUserActions({ user, selfId }: { user: AdminUserDetail; self
           Reativar
         </button>
       ) : null}
-      {availability.delete ? (
-        <button type="button" className="btn adm-btn-danger-out" onClick={() => setDialog("delete")}>
-          <I n="trash" cls="sm" /> Excluir conta
-        </button>
-      ) : null}
-      {availability.blockedReason && !capabilities.loading ? (
-        <p className="adm-users-note">
-          <I n="lock" cls="sm" />
-          <span>{BLOCKED_TEXT[availability.blockedReason]}</span>
-        </p>
-      ) : null}
+      <AdminActionMenu items={moreItems} label="Mais" />
       {dialog ? <AdminUserActionDialog user={user} action={dialog} onClose={() => setDialog(null)} /> : null}
     </>
+  );
+}
+
+/**
+ * Por que a conta não aceita ação (a própria, outro administrador da plataforma, excluída, papel só de leitura): uma
+ * linha discreta abaixo do cabeçalho, fora do meio dos botões. Não aparece com a conta aceitando ações nem enquanto o
+ * papel de quem está logado carrega.
+ */
+export function AdminUserActionNotice({ user, selfId }: { user: AdminUserDetail; selfId: number | undefined }) {
+  const { availability, loading } = useUserActionAvailability(user, selfId);
+  if (!availability.blockedReason || loading) return null;
+  return (
+    <p className="adm-users-note">
+      <I n="lock" cls="sm" />
+      <span>{BLOCKED_TEXT[availability.blockedReason]}</span>
+    </p>
   );
 }

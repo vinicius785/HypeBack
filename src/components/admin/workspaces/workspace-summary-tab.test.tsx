@@ -33,21 +33,23 @@ describe("workspaceMoneyFigures", () => {
 });
 
 describe("WorkspaceSummaryTab · números", () => {
-  it("aportes, custódia e comprometido exatos, cada um com o tipo (realizado, posição atual, comprometido)", () => {
+  it("aportes, custódia e comprometido exatos; o tipo (realizado, posição atual, comprometido) vive só no 'i' de cada um", () => {
     renderSummary();
 
     const funded = figureCard("Aportes recebidos");
     expect(within(funded).getByText("R$ 1.234.567,89")).toBeInTheDocument();
-    expect(within(funded).getByText("Realizado")).toBeInTheDocument();
     expect(within(funded).getByText("todo o histórico")).toBeInTheDocument();
+    expect(funded.querySelector(".adm-kind")).toBeNull();
+    expect(screen.getByRole("button", { name: "Como é calculado: Aportes recebidos" })).toHaveAccessibleDescription(/Tipo: Realizado/);
 
     const custody = figureCard("Em custódia");
     expect(within(custody).getByText("R$ 45.000,50")).toBeInTheDocument();
-    expect(within(custody).getByText("Posição atual")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Como é calculado: Em custódia" })).toHaveAccessibleDescription(/Tipo: Posição atual/);
 
     const committed = figureCard("Comprometido");
     expect(within(committed).getByText("R$ 12.000,25")).toBeInTheDocument();
-    expect(committed.querySelector(".adm-kind")).toHaveAttribute("data-kind", "committed");
+    expect(committed.querySelector(".adm-kind")).toBeNull();
+    expect(screen.getByRole("button", { name: "Como é calculado: Comprometido" })).toHaveAccessibleDescription(/Tipo: Comprometido/);
   });
 
   it("o 'i' de cada número traz a definição", () => {
@@ -67,24 +69,25 @@ describe("WorkspaceSummaryTab · números", () => {
     expect(count("Criadores")).toBe("41");
   });
 
-  it("última atividade e última sessão aproximada, com a definição de cada uma; sem sessão, '—'", () => {
+  it("última sessão aproximada, com a definição; sem sessão, '—'. A última atividade já está no cabeçalho, não se repete aqui", () => {
     renderSummary(makeDetail("active", { last_session_at: null }));
     const numbers = section("Números");
-    expect(within(numbers).getByText("há 3 dias")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Como é calculado: Última atividade" })).toHaveAccessibleDescription(/updated_at do workspace não conta/);
+    expect(within(numbers).queryByText("Última atividade")).not.toBeInTheDocument();
+    expect(within(numbers).queryByText("há 3 dias")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Como é calculado: Última sessão (aprox.)" })).toHaveAccessibleDescription(/±5 min/);
     const session = within(numbers).getByText("Última sessão (aprox.)").closest("div") as HTMLElement;
     expect(within(session).getByText("—")).toBeInTheDocument();
   });
 
-  it("nunca teve atividade: diz isso em vez de inventar uma data", () => {
-    renderSummary(makeDetail("active", { activity: { state: "never", last_activity_at: null, window_days: 30 } }));
-    expect(screen.getByText("Nenhuma atividade registrada")).toBeInTheDocument();
+  it("com sessão registrada mostra há quanto tempo", () => {
+    renderSummary();
+    const session = within(section("Números")).getByText("Última sessão (aprox.)").closest("div") as HTMLElement;
+    expect(within(session).getByText("ontem")).toBeInTheDocument();
   });
 });
 
 describe("WorkspaceSummaryTab · dados cadastrais", () => {
-  it("nome, razão social, CNPJ formatado, descrição, endereço completo, nicho e identificador público", () => {
+  it("nome, razão social, CNPJ formatado, descrição, endereço completo, nicho e identificador público; 'Criado em' fica só no cabeçalho", () => {
     renderSummary();
     const data = section("Dados cadastrais");
 
@@ -97,7 +100,7 @@ describe("WorkspaceSummaryTab · dados cadastrais", () => {
     expect(within(data).getByText("CEP 01310-100")).toBeInTheDocument();
     expect(within(data).getByText("Alimentação")).toBeInTheDocument();
     expect(within(data).getByText("7a1e0000-0000-4000-8000-000000000002")).toBeInTheDocument();
-    expect(within(data).getByText("12/03/2025 10:00")).toBeInTheDocument();
+    expect(within(data).queryByText("Criado em")).not.toBeInTheDocument();
   });
 
   it("o que não foi cadastrado aparece como '—', nunca vazio nem inventado", () => {
@@ -119,17 +122,17 @@ describe("WorkspaceSummaryTab · dados cadastrais", () => {
 });
 
 describe("WorkspaceSummaryTab · ciclo de vida", () => {
-  it("ativo que nunca mudou de estado: status e '—' nas demais linhas", () => {
+  it("ativo que nunca mudou de estado: não há o que contar, então a seção nem aparece (o estado já está no cabeçalho)", () => {
     renderSummary();
-    const lifecycle = section("Ciclo de vida");
-    expect(within(lifecycle).getByText("Ativo", { selector: ".adm-badge" })).toBeInTheDocument();
-    expect(within(lifecycle).getAllByText("—")).toHaveLength(3);
+    expect(screen.queryByRole("heading", { name: "Ciclo de vida" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Ativo", { selector: ".adm-badge" })).not.toBeInTheDocument();
   });
 
-  it("suspenso: desde quando, o motivo e quem fez (com link para a pessoa)", () => {
+  it("suspenso: desde quando, o motivo e quem fez (com link para a pessoa), sem repetir o selo de estado", () => {
     renderSummary(makeDetail("suspended"));
     const lifecycle = section("Ciclo de vida");
-    expect(within(lifecycle).getByText("Suspenso", { selector: ".adm-badge" })).toBeInTheDocument();
+    expect(within(lifecycle).queryByText("Suspenso", { selector: ".adm-badge" })).not.toBeInTheDocument();
+    expect(within(lifecycle).getByText("Neste estado desde")).toBeInTheDocument();
     expect(within(lifecycle).getByText("20/10/2026 09:00")).toBeInTheDocument();
     expect(within(lifecycle).getByText("Cobrança em aberto")).toBeInTheDocument();
     expect(within(lifecycle).getByRole("link", { name: "Marina Albuquerque" })).toHaveAttribute("href", "/admin/users/1");
@@ -137,7 +140,7 @@ describe("WorkspaceSummaryTab · ciclo de vida", () => {
 });
 
 describe("WorkspaceSummaryTab · responsáveis", () => {
-  it("lista os proprietários com e-mail", () => {
+  it("com proprietários: a seção Responsáveis lista todos com o e-mail (o cabeçalho só diz o nome do primeiro)", () => {
     renderSummary(
       makeDetail("active", {
         owners: [
@@ -148,6 +151,8 @@ describe("WorkspaceSummaryTab · responsáveis", () => {
     );
     const owners = section("Responsáveis");
     expect(within(owners).getByText("Helena Prado")).toBeInTheDocument();
+    expect(within(owners).getByText("helena@serraverde.com.br")).toBeInTheDocument();
+    expect(within(owners).getByText("Caio Ramos")).toBeInTheDocument();
     expect(within(owners).getByText("caio@serraverde.com.br")).toBeInTheDocument();
     expect(within(owners).queryByText("Sem responsável")).not.toBeInTheDocument();
   });

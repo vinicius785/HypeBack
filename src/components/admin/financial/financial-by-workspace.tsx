@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import {
   AdminEntityCell,
+  AdminFilterBar,
   AdminPager,
   AdminSearchInput,
   AdminTable,
@@ -13,6 +14,7 @@ import { useAdminListQueryState, useAdminPageClamp } from "@/hooks/admin/use-adm
 import { formatBRLFromCents } from "@/lib/admin/format";
 import type { AdminDateRange, AdminFinancialByWorkspaceRow } from "@/shared/admin-platform.types";
 
+import { FinancialRefreshButton } from "./financial-refresh";
 import { BY_WORKSPACE_LIST_CONFIG } from "./financial-search";
 
 import "@/styles/admin-financial.css";
@@ -93,12 +95,11 @@ export function FinancialByWorkspace({ period }: FinancialByWorkspaceProps) {
 
   return (
     <div className="adm-fin-stack">
-      <div className="adm-fin-bar">
-        <AdminSearchInput value={state.search} onSearch={state.setSearch} placeholder="Buscar workspace" label="Buscar workspace" />
-        <p className="adm-fin-bar-note">
-          Aportes, liberado e pago via PIX são do período escolhido. Custódia e comprometido são a posição de agora.
-        </p>
-      </div>
+      <AdminFilterBar
+        search={<AdminSearchInput value={state.search} onSearch={state.setSearch} placeholder="Buscar workspace" label="Buscar workspaces" />}
+        searchLabel="Buscar workspaces"
+        trailing={<FinancialRefreshButton />}
+      />
 
       <AdminTable
         caption="Financeiro por workspace"
@@ -135,6 +136,8 @@ export function FinancialByWorkspace({ period }: FinancialByWorkspaceProps) {
           ) : undefined
         }
       />
+
+      <p className="adm-fin-table-note">Aportes, liberado e pago via PIX são do período escolhido. Custódia e comprometido são a posição de agora.</p>
     </div>
   );
 }

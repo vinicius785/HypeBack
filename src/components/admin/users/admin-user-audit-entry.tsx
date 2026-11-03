@@ -1,9 +1,11 @@
-import { AdminLink, type AdminLinkTarget } from "@/components/admin/platform";
+import { Fragment } from "react";
+
+import { AdminLink, AdminTimelineItem, type AdminLinkTarget } from "@/components/admin/platform";
 import { EMPTY_TEXT, formatDateTime, formatInt, formatRelativeTime } from "@/lib/admin/format";
 import { USER_STATUS_LABEL, WORKSPACE_STATUS_LABEL } from "@/lib/admin/labels";
 import type { AdminAuditLogEntry } from "@/shared/admin-platform.types";
 
-import { workspaceRoleText } from "./admin-users-format";
+import { formatTimeOfDay, workspaceRoleText } from "./admin-users-format";
 import { userDetailLink, workspaceDetailLink } from "./admin-users-links";
 
 import "@/styles/admin-users.css";
@@ -133,7 +135,7 @@ function ActorText({ actor }: { actor: AdminAuditLogEntry["actor"] }) {
     <>
       por{" "}
       {actor.user_id !== null ? (
-        <AdminLink to={userDetailLink(actor.user_id)} title={actor.email ?? undefined}>
+        <AdminLink to={userDetailLink(actor.user_id)} textLink>
           {name}
         </AdminLink>
       ) : (
@@ -163,7 +165,14 @@ function TargetText({ target }: { target: AdminAuditLogEntry["target"] }) {
   const link = targetLink(target);
   return (
     <>
-      sobre {typeText} {link ? <AdminLink to={link}>{label}</AdminLink> : label}
+      sobre {typeText}{" "}
+      {link ? (
+        <AdminLink to={link} textLink>
+          {label}
+        </AdminLink>
+      ) : (
+        label
+      )}
     </>
   );
 }
@@ -177,62 +186,67 @@ interface AdminUserAuditEntryProps {
 }
 
 /**
- * Uma ação administrativa da trilha de auditoria: o que foi feito, quando, por quem (ou sobre quem), o motivo e,
- * sob demanda, o antes e o depois, o impacto e o IP.
+ * Uma ação administrativa da trilha de auditoria, como evento da linha do tempo do kit: o que foi feito e o motivo
+ * (sempre à vista), quando, por quem (ou sobre quem) e, sob "Ver detalhes", o antes e o depois, o impacto e o IP.
  */
 export function AdminUserAuditEntry({ entry, view }: AdminUserAuditEntryProps) {
   const hasStates = entry.before_state != null || entry.after_state != null;
   const hasImpact = entry.impact != null;
   const hasDetails = hasStates || hasImpact || !!entry.ip;
+  const actorEmail = entry.actor.email?.trim() || null;
   const rows = hasStates ? buildStateRows(entry.before_state, entry.after_state) : null;
   const impactRows = hasImpact ? buildStateRows(null, entry.impact) : null;
 
+  const detail = hasDetails ? (
+    <div className="adm-users-log-detail">
+      {hasStates ? (
+        rows ? (
+          <StateRows rows={rows} />
+        ) : (
+          <>
+            <RawState label="Antes" value={entry.before_state} />
+            <RawState label="Depois" value={entry.after_state} />
+          </>
+        )
+      ) : null}
+      {hasImpact ? (
+        <div>
+          <b className="adm-users-diff-title">Impacto</b>
+          {impactRows ? <StateRows rows={impactRows} /> : <pre className="adm-users-diff-raw">{JSON.stringify(entry.impact, null, 2)}</pre>}
+        </div>
+      ) : null}
+      {entry.ip ? <p className="adm-users-log-ip">IP {entry.ip}</p> : null}
+    </div>
+  ) : undefined;
+
   return (
-    <li className="adm-users-log-item">
-      <time className="adm-users-log-when" dateTime={entry.created_at} title={formatRelativeTime(entry.created_at)}>
-        {formatDateTime(entry.created_at)}
-      </time>
-      <div className="adm-users-log-body">
-        <b className="adm-users-log-title">{entry.action_label}</b>
-        <p className="adm-users-log-meta">
-          {view === "target" ? <ActorText actor={entry.actor} /> : <TargetText target={entry.target} />}
-          {entry.workspace ? (
-            <>
-              {" · "}
-              <AdminLink to={workspaceDetailLink(entry.workspace.id)}>{entry.workspace.name}</AdminLink>
-            </>
+    <AdminTimelineItem
+      title={
+        <>
+          {entry.action_label}
+          {entry.reason ? (
+            <span className="adm-users-log-reason">
+              <span>Motivo:</span> {entry.reason}
+            </span>
           ) : null}
-        </p>
-        {entry.reason ? (
-          <p className="adm-users-log-reason">
-            <span>Motivo:</span> {entry.reason}
-          </p>
-        ) : null}
-        {hasDetails ? (
-          <details className="adm-users-log-more">
-            <summary className="adm-summary">{hasStates ? "Ver antes e depois" : "Ver detalhes"}</summary>
-            <div className="adm-users-log-detail">
-              {hasStates ? (
-                rows ? (
-                  <StateRows rows={rows} />
-                ) : (
-                  <>
-                    <RawState label="Antes" value={entry.before_state} />
-                    <RawState label="Depois" value={entry.after_state} />
-                  </>
-                )
-              ) : null}
-              {hasImpact ? (
-                <div>
-                  <b className="adm-users-diff-title">Impacto</b>
-                  {impactRows ? <StateRows rows={impactRows} /> : <pre className="adm-users-diff-raw">{JSON.stringify(entry.impact, null, 2)}</pre>}
-                </div>
-              ) : null}
-              {entry.ip ? <p className="adm-users-log-ip">IP {entry.ip}</p> : null}
-            </div>
-          </details>
-        ) : null}
-      </div>
-    </li>
+        </>
+      }
+      meta={[
+        <Fragment key="who">{view === "target" ? <ActorText actor={entry.actor} /> : <TargetText target={entry.target} />}</Fragment>,
+        // O e-mail de quem agiu é texto visível (um `title` não chega ao teclado nem ao toque); na visão "feitas por esta
+        // pessoa" quem agiu é a própria conta da página, então o e-mail só repetiria o cabeçalho.
+        view === "target" ? actorEmail : null,
+        entry.workspace ? (
+          <AdminLink key="ws" to={workspaceDetailLink(entry.workspace.id)} textLink>
+            {entry.workspace.name}
+          </AdminLink>
+        ) : null,
+      ]}
+      // O dia está no cabeçalho do grupo da linha do tempo: aqui só a hora; o instante completo fica no `title` e no `dateTime`.
+      time={formatTimeOfDay(entry.created_at)}
+      dateTime={entry.created_at}
+      timeTitle={`${formatDateTime(entry.created_at)} · ${formatRelativeTime(entry.created_at)}`}
+      detail={detail}
+    />
   );
 }

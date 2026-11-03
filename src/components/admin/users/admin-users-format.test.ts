@@ -12,6 +12,7 @@ import {
   LAST_SESSION_EXPLANATION,
   approxSessionText,
   formatPhone,
+  formatTimeOfDay,
   sessionClientText,
   userKindText,
   workspaceRoleText,
@@ -40,11 +41,8 @@ describe("vocabulário", () => {
 });
 
 describe("approxSessionText (última sessão da lista)", () => {
-  it("sempre diz 'aprox.' e leva a hora exata e a explicação no tooltip", () => {
-    const result = approxSessionText(ago(3 * HOUR), NOW);
-    expect(result?.text).toBe("aprox. há 3 horas");
-    expect(result?.title).toContain("31/10/2026 09:00");
-    expect(result?.title).toContain(LAST_SESSION_EXPLANATION);
+  it("sempre diz 'aprox.' antes do tempo", () => {
+    expect(approxSessionText(ago(3 * HOUR), NOW)?.text).toBe("aprox. há 3 horas");
   });
 
   it("agora, ontem e depois de 30 dias a data", () => {
@@ -144,5 +142,18 @@ describe("configuração da lista", () => {
 
   it("o relógio dos testes é o do mock do Admin", () => {
     expect(NOW_ISO).toBe("2026-10-31T15:00:00.000Z");
+  });
+});
+
+describe("formatTimeOfDay", () => {
+  it("só a hora, no fuso de São Paulo (o dia vai no cabeçalho do grupo)", () => {
+    expect(formatTimeOfDay("2026-10-30T13:30:00.000Z")).toBe("10:30");
+    // 01:30 UTC ainda é 22:30 do dia anterior em São Paulo
+    expect(formatTimeOfDay("2026-10-31T01:30:00.000Z")).toBe("22:30");
+  });
+
+  it("instante ausente ou inválido vira '—'", () => {
+    expect(formatTimeOfDay(null)).toBe("—");
+    expect(formatTimeOfDay("não é data")).toBe("—");
   });
 });

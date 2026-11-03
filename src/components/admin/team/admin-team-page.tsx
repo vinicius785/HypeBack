@@ -3,10 +3,10 @@ import { useState } from "react";
 import {
   AdminBadge,
   AdminEntityCell,
-  AdminErrorState,
   AdminPage,
   AdminPageHeader,
   AdminSection,
+  AdminSkeleton,
   AdminStatusBadge,
   AdminTable,
   type AdminTableColumn,
@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useAdminCapabilities, useAdminPlatformTeam } from "@/hooks/admin/use-admin-team";
 import type { AdminPlatformRoleInfo, AdminPlatformTeamMember } from "@/shared/admin-platform.types";
 
+import { userDetailLink } from "../users/admin-users-links";
 import { ADMIN_ONLY_TEXT, PERMISSION_TEXT, ROLE_FALLBACK_LABEL, ROLE_TONE } from "./team-labels";
 import { AdminTeamRoleDialog, type TeamTarget } from "./team-role-dialog";
 
@@ -59,8 +60,41 @@ function RoleCard({ role, members }: { role: AdminPlatformRoleInfo; members: num
 }
 
 /**
- * Equipe da plataforma: os três papéis (administrador, suporte e somente leitura), o que cada um pode, e quem
- * tem cada um. O administrador adiciona pessoas e troca papéis; os demais papéis só enxergam a lista.
+ * Os três papéis, recolhidos: quem vem gerenciar acesso quer ver as pessoas primeiro. Enquanto a equipe carrega, o bloco
+ * é um esqueleto da altura do bloco recolhido (a página não pula quando os papéis chegam); se a consulta falha e não há
+ * papéis, o bloco não aparece (o erro é da tabela, inline).
+ */
+function RolesBlock({ loading, roles, members }: { loading: boolean; roles: readonly AdminPlatformRoleInfo[]; members: readonly AdminPlatformTeamMember[] }) {
+  if (loading) {
+    return (
+      <AdminSection>
+        {/* decorativo: quem usa leitor de tela já ouve o "Carregando…" da tabela, e uma segunda região repetiria o aviso */}
+        <div className="adm-team-roles-skel" aria-hidden="true">
+          <AdminSkeleton width={220} height={16} />
+        </div>
+      </AdminSection>
+    );
+  }
+  if (roles.length === 0) return null;
+  return (
+    <AdminSection>
+      <details className="adm-team-roles-more">
+        <summary className="adm-summary">O que cada papel pode fazer</summary>
+        <p className="adm-team-roles-note">Cada pessoa da equipe tem um papel. Só o administrador muda papéis.</p>
+        <div className="adm-team-roles">
+          {roles.map((role) => (
+            <RoleCard key={role.role} role={role} members={members.filter((member) => member.role === role.role).length} />
+          ))}
+        </div>
+      </details>
+    </AdminSection>
+  );
+}
+
+/**
+ * Equipe da plataforma: as pessoas com acesso ao Admin (papel e status; a linha abre a conta) e, recolhido, o que
+ * cada papel (administrador, suporte e somente leitura) pode fazer. O administrador adiciona pessoas e troca
+ * papéis; os demais papéis só enxergam a lista.
  * Dados: `GET /admin/platform-team`; troca: `PATCH /admin/users/:userId/platform-role`.
  */
 export function AdminTeamPage() {
@@ -75,11 +109,15 @@ export function AdminTeamPage() {
   const roleLabel = (role: AdminPlatformTeamMember["role"]) =>
     roles.find((entry) => entry.role === role)?.label ?? ROLE_FALLBACK_LABEL[role];
 
+  const changeRole = (member: AdminPlatformTeamMember) =>
+    setDialog({ target: { id: member.user_id, name: member.name, email: member.email, role: member.role } });
+
   const columns: AdminTableColumn<AdminPlatformTeamMember>[] = [
     {
       key: "person",
       header: "Pessoa",
       width: "minmax(0, 2fr)",
+      primary: true,
       cell: (member) => <AdminEntityCell name={member.name} subtitle={member.email} size={36} />,
     },
     {
@@ -90,41 +128,29 @@ export function AdminTeamPage() {
     },
     {
       key: "status",
-      header: "Situação",
+      header: "Status",
       width: "150px",
       cell: (member) => <AdminStatusBadge kind="user" value={member.status} />,
     },
     {
       key: "actions",
       header: "",
+      headerLabel: "Ações",
       mobileLabel: "",
       width: "160px",
       align: "right",
-      cell: (member) =>
-        capabilities.isAdmin && member.user_id !== user?.id ? (
-          <button
-            type="button"
-            className="btn out adm-btn-sm"
-            onClick={() =>
-              setDialog({ target: { id: member.user_id, name: member.name, email: member.email, role: member.role } })
-            }
-          >
+      cell: (member) => {
+        if (member.user_id === user?.id) return <span className="adm-team-self">Você</span>;
+        if (!capabilities.isAdmin) return null;
+        // A única ação por pessoa é trocar o papel (tirar da equipe é uma opção do próprio diálogo): um botão, não um menu.
+        return (
+          <button type="button" className="btn out adm-btn-sm" onClick={() => changeRole(member)}>
             Alterar papel
           </button>
-        ) : member.user_id === user?.id ? (
-          <span className="adm-team-self">Você</span>
-        ) : null,
+        );
+      },
     },
   ];
-
-  if (query.isError && !team) {
-    return (
-      <AdminPage>
-        <AdminPageHeader title="Equipe" subtitle="Quem tem acesso ao Admin da plataforma e o que cada pessoa pode fazer." />
-        <AdminErrorState error={query.error} onRetry={() => void query.refetch()} retrying={query.isRefetching} />
-      </AdminPage>
-    );
-  }
 
   return (
     <AdminPage>
@@ -140,20 +166,13 @@ export function AdminTeamPage() {
         }
       />
 
-      <AdminSection title="Papéis" description="Cada pessoa da equipe tem um papel. Só o administrador muda papéis.">
-        <div className="adm-team-roles">
-          {roles.map((role) => (
-            <RoleCard key={role.role} role={role} members={members.filter((member) => member.role === role.role).length} />
-          ))}
-        </div>
-      </AdminSection>
-
       <AdminSection flush title="Pessoas da equipe" description="Contas com algum papel no Admin, da mais antiga para a mais nova.">
         <AdminTable
           caption="Equipe da plataforma"
           columns={columns}
           rows={team ? members : undefined}
           rowKey={(member) => member.user_id}
+          rowLink={(member) => userDetailLink(member.user_id)}
           loading={query.isLoading}
           refreshing={query.isFetching && !query.isLoading}
           error={query.error}
@@ -165,6 +184,8 @@ export function AdminTeamPage() {
           }}
         />
       </AdminSection>
+
+      <RolesBlock loading={query.isLoading} roles={roles} members={members} />
 
       {dialog ? <AdminTeamRoleDialog target={dialog.target} roles={roles} onClose={() => setDialog(null)} /> : null}
     </AdminPage>

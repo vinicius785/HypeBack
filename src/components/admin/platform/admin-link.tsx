@@ -35,13 +35,16 @@ type AdminLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "ch
   to: AdminLinkTarget | string;
   /** Ausente em links "esticados" (cartão inteiro clicável) que só levam `aria-label`. */
   children?: ReactNode;
+  /** Link de texto do kit (`adm-textlink`): sublinhado fino, anel de foco e alvo de toque. Soma-se ao `className`. */
+  textLink?: boolean;
 };
 
 /** `<Link>` do TanStack com o destino como dado: o `href` real permite abrir em nova aba e o clique comum navega no SPA. */
-export function AdminLink({ to, children, ...anchor }: AdminLinkProps) {
+export function AdminLink({ to, children, textLink, className, ...anchor }: AdminLinkProps) {
   const target: AdminLinkTarget = typeof to === "string" ? { to } : to;
+  const classes = textLink ? (className ? `adm-textlink ${className}` : "adm-textlink") : className;
   return (
-    <LooseLink to={target.to} params={target.params} search={target.search} {...anchor}>
+    <LooseLink to={target.to} params={target.params} search={target.search} className={classes} {...anchor}>
       {children}
     </LooseLink>
   );

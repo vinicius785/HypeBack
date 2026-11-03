@@ -55,6 +55,8 @@ async function renderLoaded(url = "/admin/creators") {
   return view;
 }
 
+const callsToCreators = () => client.adminList.mock.calls.filter(([path]) => path === "/admin/creators").length;
+
 const rowOf = (name: string) => screen.getByText(name).closest("[role=row]") as HTMLElement;
 
 beforeEach(() => {
@@ -160,7 +162,7 @@ describe("Criadores: tabela", () => {
     expect(youtube).not.toHaveTextContent(/^@\s/);
   });
 
-  it("cadastro: etiqueta + 'Faltam: …' (dois itens e '+N itens', que abre a lista inteira no lugar)", async () => {
+  it("perfil: etiqueta + 'Faltam: …' (dois itens e '+N itens', que abre a lista inteira no lugar)", async () => {
     await renderLoaded();
     const complete = rowOf("Rafael Borges Mendes");
     expect(within(complete).getByText("Completo")).toBeInTheDocument();
@@ -206,18 +208,45 @@ describe("Criadores: tabela", () => {
     expect(within(rowOf("Jéssica Moraes")).getByText("Nunca participou")).toBeInTheDocument();
   });
 
-  it("cadastro em: o dia, no fuso de São Paulo", async () => {
+  it("os links de texto da linha (campanha, workspace) e o '+N itens' usam o link de texto do kit (`adm-textlink`)", async () => {
+    await renderLoaded();
+    const row = rowOf("Rafael Borges Mendes");
+    expect(within(row).getByRole("link", { name: "Páscoa Pizzaria Forno Antigo" })).toHaveClass("adm-textlink");
+    expect(within(row).getByRole("link", { name: "Pizzaria Forno Antigo" })).toHaveClass("adm-textlink");
+    expect(within(rowOf("Jéssica Moraes")).getByRole("button", { name: "+2 itens" })).toHaveClass("adm-textlink");
+  });
+
+  it("o segmento 'Perfil' fora de 'Todos' conta como filtro: vira chip e 'Limpar filtros' devolve a 'Todos'", async () => {
+    const { router } = await renderLoaded();
+    expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Incompleto" }));
+    await waitFor(() => expect(lastParams()).toMatchObject({ registration: "incomplete" }));
+    expect(screen.getByRole("button", { name: "Remover filtro Perfil: Incompleto" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    await waitFor(() => expect(lastParams()).not.toHaveProperty("registration"));
+    expect(currentSearch(router)).toEqual({});
+    expect(screen.getByRole("button", { name: "Todos" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("group", { name: "Filtros ativos" })).not.toBeInTheDocument();
+  });
+
+  it("cadastrado em: o dia, no fuso de São Paulo", async () => {
     await renderLoaded();
     expect(within(rowOf("Rafael Borges Mendes")).getByText("19/03/2025")).toBeInTheDocument();
   });
 
-  it("explica o que é derivado e que o rótulo do cadastro é sugestão, não erro", async () => {
+  it("explica o que é derivado e que o rótulo do perfil é sugestão, não erro", async () => {
     await renderLoaded();
-    expect(screen.getByRole("button", { name: "Como é calculado: Cadastro" })).toHaveAccessibleDescription(
+    expect(screen.getByRole("button", { name: "Como é calculado: Perfil" })).toHaveAccessibleDescription(
       expect.stringContaining("sugestão de atenção, não um erro"),
     );
     expect(screen.getByRole("button", { name: "Como é calculado: Primeira campanha" })).toHaveAccessibleDescription(
       expect.stringContaining("PRIMEIRA campanha"),
+    );
+    // o que "UGC" e "inativa" querem dizer fica no "i" da coluna de redes, não só em dica de mouse
+    expect(screen.getByRole("button", { name: "Como é calculado: Redes" })).toHaveAccessibleDescription(
+      expect.stringContaining("Rede inativa: os seguidores dela não entram no total."),
     );
     expect(screen.getByRole("button", { name: "Como é calculado: Seguidores" })).toHaveAccessibleDescription(
       CREATOR_DEFINITIONS.followers_total,
@@ -240,8 +269,10 @@ describe("Criadores: estados", () => {
   it("primeira carga: esqueleto e aviso para leitor de tela", async () => {
     client.adminList.mockImplementation(() => new Promise(() => {}));
     const { container } = renderCreators();
-    expect(await screen.findByRole("status")).toHaveTextContent("Carregando…");
+    expect(await screen.findByText("Carregando…")).toBeInTheDocument();
     expect(container.querySelectorAll(".adm-row .adm-sk").length).toBeGreaterThan(0);
+    // sem meta ainda: nada de paginador "0 de 0" durante a carga
+    expect(screen.queryByRole("navigation", { name: "Paginação" })).not.toBeInTheDocument();
   });
 
   it("erro: mostra o motivo e 'Tentar de novo' consulta outra vez", async () => {
@@ -310,8 +341,8 @@ describe("Criadores: URL ⇄ filtros ⇄ API", () => {
     expect(screen.getByRole("button", { name: "Conta externa" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByLabelText("Rede")).toHaveValue("youtube");
     expect(screen.getByLabelText("Seguidores mínimos")).toHaveValue("5000");
-    expect(screen.getByLabelText("Cadastro em: a partir de")).toHaveValue("2026-01-01");
-    expect(screen.getByLabelText("Cadastro em: até")).toHaveValue("2026-10-31");
+    expect(screen.getByLabelText("Cadastrado em: a partir de")).toHaveValue("2026-01-01");
+    expect(screen.getByLabelText("Cadastrado em: até")).toHaveValue("2026-10-31");
     expect(screen.getByRole("searchbox", { name: "Buscar criadores" })).toHaveValue("ana");
     expect(screen.getByRole("columnheader", { name: /Seguidores/ })).toHaveAttribute("aria-sort", "ascending");
   });
@@ -329,8 +360,11 @@ describe("Criadores: URL ⇄ filtros ⇄ API", () => {
     expect(lastParams()).toMatchObject({ min_followers: "2500" });
   });
 
-  it("cadastro segmentado: Completo, Incompleto e Conta externa são enviados; Todos tira o filtro", async () => {
+  it("perfil segmentado: Completo, Incompleto e Conta externa são enviados (`registration` na URL); Todos tira o filtro", async () => {
     const { router } = await renderLoaded("/admin/creators?page=3");
+    // "Cadastro" tinha quatro sentidos: o segmento agora é "Perfil" (e "Cadastrado em" é só a data)
+    expect(screen.getByRole("group", { name: "Perfil" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Cadastro" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Incompleto" }));
     await waitFor(() => expect(lastParams()).toMatchObject({ registration: "incomplete", page: 1 }));
     expect(currentSearch(router)).toEqual({ registration: "incomplete" });
@@ -376,9 +410,9 @@ describe("Criadores: URL ⇄ filtros ⇄ API", () => {
 
   it("período de cadastro: as duas datas vão para a API", async () => {
     const { router } = await renderLoaded();
-    fireEvent.change(screen.getByLabelText("Cadastro em: a partir de"), { target: { value: "2026-01-01" } });
+    fireEvent.change(screen.getByLabelText("Cadastrado em: a partir de"), { target: { value: "2026-01-01" } });
     await waitFor(() => expect(lastParams()).toMatchObject({ created_from: "2026-01-01" }));
-    fireEvent.change(screen.getByLabelText("Cadastro em: até"), { target: { value: "2026-03-31" } });
+    fireEvent.change(screen.getByLabelText("Cadastrado em: até"), { target: { value: "2026-03-31" } });
     await waitFor(() => expect(lastParams()).toMatchObject({ created_from: "2026-01-01", created_to: "2026-03-31" }));
     expect(currentSearch(router)).toEqual({ created_from: "2026-01-01", created_to: "2026-03-31" });
   });
@@ -416,14 +450,13 @@ describe("Criadores: ordenação e paginação", () => {
     await userEvent.click(screen.getByRole("button", { name: /^Campanhas/ }));
     await waitFor(() => expect(lastParams()).toMatchObject({ sort_by: "campaigns", order: "asc" }));
 
-    await userEvent.click(screen.getByRole("button", { name: /^Cadastro em/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Cadastrado em/ }));
     await waitFor(() => expect(lastParams()).toMatchObject({ sort_by: "created_at", order: "desc" }));
   });
 
   it("só as colunas do contrato ordenam", async () => {
     await renderLoaded();
-    for (const name of ["Redes", "Cadastro", "Primeira campanha"]) {
-      // "Cadastro" não pode casar com "Cadastro em" (esta ordena)
+    for (const name of ["Redes", "Perfil", "Primeira campanha"]) {
       expect(screen.queryByRole("button", { name: new RegExp(`^${name}$`) })).not.toBeInTheDocument();
     }
   });
@@ -445,7 +478,28 @@ describe("Criadores: ordenação e paginação", () => {
   });
 });
 
-describe("Criadores: somente leitura", () => {
+describe("Criadores: linha e somente leitura", () => {
+  it("a linha inteira leva ao usuário (/admin/users/:id, com o id do criador): link de verdade", async () => {
+    await renderLoaded();
+    const link = within(rowOf("Rafael Borges Mendes")).getByRole("link", { name: /Rafael Borges Mendes/ });
+    expect(link).toHaveAttribute("href", "/admin/users/1046");
+    expect(within(rowOf("Jéssica Moraes")).getByRole("link", { name: /Jéssica Moraes/ })).toHaveAttribute("href", "/admin/users/1112");
+    // a campanha e o workspace da primeira campanha continuam sendo links próprios
+    expect(within(rowOf("Rafael Borges Mendes")).getByRole("link", { name: "Páscoa Pizzaria Forno Antigo" })).toHaveAttribute(
+      "href",
+      "/admin/campaigns/ca3b0000-0000-4000-8000-000000000051",
+    );
+  });
+
+  it("'Atualizar' é um ícone no fim da barra e refaz a consulta", async () => {
+    await renderLoaded();
+    const refresh = screen.getByRole("button", { name: "Atualizar" });
+    expect(refresh).toHaveAttribute("data-icon-only", "true");
+    const before = callsToCreators();
+    await userEvent.click(refresh);
+    await waitFor(() => expect(callsToCreators()).toBe(before + 1));
+  });
+
   it("só lê: nenhuma escrita é chamada e não há botão que altere criador", async () => {
     await renderLoaded();
     await userEvent.click(screen.getByRole("button", { name: "Incompleto" }));
@@ -455,11 +509,9 @@ describe("Criadores: somente leitura", () => {
     expect(client.adminPatch).not.toHaveBeenCalled();
     const panel = screen.getByRole("tabpanel");
     expect(
-      within(panel).queryByRole("button", { name: /suspender|reativar|excluir|apagar|editar|fundir|mesclar|unir|remover|convidar|salvar/i }),
+      // o chip de filtro ("Remover filtro Perfil: Incompleto") só desfaz a busca da tela, não altera criador
+      within(panel).queryByRole("button", { name: /^(?!Remover filtro).*(suspender|reativar|excluir|apagar|editar|fundir|mesclar|unir|remover|convidar|salvar)/i }),
     ).not.toBeInTheDocument();
-    // a linha não é link: criador não tem tela de detalhe aqui
-    const table = within(panel).getByRole("table", { name: "Criadores" });
-    expect(within(table).queryAllByRole("link").every((link) => !link.getAttribute("href")?.includes("/admin/users"))).toBe(true);
   });
 });
 
@@ -495,6 +547,24 @@ describe("Criadores: perfil da base (nichos e porte)", () => {
     expect((dash.size.mock.calls.at(-1) as [unknown, { enabled: boolean }])[1].enabled).toBe(true);
   });
 
+  it("o período é o seletor do kit (compacto), só com os atalhos de antes, e só aparece com o perfil aberto", async () => {
+    await renderLoaded();
+    expect(screen.queryByRole("group", { name: "Período do perfil da base" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Mostrar perfil da base" }));
+    const group = screen.getByRole("group", { name: "Período do perfil da base" });
+    expect(within(group).getAllByRole("button").map((button) => button.textContent)).toEqual(["30 dias", "90 dias", "6 meses", "12 meses"]);
+    expect(within(group).getByRole("button", { name: "30 dias" })).toHaveAttribute("aria-pressed", "true");
+    // sem intervalo livre: o perfil nunca teve
+    expect(screen.queryByRole("button", { name: "Personalizado" })).not.toBeInTheDocument();
+    expect(group.closest(".adm-period")).toHaveAttribute("data-compact", "true");
+
+    await userEvent.click(within(group).getByRole("button", { name: "6 meses" }));
+    expect(within(group).getByRole("button", { name: "6 meses" })).toHaveAttribute("aria-pressed", "true");
+    const [period] = dash.niche.mock.calls.at(-1) as [{ from: string }];
+    expect(period.from).toBe(civilDateInSaoPaulo(Date.now() - 179 * 86_400_000));
+  });
+
   it("trocar o período refaz as consultas com o novo intervalo", async () => {
     await renderLoaded();
     await userEvent.click(screen.getByRole("button", { name: "Mostrar perfil da base" }));
@@ -525,6 +595,34 @@ describe("Criadores: perfil da base (nichos e porte)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
     expect(nicheRefetch).toHaveBeenCalledTimes(1);
     expect(sizeRefetch).not.toHaveBeenCalled();
+  });
+
+  it("erro nos dois gráficos: cada um tem o seu 'Tentar de novo', que refaz só a própria consulta", async () => {
+    const nicheRefetch = vi.fn();
+    const sizeRefetch = vi.fn();
+    dash.niche.mockImplementation(() => ({ ...idle(), isError: true, refetch: nicheRefetch }));
+    dash.size.mockImplementation(() => ({ ...idle(), isError: true, refetch: sizeRefetch }));
+    await renderLoaded();
+    await userEvent.click(screen.getByRole("button", { name: "Mostrar perfil da base" }));
+
+    // não há mais um botão solto na seção: os dois estão dentro dos próprios gráficos
+    const retries = screen.getAllByRole("button", { name: "Tentar de novo" });
+    expect(retries).toHaveLength(2);
+    await userEvent.click(retries[1]);
+    expect(sizeRefetch).toHaveBeenCalledTimes(1);
+    expect(nicheRefetch).not.toHaveBeenCalled();
+    await userEvent.click(retries[0]);
+    expect(nicheRefetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("durante o refetch do gráfico, o 'Tentar de novo' fica desabilitado só nele", async () => {
+    dash.niche.mockImplementation(() => ({ ...idle(), isError: true, isFetching: true }));
+    dash.size.mockImplementation(() => ({ ...idle(), isError: true }));
+    await renderLoaded();
+    await userEvent.click(screen.getByRole("button", { name: "Mostrar perfil da base" }));
+    const [niche, size] = screen.getAllByRole("button", { name: /Tentar de novo|Tentando/ });
+    expect(niche).toBeDisabled();
+    expect(size).toBeEnabled();
   });
 
   it("recolher de novo esconde os gráficos e para as consultas", async () => {

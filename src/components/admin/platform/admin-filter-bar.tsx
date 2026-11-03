@@ -1,10 +1,13 @@
-import { useId, useState, type ReactNode } from "react";
+import { cloneElement, Fragment, isValidElement, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from "react";
 
 import { I } from "@/components/prototype/ui";
 import { useSlidingIndicator } from "@/hooks/admin/use-sliding-indicator";
 import { formatCivilDate, formatInt } from "@/lib/admin/format";
 
+import { AdminSearchInput } from "./admin-search-input";
+
 import "@/styles/admin-platform.css";
+import "@/styles/admin-kit-ext.css";
 
 export interface AdminFilterOption {
   /** Valor que vai para a URL/API. `''` costuma ser "todos / sem filtro". */
@@ -22,6 +25,8 @@ export interface AdminSelectFilter {
   options: readonly AdminFilterOption[];
   /** Valor "sem filtro" (padrão `''`): nem conta como filtro ativo nem vira chip. */
   defaultValue?: string;
+  /** Fica na linha da barra, sempre visível (e não dentro do painel "Filtros"). Conta e vira chip como os demais. */
+  inline?: boolean;
 }
 
 /** Poucas opções de escolha única, todas visíveis (o `PillGroup` do filtro de criadores). */
@@ -31,6 +36,8 @@ export interface AdminPillsFilter {
   label: string;
   options: readonly AdminFilterOption[];
   defaultValue?: string;
+  /** Fica na linha da barra, sempre visível (e não dentro do painel "Filtros"). */
+  inline?: boolean;
 }
 
 /** Intervalo de datas civis (`YYYY-MM-DD`, o formato do contrato): dois campos de data. */
@@ -39,9 +46,65 @@ export interface AdminDateRangeFilter {
   label: string;
   fromKey: string;
   toKey: string;
+  /** Fica na linha da barra, sempre visível (e não dentro do painel "Filtros"). */
+  inline?: boolean;
 }
 
-export type AdminFilterDef = AdminSelectFilter | AdminPillsFilter | AdminDateRangeFilter;
+/** O que `AdminCustomFilter.render` recebe. */
+export interface AdminCustomFilterContext {
+  id: string;
+  label: string;
+  /** `summary` não é `null`: o filtro está valendo. */
+  active: boolean;
+  /** Está sendo desenhado na linha da barra (e não no painel "Filtros"). */
+  inline: boolean;
+}
+
+/**
+ * Filtro com controle próprio (seletor de workspace, de autor, de período…). A barra não sabe de onde vem o
+ * estado: `summary` diz se está valendo e o que mostrar no chip, `onClear` desfaz. Assim ele conta em
+ * "Filtros (n)", vira chip removível e é desfeito por "Limpar filtros" como qualquer outro.
+ */
+export interface AdminCustomFilter {
+  kind: "custom";
+  /** Identifica o filtro (chave React e do chip). */
+  id: string;
+  /** Nome do filtro: vai para `render` (rótulo do controle) e para o aviso de "Remover filtro …" se o chip não tiver outro. */
+  label: string;
+  render: (ctx: AdminCustomFilterContext) => ReactNode;
+  /** O texto do chip ("Workspace: Acme"); `null` = inativo (não conta, não vira chip). Inclua o nome do filtro no texto. */
+  summary: string | null;
+  /** Desfaz só este filtro. Chamado pelo × do chip e, com o filtro ativo, por "Limpar filtros" (depois do `onClear` da barra). */
+  onClear: () => void;
+  /** Fica na linha da barra, sempre visível (para o seletor de workspace/período não ficar escondido em "Filtros"). */
+  inline?: boolean;
+}
+
+/**
+ * Liga/desliga ("Excluídos", "Só com pendência"): um botão `adm-pill` com `aria-pressed`. Conta em "Filtros (n)",
+ * vira chip e é desfeito por "Limpar filtros" como os demais. A barra não guarda o estado: `active` vem da tela.
+ */
+export interface AdminToggleFilter {
+  kind: "toggle";
+  /** Identifica o filtro (chave React e do chip). */
+  id: string;
+  /** Texto do botão e, sem `summary`, do chip. */
+  label: string;
+  active: boolean;
+  /** Clique no botão. Também desfaz o filtro (no chip e em "Limpar filtros") quando não há `onClear`. */
+  onToggle: () => void;
+  /** Texto do chip quando ativo (padrão: `label`). */
+  summary?: string;
+  /**
+   * Desfaz o filtro de forma idempotente (chip e "Limpar filtros"). Opcional: sem ele a barra chama `onToggle`
+   * (só com o filtro ativo). Passe `onClear` se o `onClear` da barra também zera este estado, para não virar duas vezes.
+   */
+  onClear?: () => void;
+  /** Fica na linha da barra, sempre visível (e não dentro do painel "Filtros"). */
+  inline?: boolean;
+}
+
+export type AdminFilterDef = AdminSelectFilter | AdminPillsFilter | AdminDateRangeFilter | AdminCustomFilter | AdminToggleFilter;
 
 interface AdminSegmentedControlProps {
   options: readonly AdminFilterOption[];
@@ -79,18 +142,33 @@ export function AdminSegmentedControl({ options, value, onChange, ariaLabel }: A
 }
 
 interface AdminFilterBarProps {
-  /** Estado da lista como controle segmentado (Todos / Ativos / Suspensos…). Não vira chip nem conta como filtro. */
+  /**
+   * Estado da lista como controle segmentado (Todos / Ativos / Suspensos…). Sem `segmentDefault` não vira chip
+   * nem conta como filtro.
+   */
   segment?: AdminSegmentedControlProps;
+  /**
+   * Valor do segmento que significa "sem filtro" (`''`, `'all'`…). Com ele, o segmento fora do padrão conta como
+   * filtro ativo: entra em "Filtros (n)", vira chip ("<ariaLabel>: <opção>") e "Limpar filtros" o devolve ao padrão.
+   * Sem ele o segmento segue como antes (nunca conta).
+   */
+  segmentDefault?: string;
   /** Campo de busca (`AdminSearchInput`). */
   search?: ReactNode;
+  /**
+   * Nome acessível da busca ("Buscar workspaces"): quem usa o campo precisa saber o que ele busca. Num
+   * `AdminSearchInput` vira o `aria-label` do campo; em outro elemento, ele é embrulhado num `role="search"` com este nome.
+   * Informe sempre que houver `search`.
+   */
+  searchLabel?: string;
   filters?: readonly AdminFilterDef[];
-  /** Valores atuais, por chave (`useAdminListQueryState().filters`). */
-  values: Readonly<Record<string, string>>;
-  /** Recebe só o que mudou (`{ activity: 'never' }`); o intervalo de datas manda as duas chaves. */
-  onChange: (patch: Record<string, string>) => void;
+  /** Valores atuais, por chave (`useAdminListQueryState().filters`). Opcional: barra só com segmento, toggles ou `trailing` (padrão `{}`). */
+  values?: Readonly<Record<string, string>>;
+  /** Recebe só o que mudou (`{ activity: 'never' }`); o intervalo de datas manda as duas chaves. Opcional (padrão: não faz nada). */
+  onChange?: (patch: Record<string, string>) => void;
   /** Aparece como "Limpar filtros" enquanto houver filtro ativo. */
   onClear?: () => void;
-  /** À direita (exportar, atualizar…). */
+  /** Fim da barra, depois de "Limpar filtros" (botão de atualizar, exportar…). */
   trailing?: ReactNode;
 }
 
@@ -99,7 +177,12 @@ function currentOf(def: AdminSelectFilter | AdminPillsFilter, values: Readonly<R
   return values[def.key] ?? def.defaultValue ?? "";
 }
 
+const NO_VALUES: Readonly<Record<string, string>> = {};
+const NOOP = () => {};
+
 function isFilterActive(def: AdminFilterDef, values: Readonly<Record<string, string>>): boolean {
+  if (def.kind === "custom") return def.summary !== null;
+  if (def.kind === "toggle") return def.active;
   if (def.kind === "date-range") return !!(values[def.fromKey] || values[def.toKey]);
   return currentOf(def, values) !== (def.defaultValue ?? "");
 }
@@ -200,23 +283,70 @@ interface Chip {
   remove: () => void;
 }
 
+/** Dá o nome acessível à busca: no `AdminSearchInput` é o `label` dele; em qualquer outro elemento, um `role="search"` em volta. */
+function labelledSearch(search: ReactNode, label: string | undefined): ReactNode {
+  if (!search || !label || !isValidElement(search)) return search;
+  if (search.type === AdminSearchInput) return cloneElement(search as ReactElement<{ label?: string }>, { label });
+  return (
+    <div className="adm-filters-search" role="search" aria-label={label}>
+      {search}
+    </div>
+  );
+}
+
+/** Controles que aceitam foco, na ordem em que a barra os desenha: para onde o foco vai quando o que o tinha some. */
+const FOCUS_FALLBACK = ".adm-search input, .adm-filters-toggle, .adm-filters-row select, .adm-filters-row .adm-pill, .adm-filters-row button";
+
 /**
  * Barra de filtros das listas do Admin: segmentado de estado, busca, seletores, pílulas, intervalo de datas,
- * "Limpar filtros" e os chips dos filtros ativos (cada chip desfaz o seu).
+ * liga/desliga (`kind: 'toggle'`), filtros próprios (`kind: 'custom'`), "Limpar filtros" e os chips dos filtros
+ * ativos (cada chip desfaz o seu). `values`/`onChange` são opcionais: uma barra só com segmento, toggles e/ou
+ * `trailing` não precisa deles. Com `segmentDefault` o segmento fora do padrão conta como filtro.
  *
  * Declarativa: os mesmos `filters` desenham os controles e os chips, então nunca divergem. Não guarda
- * estado de filtro: `values`/`onChange` são o da URL (`useAdminListQueryState`). No celular a busca fica
- * com um botão "Filtros" que abre o resto num painel.
+ * estado de filtro: `values`/`onChange` são o da URL (`useAdminListQueryState`). Filtro com `inline: true`
+ * fica sempre na linha da barra; os demais ficam no painel que, no celular, o botão "Filtros" abre.
+ *
+ * Teclado: chip e "Limpar filtros" somem ao serem usados; o foco vai para o chip vizinho (ou, não havendo,
+ * para o primeiro controle da barra) em vez de cair no `body`.
  */
-export function AdminFilterBar({ segment, search, filters = [], values, onChange, onClear, trailing }: AdminFilterBarProps) {
+export function AdminFilterBar({
+  segment,
+  segmentDefault,
+  search,
+  searchLabel,
+  filters = [],
+  values = NO_VALUES,
+  onChange = NOOP,
+  onClear,
+  trailing,
+}: AdminFilterBarProps) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
+  /** Pedido de foco: índice do chip removido (`null` = "Limpar filtros", vai para o primeiro controle). Vale só se o foco se perdeu. */
+  const refocus = useRef<{ chipIndex: number | null } | null>(null);
 
-  const selects = filters.filter((f): f is AdminSelectFilter | AdminDateRangeFilter => f.kind !== "pills");
-  const pills = filters.filter((f): f is AdminPillsFilter => f.kind === "pills");
+  const inlineDefs = filters.filter((f) => f.inline);
+  const panelDefs = filters.filter((f) => !f.inline);
+  // No painel: seletores, datas e filtros próprios na ordem em que vieram, depois as pílulas.
+  const panelOrdered = [...panelDefs.filter((f) => f.kind !== "pills"), ...panelDefs.filter((f) => f.kind === "pills")];
   const activeDefs = filters.filter((f) => isFilterActive(f, values));
+  const activeCustom = activeDefs.filter((f): f is AdminCustomFilter => f.kind === "custom");
+  const activeToggles = activeDefs.filter((f): f is AdminToggleFilter => f.kind === "toggle");
+  const segmentActive = !!segment && segmentDefault !== undefined && segment.value !== segmentDefault;
+  const resetSegment = () => {
+    if (segment && segmentDefault !== undefined) segment.onChange(segmentDefault);
+  };
+  const activeCount = activeDefs.length + (segmentActive ? 1 : 0);
 
-  const chips: Chip[] = activeDefs.map((def) => {
+  const defChips: Chip[] = activeDefs.map((def) => {
+    if (def.kind === "custom") {
+      return { id: `custom:${def.id}`, text: def.summary ?? def.label, remove: def.onClear };
+    }
+    if (def.kind === "toggle") {
+      return { id: `toggle:${def.id}`, text: def.summary ?? def.label, remove: def.onClear ?? def.onToggle };
+    }
     if (def.kind === "date-range") {
       const from = values[def.fromKey] ?? "";
       const to = values[def.toKey] ?? "";
@@ -233,16 +363,88 @@ export function AdminFilterBar({ segment, search, filters = [], values, onChange
       remove: () => onChange({ [def.key]: def.defaultValue ?? "" }),
     };
   });
+  const chips: Chip[] = segmentActive
+    ? [{ id: "segment", text: `${segment.ariaLabel}: ${optionLabel(segment.options, segment.value)}`, remove: resetSegment }, ...defChips]
+    : defChips;
 
-  const hasPanel = filters.length > 0;
+  const chipIds = chips.map((c) => c.id).join("|");
+  useEffect(() => {
+    const request = refocus.current;
+    refocus.current = null;
+    const root = rootRef.current;
+    if (!request || !root) return;
+    // O foco só é devolvido se se perdeu (o botão que o tinha saiu da tela); se a pessoa já foi para outro lugar, fica onde está.
+    const lost = !document.activeElement || document.activeElement === document.body;
+    if (!lost) return;
+    if (request.chipIndex !== null) {
+      const buttons = root.querySelectorAll<HTMLButtonElement>(".adm-chips .adm-chip");
+      const next = buttons[Math.min(request.chipIndex, buttons.length - 1)];
+      if (next) {
+        next.focus();
+        return;
+      }
+    }
+    for (const candidate of root.querySelectorAll<HTMLElement>(FOCUS_FALLBACK)) {
+      candidate.focus();
+      if (document.activeElement === candidate) return;
+    }
+  }, [chipIds]);
+
+  const renderDef = (def: AdminFilterDef, inline: boolean): ReactNode => {
+    if (def.kind === "select") {
+      return <SelectFilter key={def.key} def={def} value={currentOf(def, values)} onChange={(v) => onChange({ [def.key]: v })} />;
+    }
+    if (def.kind === "pills") {
+      return <PillsFilter key={def.key} def={def} value={currentOf(def, values)} onChange={(v) => onChange({ [def.key]: v })} />;
+    }
+    if (def.kind === "date-range") {
+      return (
+        <DateRangeFilter
+          key={`${def.fromKey}/${def.toKey}`}
+          def={def}
+          from={values[def.fromKey] ?? ""}
+          to={values[def.toKey] ?? ""}
+          onChange={onChange}
+        />
+      );
+    }
+    if (def.kind === "toggle") {
+      return (
+        <button
+          key={`toggle:${def.id}`}
+          type="button"
+          className="adm-pill"
+          data-toggle="true"
+          aria-pressed={def.active}
+          onClick={def.onToggle}
+        >
+          {def.label}
+        </button>
+      );
+    }
+    return <Fragment key={`custom:${def.id}`}>{def.render({ id: def.id, label: def.label, active: def.summary !== null, inline })}</Fragment>;
+  };
+
+  const hasPanel = panelDefs.length > 0;
+  const hasInline = inlineDefs.length > 0;
+  const canClear = activeCount > 0 && (!!onClear || activeCustom.length > 0 || activeToggles.length > 0 || segmentActive);
+
+  const clearAll = () => {
+    refocus.current = { chipIndex: null };
+    onClear?.();
+    // Os filtros próprios, os toggles e o segmento guardam o estado fora de `values`: o `onClear` da barra não os alcança.
+    for (const def of activeCustom) def.onClear();
+    for (const def of activeToggles) (def.onClear ?? def.onToggle)();
+    if (segmentActive) resetSegment();
+  };
 
   return (
-    <div className="adm-filters">
+    <div className="adm-filters" ref={rootRef}>
       {segment ? <AdminSegmentedControl {...segment} /> : null}
 
-      {search || hasPanel || trailing || (onClear && activeDefs.length > 0) ? (
+      {search || hasInline || hasPanel || trailing || canClear ? (
         <div className="adm-filters-row">
-          {search}
+          {labelledSearch(search, searchLabel)}
           {hasPanel ? (
             <button
               type="button"
@@ -253,33 +455,20 @@ export function AdminFilterBar({ segment, search, filters = [], values, onChange
             >
               <I n="funnel" cls="sm" />
               Filtros
-              {activeDefs.length > 0 ? <em>{activeDefs.length}</em> : null}
+              {activeCount > 0 ? <em>{activeCount}</em> : null}
             </button>
           ) : null}
+          {/* depois do botão "Filtros" (escondido no desktop): no celular a linha própria dos inline vem abaixo dele, e a ordem de Tab acompanha a visual */}
+          {hasInline ? <div className="adm-filters-inline">{inlineDefs.map((def) => renderDef(def, true))}</div> : null}
           {hasPanel ? (
             <div className="adm-filters-panel" id={panelId} data-open={open ? "true" : undefined}>
-              {selects.map((def) =>
-                def.kind === "select" ? (
-                  <SelectFilter key={def.key} def={def} value={currentOf(def, values)} onChange={(v) => onChange({ [def.key]: v })} />
-                ) : (
-                  <DateRangeFilter
-                    key={`${def.fromKey}/${def.toKey}`}
-                    def={def}
-                    from={values[def.fromKey] ?? ""}
-                    to={values[def.toKey] ?? ""}
-                    onChange={onChange}
-                  />
-                ),
-              )}
-              {pills.map((def) => (
-                <PillsFilter key={def.key} def={def} value={currentOf(def, values)} onChange={(v) => onChange({ [def.key]: v })} />
-              ))}
+              {panelOrdered.map((def) => renderDef(def, false))}
             </div>
           ) : null}
-          {trailing || (onClear && activeDefs.length > 0) ? (
+          {trailing || canClear ? (
             <div className="adm-filters-trail">
-              {onClear && activeDefs.length > 0 ? (
-                <button type="button" className="adm-textbtn" onClick={onClear}>
+              {canClear ? (
+                <button type="button" className="adm-textbtn" onClick={clearAll}>
                   Limpar filtros
                 </button>
               ) : null}
@@ -291,8 +480,17 @@ export function AdminFilterBar({ segment, search, filters = [], values, onChange
 
       {chips.length > 0 ? (
         <div className="adm-chips" role="group" aria-label="Filtros ativos">
-          {chips.map((chip) => (
-            <button key={chip.id} type="button" className="adm-chip" aria-label={`Remover filtro ${chip.text}`} onClick={chip.remove}>
+          {chips.map((chip, index) => (
+            <button
+              key={chip.id}
+              type="button"
+              className="adm-chip"
+              aria-label={`Remover filtro ${chip.text}`}
+              onClick={() => {
+                refocus.current = { chipIndex: index };
+                chip.remove();
+              }}
+            >
               {chip.text}
               <I n="x" cls="sm" />
             </button>

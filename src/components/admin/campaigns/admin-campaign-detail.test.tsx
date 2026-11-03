@@ -25,7 +25,7 @@ import { AdminApiError } from "@/lib/admin/admin-client";
 import { renderAdminRoute, stubRoute } from "@/test/render-admin-route";
 
 import { AdminCampaignDetail } from "./admin-campaign-detail";
-import { BUDGET_DEFINITION, UNAVAILABLE_BUDGET, makeCampaignDetail } from "./campaign-fixtures";
+import { UNAVAILABLE_BUDGET, makeCampaignDetail } from "./campaign-fixtures";
 
 const CAMPAIGN_ID = "ca3b0000-0000-4000-8000-000000000006";
 
@@ -77,8 +77,16 @@ describe("Detalhe da campanha: cabeçalho", () => {
       "href",
       "/admin/workspaces/7a1e0000-0000-4000-8000-000000000002",
     );
+    expect(within(header).getByRole("link", { name: "Café Serra Verde" })).toHaveClass("adm-textlink");
     expect(within(header).getByText("Valor fixo por conteúdo")).toBeInTheDocument();
     expect(within(header).getByText("12/10/2026")).toBeInTheDocument();
+  });
+
+  it("o workspace aparece uma vez só (na meta do cabeçalho): não há seção 'Workspace' de um campo só", async () => {
+    await renderLoaded();
+    expect(screen.queryByRole("region", { name: "Workspace" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Café Serra Verde" })).toHaveLength(1);
+    expect(screen.queryByRole("link", { name: "Ver workspace" })).not.toBeInTheDocument();
   });
 
   it("migalhas: Campanhas (volta para a lista) > título da campanha", async () => {
@@ -103,6 +111,16 @@ describe("Detalhe da campanha: cabeçalho", () => {
   });
 });
 
+describe("Detalhe da campanha: ordem das seções", () => {
+  it("Resumo vem antes de Financeiro, e o cronograma e as participações depois", async () => {
+    await renderLoaded();
+    const order = ["Resumo", "Financeiro", "Cronograma", "Participações por status"].map((name) => region(name));
+    for (let i = 1; i < order.length; i += 1) {
+      expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+});
+
 describe("Detalhe da campanha: Resumo e Cronograma", () => {
   it("Resumo: objetivo, prazo de inscrição (dia civil, sem deslocar fuso), mural, vagas e descrição", async () => {
     await renderLoaded();
@@ -112,6 +130,22 @@ describe("Detalhe da campanha: Resumo e Cronograma", () => {
     expect(within(summary).getByText("Ativo")).toBeInTheDocument();
     expect(within(summary).getByText("10")).toBeInTheDocument();
     expect(within(summary).getByText(/Campanha de lançamento de produto da Café Serra Verde\./)).toBeInTheDocument();
+  });
+
+  it("Resumo: o responsável do workspace (com e-mail), e a definição de que a campanha não tem dono", async () => {
+    await renderLoaded();
+    const summary = region("Resumo");
+    expect(within(summary).getByText("Responsável do workspace")).toBeInTheDocument();
+    expect(within(summary).getByText("Ana Santana")).toBeInTheDocument();
+    expect(within(summary).getByText("ana.santana@serraverde.test")).toBeInTheDocument();
+    expect(within(summary).getByRole("button", { name: "Como é calculado: Responsável do workspace" })).toHaveAccessibleDescription(
+      expect.stringContaining("responsável próprio"),
+    );
+  });
+
+  it("Resumo: sem proprietário diz isso", async () => {
+    await renderLoaded(makeCampaignDetail({ workspace_owner: null }));
+    expect(within(region("Resumo")).getByText("Sem proprietário")).toBeInTheDocument();
   });
 
   it("Resumo: sem prazo diz 'Não definido'; mural desligado diz 'Inativo'; sem descrição diz isso", async () => {
@@ -182,7 +216,7 @@ describe("Detalhe da campanha: Participações por status", () => {
 });
 
 describe("Detalhe da campanha: Financeiro", () => {
-  it("os três números do contrato, com valor exato, tipo e definição", async () => {
+  it("os três números do contrato, com valor exato e definição", async () => {
     await renderLoaded();
     const finance = region("Financeiro");
 
@@ -190,10 +224,6 @@ describe("Detalhe da campanha: Financeiro", () => {
     expect(within(finance).getByText("R$ 1.200,50")).toBeInTheDocument();
     // pago via PIX = 0 é um zero de verdade (kind realized), não "Não apurado"
     expect(within(finance).getByText("R$ 0,00")).toBeInTheDocument();
-
-    // tipo de cada número: comprometido (compromisso), realizado (fato), realizado
-    expect(within(finance).getAllByText("Comprometido")).toHaveLength(2); // rótulo + tipo
-    expect(within(finance).getAllByText("Realizado")).toHaveLength(2);
 
     expect(within(finance).getByRole("button", { name: "Como é calculado: Comprometido" })).toHaveAccessibleDescription(
       expect.stringContaining("Reservas em aberto desta campanha"),
@@ -206,13 +236,25 @@ describe("Detalhe da campanha: Financeiro", () => {
     );
   });
 
-  it("Orçamento: 'Não apurado' (nunca 0), com a definição de que o banco não o guarda", async () => {
+  it("a faixa é quieta: o tipo de cada número (comprometido, realizado) vive só no 'i', não em selos", async () => {
+    const { container } = await renderLoaded();
+    const finance = region("Financeiro");
+    expect(container.querySelectorAll(".adm-kind")).toHaveLength(0);
+    expect(within(finance).getAllByText("Comprometido")).toHaveLength(1); // só o rótulo
+    expect(within(finance).getByRole("button", { name: "Como é calculado: Comprometido" })).toHaveAccessibleDescription(
+      expect.stringContaining("Tipo: Comprometido"),
+    );
+    expect(within(finance).getByRole("button", { name: "Como é calculado: Liberado a criadores" })).toHaveAccessibleDescription(
+      expect.stringContaining("Tipo: Realizado"),
+    );
+  });
+
+  it("Orçamento não aparece: o banco não o guarda e a API devolve sempre 'não apurado'", async () => {
     await renderLoaded();
     const finance = region("Financeiro");
-    expect(within(finance).getAllByText("Não apurado").length).toBeGreaterThanOrEqual(1);
-    expect(within(finance).getByRole("button", { name: "Como é calculado: Orçamento" })).toHaveAccessibleDescription(
-      expect.stringContaining(BUDGET_DEFINITION),
-    );
+    expect(within(finance).queryByText("Orçamento")).not.toBeInTheDocument();
+    expect(within(finance).queryByText("Não apurado")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Como é calculado: Orçamento" })).not.toBeInTheDocument();
   });
 
   it("um número que o servidor diz não existir nunca vira 0", async () => {
@@ -220,45 +262,20 @@ describe("Detalhe da campanha: Financeiro", () => {
     await renderLoaded({ ...detail, figures: { ...detail.figures, paid_pix: { ...UNAVAILABLE_BUDGET, definition: "PIX não apurado" } } });
     const finance = region("Financeiro");
     expect(within(finance).queryByText("R$ 0,00")).not.toBeInTheDocument();
-    expect(within(finance).getAllByText("Não apurado").length).toBeGreaterThanOrEqual(2);
-  });
-});
-
-describe("Detalhe da campanha: Workspace", () => {
-  it("nome, proprietário (com e-mail) e link para o workspace; a explicação de que a campanha não tem dono", async () => {
-    await renderLoaded();
-    const section = region("Workspace");
-    expect(within(section).getByText("Café Serra Verde")).toBeInTheDocument();
-    expect(within(section).getByText("Ana Santana")).toBeInTheDocument();
-    expect(within(section).getByText("ana.santana@serraverde.test")).toBeInTheDocument();
-    expect(within(section).getByRole("link", { name: "Ver workspace" })).toHaveAttribute(
-      "href",
-      "/admin/workspaces/7a1e0000-0000-4000-8000-000000000002",
-    );
-    expect(within(section).getByRole("button", { name: "Como é calculado: Proprietário do workspace" })).toHaveAccessibleDescription(
-      expect.stringContaining("responsável pela campanha"),
-    );
-  });
-
-  it("workspace suspenso leva a etiqueta; sem proprietário diz isso", async () => {
-    await renderLoaded(
-      makeCampaignDetail({
-        workspace: { id: "7a1e0000-0000-4000-8000-000000000004", name: "Aurora Beauty Studio", status: "suspended" },
-        workspace_owner: null,
-      }),
-    );
-    const section = region("Workspace");
-    expect(within(section).getByText("Suspenso")).toBeInTheDocument();
-    expect(within(section).getByText("Sem proprietário")).toBeInTheDocument();
+    expect(within(finance).getAllByText("Não apurado")).toHaveLength(1);
   });
 });
 
 describe("Detalhe da campanha: estados", () => {
-  it("carregando: esqueleto com aviso para leitor de tela, sem dados", async () => {
+  it("carregando: o esqueleto já tem o cabeçalho (banner, título, apoio), com aviso para leitor de tela", async () => {
     client.adminGet.mockImplementation(() => new Promise(() => {}));
     const { container } = renderDetail();
     expect(await screen.findByRole("status")).toHaveTextContent("Carregando campanha…");
     expect(container.querySelectorAll(".adm-sk").length).toBeGreaterThan(0);
+    // título, banner e linha de apoio em esqueleto, como o cabeçalho dos outros detalhes
+    expect(container.querySelector(".adm-head h1 .adm-sk")).not.toBeNull();
+    expect(container.querySelector(".adm-head-lead .adm-sk")).not.toBeNull();
+    expect(container.querySelector(".adm-head-meta .adm-sk")).not.toBeNull();
     expect(screen.queryByRole("heading", { level: 1, name: "Festival Café Serra Verde" })).not.toBeInTheDocument();
     // o caminho de volta já está lá
     expect(screen.getByRole("link", { name: "Campanhas" })).toHaveAttribute("href", "/admin/campaigns");
@@ -277,7 +294,7 @@ describe("Detalhe da campanha: estados", () => {
   it("campanha que não existe: diz isso e leva de volta para a lista (sem 'tentar de novo')", async () => {
     client.adminGet.mockRejectedValue(new AdminApiError({ status: 404, code: "NOT_FOUND", message: "Não encontramos este registro." }));
     renderDetail();
-    expect(await screen.findByText("Campanha não encontrada")).toBeInTheDocument();
+    expect(await screen.findByText("Não encontramos esta campanha")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Voltar para campanhas" })).toHaveAttribute("href", "/admin/campaigns");
     expect(screen.queryByRole("button", { name: /Tentar de novo/ })).not.toBeInTheDocument();
     expect(client.adminGet).toHaveBeenCalledTimes(1);

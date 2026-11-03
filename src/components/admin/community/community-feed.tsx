@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { toast } from "sonner";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 
 import {
   AdminAvatar,
@@ -7,13 +7,17 @@ import {
   AdminEmptyState,
   AdminErrorState,
   AdminFilterBar,
+  AdminIconButton,
   AdminLink,
+  AdminListSkeleton,
+  AdminLoadMore,
+  AdminRefreshButton,
   AdminSearchInput,
   AdminSection,
-  AdminSkeleton,
+  adminToast,
 } from "@/components/admin/platform";
 import { I } from "@/components/prototype/ui";
-import { useCommunityPosts, useDeleteCommunityPost } from "@/hooks/use-community-posts";
+import { communityPostKeys, useCommunityPosts, useDeleteCommunityPost } from "@/hooks/use-community-posts";
 import { formatDateTime, formatInt, formatRelativeTime } from "@/lib/admin/format";
 import { getUploadUrl } from "@/lib/utils/api";
 import type { CommunityPostModeration } from "@/shared/services/community-posts";
@@ -28,9 +32,6 @@ const SCOPE_OPTIONS = [
   { value: "none", label: "Sem grupo" },
 ] as const;
 
-const NO_FILTER_VALUES: Readonly<Record<string, string>> = {};
-const ignoreFilterChange = () => {};
-
 /** Cor do grupo na API: hex sem `#` (vazio quando o grupo só tem capa). */
 function groupDot(color: string): string {
   return /^[0-9a-f]{6}$/i.test(color) ? `#${color}` : "var(--adm-text-muted)";
@@ -40,14 +41,16 @@ function FeedMedia({ post }: { post: CommunityPostModeration }) {
   // Vídeo tem prioridade sobre imagem: é o que o app mostra quando o post traz os dois.
   const video = getUploadUrl(post.video_url);
   if (video) {
+    const poster = getUploadUrl(post.video_thumbnail_url);
     return (
       <video
         className="adm-com-media"
         src={video}
-        poster={getUploadUrl(post.video_thumbnail_url)}
+        poster={poster}
         controls
         playsInline
-        preload="metadata"
+        // A lista pode ter dezenas de vídeos: com capa, nada baixa até o play; sem capa, o primeiro quadro (metadata) é a capa.
+        preload={poster ? "none" : "metadata"}
         aria-label="Vídeo da publicação"
       />
     );
@@ -55,6 +58,21 @@ function FeedMedia({ post }: { post: CommunityPostModeration }) {
   const image = getUploadUrl(post.image_url);
   if (image) return <img className="adm-com-media" src={image} alt="Imagem da publicação" loading="lazy" />;
   return null;
+}
+
+/** "12 curtidas" / "1 curtida". */
+function countText(count: number, singular: string, plural: string): string {
+  return `${formatInt(count)} ${count === 1 ? singular : plural}`;
+}
+
+/** Ícone + o texto completo ("12 curtidas"): o número nunca fica sem a palavra que o explica. */
+function FeedStat({ icon, text }: { icon: string; text: string }) {
+  return (
+    <span>
+      <I n={icon} cls="sm" />
+      {text}
+    </span>
+  );
 }
 
 function FeedItem({ post, onRemove }: { post: CommunityPostModeration; onRemove: (post: CommunityPostModeration) => void }) {
@@ -82,45 +100,17 @@ function FeedItem({ post, onRemove }: { post: CommunityPostModeration; onRemove:
         {post.content ? <p className="adm-com-text">{post.content}</p> : null}
         <FeedMedia post={post} />
         <p className="adm-com-stats">
-          <span>
-            <I n="heart" cls="sm" />
-            {formatInt(post.likes_count)} {post.likes_count === 1 ? "curtida" : "curtidas"}
-          </span>
-          <span>
-            <I n="msg" cls="sm" />
-            {formatInt(post.comments_count)} {post.comments_count === 1 ? "comentário" : "comentários"}
-          </span>
+          <FeedStat icon="heart" text={countText(post.likes_count, "curtida", "curtidas")} />
+          <FeedStat icon="msg" text={countText(post.comments_count, "comentário", "comentários")} />
         </p>
       </div>
-      <button
-        type="button"
-        className="btn ghost red adm-btn-sm"
-        aria-label={`Remover a publicação de ${author.name}`}
+      <AdminIconButton
+        icon="trash"
+        tone="danger"
+        label={`Remover a publicação de ${author.name}`}
         onClick={() => onRemove(post)}
-      >
-        <I n="trash" cls="sm" />
-        Remover
-      </button>
+      />
     </li>
-  );
-}
-
-function FeedSkeleton() {
-  return (
-    <div className="adm-com-skeleton" role="status">
-      <span className="adm-sr">Carregando…</span>
-      {Array.from({ length: 4 }, (_, index) => (
-        <div className="adm-com-item" key={index} aria-hidden="true">
-          <AdminSkeleton width={44} height={44} radius="50%" />
-          <div className="adm-com-body">
-            <AdminSkeleton height={14} width="28%" />
-            <AdminSkeleton height={12} width={`${88 - (index % 3) * 16}%`} style={{ marginTop: 12 }} />
-            <AdminSkeleton height={12} width="54%" style={{ marginTop: 6 }} />
-          </div>
-          <AdminSkeleton width={92} height={36} radius={999} />
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -141,6 +131,9 @@ export function CommunityFeed() {
   const [removing, setRemoving] = useState<CommunityPostModeration | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
+  const queryClient = useQueryClient();
+  const refreshing = useIsFetching({ queryKey: communityPostKeys.all }) > 0;
+
   const query = useCommunityPosts({ group: scope, search });
   const remove = useDeleteCommunityPost();
   const posts = useMemo(() => uniqueById(query.data?.pages.flatMap((page) => page.items) ?? []), [query.data]);
@@ -156,7 +149,7 @@ export function CommunityFeed() {
     setRemoveError(null);
     try {
       await remove.mutateAsync(removing.id);
-      toast.success("Publicação removida");
+      adminToast.success("Publicação removida");
       setRemoving(null);
     } catch (err) {
       setRemoveError(err instanceof Error ? err.message : "Não foi possível remover a publicação.");
@@ -167,7 +160,11 @@ export function CommunityFeed() {
 
   let body: ReactNode;
   if (query.isPending) {
-    body = <FeedSkeleton />;
+    body = (
+      <div className="adm-com-skel">
+        <AdminListSkeleton variant="timeline" rows={4} ariaLabel="Carregando publicações…" />
+      </div>
+    );
   } else if (query.isError) {
     body = (
       <AdminErrorState
@@ -207,18 +204,15 @@ export function CommunityFeed() {
             <FeedItem key={post.id} post={post} onRemove={setRemoving} />
           ))}
         </ul>
-        {query.hasNextPage ? (
-          <div className="adm-com-more">
-            <button
-              type="button"
-              className="btn out adm-btn-sm"
-              disabled={query.isFetchingNextPage}
-              onClick={() => void query.fetchNextPage()}
-            >
-              {query.isFetchingNextPage ? "Carregando…" : "Carregar mais"}
-            </button>
-          </div>
-        ) : null}
+        <div className="adm-com-more">
+          <AdminLoadMore
+            loaded={posts.length}
+            hasMore={!!query.hasNextPage}
+            loading={query.isFetchingNextPage}
+            onLoadMore={() => void query.fetchNextPage()}
+            noun={{ singular: "publicação", plural: "publicações", feminine: true }}
+          />
+        </div>
       </>
     );
   }
@@ -232,6 +226,7 @@ export function CommunityFeed() {
           onChange: (value) => setScope(value as FeedScope),
           ariaLabel: "Origem das publicações",
         }}
+        segmentDefault="all"
         search={
           <AdminSearchInput
             value={search}
@@ -240,8 +235,14 @@ export function CommunityFeed() {
             label="Buscar publicações"
           />
         }
-        values={NO_FILTER_VALUES}
-        onChange={ignoreFilterChange}
+        searchLabel="Buscar publicações"
+        trailing={
+          <AdminRefreshButton
+            iconOnly
+            loading={refreshing}
+            onClick={() => void queryClient.invalidateQueries({ queryKey: communityPostKeys.all })}
+          />
+        }
       />
 
       <AdminSection flush>{body}</AdminSection>
@@ -251,7 +252,7 @@ export function CommunityFeed() {
         tone="danger"
         eyebrow={removing ? `Publicação de ${removing.author.name}` : undefined}
         title="Remover esta publicação?"
-        description="Ela deixa de aparecer no app para todos os criadores. O backoffice não tem como desfazer."
+        description="A publicação deixa de aparecer no app para todos os criadores. Esta ação não pode ser desfeita."
         reason={false}
         confirmLabel="Remover"
         pending={remove.isPending}

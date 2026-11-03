@@ -6,13 +6,11 @@ import {
   countCivilDays,
   createdInPeriodFilter,
   DEFAULT_PERIOD_PRESET,
-  describePeriod,
   formatPeriodRange,
   isCivilDate,
   isPeriodPreset,
   MAX_PERIOD_DAYS,
   normalizeCustomRange,
-  PERIOD_OPTIONS,
   PERIOD_PRESETS,
   periodLabel,
   periodQuery,
@@ -380,15 +378,6 @@ describe("consultas e textos", () => {
     expect(periodLabel(at("6m"))).toBe("Últimos 6 meses");
     expect(periodLabel(at("year"))).toBe("Este ano (2026)");
     expect(periodLabel(at("custom"))).toBe("Período personalizado");
-  });
-
-  it("descreve o período com os dias", () => {
-    expect(describePeriod(PERIOD)).toBe("Últimos 30 dias: 02/10/2026 – 31/10/2026");
-  });
-
-  it("as opções do seletor seguem a ordem do produto, com o personalizado por último", () => {
-    expect(PERIOD_OPTIONS.map((option) => option.label)).toEqual(["7 dias", "30 dias", "90 dias", "6 meses", "Este ano", "Personalizado"]);
-    expect(PERIOD_OPTIONS.map((option) => option.value)).toEqual(["7d", "30d", "90d", "6m", "year", "custom"]);
   });
 
   it("isPeriodPreset reconhece só os predefinidos", () => {

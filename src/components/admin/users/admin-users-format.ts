@@ -39,29 +39,23 @@ export function sessionClientText(client: string): string {
   return SESSION_CLIENT_TEXT[client] ?? client;
 }
 
-/** A explicação de "última sessão", que aparece no tooltip da célula, no "i" da coluna e na aba Sessões. */
+/** A explicação de "última sessão", que aparece no "i" da coluna da lista e no "i" da aba Sessões. */
 export const LAST_SESSION_EXPLANATION =
   "Aproximação (margem de ±5 minutos): é o último uso de uma sessão ainda aberta. Quando a pessoa sai do app, a sessão é apagada e a data some. Por isso não é um registro de acessos.";
 
 /**
- * "aprox. há 3 horas" para a célula da lista, com o instante exato e o aviso no tooltip. `null` quando não
- * há sessão aberta (nunca entrou, ou saiu): a tela mostra "—" e explica no tooltip.
+ * "aprox. há 3 horas" para a célula da lista (o instante exato vai embaixo e a regra no "i" da coluna). `null` quando
+ * não há sessão aberta (nunca entrou, ou saiu): a tela diz "Sem sessão aberta".
  */
 export function approxSessionText(
   iso: string | null | undefined,
   now: number | Date = Date.now(),
-): { text: string; title: string } | null {
+): { text: string } | null {
   if (!iso) return null;
   const when = formatRelativeTime(iso, now);
   if (when === EMPTY_TEXT) return null;
-  return {
-    text: `aprox. ${when}`,
-    title: `${formatDateTime(iso)}. ${LAST_SESSION_EXPLANATION}`,
-  };
+  return { text: `aprox. ${when}` };
 }
-
-/** Dica da célula vazia: sem sessão aberta agora (nunca entrou ou saiu). */
-export const NO_SESSION_TITLE = "Sem sessão aberta: a pessoa nunca entrou ou já saiu. " + LAST_SESSION_EXPLANATION;
 
 /**
  * Telefone brasileiro legível: `(11) 99999-8888` (com `+55` quando veio com o código do país). Número de outro país
@@ -80,4 +74,10 @@ export function formatPhone(phone: string | null | undefined): string | null {
   if (!match) return text;
   const formatted = `(${match[1]}) ${match[2]}-${match[3]}`;
   return hasCountry ? `+55 ${formatted}` : formatted;
+}
+
+/** Só a hora de um instante ("14:05", fuso de São Paulo): o dia já está no cabeçalho do grupo da linha do tempo. */
+export function formatTimeOfDay(iso: string | null | undefined): string {
+  const text = formatDateTime(iso);
+  return text === EMPTY_TEXT ? EMPTY_TEXT : text.slice(-5);
 }

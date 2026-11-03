@@ -13,16 +13,14 @@ vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
   return { ...actual, adminGet: client.adminGet, adminList: client.adminList, adminFeed: client.adminFeed };
 });
 
-vi.mock("@/components/admin/users/admin-workspace-picker", async () => ({
-  AdminWorkspacePicker: (await import("./workspace-picker-stub")).WorkspacePickerStub,
-}));
-
 import { AdminApiError } from "@/lib/admin/admin-client";
 import type { AdminFinancialMovement } from "@/shared/admin-platform.types";
 import { currentSearch } from "@/test/render-admin-route";
 
 import {
   CAFE_ID,
+  CAFE_WORKSPACE_DETAIL,
+  CAFE_WORKSPACE_ITEM,
   LEDGER_MOVEMENT,
   WITHDRAWAL_MOVEMENT,
   feedPage,
@@ -46,6 +44,8 @@ function lastFeedQuery(): Record<string, unknown> {
 async function openMovements(url = "/admin/financial?tab=movements") {
   const view = renderFinancial(url);
   const table = await screen.findByRole("table", { name: "Movimentações financeiras" });
+  // a tabela existe já no esqueleto: as linhas só depois da primeira resposta
+  await waitFor(() => expect(table).not.toHaveAttribute("aria-busy", "true"));
   return { ...view, table };
 }
 
@@ -53,14 +53,18 @@ function dataRows(table: HTMLElement) {
   return within(table).getAllByRole("row").slice(1);
 }
 
+/** O seletor de workspace da barra: a pílula "Workspace: Todos" que abre a busca. */
+const workspacePill = () => screen.getByRole("button", { name: /^Workspace:/ });
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);
   client.adminGet.mockReset();
   client.adminList.mockReset();
   client.adminFeed.mockReset();
-  client.adminGet.mockImplementation(async () => makeSummary());
-  client.adminList.mockImplementation(async () => listPage([]));
+  // o seletor de workspace de verdade: a busca (`/admin/workspaces`) e o nome de um id da URL (`/admin/workspaces/:id`)
+  client.adminGet.mockImplementation(async (path: string) => (path.startsWith("/admin/workspaces/") ? CAFE_WORKSPACE_DETAIL : makeSummary()));
+  client.adminList.mockImplementation(async (path: string) => listPage(path === "/admin/workspaces" ? [CAFE_WORKSPACE_ITEM] : []));
   client.adminFeed.mockImplementation(async () => feedPage([CHARGE, WITHDRAWAL_MOVEMENT, LEDGER_MOVEMENT]));
 });
 
@@ -89,6 +93,27 @@ describe("Movimentações: linhas", () => {
 
     expect(within(charge).getByRole("link", { name: "Café Serra Verde" })).toHaveAttribute("href", `/admin/workspaces/${CAFE_ID}`);
     expect(within(charge).getByText("Cobrança Asaas")).toBeInTheDocument();
+  });
+
+  it("o tipo do valor é um texto visível ao lado do número (não só dica de mouse) e o 'i' da coluna explica cada tipo", async () => {
+    const { table } = await openMovements();
+    const [charge] = dataRows(table);
+    const kind = charge.querySelector(".adm-kind")!;
+    expect(kind).toHaveTextContent("Realizado");
+    expect(kind).not.toHaveAttribute("title");
+
+    const info = within(table).getByRole("button", { name: "Como é calculado: Valor" });
+    for (const text of ["Realizado:", "Comprometido:", "Posição atual:", "Calculado:", "Aproximado:", "Não apurado:", "Fato consolidado"]) {
+      expect(info).toHaveAccessibleDescription(expect.stringContaining(text));
+    }
+  });
+
+  it("a data não depende de dica de mouse: o fuso está no resumo do período", async () => {
+    const { table } = await openMovements();
+    const [charge] = dataRows(table);
+    expect(charge.querySelector("time")).toHaveAttribute("datetime", CHARGE.occurred_at);
+    expect(charge.querySelector("[title]")).toBeNull();
+    expect(screen.getByText(/horário de São Paulo/)).toBeInTheDocument();
   });
 
   it("saque: sinal de saída, sem workspace é 'Não atribuído', e o criador linka para o usuário", async () => {
@@ -132,32 +157,45 @@ describe("Movimentações: linhas", () => {
     expect(kinds).toEqual(["Calculado", "Posição atual"]);
   });
 
-  it("origem: o id e o id externo se copiam com um clique", async () => {
+  it("os ids de origem ficam na linha aberta (não ocupam a linha fechada) e se copiam com um clique", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
     const { table } = await openMovements();
-    const [charge, withdrawal] = dataRows(table);
+    expect(within(table).queryByRole("button", { name: /^Copiar/ })).not.toBeInTheDocument();
 
-    const copyId = within(charge).getByRole("button", { name: "Copiar id de origem (Cobrança Asaas)" });
+    const expand = within(table).getByRole("button", { name: "Ids de origem: Aporte de 30/10/2026 19:30" });
+    expect(expand).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(expand);
+    expect(expand).toHaveAttribute("aria-expanded", "true");
+
+    const copyId = within(table).getByRole("button", { name: "Copiar id de origem (Cobrança Asaas)" });
+    // o valor aparece inteiro, sem depender de `title`
     expect(copyId).toHaveTextContent("11111111-1111-4111-8111-111111111111");
-    expect(copyId).toHaveAttribute("title", "11111111-1111-4111-8111-111111111111");
+    expect(copyId).not.toHaveAttribute("title");
     await userEvent.click(copyId);
     expect(writeText).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111");
-    await within(charge).findByText("Copiado");
+    await within(table).findByText("Copiado");
 
-    await userEvent.click(within(charge).getByRole("button", { name: "Copiar id externo (Cobrança Asaas)" }));
+    await userEvent.click(within(table).getByRole("button", { name: "Copiar id externo (Cobrança Asaas)" }));
     expect(writeText).toHaveBeenLastCalledWith("pay_8a7b6c5d");
 
     // saque sem id externo: só um botão de copiar
-    expect(within(withdrawal).getAllByRole("button", { name: /^Copiar/ })).toHaveLength(1);
+    await userEvent.click(within(table).getByRole("button", { name: "Ids de origem: Saque de 30/10/2026 10:00" }));
+    expect(within(table).getAllByRole("button", { name: /^Copiar id/ })).toHaveLength(3);
+    expect(within(table).getAllByRole("button", { name: "Copiar id de origem (Saque do criador)" })).toHaveLength(1);
+    expect(within(table).queryByRole("button", { name: "Copiar id externo (Saque do criador)" })).not.toBeInTheDocument();
+
+    // fechar a linha tira os ids
+    await userEvent.click(expand);
+    expect(within(table).queryByRole("button", { name: "Copiar id de origem (Cobrança Asaas)" })).not.toBeInTheDocument();
   });
 
   it("se a área de transferência não existir, avisa em vez de fingir que copiou", async () => {
     vi.stubGlobal("navigator", { ...navigator, clipboard: undefined });
     const { table } = await openMovements();
-    const [charge] = dataRows(table);
-    await userEvent.click(within(charge).getByRole("button", { name: "Copiar id de origem (Cobrança Asaas)" }));
-    await within(charge).findByText("Não foi possível copiar");
+    await userEvent.click(within(table).getByRole("button", { name: /^Ids de origem: Aporte/ }));
+    await userEvent.click(within(table).getByRole("button", { name: "Copiar id de origem (Cobrança Asaas)" }));
+    await within(table).findByText("Não foi possível copiar");
   });
 });
 
@@ -193,23 +231,51 @@ describe("Movimentações: filtros enviados à API", () => {
     expect(currentSearch(router)).toEqual({ tab: "movements" });
   });
 
-  it("o workspace escolhido vai para a API e para a URL, e limpar volta ao todos", async () => {
+  it("o workspace escolhido vai para a API e para a URL e vira chip; remover o chip volta ao todos", async () => {
     const { router } = await openMovements();
-    await userEvent.click(screen.getByRole("button", { name: "Escolher workspace" }));
+    expect(workspacePill()).toHaveTextContent("Todos");
+    await userEvent.click(workspacePill());
+    await userEvent.click(await screen.findByRole("option", { name: /Café Serra Verde/ }));
     await waitFor(() => expect(lastFeedQuery().workspace_id).toBe(CAFE_ID));
     expect(currentSearch(router)).toMatchObject({ tab: "movements", workspace_id: CAFE_ID });
-    expect(screen.getByTestId("workspace-picker")).toHaveAttribute("data-value", CAFE_ID);
+    expect(workspacePill()).toHaveTextContent("Café Serra Verde");
+    expect(client.adminList).toHaveBeenCalledWith("/admin/workspaces", expect.objectContaining({ kind: "brand" }), expect.anything());
 
-    await userEvent.click(screen.getByRole("button", { name: "Limpar workspace" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remover filtro Workspace: Café Serra Verde" }));
     await waitFor(() => expect(lastFeedQuery().workspace_id).toBeUndefined());
     expect(currentSearch(router)).toEqual({ tab: "movements" });
   });
 
-  it("tipo, workspace e período juntos; 'Limpar filtros' zera tipo e workspace mas mantém o período", async () => {
+  it("o chip do workspace recém-escolhido já traz o nome: não busca o detalhe nem mostra 'Carregando…'", async () => {
+    const { router } = await openMovements();
+    await userEvent.click(workspacePill());
+    await userEvent.click(await screen.findByRole("option", { name: /Café Serra Verde/ }));
+    expect(screen.getByRole("button", { name: "Remover filtro Workspace: Café Serra Verde" })).toBeInTheDocument();
+    await waitFor(() => expect(currentSearch(router)).toMatchObject({ workspace_id: CAFE_ID }));
+    expect(screen.queryByText(/Carregando…/)).not.toBeInTheDocument();
+    expect(client.adminGet.mock.calls.some(([path]) => String(path).startsWith("/admin/workspaces/"))).toBe(false);
+  });
+
+  it("a coluna Data tem 136px e o kit soma sozinho o botão de expandir (nada alargado à mão)", async () => {
+    const { table } = await openMovements();
+    const cols = (table.closest(".adm-table") as HTMLElement).style.getPropertyValue("--adm-cols");
+    expect(cols).toMatch(/^calc\(136px \+ \(var\(--adm-hit\) - 2px\)\)/);
+  });
+
+  it("o 'i' da coluna Valor usa os parágrafos do kit (um por tipo de número)", async () => {
+    await openMovements();
+    const info = screen.getByRole("button", { name: "Como é calculado: Valor" });
+    expect(info).toHaveAccessibleDescription(expect.stringContaining("Realizado:"));
+    expect(document.querySelectorAll(".adm-fin-help")).toHaveLength(0);
+  });
+
+  it("tipo, workspace e período juntos; 'Limpar filtros' (o do kit) zera tipo e workspace de uma vez e mantém o período", async () => {
     const { router } = await openMovements("/admin/financial?tab=movements&type=transfer&workspace_id=" + CAFE_ID + "&from=2026-09-01&to=2026-09-30");
     expect(lastFeedQuery()).toMatchObject({ type: "transfer", workspace_id: CAFE_ID, from: "2026-09-01", to: "2026-09-30" });
     expect(screen.getByRole("button", { name: "Transferências" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByTestId("workspace-picker")).toHaveAttribute("data-value", CAFE_ID);
+    await waitFor(() => expect(workspacePill()).toHaveTextContent("Café Serra Verde"));
+    // o filtro entra em "Filtros (n)" e vira chip
+    expect(screen.getByRole("button", { name: "Remover filtro Workspace: Café Serra Verde" })).toBeInTheDocument();
 
     await userEvent.click(screen.getAllByRole("button", { name: "Limpar filtros" })[0]);
     await waitFor(() => expect(lastFeedQuery().type).toBeUndefined());
@@ -217,6 +283,15 @@ describe("Movimentações: filtros enviados à API", () => {
     expect(lastFeedQuery()).toMatchObject({ from: "2026-09-01", to: "2026-09-30" });
     expect(currentSearch(router)).toEqual({ tab: "movements", from: "2026-09-01", to: "2026-09-30" });
     expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Todas" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("a barra é uma só (segmento de tipo + workspace + atualizar) e não há 'Limpar filtros' próprio fora dela", async () => {
+    const { container } = await openMovements("/admin/financial?tab=movements&workspace_id=" + CAFE_ID);
+    expect(container.querySelectorAll(".adm-filters")).toHaveLength(1);
+    expect(container.querySelector(".adm-fin-bar")).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Limpar filtros" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Limpar filtros" })[0]).toHaveClass("adm-textbtn");
   });
 
   it("valor solto na URL (tipo desconhecido, workspace que não é uuid) nunca chega à API", async () => {
@@ -289,7 +364,8 @@ describe("Movimentações: carregar mais (cursor)", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
     const loading = await screen.findByRole("button", { name: "Carregando…" });
-    expect(loading).toBeDisabled();
+    // `aria-disabled` (e não `disabled`): o foco fica no botão enquanto carrega
+    expect(loading).toHaveAttribute("aria-disabled", "true");
     expect(dataRows(table)).toHaveLength(1);
 
     resolve(feedPage([B]));
@@ -350,10 +426,13 @@ describe("Movimentações: estados", () => {
     client.adminFeed.mockResolvedValue(feedPage([]));
     const { router } = await openMovements("/admin/financial?tab=movements&type=transfer");
     expect(await screen.findByText("Nenhuma movimentação com estes filtros")).toBeInTheDocument();
+    // o tipo fora do padrão conta como filtro (segmentDefault): vira chip e a barra também oferece "Limpar filtros"
+    expect(screen.getByRole("button", { name: "Remover filtro Tipo de movimentação: Transferências" })).toBeInTheDocument();
     const clearButtons = screen.getAllByRole("button", { name: "Limpar filtros" });
-    expect(clearButtons).toHaveLength(2); // o da barra e o do estado vazio
-    await userEvent.click(clearButtons[1]);
+    expect(clearButtons).toHaveLength(2);
+    await userEvent.click(clearButtons[0]);
     await waitFor(() => expect(currentSearch(router)).toEqual({ tab: "movements" }));
+    expect(screen.getByRole("button", { name: "Todas" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("recurso ainda não disponível no servidor", async () => {

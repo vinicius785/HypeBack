@@ -1,4 +1,4 @@
-import { I } from "@/components/prototype/ui";
+import { AdminEmptyState, AdminErrorState, AdminListSkeleton } from "@/components/admin/platform";
 import type {
   AdminCreatorSizeBucket,
   AdminSizeDistributionItem,
@@ -32,12 +32,17 @@ interface AdminSizeChartProps {
   data: AdminSizeDistributionItem[] | undefined;
   isLoading?: boolean;
   isError?: boolean;
+  /** Com ele o estado de erro oferece "Tentar de novo". */
+  onRetry?: () => void;
+  retrying?: boolean;
 }
 
 export function AdminSizeChart({
   data,
   isLoading,
   isError,
+  onRetry,
+  retrying,
 }: AdminSizeChartProps) {
   const rows = SIZE_ORDER.map((bucket) => {
     const item = data?.find((d) => d.bucket === bucket);
@@ -51,21 +56,27 @@ export function AdminSizeChart({
   const total = rows.reduce((a, r) => a + r.count, 0);
 
   if (isLoading) {
-    return <div style={{ opacity: 0.4 }}>Carregando…</div>;
+    return <AdminListSkeleton rows={4} ariaLabel="Carregando tamanhos…" />;
   }
-  if (isError || !data || total === 0) {
+  if (isError) {
     return (
-      <div className="empty">
-        <span className="ei">
-          <I n="chart" />
-        </span>
-        <b>{isError ? "Não foi possível carregar" : "Sem dados ainda"}</b>
-        <p>
-          {isError
-            ? "Tente novamente em instantes."
-            : "Nenhum criador classificado por tamanho no período."}
-        </p>
-      </div>
+      <AdminErrorState
+        compact
+        title="Não foi possível carregar"
+        message="Tente novamente em instantes."
+        onRetry={onRetry}
+        retrying={retrying}
+      />
+    );
+  }
+  if (!data || total === 0) {
+    return (
+      <AdminEmptyState
+        compact
+        icon="chart"
+        title="Sem dados ainda"
+        description="Nenhum criador classificado por tamanho no período."
+      />
     );
   }
 
@@ -95,7 +106,10 @@ export function AdminSizeChart({
   return (
     <div className="adx-dn">
       <div className="adx-dc">
-        <svg viewBox="0 0 200 200">{arcs}</svg>
+        {/* decorativo: os mesmos números estão na lista ao lado */}
+        <svg viewBox="0 0 200 200" aria-hidden="true">
+          {arcs}
+        </svg>
         <div>
           <b>{NUM.format(total)}</b>
           <small>criadores</small>

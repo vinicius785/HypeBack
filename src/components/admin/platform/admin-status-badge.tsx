@@ -5,6 +5,8 @@ import {
   ALERT_SEVERITY_LABEL,
   CAMPAIGN_STATUS_LABEL,
   CREATOR_REGISTRATION_LABEL,
+  NOTIFICATION_STATUS_LABEL,
+  NOTIFICATION_STATUS_TONE,
   USER_STATUS_LABEL,
   WORKSPACE_ACTIVITY_LABEL,
   WORKSPACE_KIND_LABEL,
@@ -21,6 +23,7 @@ import type {
   AdminWorkspaceKind,
   AdminWorkspaceStatus,
 } from "@/shared/admin-platform.types";
+import type { AdminNotificationStatus } from "@/shared/types";
 
 import "@/styles/admin-platform.css";
 
@@ -105,6 +108,8 @@ type AdminStatusBadgeProps = (
   | { kind: "registration"; value: AdminCreatorRegistrationState }
   | { kind: "alert-kind"; value: AdminAlertKind }
   | { kind: "workspace-kind"; value: AdminWorkspaceKind }
+  /** Status de um comunicado: rascunho, agendada, enviando, enviada, entrega parcial, falhou, cancelada. */
+  | { kind: "notification"; value: AdminNotificationStatus }
 ) & {
   size?: "md" | "sm";
   /** Troca o texto padrão do vocabulário. */
@@ -142,10 +147,12 @@ function resolve(props: AdminStatusBadgeProps): Resolved {
       return { tone: "outline", label: ALERT_KIND_LABEL[props.value] ?? raw };
     case "workspace-kind":
       return { tone: WORKSPACE_KIND_TONE[props.value] ?? "muted", label: WORKSPACE_KIND_LABEL[props.value] ?? raw };
+    case "notification":
+      return { tone: NOTIFICATION_STATUS_TONE[props.value] ?? "muted", label: NOTIFICATION_STATUS_LABEL[props.value] ?? raw };
   }
 }
 
-/** Etiqueta de estado do vocabulário do contrato (workspace, usuário, campanha, alerta, atividade, cadastro). */
+/** Etiqueta de estado do vocabulário do contrato (workspace, usuário, campanha, alerta, atividade, cadastro, comunicado). */
 export function AdminStatusBadge(props: AdminStatusBadgeProps) {
   const resolved = resolve(props);
   return (

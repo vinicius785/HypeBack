@@ -16,10 +16,12 @@ import "@/styles/admin-users.css";
 const EMAIL_NOT_VERIFIED_BRAND_HINT =
   "A verificação de e-mail só é feita no cadastro de criadores; nesta conta, “Não” não indica problema.";
 
-/** Dados da conta: e-mail (e se foi verificado), telefone, documento mascarado, cadastro. */
+/**
+ * Dados da conta (aba Resumo): telefone, se o e-mail foi verificado, documento mascarado, cadastro e identificador.
+ * O e-mail não entra: já é o subtítulo do cabeçalho. Cada dado aparece uma vez só.
+ */
 export function AdminUserData({ user }: { user: AdminUserDetail }) {
   const items: AdminKeyValueItem[] = [
-    { label: "E-mail", value: user.email },
     { label: "Telefone", value: formatPhone(user.phone) },
     {
       label: "E-mail verificado",
@@ -27,7 +29,7 @@ export function AdminUserData({ user }: { user: AdminUserDetail }) {
       hint: !user.email_verified && user.kind !== "creator" ? EMAIL_NOT_VERIFIED_BRAND_HINT : undefined,
     },
     { label: "Documento", value: user.document_masked, hint: user.document_masked ? "Mascarado: só os 2 últimos dígitos." : undefined },
-    { label: "Cadastro", value: formatDateTime(user.created_at) },
+    { label: "Cadastrado em", value: formatDateTime(user.created_at) },
     { label: "Identificador", value: <span className="adm-num">{user.id}</span> },
   ];
   if (user.deleted_at) items.push({ label: "Excluída em", value: formatDateTime(user.deleted_at) });
@@ -51,7 +53,13 @@ export function AdminUserSuspension({ user }: { user: AdminUserDetail }) {
           { label: "Desde", value: suspension ? formatDateTime(suspension.suspended_at) : null },
           {
             label: "Suspensa por",
-            value: by ? <AdminLink to={userDetailLink(by.user_id)}>{by.name}</AdminLink> : "Não informado",
+            value: by ? (
+              <AdminLink to={userDetailLink(by.user_id)} textLink>
+                {by.name}
+              </AdminLink>
+            ) : (
+              "Não informado"
+            ),
           },
           { label: "Motivo", value: suspension?.reason?.trim() ? suspension.reason : "Não informado" },
         ]}
