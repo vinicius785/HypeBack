@@ -118,7 +118,7 @@ export function AdminTeamPage() {
       header: "Pessoa",
       width: "minmax(0, 2fr)",
       primary: true,
-      cell: (member) => <AdminEntityCell name={member.name} subtitle={member.email} size={36} />,
+      cell: (member) => <AdminEntityCell name={member.name} photo={member.photo} subtitle={member.email} size={36} />,
     },
     {
       key: "role",

@@ -392,6 +392,8 @@ export interface AdminPlatformTeamMember {
   user_id: number;
   name: string;
   email: string;
+  /** Foto de perfil (URL ou caminho); ausente em API antiga. */
+  photo?: string | null;
   role: AdminPlatformRole;
   status: AdminUserStatus;
 }

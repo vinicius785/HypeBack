@@ -48,7 +48,7 @@ const TEAM: AdminPlatformTeam = {
   ],
   members: [
     { user_id: 1, name: "Marina Alves", email: "marina@hype.com", role: "admin", status: "active" },
-    { user_id: 7, name: "Caio Teodoro", email: "caio@hype.com", role: "support", status: "active" },
+    { user_id: 7, name: "Caio Teodoro", email: "caio@hype.com", photo: "https://cdn.test/caio.jpg", role: "support", status: "active" },
     { user_id: 8, name: "Leo Ramos", email: "leo@hype.com", role: "viewer", status: "suspended" },
   ],
 };
@@ -133,6 +133,13 @@ describe("Equipe: papéis e pessoas", () => {
     expect(within(rowOf("Marina Alves")).getByText("Você")).toBeInTheDocument();
     expect(within(rowOf("Marina Alves")).queryByRole("button", { name: "Alterar papel" })).not.toBeInTheDocument();
     expect(within(rowOf("Caio Teodoro")).getByRole("button", { name: "Alterar papel" })).toBeInTheDocument();
+  });
+
+  it("mostra a foto de quem tem; sem foto ficam as iniciais", async () => {
+    await renderPage();
+    expect(rowOf("Caio Teodoro").querySelector("img")).toHaveAttribute("src", "https://cdn.test/caio.jpg");
+    expect(rowOf("Leo Ramos").querySelector("img")).toBeNull();
+    expect(within(rowOf("Leo Ramos")).getByText("LR")).toBeInTheDocument();
   });
 });
 
