@@ -21,18 +21,18 @@ const reduced = css.slice(reducedAt);
 const ANIMATED = [
   ".adm-side::before",
   ".adm-returning::before",
-  ".adm-ws-static",
-  ".adm-ws-static .brand",
+  ".sb-ws-static",
+  ".sb-ws-static .brand",
   ".adm-returning .wsw > .wsb",
-  ".adm-side .adm-nav h6",
-  ".adm-side .adm-nav button",
-  ".adm-returning .adm-nav h6",
-  ".adm-returning .adm-nav button",
-  ".adm-side .adm-nav-exit",
-  ".adm-leaving .adm-nav h6",
-  ".adm-leaving .adm-nav button",
-  ".adm-leaving .adm-nav-exit",
-  ".adm-leaving .adm-ws-static",
+  ".adm-side .sb-nav h6",
+  ".adm-side .sb-nav button",
+  ".adm-returning .sb-nav h6",
+  ".adm-returning .sb-nav button",
+  ".adm-side .sb-exit",
+  ".adm-leaving .sb-nav h6",
+  ".adm-leaving .sb-nav button",
+  ".adm-leaving .sb-exit",
+  ".adm-leaving .sb-ws-static",
 ];
 
 describe("animação de entrada do menu do Admin", () => {
@@ -72,11 +72,11 @@ describe("animação de entrada do menu do Admin", () => {
   });
 
   it("a cascata inteira cabe em menos de 1,2 s (o último item não faz esperar)", () => {
-    // 12 posições (10 itens, 2 títulos) + o "Voltar ao app" = vez 12; atraso = vez × passo + base; duração do item.
+    // 15 posições (11 itens, 4 títulos) + o "Voltar ao app" = vez 15; atraso = vez × passo + base; duração do item.
     const step = Number(base.match(/var\(--i, 0\) \* (\d+)ms/)?.[1]);
     const delay = Number(base.match(/\* \d+ms \+ (\d+)ms/)?.[1]);
-    const duration = Number(base.match(/\.adm-nav button\s*\{\s*animation:\s*adm-side-in\s*\.(\d+)s/)?.[1]) * 10;
-    expect(12 * step + delay + duration).toBeLessThan(1200);
+    const duration = Number(base.match(/\.sb-nav button\s*\{\s*animation:\s*adm-side-in\s*\.(\d+)s/)?.[1]) * 10;
+    expect(15 * step + delay + duration).toBeLessThan(1200);
   });
 
   it("a saída também vai para a esquerda (nada passa da borda direita ou de baixo da lista que rola)", () => {
@@ -95,8 +95,8 @@ describe("animação de entrada do menu do Admin", () => {
     const blockStep = Number(base.match(/calc\(\(var\(--n, 0\) \+ 1\) \* (\d+)ms\)/)?.[1]);
     const duration = Number(base.match(/animation:\s*adm-side-out\s*\.(\d+)s/)?.[1]) * 10;
     expect(blockStep).toBe(step);
-    // 12 = a vez do "Voltar ao app" (10 itens e 2 títulos vêm antes): o último a sair é o bloco do topo, na vez 13.
-    expect(13 * step + duration).toBeLessThanOrEqual(leaveMs);
+    // 15 = a vez do "Voltar ao app" (11 itens e 4 títulos vêm antes): o último a sair é o bloco do topo, na vez 16.
+    expect(16 * step + duration).toBeLessThanOrEqual(leaveMs);
     // e a espera antes da troca não pesa: abaixo de um quarto de segundo
     expect(leaveMs).toBeLessThanOrEqual(250);
   });

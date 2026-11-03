@@ -49,13 +49,18 @@ describe("MobileNav no escopo da plataforma", () => {
     expect(bar.getByRole("button", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
   });
 
-  it("a gaveta 'Mais' tem as duas áreas, só com o que a barra não mostra, sem workspaces e com 'Voltar ao app'", async () => {
+  it("a gaveta 'Mais' tem os grupos de Operação e Monitoramento, só com o que a barra não mostra, sem workspaces e com 'Voltar ao app'", async () => {
     render(<MobileNav scope="platform" />);
     await userEvent.click(screen.getByRole("button", { name: "Mais opções" }));
     const sheet = within(screen.getByRole("dialog", { name: "Mais opções" }));
 
-    expect(sheet.getByText("Administração")).toBeInTheDocument();
+    expect(sheet.getByText("Operação")).toBeInTheDocument();
     expect(sheet.getByText("Monitoramento")).toBeInTheDocument();
+    // grupos cujos itens estão todos na barra não aparecem vazios
+    expect(sheet.queryByText("Visão geral")).not.toBeInTheDocument();
+    // "Gestão da plataforma" ficou só com a Equipe, que não está na barra
+    expect(sheet.getByText("Gestão da plataforma")).toBeInTheDocument();
+    expect(sheet.getByRole("button", { name: "Equipe" })).toBeInTheDocument();
     for (const label of ["Campanhas", "Criadores", "Comunidade", "Atividades", "Notificações", "Saúde da plataforma"]) {
       expect(sheet.getByRole("button", { name: label })).toBeInTheDocument();
     }
@@ -98,7 +103,7 @@ describe("MobileNav no escopo da plataforma", () => {
 });
 
 describe("MobileNav no escopo do workspace (app)", () => {
-  it("mantém a barra do app, a lista de workspaces e, na gaveta, só a entrada 'Backoffice' sob o divisor 'Administração'", async () => {
+  it("mantém a barra do app, a lista de workspaces e, na gaveta, só o que a barra não mostra (com o Backoffice)", async () => {
     ctx.pathname = "/";
     render(<MobileNav />);
     const bar = within(screen.getByRole("navigation", { name: "Navegação principal" }));
@@ -109,11 +114,14 @@ describe("MobileNav no escopo do workspace (app)", () => {
     // rótulo da lista de workspaces (o botão "Workspace" da conta tem o mesmo texto)
     expect(sheet.getAllByText("Workspace").some((el) => el.tagName === "SMALL")).toBe(true);
     expect(sheet.getByRole("button", { name: /Acme/ })).toBeInTheDocument();
+    expect(sheet.getByText("Gestão de campanhas")).toBeInTheDocument();
+    expect(sheet.getByRole("button", { name: "Lives" })).toBeInTheDocument();
     expect(sheet.getByText("Administração")).toBeInTheDocument();
     expect(sheet.getByRole("button", { name: "Backoffice" })).toBeInTheDocument();
-    // as páginas do Admin só aparecem dentro do Admin
-    expect(sheet.queryByText("Monitoramento")).not.toBeInTheDocument();
-    expect(sheet.queryByRole("button", { name: "Workspaces" })).not.toBeInTheDocument();
+    // a estrutura do Admin não se replica no ambiente do cliente
+    for (const label of ["Workspaces", "Usuários", "Saúde da plataforma"]) {
+      expect(sheet.queryByRole("button", { name: label })).not.toBeInTheDocument();
+    }
     expect(sheet.getByRole("button", { name: "Novo workspace" })).toBeInTheDocument();
     expect(sheet.queryByRole("button", { name: "Voltar ao app" })).not.toBeInTheDocument();
   });
@@ -126,13 +134,12 @@ describe("MobileNav no escopo do workspace (app)", () => {
     expect(ctx.navigate).toHaveBeenCalledWith({ to: "/admin/dashboard" });
   });
 
-  it("quem não é admin da plataforma não vê o Admin na gaveta, nem a porta de entrada", async () => {
+  it("quem não é admin da plataforma não vê o Admin na gaveta", async () => {
     ctx.pathname = "/";
     ctx.user = { name: "Cliente", email: "c@m.com" };
     render(<MobileNav />);
     await userEvent.click(screen.getByRole("button", { name: "Mais opções" }));
     expect(screen.queryByText("Administração")).not.toBeInTheDocument();
-    expect(screen.queryByText("Backoffice")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Backoffice" })).not.toBeInTheDocument();
   });
 });

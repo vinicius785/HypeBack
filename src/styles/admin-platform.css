@@ -407,41 +407,7 @@
 @keyframes adm-fade { from { opacity: 0; } }
 @keyframes adm-rise { from { opacity: 0; transform: translateY(16px) scale(.98); } }
 
-/* ───────────────────────── menu lateral do admin ───────────────────────── */
-
-/* a pilha de itens rola sozinha quando é mais alta que a tela; o logo, o bloco de escopo e o perfil ficam */
-.pv .side .adm-nav { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .22) transparent; margin: 0 -8px; padding: 0 8px; }
-.pv .side .adm-nav::-webkit-scrollbar { width: 6px; }
-.pv .side .adm-nav::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .22); border-radius: 3px; }
-.pv .side .adm-nav-group { display: flex; flex-direction: column; gap: 4px; }
-/* a lista continua além da borda: uma linha fina (chapada, sem degradê) — o macOS esconde a barra de rolagem */
-.pv .side .adm-nav[data-more-before="true"] { box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, .2); }
-.pv .side .adm-nav[data-more-after="true"] { box-shadow: inset 0 -1.5px 0 rgba(255, 255, 255, .2); }
-.pv .side .adm-nav[data-more-before="true"][data-more-after="true"] { box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, .2), inset 0 -1.5px 0 rgba(255, 255, 255, .2); }
-.pv .side .adm-nav button { flex: none; }
-.pv .side .adm-nav button:focus-visible,
-.pv .side .adm-nav-exit:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
-/* o Admin tem dez itens e dois rótulos: espaçamento um pouco mais justo para caber em telas de ~900px sem rolar */
-.pv .side.adm-side { gap: 16px; }
-.pv .side.adm-side .adm-nav h6 { margin: 12px 12px 4px; }
-.pv .side.adm-side .adm-nav-group { gap: 2px; }
-.pv .side.adm-side .adm-nav-exit { height: 42px; }
-.pv .side .adm-ws-static { cursor: default; }
-.pv .side .adm-ws-static:hover { background: rgba(255, 255, 255, .1); }
-.pv .side .adm-ws-static .brand { background: var(--brand); }
-.pv .side .adm-nav-exit { display: flex; align-items: center; gap: 12px; height: 46px; width: 100%; padding: 0 14px; border-radius: 999px; color: var(--dim); font-size: 14px; font-weight: 600; text-align: left; transition: background .25s, color .25s; }
-.pv .side .adm-nav-exit:hover { background: rgba(255, 255, 255, .08); color: #fff; }
-
 /* ───────────────────────── tablet e celular ───────────────────────── */
-
-/* trilho (≤1100px): sem rótulos de grupo, um fio separa os grupos; a barra de rolagem some */
-@media (max-width: 1100px) {
-  .pv .side .adm-nav { scrollbar-width: none; }
-  .pv .side .adm-nav::-webkit-scrollbar { display: none; }
-  .pv .side .adm-nav-group + .adm-nav-group { margin-top: 8px; padding-top: 8px; border-top: 1.5px solid rgba(255, 255, 255, .12); }
-  .pv .side .adm-nav-exit { justify-content: center; padding: 0; }
-  .pv .side .adm-nav-exit span { display: none; }
-}
 
 @container adm-table (max-width: 1180px) {
   .pv .adm-thead, .pv .adm-row { grid-template-columns: var(--adm-cols-lg); }

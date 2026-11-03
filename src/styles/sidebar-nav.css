@@ -1,0 +1,92 @@
+/*
+ * Menu lateral dos dois ambientes (app do workspace e Admin da plataforma). A marcação vem de
+ * `components/navigation/sidebar-nav.tsx` e `components/sidebar.tsx`; a base (`.side`, `.nav button`, `.wsb`,
+ * `.me`) continua sendo a do protótipo (`prototype.css`) e aqui só entra o que a reestruturação acrescenta:
+ * grupos com título, divisória, estados, rodapé e o trilho (≤ 1100px).
+ */
+
+/* ───────────────────────── lista de itens ───────────────────────── */
+
+.pv .side.sb-side { gap: 14px; }
+
+/* a pilha de itens rola sozinha quando é mais alta que a tela; o logo, o seletor e o perfil ficam à vista */
+.pv .side .sb-nav { flex: 0 1 auto; gap: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .22) transparent; margin: 0 -8px; padding: 0 8px; }
+.pv .side .sb-nav::-webkit-scrollbar { width: 6px; }
+.pv .side .sb-nav::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .22); border-radius: 3px; }
+/* a lista continua além da borda: uma linha fina (chapada, sem degradê) — o macOS esconde a barra de rolagem */
+.pv .side .sb-nav[data-more-before="true"] { box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, .2); }
+.pv .side .sb-nav[data-more-after="true"] { box-shadow: inset 0 -1.5px 0 rgba(255, 255, 255, .2); }
+.pv .side .sb-nav[data-more-before="true"][data-more-after="true"] { box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, .2), inset 0 -1.5px 0 rgba(255, 255, 255, .2); }
+
+/* grupo = título discreto + itens; uma divisória de baixo contraste separa um grupo do próximo */
+.pv .side .sb-group { display: flex; flex-direction: column; gap: 2px; }
+.pv .side .sb-group + .sb-group { margin-top: 6px; padding-top: 2px; border-top: 1.5px solid rgba(255, 255, 255, .08); }
+.pv .side .sb-nav h6 { margin: 10px 14px 2px; font-size: 10.5px; line-height: 1.2; letter-spacing: .1em; text-transform: uppercase; color: rgba(255, 255, 255, .5); font-weight: 700; }
+.pv .side .sb-group:first-child h6 { margin-top: 2px; }
+
+/* todos os itens têm a mesma estrutura: ícone, nome e (quando houver) o selo */
+.pv .side .sb-item { position: relative; flex: none; height: 40px; }
+.pv .side .sb-item .ico { transition: transform .3s var(--ease); }
+.pv .side .sb-item:hover .ico { transform: scale(1.12); }
+
+/* foco do teclado: anel branco por dentro, que aparece tanto sobre o preto quanto sobre o item roxo */
+.pv .side .sb-item:focus-visible,
+.pv .side .sb-exit:focus-visible,
+.pv .side .me-profile:focus-visible,
+.pv .side .me-out:focus-visible,
+.pv .side .wsb:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+
+/* ───────────────────────── seletor e bloco de escopo ───────────────────────── */
+
+.pv .side .sb-ws-static { cursor: default; }
+.pv .side .sb-ws-static:hover { background: rgba(255, 255, 255, .1); }
+.pv .side .sb-ws-static .brand { background: var(--brand); }
+
+/* ───────────────────────── rodapé ───────────────────────── */
+
+.pv .side .sb-foot { display: flex; flex-direction: column; gap: 8px; flex: none; }
+/* "Voltar ao app" é navegação, não conta: fica numa faixa própria, separada do perfil */
+.pv .side .sb-exit { display: flex; align-items: center; gap: 12px; height: 40px; width: 100%; padding: 0 14px; border-radius: 999px; color: var(--dim); font-size: 14px; font-weight: 600; text-align: left; transition: background .25s, color .25s; }
+.pv .side .sb-exit:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+.pv .side .sb-exit .ico { transition: transform .3s var(--ease); }
+.pv .side .sb-exit:hover .ico { transform: translateX(-3px); }
+.pv .side .sb-sep { border: 0; height: 0; margin: 0 6px; border-top: 1.5px solid rgba(255, 255, 255, .08); }
+
+/* o perfil é um botão de verdade (teclado e leitor de tela); "Sair" continua ao lado */
+.pv .side .me { cursor: default; }
+.pv .side .me-profile { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; border-radius: 999px; text-align: left; color: inherit; }
+.pv .side .me-profile:hover .me-id b { text-decoration: underline; text-underline-offset: 3px; }
+.pv .side .me-id { display: block; flex: 1; min-width: 0; }
+.pv .side .me-id b, .pv .side .me-id small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ───────────────────────── dica do trilho ───────────────────────── */
+
+.pv .sb-tip { display: none; position: fixed; z-index: 60; transform: translateY(-50%); background: #fff; color: var(--ink); font-size: 12.5px; font-weight: 600; line-height: 1; padding: 8px 12px; border-radius: 999px; white-space: nowrap; pointer-events: none; box-shadow: 0 10px 24px -8px rgba(5, 5, 5, .45); }
+
+/* ───────────────────────── trilho (≤ 1100px): a sidebar recolhida ───────────────────────── */
+
+@media (max-width: 1100px) {
+  .pv .sb-tip { display: block; }
+  .pv .side .sb-nav { scrollbar-width: none; }
+  .pv .side .sb-nav::-webkit-scrollbar { display: none; }
+  /* sem títulos, só um fio entre os grupos */
+  .pv .side .sb-group + .sb-group { margin-top: 8px; padding-top: 8px; }
+  .pv .side .sb-nav h6 { display: none; }
+  /* o selo de campanhas ativas vira um número pequeno sobre o ícone */
+  .pv .side .sb-item .n { display: block; position: absolute; top: 2px; right: 4px; min-width: 16px; padding: 1px 5px; font-size: 10px; line-height: 14px; text-align: center; }
+  .pv .side .wsb { justify-content: center; padding: 8px; }
+  /* a lista de workspaces abre para o lado, com largura própria (o trilho tem só 56px) */
+  .pv .side .wsl { right: auto; width: 268px; }
+  .pv .side .sb-exit { justify-content: center; padding: 0; }
+  .pv .side .sb-exit span { display: none; }
+  /* perfil em coluna: avatar em cima, "Sair" embaixo (o prototype escondia o "Sair" no trilho) */
+  .pv .side .me { flex-direction: column; align-items: center; gap: 4px; padding: 6px 0; border-radius: 28px; }
+  .pv .side .me-profile { flex: none; justify-content: center; }
+  .pv .side .me-id { display: none; }
+  .pv .side .me .me-out { display: grid; width: 38px; height: 34px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv .side .sb-item .ico, .pv .side .sb-exit .ico { transition: none; }
+  .pv .side .sb-item:hover .ico, .pv .side .sb-exit:hover .ico { transform: none; }
+}

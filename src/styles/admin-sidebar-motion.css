@@ -9,7 +9,7 @@
  *   - volta ao app (`.adm-returning`, só no menu do app que chega do Admin): o mesmo gesto da entrada do Admin, com
  *     o brilho vindo de baixo, de onde saiu o "Voltar ao app".
  *
- * Os itens entram vindo da esquerda, e não da direita ou de baixo: a lista de itens (`.adm-nav`) rola por dentro,
+ * Os itens entram vindo da esquerda, e não da direita ou de baixo: a lista de itens (`.sb-nav`) rola por dentro,
  * e um deslocamento que passa da borda direita ou de baixo aumenta a área rolável e faz a barra de rolagem
  * piscar durante a animação. Para a esquerda e para cima o excesso não conta (e a saída também vai para a esquerda).
  */
@@ -40,19 +40,19 @@
 }
 
 /* O bloco "Admin da plataforma" entra primeiro, com o escudo "estalando" no lugar. */
-.pv .side .adm-ws-static { animation: adm-side-block .5s var(--ease) .04s both; }
-.pv .side .adm-ws-static .brand { animation: adm-side-shield .7s var(--ease) .16s both; }
+.pv .side .sb-ws-static { animation: adm-side-block .5s var(--ease) .04s both; }
+.pv .side .sb-ws-static .brand { animation: adm-side-shield .7s var(--ease) .16s both; }
 
 /* Títulos e itens em cascata, na ordem do menu (no app que volta do Admin, os itens do workspace vêm primeiro);
    "Voltar ao app" fecha a sequência. */
-.pv .side.adm-side .adm-nav h6,
-.pv .side.adm-side .adm-nav button,
-.pv .side.adm-returning .adm-nav h6,
-.pv .side.adm-returning .adm-nav button {
+.pv .side.adm-side .sb-nav h6,
+.pv .side.adm-side .sb-nav button,
+.pv .side.adm-returning .sb-nav h6,
+.pv .side.adm-returning .sb-nav button {
   animation: adm-side-in .42s var(--ease) both;
   animation-delay: calc(var(--i, 0) * 30ms + 120ms);
 }
-.pv .side.adm-side .adm-nav-exit {
+.pv .side.adm-side .sb-exit {
   animation: adm-side-rise .45s var(--ease) both;
   animation-delay: calc(var(--i, 0) * 30ms + 200ms);
 }
@@ -75,30 +75,30 @@
 /* Saída ("Voltar ao app"): de baixo para cima, do botão clicado ao topo. `--n` é a vez do "Voltar ao app" (a última
    da cascata); o bloco "Admin da plataforma" sai por último. Tudo termina antes de `LEAVE_MS` (sidebar.tsx). */
 .pv .side.adm-side.adm-leaving { pointer-events: none; }
-.pv .side.adm-side.adm-leaving .adm-nav h6,
-.pv .side.adm-side.adm-leaving .adm-nav button,
-.pv .side.adm-side.adm-leaving .adm-nav-exit {
+.pv .side.adm-side.adm-leaving .sb-nav h6,
+.pv .side.adm-side.adm-leaving .sb-nav button,
+.pv .side.adm-side.adm-leaving .sb-exit {
   animation: adm-side-out .13s cubic-bezier(.5, 0, 1, 1) both;
-  animation-delay: calc((var(--n, 0) - var(--i, 0)) * 7ms);
+  animation-delay: calc((var(--n, 0) - var(--i, 0)) * 6ms);
 }
-.pv .side.adm-side.adm-leaving .adm-ws-static {
+.pv .side.adm-side.adm-leaving .sb-ws-static {
   animation: adm-side-out .13s cubic-bezier(.5, 0, 1, 1) both;
-  animation-delay: calc((var(--n, 0) + 1) * 7ms);
+  animation-delay: calc((var(--n, 0) + 1) * 6ms);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .pv .side.adm-side::before,
   .pv .side.adm-returning::before,
-  .pv .side .adm-ws-static,
-  .pv .side .adm-ws-static .brand,
+  .pv .side .sb-ws-static,
+  .pv .side .sb-ws-static .brand,
   .pv .side.adm-returning .wsw > .wsb,
-  .pv .side.adm-side .adm-nav h6,
-  .pv .side.adm-side .adm-nav button,
-  .pv .side.adm-returning .adm-nav h6,
-  .pv .side.adm-returning .adm-nav button,
-  .pv .side.adm-side .adm-nav-exit,
-  .pv .side.adm-side.adm-leaving .adm-nav h6,
-  .pv .side.adm-side.adm-leaving .adm-nav button,
-  .pv .side.adm-side.adm-leaving .adm-nav-exit,
-  .pv .side.adm-side.adm-leaving .adm-ws-static { animation: none; }
+  .pv .side.adm-side .sb-nav h6,
+  .pv .side.adm-side .sb-nav button,
+  .pv .side.adm-returning .sb-nav h6,
+  .pv .side.adm-returning .sb-nav button,
+  .pv .side.adm-side .sb-exit,
+  .pv .side.adm-side.adm-leaving .sb-nav h6,
+  .pv .side.adm-side.adm-leaving .sb-nav button,
+  .pv .side.adm-side.adm-leaving .sb-exit,
+  .pv .side.adm-side.adm-leaving .sb-ws-static { animation: none; }
 }

@@ -2,15 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 
 import { I } from "@/components/prototype/ui";
-import {
-  Brand,
-  ROLE_LABEL,
-  isCampaignScopedPath,
-  useLogout,
-  useNavItems,
-  type AdminNavItem,
-  type NavScope,
-} from "@/components/sidebar";
+import type { NavScope } from "@/components/navigation/nav-config";
+import { useNavSections } from "@/components/navigation/use-nav-sections";
+import { Brand, ROLE_LABEL, isCampaignScopedPath, useLogout } from "@/components/sidebar";
 import { WorkspaceStatusChip } from "@/components/workspace-state/workspace-status-chip";
 import { useWorkspaceContext } from "@/contexts/workspace-context";
 import type { Workspace } from "@/shared/types";
@@ -18,15 +12,13 @@ import type { Workspace } from "@/shared/types";
 /** Telas que usam a base da tela (assistentes, estúdio de live): sem barra flutuante. */
 const HIDE_ON = [/^\/campaigns\/new\/?$/, /^\/campaigns\/[^/]+\/edit\/?$/, /^\/lives\/new\/?$/, /^\/lives\/(?!new\/?$)[^/]+\/?$/];
 
-/** Atalhos fixos da barra; o restante fica na gaveta "Mais". */
-const BAR = ["Início", "Campanhas", "Criadores", "Financeiro"];
-/** No Admin a barra leva as quatro áreas mais usadas; as outras ficam em "Mais". */
-const ADMIN_BAR = ["Dashboard", "Workspaces", "Usuários", "Financeiro"];
-
 /**
  * Navegação do celular (≤ 900px, quando a sidebar some): barra inferior com os
  * atalhos principais e uma gaveta "Mais" com workspaces, demais telas e a conta.
  * O CSS (`.bnav`, `#bmore`) vem do protótipo e só aparece em telas estreitas.
+ *
+ * Os itens vêm da mesma configuração da sidebar (`navigation/nav-config.ts`): os marcados como `pinned` ficam na
+ * barra e o restante vai para a gaveta, agrupado pelas mesmas seções.
  *
  * `scope="platform"` (layout do Admin): a barra e a gaveta levam as áreas do Admin, sem a lista de
  * workspaces (escolher um mexeria no `workspaceId` guardado) e com "Voltar ao app".
@@ -35,7 +27,7 @@ export function MobileNav({ scope = "workspace" }: { scope?: NavScope }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { workspaces, selectedWorkspace, selectWorkspace } = useWorkspaceContext();
-  const { menus, adminGroups, isOn } = useNavItems(scope);
+  const { sections, isOn } = useNavSections(scope);
   const platform = scope === "platform";
   const doLogout = useLogout();
   const [open, setOpen] = useState(false);
@@ -61,23 +53,12 @@ export function MobileNav({ scope = "workspace" }: { scope?: NavScope }) {
 
   if (HIDE_ON.some((re) => re.test(pathname))) return null;
 
-  const visible = menus.filter((m) => m[3]);
-  const adminItems: AdminNavItem[] = adminGroups.flatMap((g) => [...g.items]);
-  const barItems: Array<[string, string, string]> = platform
-    ? ADMIN_BAR.map((label) => adminItems.find((a) => a.label === label)).filter((a): a is AdminNavItem => !!a).map((a) => [a.label, a.icon, a.href])
-    : visible.filter((m) => BAR.includes(m[0])).map((m) => [m[0], m[1], m[2]]);
-  const barLabels = barItems.map((b) => b[0]);
-  const extraItems = platform ? [] : visible.filter((m) => !BAR.includes(m[0]));
-  // Em cada área do Admin, o que a barra já mostra não repete na gaveta.
-  const extraGroups = adminGroups
-    .map((g) => ({ ...g, items: platform ? g.items.filter((a) => !barLabels.includes(a.label)) : g.items }))
-    .filter((g) => g.items.length > 0);
-  const extraHrefs = [
-    ...extraItems.map((m) => m[2]),
-    ...extraGroups.flatMap((g) => g.items.map((a) => a.href)),
-    "/settings",
-    "/workspace",
-  ];
+  const barItems = sections.flatMap((section) => section.items.filter((item) => item.pinned));
+  // O que a barra já mostra não repete na gaveta; seção que fica sem itens some.
+  const extraSections = sections
+    .map((section) => ({ ...section, items: section.items.filter((item) => !item.pinned) }))
+    .filter((section) => section.items.length > 0);
+  const extraHrefs = [...extraSections.flatMap((section) => section.items.map((item) => item.href)), "/settings", "/workspace"];
   const moreOn = open || extraHrefs.some((href) => isOn(href));
 
   const go = (to: string) => navigate({ to });
@@ -90,17 +71,17 @@ export function MobileNav({ scope = "workspace" }: { scope?: NavScope }) {
   return (
     <div className="pv">
       <nav className="bnav" aria-label="Navegação principal">
-        {barItems.map(([label, icon, href]) => (
+        {barItems.map((item) => (
           <button
-            key={label}
+            key={item.id}
             type="button"
-            className={isOn(href) && !open ? "on" : ""}
-            aria-label={label}
-            aria-current={isOn(href) ? "page" : undefined}
-            onClick={() => go(href)}
+            className={isOn(item.href) && !open ? "on" : ""}
+            aria-label={item.label}
+            aria-current={isOn(item.href) ? "page" : undefined}
+            onClick={() => go(item.href)}
           >
-            <I n={icon} />
-            <span>{label}</span>
+            <I n={item.icon} />
+            <span>{item.label}</span>
           </button>
         ))}
         <button
@@ -148,38 +129,22 @@ export function MobileNav({ scope = "workspace" }: { scope?: NavScope }) {
             </div>
           )}
 
-          {extraItems.length > 0 && (
-            <div className="bms-sc">
-              <small>Navegação</small>
+          {extraSections.map((section) => (
+            <div className="bms-sc" key={section.id}>
+              <small>{section.label}</small>
               <div>
-                {extraItems.map(([label, icon, href]) => (
-                  <button key={label} type="button" className={`bms-t${isOn(href) ? " on" : ""}`} onClick={() => go(href)}>
-                    <span>
-                      <I n={icon} cls="sm" />
-                    </span>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {extraGroups.map((group) => (
-            <div className="bms-sc" key={group.id}>
-              <small>{group.label}</small>
-              <div>
-                {group.items.map(({ label, icon, href }) => (
+                {section.items.map((item) => (
                   <button
-                    key={href}
+                    key={item.id}
                     type="button"
-                    className={`bms-t${isOn(href) ? " on" : ""}`}
-                    aria-current={isOn(href) ? "page" : undefined}
-                    onClick={() => go(href)}
+                    className={`bms-t${isOn(item.href) ? " on" : ""}`}
+                    aria-current={isOn(item.href) ? "page" : undefined}
+                    onClick={() => go(item.href)}
                   >
                     <span>
-                      <I n={icon} cls="sm" />
+                      <I n={item.icon} cls="sm" />
                     </span>
-                    {label}
+                    {item.label}
                   </button>
                 ))}
               </div>

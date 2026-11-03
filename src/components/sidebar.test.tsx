@@ -1,7 +1,7 @@
 /**
- * Menu lateral: o Admin da plataforma em duas áreas, e o que muda no escopo `platform` (layout do Admin):
- * o seletor de workspace não existe (não há como regravar o `workspaceId`), os itens do workspace saem e
- * entra o "Voltar ao app".
+ * Menu lateral dos dois ambientes: a configuração de cada um (`nav-config.ts`), os grupos com título, o que cada
+ * perfil enxerga e o que muda no escopo `platform` (layout do Admin): o seletor de workspace não existe (não há
+ * como regravar o `workspaceId`), os itens do workspace saem e entra o "Voltar ao app".
  */
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -15,6 +15,7 @@ const ctx = vi.hoisted(() => ({
   user: { name: "Vini", email: "vini@hype.com", is_platform_admin: true } as Record<string, unknown>,
   campaigns: [] as Array<{ status: string }>,
   edges: { before: false, after: false },
+  permissions: { campaigns_read: true, catalog_read: true, community_lives_read: true, financial_read: true } as Record<string, boolean>,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -27,7 +28,7 @@ vi.mock("@/contexts/workspace-context", () => {
   const ws = { id: "w1", name: "Acme", role: "owner", photo: null };
   return {
     useWorkspaceContext: () => ({ workspaces: [ws, { id: "w2", name: "Beta", role: "member", photo: null }], selectedWorkspace: ws, selectWorkspace: ctx.selectWorkspace }),
-    useWorkspacePermissions: () => ({ campaigns_read: true, catalog_read: true, community_lives_read: true, financial_read: true }),
+    useWorkspacePermissions: () => ctx.permissions,
   };
 });
 vi.mock("@/hooks/use-campaigns", () => ({
@@ -40,7 +41,9 @@ vi.mock("@/shared/services/auth", () => ({ logout: vi.fn() }));
 // A geometria de rolagem não existe no jsdom: o teste diz se a lista continua além das bordas.
 vi.mock("@/hooks/admin/use-scroll-edges", () => ({ useScrollEdges: () => ({ ref: { current: null }, edges: ctx.edges }) }));
 
-import { ADMIN_NAV_GROUPS, BACKOFFICE_NAV_GROUP, LEAVE_MS, Sidebar } from "./sidebar";
+import { PLATFORM_NAV, WORKSPACE_NAV } from "@/components/navigation/nav-config";
+
+import { LEAVE_MS, Sidebar } from "./sidebar";
 
 beforeEach(() => {
   ctx.pathname = "/";
@@ -50,6 +53,7 @@ beforeEach(() => {
   ctx.user = { name: "Vini", email: "vini@hype.com", is_platform_admin: true };
   ctx.campaigns = [];
   ctx.edges = { before: false, after: false };
+  ctx.permissions = { campaigns_read: true, catalog_read: true, community_lives_read: true, financial_read: true };
 });
 
 afterEach(() => {
@@ -61,94 +65,149 @@ afterEach(() => {
 const nav = () => screen.getByRole("navigation");
 const aside = () => document.querySelector("aside") as HTMLElement;
 
-describe("ADMIN_NAV_GROUPS", () => {
-  it("duas áreas, na ordem pedida, com os destinos de cada página", () => {
-    expect(ADMIN_NAV_GROUPS.map((g) => g.label)).toEqual(["Administração", "Monitoramento"]);
-    expect(ADMIN_NAV_GROUPS[0].items.map((i) => [i.label, i.href])).toEqual([
-      ["Dashboard", "/admin/dashboard"],
-      ["Workspaces", "/admin/workspaces"],
-      ["Usuários", "/admin/users"],
-      ["Equipe", "/admin/team"],
-      ["Campanhas", "/admin/campaigns"],
-      ["Criadores", "/admin/creators"],
-      ["Financeiro", "/admin/financial"],
-      ["Comunidade", "/admin/groups"],
-    ]);
-    expect(ADMIN_NAV_GROUPS[1].items.map((i) => [i.label, i.href])).toEqual([
-      ["Atividades", "/admin/activity"],
-      ["Notificações", "/admin/notifications"],
-      ["Saúde da plataforma", "/admin/health"],
+describe("PLATFORM_NAV (Admin da plataforma)", () => {
+  it("quatro grupos, na ordem pedida, com os destinos de cada página", () => {
+    expect(PLATFORM_NAV.map((g) => [g.label, g.items.map((i) => [i.label, i.href])])).toEqual([
+      ["Visão geral", [["Dashboard", "/admin/dashboard"]]],
+      [
+        "Gestão da plataforma",
+        [
+          ["Workspaces", "/admin/workspaces"],
+          ["Usuários", "/admin/users"],
+          ["Equipe", "/admin/team"],
+        ],
+      ],
+      [
+        "Operação",
+        [
+          ["Campanhas", "/admin/campaigns"],
+          ["Criadores", "/admin/creators"],
+          ["Financeiro", "/admin/financial"],
+          ["Comunidade", "/admin/groups"],
+        ],
+      ],
+      [
+        "Monitoramento",
+        [
+          ["Atividades", "/admin/activity"],
+          ["Notificações", "/admin/notifications"],
+          ["Saúde da plataforma", "/admin/health"],
+        ],
+      ],
     ]);
   });
 
   it("todos os ícones são diferentes: Comunidade não reusa o de Criadores (nem o de Usuários)", () => {
-    const icons = ADMIN_NAV_GROUPS.flatMap((g) => g.items.map((i) => i.icon));
+    const icons = PLATFORM_NAV.flatMap((g) => g.items.map((i) => i.icon));
     expect(new Set(icons).size).toBe(icons.length);
-    const iconOf = (label: string) => ADMIN_NAV_GROUPS.flatMap((g) => g.items).find((i) => i.label === label)?.icon;
+    const iconOf = (label: string) => PLATFORM_NAV.flatMap((g) => g.items).find((i) => i.label === label)?.icon;
     expect(iconOf("Comunidade")).not.toBe(iconOf("Criadores"));
     expect(iconOf("Comunidade")).not.toBe(iconOf("Usuários"));
   });
+});
 
-  it("todos os ícones existem no mapa do protótipo (`I`)", async () => {
-    const src = (await import("@/components/prototype/ui?raw")).default as string;
-    for (const { icon } of ADMIN_NAV_GROUPS.flatMap((g) => g.items)) {
-      expect(src).toMatch(new RegExp(`\\b${icon}: "`));
-    }
+describe("WORKSPACE_NAV (clientes)", () => {
+  it("quatro grupos simples; o Backoffice é a única porta para o Admin e só aparece para a equipe Hype", () => {
+    expect(WORKSPACE_NAV.map((g) => [g.label, g.items.map((i) => [i.label, i.href])])).toEqual([
+      ["Workspace", [["Início", "/"]]],
+      [
+        "Gestão de campanhas",
+        [
+          ["Campanhas", "/campaigns"],
+          ["Criadores", "/creators"],
+          ["Lives", "/lives"],
+        ],
+      ],
+      ["Financeiro", [["Financeiro", "/financial"]]],
+      ["Administração", [["Backoffice", "/admin/dashboard"]]],
+    ]);
+    const backoffice = WORKSPACE_NAV.flatMap((g) => g.items).find((i) => i.label === "Backoffice");
+    expect(backoffice?.platformStaffOnly).toBe(true);
+  });
+
+  it("cada permissão de leitura continua no mesmo item de antes", () => {
+    const perm = (label: string) => WORKSPACE_NAV.flatMap((g) => g.items).find((i) => i.label === label)?.permission;
+    expect(perm("Campanhas")).toBe("campaigns_read");
+    expect(perm("Criadores")).toBe("catalog_read");
+    expect(perm("Lives")).toBe("community_lives_read");
+    expect(perm("Financeiro")).toBe("financial_read");
+    expect(perm("Início")).toBeUndefined();
   });
 });
 
-describe("BACKOFFICE_NAV_GROUP", () => {
-  it("um divisor 'Administração' com uma entrada só, 'Backoffice', que abre o Admin", () => {
-    expect(BACKOFFICE_NAV_GROUP.label).toBe("Administração");
-    expect(BACKOFFICE_NAV_GROUP.items.map((i) => [i.label, i.href])).toEqual([["Backoffice", "/admin/dashboard"]]);
+describe("as duas configurações", () => {
+  const all = [...WORKSPACE_NAV, ...PLATFORM_NAV].flatMap((g) => g.items);
+
+  it("todos os ícones existem no mapa do protótipo (`I`)", async () => {
+    const src = (await import("@/components/prototype/ui?raw")).default as string;
+    for (const { icon } of all) expect(src).toMatch(new RegExp(`\\b${icon}: "`));
   });
 
-  it("o ícone existe no mapa do protótipo (`I`)", async () => {
-    const src = (await import("@/components/prototype/ui?raw")).default as string;
-    expect(src).toMatch(new RegExp(`\\b${BACKOFFICE_NAV_GROUP.items[0].icon}: "`));
+  it("todo destino é uma rota que existe na árvore de rotas", async () => {
+    const tree = (await import("@/routeTree.gen?raw")).default as string;
+    for (const { href } of all) {
+      // `/` é a rota do Início; as demais aparecem como chave do mapa de rotas por caminho.
+      expect(tree).toContain(href === "/" ? "'/': typeof" : `'${href}': typeof`);
+    }
+  });
+
+  it("nenhum destino se repete dentro de um mesmo ambiente", () => {
+    for (const nav of [WORKSPACE_NAV, PLATFORM_NAV]) {
+      const hrefs = nav.flatMap((g) => g.items.map((i) => i.href));
+      expect(new Set(hrefs).size).toBe(hrefs.length);
+    }
   });
 });
 
 describe("Sidebar (escopo do workspace, como no app)", () => {
-  it("mostra o seletor de workspace, os itens do workspace e, para quem é admin, só a entrada 'Backoffice' sob o divisor 'Administração'", () => {
+  it("mostra o seletor de workspace e os itens do cliente em grupos com título", () => {
     render(<Sidebar />);
     expect(screen.getByRole("button", { name: /Acme/ })).toHaveAttribute("aria-haspopup", "listbox");
     const items = within(nav());
     for (const label of ["Início", "Campanhas", "Criadores", "Lives", "Financeiro"]) {
-      expect(items.getAllByRole("button", { name: label }).length).toBeGreaterThan(0);
+      expect(items.getByRole("button", { name: label })).toBeInTheDocument();
     }
-    const door = within(items.getByRole("group", { name: "Administração" }));
-    expect(door.getAllByRole("button")).toHaveLength(1);
-    expect(door.getByRole("button", { name: "Backoffice" })).toBeInTheDocument();
+    for (const group of ["Workspace", "Gestão de campanhas", "Financeiro"]) {
+      expect(items.getByRole("group", { name: group })).toBeInTheDocument();
+    }
+    expect(within(items.getByRole("group", { name: "Gestão de campanhas" })).getAllByRole("button")).toHaveLength(3);
   });
 
-  it("as áreas do Admin só existem dentro do Admin: no app só aparece a porta de entrada, nenhuma das páginas", () => {
+  it("a equipe Hype vê só o Backoffice (uma porta), não a estrutura inteira do Admin", async () => {
     render(<Sidebar />);
     const items = within(nav());
-    expect(items.queryByRole("group", { name: "Monitoramento" })).not.toBeInTheDocument();
-    for (const label of ["Dashboard", "Workspaces", "Usuários", "Equipe", "Comunidade", "Atividades", "Notificações", "Saúde da plataforma"]) {
+    const group = items.getByRole("group", { name: "Administração" });
+    expect(within(group).getAllByRole("button")).toHaveLength(1);
+    for (const label of ["Workspaces", "Usuários", "Saúde da plataforma", "Atividades", "Comunidade"]) {
       expect(items.queryByRole("button", { name: label })).not.toBeInTheDocument();
     }
-  });
-
-  it("'Backoffice' leva ao Admin", async () => {
-    render(<Sidebar />);
-    await userEvent.click(within(nav()).getByRole("button", { name: "Backoffice" }));
+    await userEvent.click(within(group).getByRole("button", { name: "Backoffice" }));
     expect(ctx.navigate).toHaveBeenCalledWith({ to: "/admin/dashboard" });
   });
 
-  it("o menu do app aberto direto (sem vir do Admin) não anima: sem cascata e sem a classe da volta", () => {
+  it.each(["support", "viewer"])("a equipe com papel '%s' também vê o Backoffice (a API valida o papel em cada rota)", (role) => {
+    ctx.user = { name: "Equipe", email: "e@hype.com", platform_role: role };
     render(<Sidebar />);
-    for (const el of within(nav()).getAllByRole("button")) expect(el.style.getPropertyValue("--i")).toBe("");
-    expect(aside()).not.toHaveClass("adm-returning");
+    expect(within(nav()).getByRole("button", { name: "Backoffice" })).toBeInTheDocument();
   });
 
-  it("quem não é admin da plataforma não vê o Admin, nem a porta de entrada", () => {
+  it("quem não é admin da plataforma não vê o Backoffice, nem o título do grupo", () => {
     ctx.user = { name: "Cliente", email: "cliente@marca.com" };
     render(<Sidebar />);
     expect(screen.queryByRole("group", { name: "Administração" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Backoffice" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Workspaces" })).not.toBeInTheDocument();
+  });
+
+  it("sem a permissão, o item some e o grupo que ficou vazio não deixa título solto", () => {
+    ctx.permissions = { campaigns_read: true, catalog_read: false, community_lives_read: false, financial_read: false };
+    render(<Sidebar />);
+    const items = within(nav());
+    expect(items.queryByRole("button", { name: "Financeiro" })).not.toBeInTheDocument();
+    expect(items.queryByRole("group", { name: "Financeiro" })).not.toBeInTheDocument();
+    expect(items.queryByRole("button", { name: "Criadores" })).not.toBeInTheDocument();
+    expect(items.queryByRole("button", { name: "Lives" })).not.toBeInTheDocument();
+    expect(within(items.getByRole("group", { name: "Gestão de campanhas" })).getAllByRole("button")).toHaveLength(1);
   });
 
   it("escolher outro workspace continua regravando o selecionado (só no app)", async () => {
@@ -180,29 +239,27 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
     expect(ctx.selectWorkspace).not.toHaveBeenCalled();
   });
 
-  it("não mostra os itens do workspace (Início, Lives…), só o Admin em duas áreas", () => {
+  it("não mostra os itens do workspace (Início, Lives…), só o Admin em quatro grupos", () => {
     render(<Sidebar scope="platform" />);
     const items = within(screen.getByRole("navigation", { name: "Navegação do Admin" }));
-    for (const label of ["Início", "Lives"]) expect(items.queryByRole("button", { name: label })).not.toBeInTheDocument();
+    for (const label of ["Início", "Lives", "Backoffice"]) expect(items.queryByRole("button", { name: label })).not.toBeInTheDocument();
     expect(items.getAllByRole("button")).toHaveLength(11);
-    // "Administração" aqui é a área com as 8 páginas (com a Equipe), não o divisor da porta de entrada do app (que tem uma entrada só)
-    expect(within(items.getByRole("group", { name: "Administração" })).getAllByRole("button")).toHaveLength(8);
-    expect(items.getByRole("group", { name: "Monitoramento" })).toBeInTheDocument();
-    // dentro do Admin a porta de entrada não faz sentido: já se está nele
-    expect(items.queryByRole("button", { name: "Backoffice" })).not.toBeInTheDocument();
+    for (const group of ["Visão geral", "Gestão da plataforma", "Operação", "Monitoramento"]) {
+      expect(items.getByRole("group", { name: group })).toBeInTheDocument();
+    }
+  });
+
+  it("'Voltar ao app' fica numa faixa própria, separada do perfil", () => {
+    render(<Sidebar scope="platform" />);
+    const exit = screen.getByRole("button", { name: "Voltar ao app" });
+    expect(exit).toHaveClass("sb-exit");
+    expect(exit.parentElement).toHaveClass("sb-foot");
+    expect(exit.parentElement?.querySelector("hr.sb-sep")).not.toBeNull();
   });
 
   it("não busca as campanhas do workspace (o contador não existe no Admin)", () => {
     render(<Sidebar scope="platform" />);
     expect(ctx.useCampaigns).toHaveBeenCalledWith({ enabled: false });
-  });
-
-  it("títulos e itens levam a posição na cascata de entrada (`--i`), na ordem do menu, e 'Voltar ao app' fecha a sequência", () => {
-    render(<Sidebar scope="platform" />);
-    const position = (el: HTMLElement) => el.style.getPropertyValue("--i");
-    expect(within(nav()).getAllByRole("heading", { level: 6 }).map(position)).toEqual(["0", "9"]);
-    expect(within(nav()).getAllByRole("button").map(position)).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "10", "11", "12"]);
-    expect(position(screen.getByRole("button", { name: "Voltar ao app" }))).toBe("13");
   });
 
   it("o perfil mostra \"Administrador\" (curto, numa linha só; o bloco de cima já diz que é a plataforma), não o papel num workspace", () => {
@@ -211,11 +268,26 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
     expect(screen.queryByText("Proprietário")).not.toBeInTheDocument();
   });
 
-  it("cada botão tem nome acessível e dica (no trilho o texto some)", () => {
+  it("cada botão tem nome acessível e a dica do trilho (no trilho o texto some)", async () => {
     render(<Sidebar scope="platform" />);
     const button = within(nav()).getByRole("button", { name: "Workspaces" });
-    expect(button).toHaveAttribute("title", "Workspaces");
+    expect(button).toHaveAttribute("data-tip", "Workspaces");
     expect(button).toHaveAccessibleName("Workspaces");
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    await userEvent.hover(button);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Workspaces");
+    await userEvent.unhover(button);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("a dica também abre com o foco do teclado e fecha com Esc", async () => {
+    render(<Sidebar scope="platform" />);
+    await userEvent.tab();
+    const focused = document.activeElement as HTMLElement;
+    expect(focused.dataset.tip).toBeTruthy();
+    expect(screen.getByRole("tooltip")).toHaveTextContent(focused.dataset.tip as string);
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
   it("clicar leva para a rota da página", async () => {
@@ -248,6 +320,31 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
   });
 });
 
+describe("Sidebar (rodapé: perfil e sair, nos dois ambientes)", () => {
+  it.each(["workspace", "platform"] as const)("no escopo %s o perfil é um botão que leva às configurações e o Sair está ao lado", async (scope) => {
+    render(<Sidebar scope={scope} />);
+    await userEvent.click(screen.getByRole("button", { name: "Meu perfil" }));
+    expect(ctx.navigate).toHaveBeenCalledWith({ to: "/settings" });
+    expect(screen.getByRole("button", { name: "Sair da conta" })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["admin", "Administrador"],
+    ["support", "Suporte"],
+    ["viewer", "Somente leitura"],
+  ])("no Admin o perfil mostra o papel na equipe: %s é \"%s\"", (role, label) => {
+    ctx.user = { name: "Equipe", email: "e@hype.com", platform_role: role, is_platform_admin: role === "admin" };
+    render(<Sidebar scope="platform" />);
+    expect(screen.getByText(label, { selector: ".me small" })).toBeInTheDocument();
+  });
+
+  it("clicar em Sair não abre o perfil", async () => {
+    render(<Sidebar />);
+    await userEvent.click(screen.getByRole("button", { name: "Sair da conta" }));
+    expect(ctx.navigate).not.toHaveBeenCalledWith({ to: "/settings" });
+  });
+});
+
 describe("Sidebar (cabe na tela e mostra que a lista rola)", () => {
   it("o item da grade do layout tem altura mínima 0: sem isso o menu estica a linha da grade acima da tela e a lista nunca rola", () => {
     for (const scope of ["workspace", "platform"] as const) {
@@ -261,7 +358,7 @@ describe("Sidebar (cabe na tela e mostra que a lista rola)", () => {
 
   it("a lista de itens é a área que rola (a classe do CSS que limita e rola)", () => {
     render(<Sidebar scope="platform" />);
-    expect(nav()).toHaveClass("adm-nav");
+    expect(nav()).toHaveClass("sb-nav");
   });
 
   it("sem conteúdo escondido, a lista não leva marca de borda", () => {
@@ -303,9 +400,9 @@ describe("Sidebar (volta ao app: o menu do Admin sai e o do app entra)", () => {
 
   it("a saída conta para trás a partir do 'Voltar ao app': `--n` é a vez dele na cascata", () => {
     render(<Sidebar scope="platform" />);
-    // 11 itens + 2 títulos de área + o "Voltar ao app" (com a Equipe no menu)
-    expect(aside().style.getPropertyValue("--n")).toBe("13");
-    expect(back().style.getPropertyValue("--i")).toBe("13");
+    // 11 itens + 4 títulos de grupo + o "Voltar ao app"
+    expect(aside().style.getPropertyValue("--n")).toBe("15");
+    expect(back().style.getPropertyValue("--i")).toBe("15");
   });
 
   it("enquanto o menu sai, outros cliques não navegam e um segundo clique não agenda outra volta", () => {
@@ -358,13 +455,13 @@ describe("Sidebar (volta ao app: o menu do Admin sai e o do app entra)", () => {
       to === "admin" ? <Sidebar key="admin" scope="platform" /> : <Sidebar key="app" />;
     const position = (el: HTMLElement) => el.style.getPropertyValue("--i");
 
-    it("entra animado: leva a classe da volta e a cascata (itens do workspace primeiro, depois a entrada 'Backoffice')", () => {
+    it("entra animado: leva a classe da volta e a cascata (títulos e itens na ordem do menu, a entrada 'Backoffice' por último)", () => {
       const { rerender } = render(<Swap to="admin" />);
       rerender(<Swap to="app" />);
       expect(aside()).toHaveClass("adm-returning");
       expect(aside()).not.toHaveClass("adm-side");
-      expect(within(nav()).getAllByRole("heading", { level: 6 }).map(position)).toEqual(["5"]);
-      expect(within(nav()).getAllByRole("button").map(position)).toEqual(["0", "1", "2", "3", "4", "6"]);
+      expect(within(nav()).getAllByRole("heading", { level: 6 }).map(position)).toEqual(["0", "2", "6", "8"]);
+      expect(within(nav()).getAllByRole("button").map(position)).toEqual(["1", "3", "4", "5", "7", "9"]);
     });
 
     it("anima a cada volta, não só na primeira", () => {
