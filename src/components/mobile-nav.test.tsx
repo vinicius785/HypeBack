@@ -98,7 +98,7 @@ describe("MobileNav no escopo da plataforma", () => {
 });
 
 describe("MobileNav no escopo do workspace (app)", () => {
-  it("mantém a barra do app, a lista de workspaces e, na gaveta, só a entrada 'Visão ADM' do Backoffice", async () => {
+  it("mantém a barra do app, a lista de workspaces e, na gaveta, só a entrada 'Backoffice' sob o divisor 'Administração'", async () => {
     ctx.pathname = "/";
     render(<MobileNav />);
     const bar = within(screen.getByRole("navigation", { name: "Navegação principal" }));
@@ -109,21 +109,20 @@ describe("MobileNav no escopo do workspace (app)", () => {
     // rótulo da lista de workspaces (o botão "Workspace" da conta tem o mesmo texto)
     expect(sheet.getAllByText("Workspace").some((el) => el.tagName === "SMALL")).toBe(true);
     expect(sheet.getByRole("button", { name: /Acme/ })).toBeInTheDocument();
-    expect(sheet.getByText("Backoffice")).toBeInTheDocument();
-    expect(sheet.getByRole("button", { name: "Visão ADM" })).toBeInTheDocument();
-    // as áreas do Admin só aparecem dentro do Admin
-    expect(sheet.queryByText("Administração")).not.toBeInTheDocument();
+    expect(sheet.getByText("Administração")).toBeInTheDocument();
+    expect(sheet.getByRole("button", { name: "Backoffice" })).toBeInTheDocument();
+    // as páginas do Admin só aparecem dentro do Admin
     expect(sheet.queryByText("Monitoramento")).not.toBeInTheDocument();
     expect(sheet.queryByRole("button", { name: "Workspaces" })).not.toBeInTheDocument();
     expect(sheet.getByRole("button", { name: "Novo workspace" })).toBeInTheDocument();
     expect(sheet.queryByRole("button", { name: "Voltar ao app" })).not.toBeInTheDocument();
   });
 
-  it("'Visão ADM' na gaveta leva ao Admin", async () => {
+  it("'Backoffice' na gaveta leva ao Admin", async () => {
     ctx.pathname = "/";
     render(<MobileNav />);
     await userEvent.click(screen.getByRole("button", { name: "Mais opções" }));
-    await userEvent.click(within(screen.getByRole("dialog", { name: "Mais opções" })).getByRole("button", { name: "Visão ADM" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Mais opções" })).getByRole("button", { name: "Backoffice" }));
     expect(ctx.navigate).toHaveBeenCalledWith({ to: "/admin/dashboard" });
   });
 
@@ -132,8 +131,8 @@ describe("MobileNav no escopo do workspace (app)", () => {
     ctx.user = { name: "Cliente", email: "c@m.com" };
     render(<MobileNav />);
     await userEvent.click(screen.getByRole("button", { name: "Mais opções" }));
-    expect(screen.queryByText("Backoffice")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Visão ADM" })).not.toBeInTheDocument();
     expect(screen.queryByText("Administração")).not.toBeInTheDocument();
+    expect(screen.queryByText("Backoffice")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Backoffice" })).not.toBeInTheDocument();
   });
 });

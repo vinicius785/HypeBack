@@ -139,13 +139,14 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 ];
 
 /**
- * No app do workspace o Admin é uma entrada só: "Visão ADM", sob o divisor "Backoffice". Ela leva ao Admin,
- * onde o menu passa para o escopo `platform` e mostra todas as áreas (`ADMIN_NAV_GROUPS`).
+ * No app do workspace o Admin é uma entrada só: "Backoffice", sob o divisor "Administração". Ela leva ao Admin,
+ * onde o menu passa para o escopo `platform` e mostra todas as áreas (`ADMIN_NAV_GROUPS`, cuja primeira também
+ * se chama "Administração": são menus de escopos diferentes e nunca aparecem juntos).
  */
 export const BACKOFFICE_NAV_GROUP: AdminNavGroup = {
   id: "backoffice",
-  label: "Backoffice",
-  items: [{ label: "Visão ADM", icon: "shield", href: "/admin/dashboard" }],
+  label: "Administração",
+  items: [{ label: "Backoffice", icon: "shield", href: "/admin/dashboard" }],
 };
 
 /** Itens de navegação (e permissões) compartilhados pela sidebar e pelo menu do celular. */

@@ -1,5 +1,5 @@
 /*
- * Movimento do menu na troca entre o app e o Admin ("Visão ADM"). O menu do Admin e o do app são montados cada um
+ * Movimento do menu na troca entre o app e o Admin ("Backoffice"). O menu do Admin e o do app são montados cada um
  * pelo seu layout (`<Sidebar scope="platform" />` e `<Sidebar />`), então cada animação roda uma vez por troca e não
  * se repete ao mudar de página dentro da mesma área. `--i` (definido no JSX) é a posição do título/item na cascata.
  *

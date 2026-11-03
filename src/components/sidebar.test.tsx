@@ -97,9 +97,9 @@ describe("ADMIN_NAV_GROUPS", () => {
 });
 
 describe("BACKOFFICE_NAV_GROUP", () => {
-  it("um divisor 'Backoffice' com uma entrada só, 'Visão ADM', que abre o Admin", () => {
-    expect(BACKOFFICE_NAV_GROUP.label).toBe("Backoffice");
-    expect(BACKOFFICE_NAV_GROUP.items.map((i) => [i.label, i.href])).toEqual([["Visão ADM", "/admin/dashboard"]]);
+  it("um divisor 'Administração' com uma entrada só, 'Backoffice', que abre o Admin", () => {
+    expect(BACKOFFICE_NAV_GROUP.label).toBe("Administração");
+    expect(BACKOFFICE_NAV_GROUP.items.map((i) => [i.label, i.href])).toEqual([["Backoffice", "/admin/dashboard"]]);
   });
 
   it("o ícone existe no mapa do protótipo (`I`)", async () => {
@@ -109,31 +109,30 @@ describe("BACKOFFICE_NAV_GROUP", () => {
 });
 
 describe("Sidebar (escopo do workspace, como no app)", () => {
-  it("mostra o seletor de workspace, os itens do workspace e, para quem é admin, só a entrada 'Visão ADM' do Backoffice", () => {
+  it("mostra o seletor de workspace, os itens do workspace e, para quem é admin, só a entrada 'Backoffice' sob o divisor 'Administração'", () => {
     render(<Sidebar />);
     expect(screen.getByRole("button", { name: /Acme/ })).toHaveAttribute("aria-haspopup", "listbox");
     const items = within(nav());
     for (const label of ["Início", "Campanhas", "Criadores", "Lives", "Financeiro"]) {
       expect(items.getAllByRole("button", { name: label }).length).toBeGreaterThan(0);
     }
-    const backoffice = within(items.getByRole("group", { name: "Backoffice" }));
-    expect(backoffice.getAllByRole("button")).toHaveLength(1);
-    expect(backoffice.getByRole("button", { name: "Visão ADM" })).toBeInTheDocument();
+    const door = within(items.getByRole("group", { name: "Administração" }));
+    expect(door.getAllByRole("button")).toHaveLength(1);
+    expect(door.getByRole("button", { name: "Backoffice" })).toBeInTheDocument();
   });
 
-  it("as áreas do Admin só existem dentro do Admin: no app não aparece nenhuma delas", () => {
+  it("as áreas do Admin só existem dentro do Admin: no app só aparece a porta de entrada, nenhuma das páginas", () => {
     render(<Sidebar />);
     const items = within(nav());
-    expect(items.queryByRole("group", { name: "Administração" })).not.toBeInTheDocument();
     expect(items.queryByRole("group", { name: "Monitoramento" })).not.toBeInTheDocument();
     for (const label of ["Dashboard", "Workspaces", "Usuários", "Comunidade", "Atividades", "Notificações", "Saúde da plataforma"]) {
       expect(items.queryByRole("button", { name: label })).not.toBeInTheDocument();
     }
   });
 
-  it("'Visão ADM' leva ao Admin", async () => {
+  it("'Backoffice' leva ao Admin", async () => {
     render(<Sidebar />);
-    await userEvent.click(within(nav()).getByRole("button", { name: "Visão ADM" }));
+    await userEvent.click(within(nav()).getByRole("button", { name: "Backoffice" }));
     expect(ctx.navigate).toHaveBeenCalledWith({ to: "/admin/dashboard" });
   });
 
@@ -146,9 +145,8 @@ describe("Sidebar (escopo do workspace, como no app)", () => {
   it("quem não é admin da plataforma não vê o Admin, nem a porta de entrada", () => {
     ctx.user = { name: "Cliente", email: "cliente@marca.com" };
     render(<Sidebar />);
-    expect(screen.queryByRole("group", { name: "Backoffice" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Visão ADM" })).not.toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Administração" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Backoffice" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Workspaces" })).not.toBeInTheDocument();
   });
 
@@ -186,11 +184,11 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
     const items = within(screen.getByRole("navigation", { name: "Navegação do Admin" }));
     for (const label of ["Início", "Lives"]) expect(items.queryByRole("button", { name: label })).not.toBeInTheDocument();
     expect(items.getAllByRole("button")).toHaveLength(10);
-    expect(items.getByRole("group", { name: "Administração" })).toBeInTheDocument();
+    // "Administração" aqui é a área com as 7 páginas, não o divisor da porta de entrada do app (que tem uma entrada só)
+    expect(within(items.getByRole("group", { name: "Administração" })).getAllByRole("button")).toHaveLength(7);
     expect(items.getByRole("group", { name: "Monitoramento" })).toBeInTheDocument();
     // dentro do Admin a porta de entrada não faz sentido: já se está nele
-    expect(items.queryByRole("group", { name: "Backoffice" })).not.toBeInTheDocument();
-    expect(items.queryByRole("button", { name: "Visão ADM" })).not.toBeInTheDocument();
+    expect(items.queryByRole("button", { name: "Backoffice" })).not.toBeInTheDocument();
   });
 
   it("não busca as campanhas do workspace (o contador não existe no Admin)", () => {
@@ -358,7 +356,7 @@ describe("Sidebar (volta ao app: o menu do Admin sai e o do app entra)", () => {
       to === "admin" ? <Sidebar key="admin" scope="platform" /> : <Sidebar key="app" />;
     const position = (el: HTMLElement) => el.style.getPropertyValue("--i");
 
-    it("entra animado: leva a classe da volta e a cascata (itens do workspace primeiro, depois o Backoffice)", () => {
+    it("entra animado: leva a classe da volta e a cascata (itens do workspace primeiro, depois a entrada 'Backoffice')", () => {
       const { rerender } = render(<Swap to="admin" />);
       rerender(<Swap to="app" />);
       expect(aside()).toHaveClass("adm-returning");
