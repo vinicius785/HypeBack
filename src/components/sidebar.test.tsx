@@ -3,9 +3,9 @@
  * o seletor de workspace não existe (não há como regravar o `workspaceId`), os itens do workspace saem e
  * entra o "Voltar ao app".
  */
-import { render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const ctx = vi.hoisted(() => ({
   pathname: "/",
@@ -40,7 +40,7 @@ vi.mock("@/shared/services/auth", () => ({ logout: vi.fn() }));
 // A geometria de rolagem não existe no jsdom: o teste diz se a lista continua além das bordas.
 vi.mock("@/hooks/admin/use-scroll-edges", () => ({ useScrollEdges: () => ({ ref: { current: null }, edges: ctx.edges }) }));
 
-import { ADMIN_NAV_GROUPS, BACKOFFICE_NAV_GROUP, Sidebar } from "./sidebar";
+import { ADMIN_NAV_GROUPS, BACKOFFICE_NAV_GROUP, LEAVE_MS, Sidebar } from "./sidebar";
 
 beforeEach(() => {
   ctx.pathname = "/";
@@ -52,7 +52,14 @@ beforeEach(() => {
   ctx.edges = { before: false, after: false };
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+  // O jsdom não tem `matchMedia`; os testes de movimento reduzido o definem e aqui ele sai de novo.
+  Reflect.deleteProperty(window, "matchMedia");
+});
+
 const nav = () => screen.getByRole("navigation");
+const aside = () => document.querySelector("aside") as HTMLElement;
 
 describe("ADMIN_NAV_GROUPS", () => {
   it("duas áreas, na ordem pedida, com os destinos de cada página", () => {
@@ -130,9 +137,10 @@ describe("Sidebar (escopo do workspace, como no app)", () => {
     expect(ctx.navigate).toHaveBeenCalledWith({ to: "/admin/dashboard" });
   });
 
-  it("o menu do app não leva a cascata de entrada (a animação é só do Admin)", () => {
+  it("o menu do app aberto direto (sem vir do Admin) não anima: sem cascata e sem a classe da volta", () => {
     render(<Sidebar />);
     for (const el of within(nav()).getAllByRole("button")) expect(el.style.getPropertyValue("--i")).toBe("");
+    expect(aside()).not.toHaveClass("adm-returning");
   });
 
   it("quem não é admin da plataforma não vê o Admin, nem a porta de entrada", () => {
@@ -196,12 +204,6 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
     expect(within(nav()).getAllByRole("heading", { level: 6 }).map(position)).toEqual(["0", "8"]);
     expect(within(nav()).getAllByRole("button").map(position)).toEqual(["1", "2", "3", "4", "5", "6", "7", "9", "10", "11"]);
     expect(position(screen.getByRole("button", { name: "Voltar ao app" }))).toBe("12");
-  });
-
-  it("'Voltar ao app' leva ao início do app", async () => {
-    render(<Sidebar scope="platform" />);
-    await userEvent.click(screen.getByRole("button", { name: "Voltar ao app" }));
-    expect(ctx.navigate).toHaveBeenCalledWith({ to: "/" });
   });
 
   it("o perfil mostra \"Administrador\" (curto, numa linha só; o bloco de cima já diz que é a plataforma), não o papel num workspace", () => {
@@ -280,5 +282,103 @@ describe("Sidebar (cabe na tela e mostra que a lista rola)", () => {
     render(<Sidebar />);
     expect(nav()).toHaveAttribute("data-more-after", "true");
     expect(nav()).toHaveAttribute("data-more-before", "true");
+  });
+});
+
+describe("Sidebar (volta ao app: o menu do Admin sai e o do app entra)", () => {
+  const back = () => screen.getByRole("button", { name: "Voltar ao app" });
+  const advance = (ms: number) => act(() => void vi.advanceTimersByTime(ms));
+
+  it("'Voltar ao app' faz o menu do Admin sair e só então leva ao início do app", () => {
+    vi.useFakeTimers();
+    render(<Sidebar scope="platform" />);
+    fireEvent.click(back());
+    expect(aside()).toHaveClass("adm-leaving");
+    expect(ctx.navigate).not.toHaveBeenCalled();
+    advance(LEAVE_MS - 1);
+    expect(ctx.navigate).not.toHaveBeenCalled();
+    advance(1);
+    expect(ctx.navigate).toHaveBeenCalledTimes(1);
+    expect(ctx.navigate).toHaveBeenCalledWith({ to: "/" });
+  });
+
+  it("a saída conta para trás a partir do 'Voltar ao app': `--n` é a vez dele na cascata", () => {
+    render(<Sidebar scope="platform" />);
+    expect(aside().style.getPropertyValue("--n")).toBe("12");
+    expect(back().style.getPropertyValue("--i")).toBe("12");
+  });
+
+  it("enquanto o menu sai, outros cliques não navegam e um segundo clique não agenda outra volta", () => {
+    vi.useFakeTimers();
+    render(<Sidebar scope="platform" />);
+    fireEvent.click(back());
+    fireEvent.click(within(nav()).getByRole("button", { name: "Usuários" }));
+    fireEvent.click(back());
+    advance(LEAVE_MS * 3);
+    expect(ctx.navigate).toHaveBeenCalledTimes(1);
+    expect(ctx.navigate).toHaveBeenCalledWith({ to: "/" });
+  });
+
+  it("se a rota não trocar (navegação recusada), o menu volta ao normal e os cliques voltam a valer", () => {
+    vi.useFakeTimers();
+    render(<Sidebar scope="platform" />);
+    fireEvent.click(back());
+    advance(LEAVE_MS);
+    expect(aside()).toHaveClass("adm-leaving");
+    advance(2000);
+    expect(aside()).not.toHaveClass("adm-leaving");
+    fireEvent.click(within(nav()).getByRole("button", { name: "Usuários" }));
+    expect(ctx.navigate).toHaveBeenLastCalledWith({ to: "/admin/users" });
+  });
+
+  it("se o menu sai da tela no meio da saída (a rota mudou por outro caminho), a volta é cancelada", () => {
+    vi.useFakeTimers();
+    const { unmount } = render(<Sidebar scope="platform" />);
+    fireEvent.click(back());
+    unmount();
+    advance(5000);
+    expect(ctx.navigate).not.toHaveBeenCalled();
+  });
+
+  it("com movimento reduzido a volta é na hora, sem esperar a saída", () => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: vi.fn().mockReturnValue({ matches: true }),
+    });
+    render(<Sidebar scope="platform" />);
+    fireEvent.click(back());
+    expect(ctx.navigate).toHaveBeenCalledWith({ to: "/" });
+    expect(aside()).not.toHaveClass("adm-leaving");
+  });
+
+  describe("o menu do app que chega do Admin", () => {
+    // Os dois menus são de layouts diferentes: a troca desmonta um e monta o outro no mesmo instante.
+    const Swap = ({ to }: { to: "admin" | "app" }) =>
+      to === "admin" ? <Sidebar key="admin" scope="platform" /> : <Sidebar key="app" />;
+    const position = (el: HTMLElement) => el.style.getPropertyValue("--i");
+
+    it("entra animado: leva a classe da volta e a cascata (itens do workspace primeiro, depois o Backoffice)", () => {
+      const { rerender } = render(<Swap to="admin" />);
+      rerender(<Swap to="app" />);
+      expect(aside()).toHaveClass("adm-returning");
+      expect(aside()).not.toHaveClass("adm-side");
+      expect(within(nav()).getAllByRole("heading", { level: 6 }).map(position)).toEqual(["5"]);
+      expect(within(nav()).getAllByRole("button").map(position)).toEqual(["0", "1", "2", "3", "4", "6"]);
+    });
+
+    it("anima a cada volta, não só na primeira", () => {
+      const { rerender } = render(<Swap to="admin" />);
+      rerender(<Swap to="app" />);
+      rerender(<Swap to="admin" />);
+      rerender(<Swap to="app" />);
+      expect(aside()).toHaveClass("adm-returning");
+    });
+
+    it("se o Admin saiu por outro caminho (ex.: sair da conta), o app aberto depois não anima", () => {
+      render(<Sidebar scope="platform" />).unmount();
+      render(<Sidebar />);
+      expect(aside()).not.toHaveClass("adm-returning");
+    });
   });
 });

@@ -197,14 +197,33 @@ export function useNavItems(scope: NavScope = "workspace") {
 }
 
 /**
- * Posição de cada título e item na cascata de entrada do menu do Admin (CSS `--i`, ver
- * `admin-sidebar-motion.css`): os grupos seguem um ao outro, e `total` é a vez do "Voltar ao app".
+ * Posição de cada título e item na cascata do menu (CSS `--i`, ver `admin-sidebar-motion.css`): os grupos
+ * seguem um ao outro, depois dos `leading` itens que vêm antes deles (os do workspace, no app), e `total` é a
+ * vez do "Voltar ao app".
  */
-function cascadeOf(groups: readonly AdminNavGroup[]) {
-  let i = 0;
+function cascadeOf(groups: readonly AdminNavGroup[], leading = 0) {
+  let i = leading;
   const positions = groups.map((g) => ({ head: i++, items: g.items.map(() => i++) }));
   return { positions, total: i };
 }
+
+/**
+ * Escopo do menu que está montado agora (ou `null` se não há nenhum). O menu do Admin e o do app são de layouts
+ * diferentes: ao passar de um para o outro o novo monta na mesma troca em que o antigo sai, então na primeira
+ * renderização do novo isto ainda guarda o escopo do antigo (a limpeza do efeito dele só roda depois).
+ */
+let mountedScope: NavScope | null = null;
+
+/**
+ * "Voltar ao app": o menu do Admin sai (cascata de baixo para cima, `adm-leaving`) e só então a rota troca, para o
+ * menu do app entrar animado em seguida. O tempo cobre a saída inteira (o teste do CSS confere a conta).
+ */
+export const LEAVE_MS = 230;
+/** Se a rota não trocar depois da saída (navegação recusada), o menu do Admin volta ao normal. */
+const LEAVE_RESTORE_MS = 1500;
+
+const prefersReducedMotion = () =>
+  typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
  * Menu lateral — marcação e CSS idênticos ao protótipo.
@@ -212,6 +231,10 @@ function cascadeOf(groups: readonly AdminNavGroup[]) {
  * `scope="platform"` (layout do Admin): no lugar do seletor de workspace entra um bloco fixo "Admin da
  * plataforma" — o seletor mexeria no `workspaceId` guardado, e o Admin não usa workspace —, os itens do
  * workspace saem e um "Voltar ao app" leva de volta. Nada neste escopo chama `selectWorkspace`.
+ *
+ * Movimento (`admin-sidebar-motion.css`): o menu do Admin sempre entra animado; ao clicar em "Voltar ao app" ele
+ * sai e o menu do app, que chega logo depois, também entra animado. Quem abre o app direto, ou só troca de página
+ * dentro dele, não vê animação.
  */
 export function Sidebar({ scope = "workspace" }: { scope?: NavScope }) {
   const { user } = useAuth();
@@ -220,8 +243,17 @@ export function Sidebar({ scope = "workspace" }: { scope?: NavScope }) {
   const { workspaces, selectedWorkspace, selectWorkspace } = useWorkspaceContext();
   const { menus, adminGroups, isOn } = useNavItems(scope);
   const platform = scope === "platform";
-  // Só o Admin anima a entrada; no app o menu fica como sempre.
-  const cascade = platform ? cascadeOf(adminGroups) : null;
+  // Veio do Admin? Lido uma vez, na primeira renderização (depois o menu fica como está).
+  const [fromAdmin] = useState(() => !platform && mountedScope === "platform");
+  useEffect(() => {
+    mountedScope = scope;
+    return () => {
+      mountedScope = null;
+    };
+  }, [scope]);
+  const shownMenus = menus.filter((m) => m[3]);
+  const cascade = platform || fromAdmin ? cascadeOf(adminGroups, shownMenus.length) : null;
+  const [leaving, setLeaving] = useState(false);
   const [open, setOpen] = useState(false);
   const wswRef = useRef<HTMLDivElement>(null);
   const doLogout = useLogout();
@@ -247,7 +279,26 @@ export function Sidebar({ scope = "workspace" }: { scope?: NavScope }) {
     }
   };
 
-  const go = (to: string) => navigate({ to });
+  // Enquanto o menu do Admin sai, nenhum clique navega (senão pisaria na volta ao app, que já está a caminho).
+  const go = (to: string) => {
+    if (!leaving) navigate({ to });
+  };
+
+  // "Voltar ao app": o menu sai primeiro e a rota troca depois; com movimento reduzido, a troca é na hora.
+  const backToApp = () => {
+    if (leaving) return;
+    if (prefersReducedMotion()) navigate({ to: "/" });
+    else setLeaving(true);
+  };
+  useEffect(() => {
+    if (!leaving) return;
+    const leave = setTimeout(() => navigate({ to: "/" }), LEAVE_MS);
+    const restore = setTimeout(() => setLeaving(false), LEAVE_RESTORE_MS);
+    return () => {
+      clearTimeout(leave);
+      clearTimeout(restore);
+    };
+  }, [leaving, navigate]);
 
   const wsIndex = Math.max(
     0,
@@ -260,7 +311,11 @@ export function Sidebar({ scope = "workspace" }: { scope?: NavScope }) {
     // menu (o mínimo automático de um item é o conteúdo dele) em vez de ficar na altura da tela. Com o menu
     // limitado à tela, a lista de itens (`.adm-nav`) rola sozinha e o logo e o perfil ficam à vista.
     <div className="pv" style={{ height: "100%", minHeight: 0 }}>
-      <aside className={`side${platform ? " adm-side" : ""}`} style={{ height: "100%" }}>
+      <aside
+        className={`side${platform ? " adm-side" : ""}${fromAdmin ? " adm-returning" : ""}${leaving ? " adm-leaving" : ""}`}
+        // `--n`: a vez do "Voltar ao app" na cascata, de onde a saída conta para trás (ver o CSS).
+        style={{ height: "100%", ["--n" as string]: platform ? cascade?.total : undefined }}
+      >
         <div className="logo">
           <img src={hypeappLogoBranca} alt="HypeApp" />
         </div>
@@ -369,23 +424,22 @@ export function Sidebar({ scope = "workspace" }: { scope?: NavScope }) {
         >
           {menus.length > 0 ? (
             <div className="adm-nav-group">
-              {menus
-                .filter((m) => m[3])
-                .map(([label, icon, href, , n]) => (
-                  <button
-                    key={label}
-                    type="button"
-                    className={isOn(href) ? "on" : ""}
-                    aria-label={n ? `${label} (${n})` : label}
-                    aria-current={isOn(href) ? "page" : undefined}
-                    title={label}
-                    onClick={() => go(href)}
-                  >
-                    <I n={icon} />
-                    <span>{label}</span>
-                    {n ? <b className="n">{n}</b> : null}
-                  </button>
-                ))}
+              {shownMenus.map(([label, icon, href, , n], k) => (
+                <button
+                  key={label}
+                  type="button"
+                  className={isOn(href) ? "on" : ""}
+                  aria-label={n ? `${label} (${n})` : label}
+                  aria-current={isOn(href) ? "page" : undefined}
+                  title={label}
+                  style={cascade ? { ["--i" as string]: k } : undefined}
+                  onClick={() => go(href)}
+                >
+                  <I n={icon} />
+                  <span>{label}</span>
+                  {n ? <b className="n">{n}</b> : null}
+                </button>
+              ))}
             </div>
           ) : null}
           {adminGroups.map((group, gi) => (
@@ -421,7 +475,7 @@ export function Sidebar({ scope = "workspace" }: { scope?: NavScope }) {
             aria-label="Voltar ao app"
             title="Voltar ao app"
             style={cascade ? { ["--i" as string]: cascade.total } : undefined}
-            onClick={() => go("/")}
+            onClick={backToApp}
           >
             <I n="back" />
             <span>Voltar ao app</span>
