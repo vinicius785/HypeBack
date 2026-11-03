@@ -57,7 +57,7 @@ import { ReserveBalancePreview } from "@/components/campaign-tabs/shared/reserve
 /**
  * Métodos de pagamento que debitam saldo BRL do workspace e, portanto,
  * exigem gating na ação "Convidar". Espelha o conjunto usado na aba de
- * Inscrições (applications-tab.tsx).
+ * Inscrições (agora no painel do quadro).
  */
 const SHOW_APPROVAL_COST_METHODS = new Set(["fixed", "fixed_value", "price"]);
 

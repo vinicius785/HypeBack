@@ -4,13 +4,10 @@ import { toast } from "sonner";
 import { lookupPostalCode } from "@/shared/utils/postal-code";
 import { formatCepInput } from "@/shared/utils/masks";
 
-import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Modal } from "@/components/ui/modal";
-import { useCampaignShipments, useCreateShipment } from "@/hooks/use-campaign-shipment";
-import { useQuery } from "@tanstack/react-query";
-import { getCampaignProducts, type CampaignProduct } from "@/shared/services/campaign-products";
+import type { CampaignProduct } from "@/shared/services/campaign-products";
 import type {
   ShipmentKind,
   ShipmentMethod,
@@ -18,44 +15,15 @@ import type {
   CampaignShipmentEntry,
   ShipmentItemDto,
   ShipmentAddress,
-  ShipmentStageStatus,
 } from "@/shared/services/campaign-shipment";
 
 // ---------------------------------------------------------------------------
 // Tipos e constantes
 // ---------------------------------------------------------------------------
 
-type ShipmentStage = ShipmentStageStatus;
 
-const STAGE_CONFIG: Record<
-  ShipmentStage,
-  { label: string; actionLabel: string; color: string; iconName: string }
-> = {
-  awaiting_shipment: {
-    label: "Aguardando envio",
-    actionLabel: "Cadastrar envio",
-    color: "bg-[#eff2ff] text-[#3730a3]",
-    iconName: "Package",
-  },
-  awaiting_receipt: {
-    label: "Aguardando confirmação do influenciador",
-    actionLabel: "",
-    color: "bg-[#fef3c7] text-[#92400e]",
-    iconName: "PackageCheck",
-  },
-  received: {
-    label: "Entregue",
-    actionLabel: "",
-    color: "bg-[#dcfce7] text-[#166534]",
-    iconName: "CircleCheck",
-  },
-};
 
-const SHIPMENT_STAGES: ShipmentStage[] = [
-  "awaiting_shipment",
-  "awaiting_receipt",
-  "received",
-];
+
 
 const KIND_OPTIONS: { value: ShipmentKind; label: string }[] = [
   { value: "physical", label: "Físico (produto)" },
@@ -83,43 +51,6 @@ const labelClass = "text-sm font-medium text-[#0A0A0A]";
 // Sub-componentes
 // ---------------------------------------------------------------------------
 
-function ProductsBadge({ products }: { products: CampaignProduct[] }) {
-  const [open, setOpen] = useState(false);
-  if (!products.length) return null;
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
-      >
-        <Icon name="Package" size={14} color="#525252" />
-        <span>{products.length} produto{products.length > 1 ? "s" : ""} da campanha</span>
-        <Icon name="ChevronDown" size={12} color="#525252" />
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full z-20 mt-1 w-72 rounded-xl border border-neutral-200 bg-white p-3 shadow-lg">
-          <p className="mb-2 text-xs font-semibold uppercase text-neutral-500">Produtos a enviar</p>
-          <div className="flex flex-col gap-2">
-            {products.map((p) => (
-              <div key={p.id} className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium text-neutral-900">{p.name}</span>
-                {p.description && (
-                  <span className="text-xs text-neutral-500 line-clamp-2">{p.description}</span>
-                )}
-                {p.market_value_cents != null && (
-                  <span className="text-xs text-neutral-400">
-                    Valor: R$ {(p.market_value_cents / 100).toFixed(2).replace(".", ",")}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 interface ShipmentFormModalProps {
   entry: CampaignShipmentEntry;
@@ -170,7 +101,7 @@ function emptyAddress(): ShipmentAddress {
   };
 }
 
-function ShipmentFormModal({
+export function ShipmentFormModal({
   entry,
   products,
   isPending,
@@ -942,166 +873,3 @@ function AddressFields({
   );
 }
 
-function InfluencerShipmentCard({
-  entry,
-  onRegister,
-  isPending,
-}: {
-  entry: CampaignShipmentEntry;
-  onRegister: (entry: CampaignShipmentEntry) => void;
-  isPending: boolean;
-}) {
-  const stage = entry.status as ShipmentStage;
-  const config = STAGE_CONFIG[stage];
-
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-[28px] bg-white px-4 py-3">
-      <div className="flex items-center gap-3 min-w-0">
-        <Avatar src={entry.avatar ?? undefined} alt={entry.name} size="sm" />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-neutral-900">{entry.name}</p>
-          <p className="truncate text-xs text-neutral-500">{entry.email}</p>
-        </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${config.color}`}>
-          {config.label}
-        </span>
-        {config.actionLabel && (
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isPending}
-            onClick={() => onRegister(entry)}
-            className="h-8 rounded-full px-3 text-xs font-semibold"
-          >
-            <span className="flex items-center gap-1.5">
-              <Icon name={config.iconName as "Package"} size={13} color="#404040" />
-              {config.actionLabel}
-            </span>
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Componente principal
-// ---------------------------------------------------------------------------
-
-interface ShipmentTabProps {
-  campaignId: string;
-}
-
-export function ShipmentTab({ campaignId }: ShipmentTabProps) {
-  const [shipmentTarget, setShipmentTarget] = useState<CampaignShipmentEntry | null>(null);
-
-  const { data: entries = [], isLoading } = useCampaignShipments(campaignId);
-
-  const { mutate: createShipment, isPending } = useCreateShipment(campaignId);
-
-  const { data: products = [] } = useQuery({
-    queryKey: ["campaigns", campaignId, "products"],
-    queryFn: () => getCampaignProducts(campaignId),
-    staleTime: 60_000,
-  });
-
-  const byStage = (stage: ShipmentStage) =>
-    entries.filter((e) => e.status === stage);
-
-  const handleConfirm = (dto: CreateShipmentDto) => {
-    if (!shipmentTarget) return;
-
-    createShipment(
-      { influencerId: String(shipmentTarget.campaign_user_id), dto },
-      {
-        onSuccess: () => {
-          toast.success("Envio cadastrado com sucesso.");
-          setShipmentTarget(null);
-        },
-        onError: (err) => {
-          toast.error(err instanceof Error ? err.message : "Erro ao cadastrar envio.");
-        },
-      }
-    );
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="skeleton h-16 w-full rounded-xl" />
-        ))}
-      </div>
-    );
-  }
-
-  const totalInFlow = entries.length;
-
-  return (
-    <div className="flex flex-col gap-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-[22px] font-semibold tracking-[-0.03em] text-neutral-950">Gerenciamento de Envios</h2>
-          <p className="text-sm text-neutral-500">
-            Acompanhe e registre o envio dos produtos para cada influenciador.
-          </p>
-        </div>
-        <ProductsBadge products={products} />
-      </div>
-
-      {totalInFlow === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-300 py-12 text-center">
-          <Icon name="PackageCheck" size={36} color="#a3a3a3" />
-          <p className="text-sm font-medium text-neutral-500">
-            Nenhum influenciador aguardando envio no momento.
-          </p>
-          <p className="text-xs text-neutral-400">
-            Influenciadores aparecerão aqui após o roteiro ser aprovado.
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-6">
-          {SHIPMENT_STAGES.map((stage) => {
-            const list = byStage(stage);
-            if (!list.length) return null;
-            const config = STAGE_CONFIG[stage];
-            return (
-              <section key={stage} className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <Icon name={config.iconName as "Package"} size={16} color="#525252" />
-                  <h3 className="text-sm font-semibold text-neutral-700">
-                    {config.label}
-                    <span className="ml-2 text-neutral-400 font-normal">({list.length})</span>
-                  </h3>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {list.map((entry) => (
-                    <InfluencerShipmentCard
-                      key={entry.user_id}
-                      entry={entry}
-                      onRegister={setShipmentTarget}
-                      isPending={isPending}
-                    />
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-        </div>
-      )}
-
-      {shipmentTarget && (
-        <ShipmentFormModal
-          entry={shipmentTarget}
-          products={products}
-          isPending={isPending}
-          onConfirm={handleConfirm}
-          onClose={() => setShipmentTarget(null)}
-        />
-      )}
-    </div>
-  );
-}

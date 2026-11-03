@@ -141,14 +141,14 @@ export function CampaignPendingTasks({
         kind: "content" as const,
         label: "Conteúdos para aprovar",
         icon: "Image" as const,
-        tab: "approval",
+        tab: "management",
         items: contentItems,
       },
       {
         kind: "script" as const,
         label: "Roteiros para aprovar",
         icon: "FileText" as const,
-        tab: "script-approval",
+        tab: "management",
         items: scriptItems,
       },
       {

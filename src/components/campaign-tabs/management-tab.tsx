@@ -68,6 +68,15 @@ import { resolveNicheDisplayName } from "@/shared/utils/niche-display";
 import { getNetworkLabel } from "@/shared/constants/network-labels";
 import { PriceNegotiationSection } from "./shared/price-negotiation-section";
 import { reconcileSelectedById } from "./shared/reconcile-selected";
+import { ContentPanelActions, isContentColumn } from "./shared/content-panel-actions";
+import { ShipmentPanelActions, isShipmentColumn } from "./shared/shipment-panel-actions";
+import { ScriptPanelActions, isScriptColumn } from "./shared/script-panel-actions";
+import {
+  SelectionPanelActions,
+  isSelectionColumn,
+  type SelectionColumn,
+} from "./shared/selection-panel-actions";
+import type { CampaignPhaseForCost } from "./shared/prices-utils";
 
 interface ManagementTabProps {
   participants: CampaignManagementParticipant[];
@@ -88,6 +97,14 @@ interface ManagementTabProps {
   /** Progresso geral (0–100) e fases, para o resumo lateral. */
   progress?: number;
   phases?: Array<{ contentSubmissionDeadline?: string; postDate: string }>;
+  /** Fases com formatos/preços, para calcular o custo de aprovação no painel. */
+  phasesWithFormats?: ReadonlyArray<CampaignPhaseForCost>;
+  /** Criador vindo de notificação/link: abre o painel lateral dele. */
+  focusCampaignUserId?: string | null;
+  onFocusUserConsumed?: () => void;
+  /** Conteúdo vindo de notificação: aparece primeiro no painel do criador. */
+  highlightContentId?: string | null;
+  onHighlightContentConsumed?: () => void;
 }
 
 // StatusHistory, ExtendedInfluencer, kanbanColumns, idToString e participantToExtended
@@ -284,7 +301,13 @@ export function ManagementTab({
   onOpenFlow,
   progress = 0,
   phases = [],
+  phasesWithFormats = [],
+  focusCampaignUserId = null,
+  onFocusUserConsumed,
+  highlightContentId = null,
+  onHighlightContentConsumed,
 }: ManagementTabProps) {
+  const [panelHighlight, setPanelHighlight] = useState<string | null>(null);
   // Colunas aplicáveis: campanhas que não são permuta omitem etapas de envio,
   // MAS qualquer coluna com participante é re-incluída para nenhum card sumir.
   const kanbanColumns = useMemo(
@@ -419,6 +442,27 @@ export function ManagementTab({
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.nonce]);
+
+  // Vindo de notificação/link: abre o painel lateral do criador.
+  useEffect(() => {
+    if (!focusCampaignUserId || influencersState.length === 0) return;
+    const match = influencersState.find(
+      (i) =>
+        idToString(i.id) === focusCampaignUserId ||
+        String(i.user_id ?? "") === focusCampaignUserId,
+    );
+    if (match) {
+      setPanelId(idToString(match.id));
+      const st = stageOf(getCurrentStatus(match));
+      if (st) setStage(st[0]);
+    }
+    if (highlightContentId) {
+      setPanelHighlight(highlightContentId);
+      onHighlightContentConsumed?.();
+    }
+    onFocusUserConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusCampaignUserId, influencersState]);
 
   // Hooks para mutations
   const { mutate: updateStatus, isPending: isUpdatingStatus } =
@@ -842,6 +886,11 @@ export function ManagementTab({
   const columnById = new Map(kanbanColumns.map((c) => [c.id, c]));
 
   const handleCardAction = (inf: ExtendedInfluencer, column: string) => {
+    // Etapa Seleção: a ação acontece no painel lateral do card.
+    if (isSelectionColumn(column) || isScriptColumn(column) || isShipmentColumn(column) || isContentColumn(column)) {
+      setPanelId(idToString(inf.id));
+      return;
+    }
     const target = ACTION_TARGET[column];
     if (target && onOpenFlow) onOpenFlow(target);
     else {
@@ -1075,7 +1124,41 @@ export function ManagementTab({
                     </div>
                   </div>
                   <div className="drw-b">
-                    {ACTION_LABEL[getCurrentStatus(panelInfluencer)] && (
+                    {isSelectionColumn(getCurrentStatus(panelInfluencer)) ? (
+                      <SelectionPanelActions
+                        key={panelInfluencer.id}
+                        campaignId={campaignId}
+                        influencerId={idToString(panelInfluencer.id)}
+                        column={getCurrentStatus(panelInfluencer) as SelectionColumn}
+                        paymentType={paymentType}
+                        phasesWithFormats={phasesWithFormats}
+                      />
+                    ) : isScriptColumn(getCurrentStatus(panelInfluencer)) ? (
+                      <ScriptPanelActions
+                        key={panelInfluencer.id}
+                        campaignId={campaignId}
+                        influencerId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
+                        influencer={{
+                          id: idToString(panelInfluencer.id),
+                          name: panelInfluencer.name,
+                          username: panelInfluencer.username,
+                          avatar: panelInfluencer.avatar,
+                        }}
+                      />
+                    ) : isContentColumn(getCurrentStatus(panelInfluencer)) ? (
+                      <ContentPanelActions
+                        key={panelInfluencer.id}
+                        campaignId={campaignId}
+                        influencerId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
+                        highlightContentId={panelHighlight}
+                      />
+                    ) : isShipmentColumn(getCurrentStatus(panelInfluencer)) ? (
+                      <ShipmentPanelActions
+                        key={panelInfluencer.id}
+                        campaignId={campaignId}
+                        userId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
+                      />
+                    ) : ACTION_LABEL[getCurrentStatus(panelInfluencer)] && (
                       <button
                         type="button"
                         className="btn"
@@ -1085,6 +1168,14 @@ export function ManagementTab({
                       >
                         {ACTION_LABEL[getCurrentStatus(panelInfluencer)]}
                       </button>
+                    )}
+                    {panelInfluencer.price_negotiation && (
+                      <PriceNegotiationSection
+                        campaignId={campaignId}
+                        userId={panelInfluencer.user_id}
+                        status={panelInfluencer.status}
+                        negotiation={panelInfluencer.price_negotiation}
+                      />
                     )}
                     <div className="kb2-r">
                       <button
@@ -1113,7 +1204,7 @@ export function ManagementTab({
                           <I n="refresh" cls="sm" />
                           Reconsiderar
                         </button>
-                      ) : (
+                      ) : isSelectionColumn(getCurrentStatus(panelInfluencer)) ? null : (
                         <button
                           type="button"
                           className="btn out dng"
