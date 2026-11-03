@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useBlocker, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { useAuth } from "@/contexts/auth-context";
@@ -9,10 +9,13 @@ import { getUploadUrl } from "@/lib/utils/api";
 import { clearClientSession } from "@/lib/utils/session";
 import { formatPhoneNumber } from "@/lib/utils/format";
 import { logout } from "@/shared/services/auth";
-import { updateCurrentUserProfile } from "@/shared/services/me";
+import { removeProfilePhoto, updateCurrentUserProfile, uploadProfilePhoto } from "@/shared/services/me";
+import { validateProfilePhoto } from "@/lib/utils/photo-crop";
 import type { WorkspaceRole } from "@/shared/types";
 
+import { PhotoCropModal } from "@/components/profile/photo-crop-modal";
 import { I } from "@/components/prototype/ui";
+import { WkModal } from "@/components/workspace-settings/wk-modal";
 
 export const Route = createFileRoute("/(private)/(app)/settings")({
   component: SettingsScreen,
@@ -49,13 +52,29 @@ interface FieldProps {
   readOnly?: boolean;
   /** Somente leitura por regra do produto (não é só estado temporário de envio). */
   locked?: boolean;
+  /** Explicação curta abaixo do campo (ex.: por que está bloqueado). */
+  hint?: string;
   autoComplete?: string;
   inputMode?: "email" | "tel" | "text";
   onChange?: (v: string) => void;
 }
 
 /** `mpFd` do protótipo. Campo editável = branco com borda; somente leitura = cinza com cadeado. */
-function Field({ id, label, value, placeholder, error, type, pre, readOnly, locked, autoComplete, inputMode, onChange }: FieldProps) {
+function Field({
+  id,
+  label,
+  value,
+  placeholder,
+  error,
+  type,
+  pre,
+  readOnly,
+  locked,
+  autoComplete,
+  inputMode,
+  hint,
+  onChange,
+}: FieldProps) {
   return (
     <div className={`mpx-fd ${error ? "bad" : ""}`}>
       <label htmlFor={id}>
@@ -83,6 +102,8 @@ function Field({ id, label, value, placeholder, error, type, pre, readOnly, lock
         <small id={`${id}-err`} role="alert">
           {error}
         </small>
+      ) : hint ? (
+        <small className="mpx-hint">{hint}</small>
       ) : null}
     </div>
   );
@@ -90,7 +111,7 @@ function Field({ id, label, value, placeholder, error, type, pre, readOnly, lock
 
 function SettingsScreen() {
   const { user, setUser } = useAuth();
-  const { workspaces, selectedWorkspace } = useWorkspaceContext();
+  const { workspaces, selectedWorkspace, selectWorkspace } = useWorkspaceContext();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -98,6 +119,11 @@ function SettingsScreen() {
   const [email, setEmail] = useState(user?.email ?? "");
   const [err, setErr] = useState<{ n?: string; e?: string }>({});
   const [photoBroken, setPhotoBroken] = useState(false);
+  const [picked, setPicked] = useState<File | null>(null);
+  const [photoErr, setPhotoErr] = useState<string | null>(null);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const leaving = useRef(false);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -124,7 +150,30 @@ function SettingsScreen() {
     },
   });
 
-  const { mutate: doLogout } = useMutation({
+  const { mutate: sendPhoto, isPending: sendingPhoto } = useMutation({
+    mutationFn: (blob: Blob) => uploadProfilePhoto(blob),
+    onSuccess: (updated) => {
+      setUser(updated);
+      void queryClient.invalidateQueries({ queryKey: ["get-current-user"] });
+      setPicked(null);
+      setPhotoErr(null);
+      toast.success("Foto atualizada");
+    },
+    onError: (e: unknown) => setPhotoErr(e instanceof Error ? e.message : "Não foi possível enviar a foto."),
+  });
+
+  const { mutate: dropPhoto, isPending: removingPhoto } = useMutation({
+    mutationFn: removeProfilePhoto,
+    onSuccess: (updated) => {
+      setUser(updated);
+      void queryClient.invalidateQueries({ queryKey: ["get-current-user"] });
+      setPhotoErr(null);
+      toast.success("Foto removida");
+    },
+    onError: (e: unknown) => setPhotoErr(e instanceof Error ? e.message : "Não foi possível remover a foto."),
+  });
+
+  const { mutate: doLogout, isPending: loggingOut } = useMutation({
     mutationFn: logout,
     onSettled: () => {
       clearClientSession(queryClient);
@@ -133,9 +182,25 @@ function SettingsScreen() {
     },
   });
 
+  const dirty = !!user && (name.trim() !== (user.name ?? "") || email.trim() !== (user.email ?? ""));
+
+  // Sair da tela com alterações não salvas pede confirmação (navegação interna e fechar/recarregar a aba).
+  const blocker = useBlocker({
+    shouldBlockFn: () => dirty && !leaving.current,
+    enableBeforeUnload: () => dirty && !leaving.current,
+    withResolver: true,
+  });
+
   if (!user) return null;
 
-  const dirty = name.trim() !== (user.name ?? "") || email.trim() !== (user.email ?? "");
+  const pickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const problem = validateProfilePhoto(file);
+    setPhotoErr(problem);
+    if (!problem) setPicked(file);
+  };
 
   const save = () => {
     const er: { n?: string; e?: string } = {};
@@ -158,24 +223,65 @@ function SettingsScreen() {
         <div className="head fade">
           <div>
             <h1>Meu perfil</h1>
-            <p>Seus dados de acesso ao HypeApp.</p>
+            <p>Gerencie suas informações pessoais e sua conta.</p>
           </div>
         </div>
         <div className="fade">
           <div className="mpx-g">
             <aside className="mpx-side">
               <div className="mpx-id">
-                <div className="mpx-av">
+                <div className={`mpx-av${sendingPhoto || removingPhoto ? " busy" : ""}`}>
                   {photo && !photoBroken ? (
-                    <img src={photo} alt="" onError={() => setPhotoBroken(true)} />
+                    <img src={photo} alt={`Foto de ${user.name}`} onError={() => setPhotoBroken(true)} />
                   ) : (
-                    <span>{initialsOf(user.name)}</span>
+                    <span aria-hidden="true">{initialsOf(user.name)}</span>
                   )}
                 </div>
                 <div className="mpx-who">
                   <b>{user.name}</b>
                   <small>{user.email}</small>
                   {roleLabel ? <span className="mpx-rl">{roleLabel}</span> : null}
+                  {selectedWorkspace ? <small className="mpx-cw">em {selectedWorkspace.name}</small> : null}
+                </div>
+                <div className="mpx-ph-w">
+                  <input
+                    ref={fileInput}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    hidden
+                    aria-label="Escolher foto de perfil"
+                    onChange={pickFile}
+                  />
+                  <div className="mpx-ph">
+                    <button
+                      type="button"
+                      className="btn out"
+                      disabled={sendingPhoto || removingPhoto}
+                      onClick={() => fileInput.current?.click()}
+                    >
+                      <I n="image" cls="sm" />
+                      {photo ? "Alterar foto" : "Adicionar foto"}
+                    </button>
+                    {photo ? (
+                      <button
+                        type="button"
+                        className="btn out dng"
+                        disabled={sendingPhoto || removingPhoto}
+                        aria-busy={removingPhoto}
+                        onClick={() => dropPhoto()}
+                      >
+                        {removingPhoto ? <I n="refresh" cls="sm spin" /> : <I n="trash" cls="sm" />}
+                        {removingPhoto ? "Removendo…" : "Remover"}
+                      </button>
+                    ) : null}
+                  </div>
+                  {photoErr && !picked ? (
+                    <p className="mpx-ph-er" role="alert">
+                      {photoErr}
+                    </p>
+                  ) : (
+                    <small className="mpx-hint">JPEG, PNG ou WebP, até 5 MB.</small>
+                  )}
                 </div>
               </div>
               {workspaces.length > 0 ? (
@@ -188,11 +294,19 @@ function SettingsScreen() {
                     {workspaces.map((w) => {
                       const wp = w.photo ? getUploadUrl(w.photo) : undefined;
                       const current = w.id === selectedWorkspace?.id;
-                      return (
-                        <li key={w.id} className={current ? "cur" : ""}>
+                      const body = (
+                        <>
                           <span className="brand">
                             {wp ? (
-                              <img src={wp} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              <img
+                                src={wp}
+                                alt=""
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                }}
+                              />
                             ) : (
                               initialsOf(w.name)
                             )}
@@ -201,7 +315,26 @@ function SettingsScreen() {
                             <b>{w.name}</b>
                             <small>{w.role ? (ROLE_LABEL[w.role] ?? w.role) : ""}</small>
                           </span>
-                          {current ? <span className="tag">Atual</span> : null}
+                          {current ? <span className="tag">Atual</span> : <span className="go">Acessar</span>}
+                        </>
+                      );
+                      return (
+                        <li key={w.id} className={current ? "cur" : ""}>
+                          {current ? (
+                            <div className="mpx-wr">{body}</div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="mpx-wr"
+                              aria-label={`Acessar ${w.name}`}
+                              onClick={() => {
+                                selectWorkspace(w);
+                                navigate({ to: "/" });
+                              }}
+                            >
+                              {body}
+                            </button>
+                          )}
                         </li>
                       );
                     })}
@@ -212,7 +345,7 @@ function SettingsScreen() {
             <div className="mpx-cl">
               <section className="mpx-cd">
                 <div className="mpx-h">
-                  <h3>Dados pessoais</h3>
+                  <h3>Informações pessoais</h3>
                   <p>Como você aparece para a sua equipe e para os criadores.</p>
                 </div>
                 <div className="mpx-fs">
@@ -251,6 +384,7 @@ function SettingsScreen() {
                     placeholder="Não informado"
                     pre="BR +55"
                     locked
+                    hint="O celular não pode ser alterado por aqui."
                   />
                 </div>
                 <div className="mpx-ac">
@@ -269,7 +403,13 @@ function SettingsScreen() {
                       </>
                     )}
                   </span>
-                  <button type="button" className="btn" disabled={!dirty || isPending} aria-busy={isPending} onClick={save}>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={!dirty || isPending}
+                    aria-busy={isPending}
+                    onClick={save}
+                  >
                     {isPending ? <I n="refresh" cls="sm spin" /> : <I n="check" cls="sm" />}
                     {isPending ? "Salvando…" : "Salvar alterações"}
                   </button>
@@ -284,7 +424,7 @@ function SettingsScreen() {
                     <b>Sair da conta</b>
                     <small>Você precisará entrar de novo para acessar o HypeApp.</small>
                   </div>
-                  <button type="button" className="btn sair" onClick={() => doLogout()}>
+                  <button type="button" className="btn sair" onClick={() => setConfirmLogout(true)}>
                     Sair
                   </button>
                 </div>
@@ -293,6 +433,75 @@ function SettingsScreen() {
           </div>
         </div>
       </div>
+      {picked ? (
+        <PhotoCropModal
+          file={picked}
+          pending={sendingPhoto}
+          error={photoErr}
+          onClose={() => {
+            setPicked(null);
+            setPhotoErr(null);
+          }}
+          onConfirm={(blob) => {
+            setPhotoErr(null);
+            sendPhoto(blob);
+          }}
+        />
+      ) : null}
+      {confirmLogout ? (
+        <WkModal
+          cls="wkm"
+          sub="Sessão"
+          title="Sair da conta?"
+          onClose={() => setConfirmLogout(false)}
+          footer={
+            <>
+              <button type="button" className="btn out" onClick={() => setConfirmLogout(false)}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn dng"
+                disabled={loggingOut}
+                onClick={() => {
+                  leaving.current = true;
+                  doLogout();
+                }}
+              >
+                <I n="logout" cls="sm" />
+                {loggingOut ? "Saindo…" : "Sair"}
+              </button>
+            </>
+          }
+        >
+          <p className="wkm-hn">
+            Você precisará entrar de novo para acessar o HypeApp neste dispositivo.
+            {dirty ? " As alterações não salvas serão perdidas." : ""}
+          </p>
+        </WkModal>
+      ) : null}
+      {blocker.status === "blocked" ? (
+        <WkModal
+          cls="wkm"
+          sub="Alterações pendentes"
+          title="Sair sem salvar?"
+          onClose={() => blocker.reset?.()}
+          footer={
+            <>
+              <button type="button" className="btn out" onClick={() => blocker.reset?.()}>
+                Continuar editando
+              </button>
+              <button type="button" className="btn dng" onClick={() => blocker.proceed?.()}>
+                Descartar e sair
+              </button>
+            </>
+          }
+        >
+          <p className="wkm-hn">
+            Você alterou seus dados e ainda não salvou. Se sair agora, as alterações serão perdidas.
+          </p>
+        </WkModal>
+      ) : null}
     </div>
   );
 }

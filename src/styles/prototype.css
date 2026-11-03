@@ -2461,3 +2461,41 @@
 .pv .pvx-tl li { align-items: center; }
 .pv .pvx-gn { align-items: start; }
 .pv .wkx-pend { margin-top: 28px; } .pv .wkx-pend h4 { font-size: 14px; font-weight: 700; letter-spacing: -.01em; color: var(--muted); margin: 0 0 10px; }
+/* Meu perfil: foto (recorte circular e controles) */
+.pv .pcm-b { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.pv .pcm-vp { position: relative; overflow: hidden; border-radius: 24px; background: var(--ink); cursor: grab; touch-action: none; user-select: none; max-width: 100%; }
+.pv .pcm-vp:active { cursor: grabbing; }
+.pv .pcm-vp:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+.pv .pcm-vp img { position: absolute; left: 0; top: 0; max-width: none; pointer-events: none; }
+.pv .pcm-mask { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 200px rgba(5,5,5,.55), inset 0 0 0 2px rgba(255,255,255,.9); pointer-events: none; }
+.pv .pcm-z { display: flex; align-items: center; gap: 14px; width: min(280px, 100%); font-size: 14px; font-weight: 600; }
+.pv .pcm-z input { flex: 1; accent-color: var(--brand); min-height: 28px; }
+.pv .pcm-b .wkm-hn { text-align: center; margin: 0; }
+.pv .pcm-err { margin: 0; color: var(--danger); font-size: 14px; font-weight: 500; text-align: center; }
+.pv .ovd.pcm .btn .spin { animation: pv-updspin 1s linear infinite; }
+.pv .ovd.pcm .btn:disabled { opacity: .5; cursor: default; }
+.pv .mpx-ph { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pv .mpx-ph .btn { height: 40px; padding: 0 16px; font-size: 14px; }
+.pv .mpx-ph .btn:disabled { opacity: .5; cursor: default; }
+.pv .mpx-ph .btn.out { background: #fff; box-shadow: inset 0 0 0 1.5px var(--hair); color: var(--ink); }
+.pv .mpx-ph .btn.out:hover { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.pv .mpx-ph .btn .spin { animation: pv-updspin 1s linear infinite; }
+.pv .mpx-ph-er { margin: 8px 0 0; color: var(--danger); font-size: 14px; font-weight: 500; }
+.pv .mpx-av.busy > span, .pv .mpx-av.busy > img { opacity: .45; }
+@media (prefers-reduced-motion: reduce) { .pv .ovd.pcm .btn .spin, .pv .mpx-ph .btn .spin { animation: none; } }
+@media (max-width: 640px) { .pv .mpx-ph .btn { flex: 1; justify-content: center; min-height: 44px; } }
+.pv .mpx-id { flex-wrap: wrap; }
+.pv .mpx-cw { margin-top: 6px; }
+.pv .mpx-ph-w { flex: 1 0 100%; padding-top: 18px; border-top: 1.5px solid var(--bg); }
+.pv .mpx-ph-w .mpx-ph { margin-top: 0; }
+.pv .mpx-hint { display: block; margin-top: 8px; color: var(--muted); font-size: 13px; }
+.pv .mpx-fd > .mpx-hint { margin-top: 0; font-weight: 400; color: var(--muted); }
+.pv .mpx-wl li { padding: 0; }
+.pv .mpx-wr { display: flex; align-items: center; gap: 12px; padding: 8px 0; width: 100%; text-align: left; background: none; border: 0; font: inherit; color: inherit; }
+.pv .mpx-wl button.mpx-wr { cursor: pointer; border-radius: 14px; transition: background-color var(--dur) var(--ease); }
+.pv .mpx-wl button.mpx-wr:hover { background: var(--bg); box-shadow: -8px 0 0 var(--bg), 8px 0 0 var(--bg); }
+.pv .mpx-wl button.mpx-wr:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+.pv .mpx-wl .go { flex: none; font-size: 13px; font-weight: 600; color: var(--muted); }
+.pv .mpx-wl button.mpx-wr:hover .go { color: var(--ink); }
+
+.pv .mpx-wl .tag { display: inline-block; text-transform: none; letter-spacing: 0; font-size: 13px; padding: 3px 10px; }

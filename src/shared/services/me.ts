@@ -130,6 +130,41 @@ export async function updateCurrentUserProfile(
   return mapUserFromApi(response.data);
 }
 
+async function readApiMessage(request: Response, fallback: string): Promise<string> {
+  try {
+    const body = await request.json();
+    if (typeof body?.message === "string" && body.message.trim()) return body.message;
+    if (Array.isArray(body?.message) && typeof body.message[0] === "string") return body.message[0];
+  } catch {
+    // corpo vazio ou não-JSON
+  }
+  if (request.status === 413) return "A imagem é grande demais. O tamanho máximo é 5 MB.";
+  return fallback;
+}
+
+/** POST /me/photo — multipart, campo `photo`. Devolve o usuário com o novo `avatar`. */
+export async function uploadProfilePhoto(photo: Blob | File, filename = photo instanceof File ? photo.name : "foto.jpg"): Promise<User> {
+  const body = new FormData();
+  body.append("photo", photo, filename);
+  const request = await fetch(getApiUrl("/me/photo"), {
+    method: "POST",
+    headers: { Accept: "application/json", "Client-Type": "backoffice", Authorization: `Bearer ${getAuthToken()}` },
+    body,
+  });
+  if (!request.ok) throw new Error(await readApiMessage(request, "Não foi possível enviar a foto. Tente novamente."));
+  return mapUserFromApi((await request.json()).data);
+}
+
+/** DELETE /me/photo — volta ao avatar com iniciais. */
+export async function removeProfilePhoto(): Promise<User> {
+  const request = await fetch(getApiUrl("/me/photo"), {
+    method: "DELETE",
+    headers: { Accept: "application/json", "Client-Type": "backoffice", Authorization: `Bearer ${getAuthToken()}` },
+  });
+  if (!request.ok) throw new Error(await readApiMessage(request, "Não foi possível remover a foto. Tente novamente."));
+  return mapUserFromApi((await request.json()).data);
+}
+
 export async function updatePhone(data: UpdatePhoneData): Promise<void> {
   const request = await fetch(getApiUrl("/me/phone"), {
     method: "POST",
@@ -174,33 +209,4 @@ export async function verifyPhone(data: VerifyPhoneData): Promise<void> {
     }
     throw errorData || "Failed to verify phone";
     }
-}
-
-/** Foto de perfil (`POST /me/photo`, campo `photo`): devolve o usuário atualizado. */
-export async function uploadProfilePhoto(file: File): Promise<User> {
-  const body = new FormData();
-  body.append("photo", file);
-  const request = await fetch(getApiUrl("/me/photo"), {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Client-Type": "backoffice",
-      Authorization: `Bearer ${getAuthToken()}`,
-    },
-    body,
-  });
-
-  if (!request.ok) {
-    let message = "Não foi possível enviar a foto";
-    try {
-      const data = await request.json();
-      if (typeof data?.message === "string") message = data.message;
-    } catch {
-      /* corpo vazio */
-    }
-    throw new Error(message);
-  }
-
-  const response = await request.json();
-  return mapUserFromApi(response.data);
 }
