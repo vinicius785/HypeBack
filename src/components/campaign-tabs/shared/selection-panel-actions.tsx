@@ -89,21 +89,29 @@ export function SelectionPanelActions({
   const showCost = !!paymentType && COST_METHODS.has(paymentType);
   const busy = isUpdating || isMoving;
 
-  const influencer = (query.data ?? []).find(
+  // A API devolve uma linha por criador E rede: junta todas as do criador.
+  const matches = (query.data ?? []).filter(
     (i) => String(i.id) === String(influencerId),
   );
+  const influencer = matches[0];
 
   const rows = useMemo<ProfileRow[]>(() => {
     if (!influencer) return [];
-    const matches = (status?: string) => {
+    const statusMatches = (status?: string) => {
       const s = (status ?? "").toLowerCase().trim();
       if (column === "applications") return s === "applications";
       if (column === "pre_selection") return s === "pre_selection";
       return s === "curation" || s === "pre_selection_curation";
     };
-    const profiles = (influencer.social_networks ?? []).filter((p) =>
-      matches(p.status),
-    );
+    const seen = new Set<string>();
+    const profiles = matches
+      .flatMap((m) => m.social_networks ?? [])
+      .filter((p) => {
+        const key = String(p.id);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return statusMatches(p.status);
+      });
     if (profiles.length === 0) {
       return [
         {
@@ -122,7 +130,7 @@ export function SelectionPanelActions({
       username: p.username || influencer.username,
       prices: p.prices,
     }));
-  }, [influencer, column]);
+  }, [influencer, matches, column]);
 
   if (query.isLoading) return <small className="drw-hint">Carregando perfis…</small>;
   if (!influencer || rows.length === 0) return null;

@@ -1128,7 +1128,7 @@ export function ManagementTab({
                       <SelectionPanelActions
                         key={panelInfluencer.id}
                         campaignId={campaignId}
-                        influencerId={idToString(panelInfluencer.id)}
+                        influencerId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
                         column={getCurrentStatus(panelInfluencer) as SelectionColumn}
                         paymentType={paymentType}
                         phasesWithFormats={phasesWithFormats}
