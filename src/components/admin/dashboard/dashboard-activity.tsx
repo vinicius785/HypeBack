@@ -5,8 +5,10 @@ import {
   AdminEmptyState,
   AdminErrorState,
   AdminLink,
+  AdminListSkeleton,
   AdminSection,
-  AdminSkeleton,
+  AdminTimeline,
+  AdminTimelineItem,
 } from "@/components/admin/platform";
 import { I } from "@/components/prototype/ui";
 import { RECENT_ACTIVITY_LIMIT } from "@/hooks/admin/use-admin-overview";
@@ -21,44 +23,29 @@ import "@/styles/admin-dashboard.css";
 
 /**
  * Um evento da linha do tempo: a frase pronta do servidor (com link quando há para onde ir), há quanto tempo (o
- * instante exato no `title`), o tipo e, nas ações do time, quem fez e o motivo informado. O ponto roxo marca as
- * ações administrativas (registradas em log); os demais são fatos que o sistema já guardava.
+ * instante exato no `title`), o tipo e, nas ações do time, quem fez; o motivo informado fica no detalhe recolhido
+ * ("Ver detalhes"). O marcador roxo marca as ações administrativas (registradas em log); os demais são fatos que o
+ * sistema já guardava.
  */
 function ActivityItem({ event }: { event: AdminActivityEvent }) {
   const target = activityLink(event);
   const isAdminAction = event.kind === "admin_action";
   return (
-    <li className="adm-dash-ev" data-source={event.source === "platform_admin_action_log" ? "log" : "derived"}>
-      <p className="adm-dash-ev-title">{target ? <AdminLink to={target}>{event.title}</AdminLink> : event.title}</p>
-      <div className="adm-dash-ev-meta">
-        <time dateTime={event.occurred_at} title={formatDateTime(event.occurred_at)}>
-          {formatRelativeTime(event.occurred_at)}
-        </time>
-        {isAdminAction && event.actor ? <span>{event.actor.name}</span> : null}
-        <span>{ACTIVITY_KIND_LABEL[event.kind] ?? event.kind}</span>
-      </div>
-      {isAdminAction && event.reason ? (
-        <p className="adm-dash-ev-reason">
-          <span className="adm-dash-ev-reason-k">Motivo</span> {event.reason}
-        </p>
-      ) : null}
-    </li>
-  );
-}
-
-function ActivitySkeleton() {
-  return (
-    <div aria-busy="true">
-      <span className="adm-sr" role="status">
-        Carregando atividade…
-      </span>
-      {[0, 1, 2, 3, 4].map((row) => (
-        <div className="adm-dash-sk-row adm-dash-sk-ev" key={row}>
-          <AdminSkeleton width={`${72 - row * 6}%`} height={15} />
-          <AdminSkeleton width={150} height={12} />
-        </div>
-      ))}
-    </div>
+    <AdminTimelineItem
+      tone={event.source === "platform_admin_action_log" ? "brand" : "neutral"}
+      title={target ? <AdminLink to={target}>{event.title}</AdminLink> : event.title}
+      meta={[isAdminAction ? event.actor?.name : null, ACTIVITY_KIND_LABEL[event.kind] ?? event.kind]}
+      time={formatRelativeTime(event.occurred_at)}
+      dateTime={event.occurred_at}
+      timeTitle={formatDateTime(event.occurred_at)}
+      detail={
+        isAdminAction && event.reason ? (
+          <>
+            <strong>Motivo:</strong> {event.reason}
+          </>
+        ) : undefined
+      }
+    />
   );
 }
 
@@ -74,7 +61,7 @@ export function DashboardActivity({ query }: { query: UseQueryResult<AdminFeedRe
     body = isError ? (
       <AdminErrorState compact error={error} onRetry={() => void refetch()} retrying={isFetching} />
     ) : (
-      <ActivitySkeleton />
+      <AdminListSkeleton variant="timeline" rows={5} ariaLabel="Carregando atividade…" />
     );
   } else if (data.data.length === 0) {
     body = (
@@ -86,11 +73,14 @@ export function DashboardActivity({ query }: { query: UseQueryResult<AdminFeedRe
     );
   } else {
     body = (
-      <ol className="adm-dash-tl">
-        {data.data.slice(0, RECENT_ACTIVITY_LIMIT).map((event) => (
-          <ActivityItem key={event.id} event={event} />
-        ))}
-      </ol>
+      <AdminTimeline
+        ariaLabel="Atividade recente"
+        groups={[
+          {
+            items: data.data.slice(0, RECENT_ACTIVITY_LIMIT).map((event) => <ActivityItem key={event.id} event={event} />),
+          },
+        ]}
+      />
     );
   }
 

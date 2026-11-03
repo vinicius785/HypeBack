@@ -2,6 +2,7 @@ import {
   AdminAvatar,
   AdminBadge,
   AdminErrorState,
+  AdminNotFound,
   AdminPage,
   AdminPageHeader,
   AdminSection,
@@ -19,7 +20,7 @@ import { useAdminUser } from "@/hooks/admin/use-admin-users";
 import { AdminApiError, isAdminApiError } from "@/lib/admin/admin-client";
 import type { AdminUserDetail } from "@/shared/admin-platform.types";
 
-import { AdminUserActions } from "./admin-user-actions";
+import { AdminUserActionNotice, AdminUserActions } from "./admin-user-actions";
 import { AdminUserActivityTab } from "./admin-user-activity-tab";
 import { AdminUserData, AdminUserSuspension } from "./admin-user-info";
 import { AdminUserLinksTab } from "./admin-user-links-tab";
@@ -29,13 +30,14 @@ import { usersListLink } from "./admin-users-links";
 
 import "@/styles/admin-users.css";
 
-export const ADMIN_USER_TABS = ["links", "sessions", "activity"] as const;
+/** `summary` (Resumo) é a primeira e a padrão; `links`, `sessions` e `activity` são os valores que já existiam na URL. */
+export const ADMIN_USER_TABS = ["summary", "links", "sessions", "activity"] as const;
 export type AdminUserTab = (typeof ADMIN_USER_TABS)[number];
 
 /** `validateSearch` da rota do detalhe: só `tab`, e só um valor conhecido (a barra de endereço é entrada de usuário). */
 export function validateAdminUserSearch(raw: Record<string, unknown>): { tab?: AdminUserTab } {
   const tab = (ADMIN_USER_TABS as readonly unknown[]).includes(raw.tab) ? (raw.tab as AdminUserTab) : undefined;
-  return tab && tab !== "links" ? { tab } : {};
+  return tab && tab !== "summary" ? { tab } : {};
 }
 
 const LIST_CRUMB: AdminCrumb = { label: "Usuários", to: usersListLink() };
@@ -68,26 +70,24 @@ function DetailSkeleton() {
 }
 
 function DetailError({ error, onRetry, retrying }: { error: unknown; onRetry?: () => void; retrying?: boolean }) {
-  const notFound = isAdminApiError(error, "NOT_FOUND");
   return (
     <AdminPage>
       <AdminPageHeader breadcrumb={[LIST_CRUMB, { label: "Usuário" }]} title="Usuário" />
-      <AdminErrorState
-        boxed
-        error={error}
-        message={notFound ? "Não encontramos um usuário com este identificador." : undefined}
-        onRetry={onRetry}
-        retrying={retrying}
-      />
+      {isAdminApiError(error, "NOT_FOUND") ? (
+        <AdminNotFound entity="usuário" backTo={usersListLink()} />
+      ) : (
+        <AdminErrorState boxed error={error} onRetry={onRetry} retrying={retrying} />
+      )}
     </AdminPage>
   );
 }
 
 function AdminUserDetailView({ user }: { user: AdminUserDetail }) {
   const { user: me } = useAuth();
-  const [tab, setTab] = useAdminSearchParam<AdminUserTab>("tab", "links", ADMIN_USER_TABS);
+  const [tab, setTab] = useAdminSearchParam<AdminUserTab>("tab", "summary", ADMIN_USER_TABS);
 
   const tabs: AdminTabItem<AdminUserTab>[] = [
+    { id: "summary", label: "Resumo" },
     { id: "links", label: "Vínculos", count: user.workspaces.length },
     { id: "sessions", label: "Sessões", count: user.sessions.active_count },
     { id: "activity", label: "Atividade" },
@@ -114,10 +114,13 @@ function AdminUserDetailView({ user }: { user: AdminUserDetail }) {
         actions={<AdminUserActions user={user} selfId={me?.id} />}
       />
 
+      <AdminUserActionNotice user={user} selfId={me?.id} />
       <AdminUserSuspension user={user} />
-      <AdminUserData user={user} />
 
       <AdminTabs tabs={tabs} value={tab} onChange={setTab} ariaLabel="Seções do usuário" idPrefix="admin-user" />
+      <AdminTabPanel idPrefix="admin-user" id="summary" active={tab === "summary"}>
+        <AdminUserData user={user} />
+      </AdminTabPanel>
       <AdminTabPanel idPrefix="admin-user" id="links" active={tab === "links"}>
         <AdminUserLinksTab user={user} />
       </AdminTabPanel>
@@ -132,8 +135,9 @@ function AdminUserDetailView({ user }: { user: AdminUserDetail }) {
 }
 
 /**
- * Detalhe do usuário (`/admin/users/:userId`): cabeçalho com foto, nome, e-mail, estado, tipo e as ações; o bloco
- * da suspensão (quando há); os dados da conta; e as abas Vínculos, Sessões e Atividade (na URL: `?tab=`).
+ * Detalhe do usuário (`/admin/users/:userId`): cabeçalho com foto, nome, e-mail, estado, tipo e as ações; o aviso de
+ * por que não há ação (quando é o caso) e o bloco da suspensão (quando há); e as abas Resumo (dados da conta),
+ * Vínculos, Sessões e Atividade (na URL: `?tab=`).
  */
 export function AdminUserDetailScreen({ userId }: { userId: string }) {
   const validId = VALID_USER_ID.test(userId);

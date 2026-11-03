@@ -20,7 +20,11 @@ export interface DashboardPeriodState {
   /** Hoje em São Paulo: as datas do personalizado não passam dele. */
   today: string;
   selectPreset: (choice: AdminPeriodChoice) => void;
-  /** Mexe numa ponta do personalizado; a outra acompanha se o intervalo inverter ou passar de 366 dias. */
+  /**
+   * Mexe numa ponta do personalizado; a outra acompanha se o intervalo inverter ou passar de 366 dias.
+   * A UI (`AdminPeriodSelect`) não emite intervalo inválido, mas o hook segue defendendo: este método normaliza antes
+   * de gravar e o que vem da URL (link colado ou editado à mão) é sempre revalidado ao resolver o período.
+   */
   setCustomRange: (patch: { from?: string; to?: string }) => void;
 }
 
@@ -78,7 +82,7 @@ export function useDashboardPeriod(): DashboardPeriodState {
         today,
         patch.from !== undefined ? "from" : "to",
       );
-      // Campo apagado ou incompleto: espera a pessoa terminar de digitar (o campo volta ao último valor válido).
+      // Datas que não são datas civis (campo apagado ou incompleto): nada é gravado e o período anterior vale.
       if (next) write(periodToSearch({ preset: "custom", ...next }));
     },
     [write, period.from, period.to, today],

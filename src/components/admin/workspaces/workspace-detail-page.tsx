@@ -1,8 +1,12 @@
 import { useState } from "react";
 
 import {
+  AdminActionMenu,
   AdminAvatar,
+  AdminBadge,
   AdminErrorState,
+  AdminInfoPopover,
+  AdminNotFound,
   AdminPage,
   AdminPageHeader,
   AdminSection,
@@ -11,6 +15,7 @@ import {
   AdminStatusBadge,
   AdminTabPanel,
   AdminTabs,
+  type AdminActionMenuItem,
   type AdminCrumb,
   type AdminTabItem,
 } from "@/components/admin/platform";
@@ -21,11 +26,11 @@ import { isAdminApiError } from "@/lib/admin/admin-client";
 import { formatDate, formatDateTime, formatRelativeTime } from "@/lib/admin/format";
 import type { AdminWorkspaceDetail } from "@/shared/admin-platform.types";
 
-import { WorkspaceActionsMenu } from "./workspace-actions-menu";
 import { WorkspaceActivityTab } from "./workspace-activity-tab";
 import { WorkspaceCampaignsTab } from "./workspace-campaigns-tab";
 import {
   availableActions,
+  WORKSPACE_ACTION_LABEL,
   WORKSPACE_TAB_IDS,
   WORKSPACE_TAB_LABEL,
   type WorkspaceAction,
@@ -41,10 +46,25 @@ import { WorkspaceSummaryTab } from "./workspace-summary-tab";
 
 import "@/styles/admin-workspaces.css";
 
-const LIST_CRUMB: AdminCrumb = { label: "Workspaces", to: { to: "/admin/workspaces" } };
+const LIST_LINK = { to: "/admin/workspaces" };
+const LIST_CRUMB: AdminCrumb = { label: "Workspaces", to: LIST_LINK };
 const TAB_PREFIX = "workspace";
 
-/** Linha discreta do cabeçalho: responsável, "Cliente desde…" e a última atividade. */
+/** A regra da "última atividade", no "i" do cabeçalho (o Resumo não repete a data): dois parágrafos, a regra e a janela. */
+function LastActivityInfo({ windowDays }: { windowDays: number }) {
+  return (
+    <AdminInfoPopover label="Última atividade">
+      <AdminInfoPopover.Paragraph>
+        O mais recente entre campanha criada, aporte pago e criadores movimentados pelo time do cliente.
+      </AdminInfoPopover.Paragraph>
+      <AdminInfoPopover.Paragraph>
+        O workspace está ativo quando isso aconteceu nos últimos {windowDays} dias. O updated_at do workspace não conta.
+      </AdminInfoPopover.Paragraph>
+    </AdminInfoPopover>
+  );
+}
+
+/** Linha discreta do cabeçalho: responsável, "Cliente desde…" e a última atividade (com a regra no "i"). */
 function WorkspaceMeta({ workspace }: { workspace: AdminWorkspaceDetail }) {
   const owner = workspace.owners[0];
   const last = workspace.activity.last_activity_at;
@@ -56,7 +76,9 @@ function WorkspaceMeta({ workspace }: { workspace: AdminWorkspaceDetail }) {
           {workspace.owners.length > 1 ? ` e mais ${workspace.owners.length - 1}` : ""}
         </span>
       ) : (
-        <span className="adm-workspaces-noowner">Sem responsável</span>
+        <AdminBadge tone="warn" size="sm">
+          Sem responsável
+        </AdminBadge>
       )}
       <span title={formatDateTime(workspace.created_at)}>
         {workspace.kind === "brand" ? "Cliente desde" : "Criado em"} <b>{formatDate(workspace.created_at)}</b>
@@ -64,9 +86,13 @@ function WorkspaceMeta({ workspace }: { workspace: AdminWorkspaceDetail }) {
       {last ? (
         <span title={formatDateTime(last)}>
           Última atividade <b>{formatRelativeTime(last)}</b>
+          <LastActivityInfo windowDays={workspace.activity.window_days} />
         </span>
       ) : (
-        <span>Sem atividade registrada</span>
+        <span>
+          Sem atividade registrada
+          <LastActivityInfo windowDays={workspace.activity.window_days} />
+        </span>
       )}
     </>
   );
@@ -96,19 +122,35 @@ function DetailSkeleton() {
   return (
     <AdminPage>
       <AdminPageHeader
-        breadcrumb={[LIST_CRUMB, { label: "Carregando…" }]}
-        leading={<AdminSkeleton width={64} height={64} radius={20} />}
-        title={<AdminSkeleton width={260} height={30} />}
-        meta={<AdminSkeleton width={340} height={14} />}
+        breadcrumb={[LIST_CRUMB, { label: "Workspace" }]}
+        leading={<AdminSkeleton width={64} height={64} radius={16} />}
+        title={
+          <>
+            <AdminSkeleton width={260} height={34} />
+            <span className="adm-sr">Workspace</span>
+          </>
+        }
+        subtitle={<AdminSkeleton width={340} height={14} />}
       />
-      <div role="status">
-        <span className="adm-sr">Carregando o workspace…</span>
-        <AdminSection>
-          <AdminSkeletonLines lines={4} />
-        </AdminSection>
-      </div>
+      <span className="adm-sr" role="status">
+        Carregando workspace…
+      </span>
+      <AdminSection>
+        <AdminSkeletonLines lines={5} />
+      </AdminSection>
     </AdminPage>
   );
+}
+
+/** Itens do menu "Ações": os que o estado e o papel permitem, e "Excluir" por último, separado e em vermelho. */
+function lifecycleMenuItems(actions: readonly WorkspaceAction[], onSelect: (action: WorkspaceAction) => void): AdminActionMenuItem[] {
+  const ordered = [...actions.filter((candidate) => candidate !== "delete"), ...actions.filter((candidate) => candidate === "delete")];
+  return ordered.map((candidate) => ({
+    id: candidate,
+    label: WORKSPACE_ACTION_LABEL[candidate],
+    tone: candidate === "delete" ? "danger" : "default",
+    onSelect: () => onSelect(candidate),
+  }));
 }
 
 /**
@@ -127,17 +169,14 @@ export function WorkspaceDetailPage({ workspaceId }: { workspaceId: string }) {
   if (query.isLoading) return <DetailSkeleton />;
 
   if (!workspace) {
-    const missing = isAdminApiError(query.error, "NOT_FOUND");
     return (
       <AdminPage>
         <AdminPageHeader breadcrumb={[LIST_CRUMB, { label: "Workspace" }]} title="Workspace" />
-        <AdminErrorState
-          boxed
-          error={query.error}
-          message={missing ? "Não encontramos este workspace. O link pode estar incorreto." : undefined}
-          onRetry={() => void query.refetch()}
-          retrying={query.isRefetching}
-        />
+        {isAdminApiError(query.error, "NOT_FOUND") ? (
+          <AdminNotFound entity="workspace" backTo={LIST_LINK} backLabel="Voltar para Workspaces" />
+        ) : (
+          <AdminErrorState boxed error={query.error} onRetry={() => void query.refetch()} retrying={query.isRefetching} />
+        )}
       </AdminPage>
     );
   }
@@ -175,7 +214,7 @@ export function WorkspaceDetailPage({ workspaceId }: { workspaceId: string }) {
                 Editar dados
               </button>
             ) : null}
-            <WorkspaceActionsMenu actions={actions} onSelect={setAction} />
+            <AdminActionMenu label="Ações" items={lifecycleMenuItems(actions, setAction)} />
           </>
         }
       />
@@ -184,19 +223,19 @@ export function WorkspaceDetailPage({ workspaceId }: { workspaceId: string }) {
 
       <div className="adm-workspaces-tabs">
         <AdminTabs idPrefix={TAB_PREFIX} ariaLabel="Seções do workspace" tabs={tabs} value={tab} onChange={setTab} />
-        <AdminTabPanel idPrefix={TAB_PREFIX} id="resumo" active={tab === "resumo"}>
+        <AdminTabPanel idPrefix={TAB_PREFIX} id="resumo" active={tab === "resumo"} className="adm-workspaces-panel">
           <WorkspaceSummaryTab workspace={workspace} onOpenTab={setTab} />
         </AdminTabPanel>
-        <AdminTabPanel idPrefix={TAB_PREFIX} id="usuarios" active={tab === "usuarios"}>
+        <AdminTabPanel idPrefix={TAB_PREFIX} id="usuarios" active={tab === "usuarios"} className="adm-workspaces-panel">
           <WorkspaceMembersTab workspace={workspace} />
         </AdminTabPanel>
-        <AdminTabPanel idPrefix={TAB_PREFIX} id="campanhas" active={tab === "campanhas"}>
+        <AdminTabPanel idPrefix={TAB_PREFIX} id="campanhas" active={tab === "campanhas"} className="adm-workspaces-panel">
           <WorkspaceCampaignsTab workspace={workspace} />
         </AdminTabPanel>
-        <AdminTabPanel idPrefix={TAB_PREFIX} id="financeiro" active={tab === "financeiro"}>
+        <AdminTabPanel idPrefix={TAB_PREFIX} id="financeiro" active={tab === "financeiro"} className="adm-workspaces-panel">
           <WorkspaceFinancialTab workspace={workspace} />
         </AdminTabPanel>
-        <AdminTabPanel idPrefix={TAB_PREFIX} id="atividade" active={tab === "atividade"}>
+        <AdminTabPanel idPrefix={TAB_PREFIX} id="atividade" active={tab === "atividade"} className="adm-workspaces-panel">
           <WorkspaceActivityTab workspace={workspace} />
         </AdminTabPanel>
       </div>

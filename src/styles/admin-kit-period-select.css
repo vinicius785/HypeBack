@@ -1,0 +1,126 @@
+/*
+ * AdminPeriodSelect (kit do Admin): atalhos de período em controle segmentado + campos De/Até.
+ *
+ * Regras: tudo sob `.pv`, prefixo `adm-period`, só tokens `--adm-*` (definidos em admin-platform.css, que o
+ * resto do Admin já carrega). Sem sombra; vermelho só no erro; roxo só no foco (anel por dentro, porque o
+ * rolável abaixo corta o que sai dele). Breakpoint único do celular: 560.
+ */
+
+.pv .adm-period {
+  --adm-period-fade: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+  text-align: right;
+}
+.pv .adm-period-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; max-width: 100%; min-width: 0; }
+
+/* ───────────────────────── atalhos ───────────────────────── */
+
+/* Rola na horizontal quando não cabe. O esmaecido (`data-fade`) diz de que lado ainda há atalhos. */
+.pv .adm-period-scroll { max-width: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; }
+.pv .adm-period-scroll::-webkit-scrollbar { display: none; }
+.pv .adm-period-scroll[data-fade="end"] {
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - var(--adm-period-fade)), transparent);
+  mask-image: linear-gradient(to right, black calc(100% - var(--adm-period-fade)), transparent);
+}
+.pv .adm-period-scroll[data-fade="start"] {
+  -webkit-mask-image: linear-gradient(to right, transparent, black var(--adm-period-fade));
+  mask-image: linear-gradient(to right, transparent, black var(--adm-period-fade));
+}
+.pv .adm-period-scroll[data-fade="both"] {
+  -webkit-mask-image: linear-gradient(to right, transparent, black var(--adm-period-fade), black calc(100% - var(--adm-period-fade)), transparent);
+  mask-image: linear-gradient(to right, transparent, black var(--adm-period-fade), black calc(100% - var(--adm-period-fade)), transparent);
+}
+
+.pv .adm-period .adm-period-seg { flex: none; padding: 4px; background: var(--adm-surface); }
+/* dentro de um cartão (`.adm-card`, também branco) o trilho branco sumia: lá ele usa o cinza da página */
+.pv .adm-card .adm-period .adm-period-seg { background: var(--bg); }
+.pv .adm-period .adm-period-seg .ind { top: 4px; bottom: 4px; }
+.pv .adm-period .adm-period-seg .adm-period-btn {
+  flex: none;
+  height: var(--adm-hit);
+  padding: 0 14px;
+  font-size: 14px;
+  white-space: nowrap;
+  color: var(--adm-text-muted);
+}
+.pv .adm-period .adm-period-seg .adm-period-btn.on { color: var(--adm-surface); }
+.pv .adm-period .adm-period-seg .adm-period-btn:not(.on):not(:disabled):hover { color: var(--ink); }
+.pv .adm-period .adm-period-seg .adm-period-btn:disabled { opacity: .5; cursor: not-allowed; }
+/* anel por dentro do botão: o rolável corta qualquer anel que saia dele */
+.pv .adm-period .seg .adm-period-btn:focus-visible { outline: 0; box-shadow: var(--adm-ring); }
+
+/* ───────────────────────── intervalo livre ───────────────────────── */
+
+.pv .adm-period-range { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.pv .adm-period-sep { color: var(--adm-text-muted); }
+
+.pv .adm-period-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: calc(var(--adm-hit) + 8px);
+  padding: 0 6px 0 14px;
+  border-radius: var(--adm-r-md);
+  background: var(--adm-surface);
+  font-size: 14px;
+  transition: box-shadow .2s;
+}
+.pv .adm-period-field label { color: var(--adm-text-muted); font-size: 13px; font-weight: 500; white-space: nowrap; }
+.pv .adm-period-field input {
+  width: 132px;
+  min-width: 0;
+  height: 100%;
+  padding: 0 4px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  color-scheme: light;
+}
+.pv .adm-period-field input:disabled { cursor: not-allowed; }
+.pv .adm-period-field:has(input:disabled) { opacity: .5; }
+.pv .adm-period-field[data-invalid="true"] { box-shadow: inset 0 0 0 2px var(--adm-bad); }
+.pv .adm-period-field:focus-within,
+.pv .adm-period-field[data-invalid="true"]:focus-within { box-shadow: var(--adm-ring); }
+
+/* ───────────────────────── mensagens ───────────────────────── */
+
+.pv .adm-period-error { margin: 0; color: var(--adm-bad); font-size: 13px; font-weight: 500; line-height: 1.45; }
+/* região viva sempre no DOM: vazia ela não ocupa linha (o `gap` do pai é compensado), mas segue anunciando o primeiro texto */
+.pv .adm-period-summary:empty { margin-top: -8px; }
+.pv .adm-period-summary { margin: 0; color: var(--adm-text-muted); font-size: 13px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+
+/* ───────────────────────── compacto ───────────────────────── */
+
+.pv .adm-period[data-compact="true"] { gap: 6px; }
+.pv .adm-period[data-compact="true"] .adm-period-seg .adm-period-btn { padding: 0 12px; font-size: 13px; }
+.pv .adm-period[data-compact="true"] .adm-period-field { height: var(--adm-hit); padding-left: 12px; font-size: 13px; }
+.pv .adm-period[data-compact="true"] .adm-period-field input { width: 120px; }
+.pv .adm-period[data-compact="true"] .adm-period-summary:empty { margin-top: -6px; }
+.pv .adm-period[data-compact="true"] .adm-period-error,
+.pv .adm-period[data-compact="true"] .adm-period-summary { font-size: 12.5px; }
+
+/* ───────────────────────── celular ───────────────────────── */
+
+@media (max-width: 560px) {
+  .pv .adm-period { align-items: stretch; width: 100%; text-align: left; }
+  .pv .adm-period-row { justify-content: flex-start; }
+  .pv .adm-period-scroll { flex: 1 1 100%; }
+  .pv .adm-period-range { flex: 1 1 100%; flex-wrap: nowrap; }
+  .pv .adm-period-field { flex: 1 1 0; min-width: 0; }
+  .pv .adm-period-field input { flex: 1 1 auto; width: 100%; }
+  .pv .adm-period-sep { flex: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-period .adm-period-seg .ind,
+  .pv .adm-period-field { transition: none; }
+  .pv .adm-period-scroll { scroll-behavior: auto; }
+}

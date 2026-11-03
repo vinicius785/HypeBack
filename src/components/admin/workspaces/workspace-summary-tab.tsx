@@ -6,7 +6,6 @@ import {
   AdminKeyValueList,
   AdminLink,
   AdminSection,
-  AdminStatusBadge,
   type AdminKeyValueItem,
 } from "@/components/admin/platform";
 import { formatDateTime, formatInt, formatRelativeTime } from "@/lib/admin/format";
@@ -73,9 +72,15 @@ interface WorkspaceSummaryTabProps {
   onOpenTab: (tab: WorkspaceTabId) => void;
 }
 
-/** Aba "Resumo": números, dados cadastrais, ciclo de vida e responsáveis. Usa o que o detalhe já carregou. */
+/**
+ * Aba "Resumo": números, dados cadastrais e o que o cabeçalho não diz. O cabeçalho já mostra o estado, o nome do
+ * primeiro responsável, "cliente desde" e a última atividade, então aqui não se repetem estado, criado em nem
+ * última atividade. "Responsáveis" fica: o cabeçalho só tem o nome do primeiro (o e-mail e os demais proprietários
+ * só aparecem aqui) e, sem proprietário, é onde está o aviso com o atalho. "Ciclo de vida" só quando há o que contar
+ * (motivo, quem e desde quando). Usa o que o detalhe já carregou.
+ */
 export function WorkspaceSummaryTab({ workspace, onOpenTab }: WorkspaceSummaryTabProps) {
-  const { counts, lifecycle, owners, activity } = workspace;
+  const { counts, lifecycle, owners } = workspace;
   const money = workspaceMoneyFigures(workspace.money);
 
   const address = addressLines(workspace.address);
@@ -87,33 +92,23 @@ export function WorkspaceSummaryTab({ workspace, onOpenTab }: WorkspaceSummaryTa
     { label: "Endereço", value: address.length > 0 ? <Lines lines={address} /> : null },
     { label: "Nicho", value: workspace.niche?.name },
     { label: "Identificador público", value: <code className="adm-workspaces-code">{workspace.id}</code> },
-    { label: "Criado em", value: formatDateTime(workspace.created_at) },
   ];
 
+  const hasLifecycleStory = !!(lifecycle.status_changed_at || lifecycle.status_reason || lifecycle.status_changed_by);
   const lifecycleRows: AdminKeyValueItem[] = [
-    { label: "Status", value: <AdminStatusBadge kind="workspace" value={lifecycle.status} size="sm" /> },
-    { label: "Desde", value: lifecycle.status_changed_at ? formatDateTime(lifecycle.status_changed_at) : null },
+    { label: "Neste estado desde", value: lifecycle.status_changed_at ? formatDateTime(lifecycle.status_changed_at) : null },
     { label: "Motivo", value: lifecycle.status_reason ? <span className="adm-workspaces-text">{lifecycle.status_reason}</span> : null },
     {
       label: "Por quem",
       value: lifecycle.status_changed_by ? (
-        <AdminLink to={{ to: "/admin/users/$userId", params: { userId: lifecycle.status_changed_by.user_id } }}>
+        <AdminLink textLink to={{ to: "/admin/users/$userId", params: { userId: lifecycle.status_changed_by.user_id } }}>
           {lifecycle.status_changed_by.name}
         </AdminLink>
       ) : null,
     },
   ];
 
-  const activityRows: AdminKeyValueItem[] = [
-    {
-      label: "Última atividade",
-      value: activity.last_activity_at ? (
-        <span title={formatDateTime(activity.last_activity_at)}>{formatRelativeTime(activity.last_activity_at)}</span>
-      ) : (
-        "Nenhuma atividade registrada"
-      ),
-      definition: `O mais recente entre campanha criada, aporte pago e criadores movimentados pelo time do cliente. "Ativo" quando está dentro de ${activity.window_days} dias. O updated_at do workspace não conta.`,
-    },
+  const sessionRows: AdminKeyValueItem[] = [
     {
       label: "Última sessão (aprox.)",
       value: workspace.last_session_at ? (
@@ -123,13 +118,15 @@ export function WorkspaceSummaryTab({ workspace, onOpenTab }: WorkspaceSummaryTa
     },
   ];
 
+  const noOwner = owners.length === 0;
+
   return (
-    <div className="adm-workspaces-panel">
-      <AdminSection title="Números" description="Aportes, custódia e o tamanho do workspace.">
+    <>
+      <AdminSection title="Números">
         <div className="adm-workspaces-money">
-          <AdminFigureCard variant="plain" label="Aportes recebidos" figure={money.funded} hint="todo o histórico" />
-          <AdminFigureCard variant="plain" label="Em custódia" figure={money.custody} />
-          <AdminFigureCard variant="plain" label="Comprometido" figure={money.committed} />
+          <AdminFigureCard variant="plain" showKind={false} label="Aportes recebidos" figure={money.funded} hint="todo o histórico" />
+          <AdminFigureCard variant="plain" showKind={false} label="Em custódia" figure={money.custody} />
+          <AdminFigureCard variant="plain" showKind={false} label="Comprometido" figure={money.committed} />
         </div>
         <dl className="adm-workspaces-counts">
           <Count label="Membros" value={counts.members} />
@@ -138,7 +135,7 @@ export function WorkspaceSummaryTab({ workspace, onOpenTab }: WorkspaceSummaryTa
           <Count label="Criadores" value={counts.creators} />
         </dl>
         <div className="adm-workspaces-rows">
-          <AdminKeyValueList items={activityRows} columns={2} />
+          <AdminKeyValueList items={sessionRows} columns={2} />
         </div>
       </AdminSection>
 
@@ -148,20 +145,14 @@ export function WorkspaceSummaryTab({ workspace, onOpenTab }: WorkspaceSummaryTa
         </AdminSection>
 
         <div className="adm-workspaces-stack">
-          <AdminSection title="Ciclo de vida">
-            <AdminKeyValueList items={lifecycleRows} />
-          </AdminSection>
+          {hasLifecycleStory ? (
+            <AdminSection title="Ciclo de vida">
+              <AdminKeyValueList items={lifecycleRows} />
+            </AdminSection>
+          ) : null}
 
-          <AdminSection title="Responsáveis" description="Proprietários do workspace.">
-            {owners.length > 0 ? (
-              <ul className="adm-workspaces-owners">
-                {owners.map((owner) => (
-                  <li key={owner.user_id}>
-                    <AdminEntityCell name={owner.name} subtitle={owner.email} size={36} />
-                  </li>
-                ))}
-              </ul>
-            ) : (
+          <AdminSection title="Responsáveis">
+            {noOwner ? (
               <div className="adm-workspaces-warning" role="status">
                 <b>Sem responsável</b>
                 <p>
@@ -174,10 +165,18 @@ export function WorkspaceSummaryTab({ workspace, onOpenTab }: WorkspaceSummaryTa
                   </button>
                 ) : null}
               </div>
+            ) : (
+              <ul className="adm-workspaces-owners">
+                {owners.map((owner) => (
+                  <li key={owner.user_id}>
+                    <AdminEntityCell name={owner.name} subtitle={owner.email} size={36} />
+                  </li>
+                ))}
+              </ul>
             )}
           </AdminSection>
         </div>
       </div>
-    </div>
+    </>
   );
 }

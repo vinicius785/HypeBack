@@ -1,0 +1,99 @@
+/*
+ * AdminEntityPicker (`platform/admin-entity-picker.tsx`): seletor em pílula com popover de busca e lista.
+ * Tudo sob `.pv`, prefixo `adm-ep`. Tokens do kit (`--adm-*`, definidos em admin-platform.css); nada de
+ * hex, raio ou sombra soltos. Sem sombra, exceto o popover (`--adm-shadow-pop`).
+ *
+ * O popover é renderizado num portal em `document.body` (dentro de um `.pv`), com `position: fixed` e as
+ * coordenadas calculadas em JS: assim nenhum `overflow` de cartão, tabela ou painel de filtros o corta.
+ * `z-index: 300`, o mesmo do menu de ações e do `.adm-pop`: acima do diálogo/gaveta (200), onde o seletor também vive.
+ */
+
+/* ───────────────────────── pílula ───────────────────────── */
+
+.pv .adm-ep { position: relative; display: inline-flex; align-items: center; min-height: 44px; max-width: 100%; border-radius: 999px; background: var(--adm-surface); color: var(--ink); font-size: 14px; font-weight: 600; transition: background .25s, color .25s; }
+.pv .adm-ep[data-disabled="true"] { opacity: .5; }
+/* campo obrigatório ainda sem escolha: o "Escolha…" é dica, não valor */
+.pv .adm-ep-v[data-placeholder="true"] { color: var(--adm-text-muted); font-weight: 500; }
+
+.pv .adm-ep-trigger { display: inline-flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 0 14px 0 16px; border-radius: 999px; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.pv .adm-ep-trigger:disabled { cursor: not-allowed; }
+.pv .adm-ep-trigger:focus-visible { outline: 0; box-shadow: var(--adm-ring); }
+.pv .adm-ep-k { flex: none; color: var(--adm-text-muted); font-weight: 500; white-space: nowrap; }
+.pv .adm-ep-v { min-width: 0; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .adm-ep-trigger .ico { flex: none; width: 14px; height: 14px; margin-left: 2px; color: var(--adm-text-muted); transform: rotate(90deg); }
+.pv .adm-ep-trigger[aria-expanded="true"] .ico { transform: rotate(-90deg); }
+
+/* escolha feita: pílula preta (o mesmo sinal do filtro ativo do AdminFilterBar) */
+.pv .adm-ep[data-active="true"] { background: var(--ink); color: var(--adm-surface); }
+.pv .adm-ep[data-active="true"] .adm-ep-k,
+.pv .adm-ep[data-active="true"] .adm-ep-trigger .ico { color: rgba(255, 255, 255, .62); }
+
+.pv .adm-ep-clear { flex: none; display: grid; place-items: center; width: var(--adm-hit); height: var(--adm-hit); margin-right: 2px; border-radius: 50%; color: rgba(255, 255, 255, .8); transition: background .2s, color .2s; }
+.pv .adm-ep-clear .ico { width: 14px; height: 14px; }
+.pv .adm-ep-clear:hover { background: rgba(255, 255, 255, .16); color: var(--adm-surface); }
+.pv .adm-ep-clear:focus-visible { outline: 0; box-shadow: var(--adm-ring); }
+
+/* ───────────────────────── popover ───────────────────────── */
+
+.pv .adm-ep-pop { position: fixed; z-index: 300; display: flex; flex-direction: column; overflow: hidden; border-radius: var(--adm-r-md); background: var(--adm-surface); color: var(--ink); box-shadow: var(--adm-shadow-pop), inset 0 0 0 1.5px var(--adm-rule); font-size: 14px; font-weight: 400; animation: adm-ep-in .12s ease-out; }
+@keyframes adm-ep-in { from { opacity: 0; } }
+
+.pv .adm-ep-find { position: relative; flex: none; display: flex; align-items: center; margin: 8px 8px 0; }
+.pv .adm-ep-find > .ico { position: absolute; left: 12px; width: 15px; height: 15px; color: var(--adm-text-muted); pointer-events: none; }
+.pv .adm-ep-find input { width: 100%; height: var(--adm-hit); padding: 0 12px 0 36px; border: 0; border-radius: var(--adm-r-sm); background: var(--bg); color: var(--ink); font: inherit; font-size: 14px; }
+.pv .adm-ep-find input::placeholder { color: var(--adm-text-muted); opacity: 1; }
+.pv .adm-ep-find input:focus-visible { outline: 0; box-shadow: var(--adm-ring); }
+
+.pv .adm-ep-list { flex: 1 1 auto; min-height: 0; margin: 0; padding: 8px; list-style: none; overflow-y: auto; scrollbar-width: thin; }
+.pv .adm-ep-list[hidden] { display: none; }
+.pv .adm-ep-list[aria-busy="true"] { opacity: .6; }
+
+.pv .adm-ep-opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: var(--adm-hit); padding: 6px 12px; border-radius: var(--adm-r-sm); cursor: pointer; }
+.pv .adm-ep-opt[data-active="true"] { background: var(--adm-hover); }
+.pv .adm-ep-opt[aria-selected="true"] { font-weight: 600; }
+.pv .adm-ep-opt-text { display: flex; flex-direction: column; min-width: 0; }
+.pv .adm-ep-opt-text b { font-size: 14px; font-weight: inherit; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .adm-ep-opt-text small { margin-top: 1px; color: var(--adm-text-muted); font-size: 12.5px; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .adm-ep-opt .ico { flex: none; width: 15px; height: 15px; color: var(--adm-brand-text); }
+/* "Todos" é a saída da escolha: um respiro a separa das entidades */
+.pv .adm-ep-opt[data-all="true"] { margin-bottom: 4px; }
+
+.pv .adm-ep-note { flex: none; margin: 0; padding: 10px 16px 12px; border-top: 1px solid var(--adm-rule); color: var(--adm-text-muted); font-size: 12.5px; }
+
+/* antes do mínimo de letras: uma dica no lugar do "vazio" */
+.pv .adm-ep-hint { flex: none; margin: 0; padding: 16px 16px 20px; color: var(--adm-text-muted); font-size: 13px; text-align: center; }
+
+/* carregando: algumas linhas do tamanho das opções */
+.pv .adm-ep-loading { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 16px; }
+
+/* estados do kit (vazio e erro) dentro do popover: sem a altura mínima de página */
+.pv .adm-ep-pop .adm-state { min-height: 0; padding: 20px 16px 22px; }
+.pv .adm-ep-pop .adm-state p { font-size: 13px; }
+.pv .adm-ep-pop .btn:disabled { opacity: .45; cursor: not-allowed; }
+.pv .adm-ep-pop .btn.out { background: var(--bg); }
+.pv .adm-ep-pop .btn.out:hover:not(:disabled) { background: var(--adm-hover); }
+
+/* ───────────────────────── dentro do AdminFilterBar ───────────────────────── */
+
+@media (max-width: 560px) {
+  .pv .adm-ep[data-variant="filterBar"] { display: flex; width: 100%; }
+  /* `fullWidthOnMobile` (pílula solta): a pílula toma a linha inteira e o valor usa o espaço que sobra */
+  .pv .adm-ep[data-variant="pill"][data-full-mobile="true"] { display: flex; width: 100%; }
+  .pv .adm-ep[data-full-mobile="true"] .adm-ep-v { flex: 1 1 auto; max-width: none; }
+  .pv .adm-ep[data-full-mobile="true"] .adm-ep-trigger .ico { margin-left: auto; }
+}
+
+/* ───────────────────────── movimento e contraste forçado ───────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-ep,
+  .pv .adm-ep-clear { transition: none; }
+  .pv .adm-ep-pop { animation: none; }
+}
+
+@media (forced-colors: active) {
+  .pv .adm-ep-trigger:focus-visible,
+  .pv .adm-ep-clear:focus-visible,
+  .pv .adm-ep-find input:focus-visible { outline: 2px solid Highlight; }
+  .pv .adm-ep-opt[data-active="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+}

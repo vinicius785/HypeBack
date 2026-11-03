@@ -7,7 +7,8 @@
  * - a largura útil da página muda com o menu lateral (aberto, em trilho ou ausente): colunas e pares de painéis
  *   reagem à largura do PRÓPRIO painel (`@container adm-dash`), não à da janela;
  * - mesmo visual do Início e do resto do Admin: cartões brancos, divisores de 1,5px, cores chapadas, sem gradiente.
- *   O roxo aparece só como acento (a marca das ações do time na linha do tempo, o anel de foco).
+ *   O roxo aparece só como acento (o anel de foco). Período, linha do tempo e esqueletos são do kit (`AdminPeriodSelect`,
+ *   `AdminTimeline`, `AdminListSkeleton`): aqui só entra o que é do Dashboard (faixas de números e linhas de atenção).
  */
 
 /* o contêiner que as colunas das faixas e os pares de painéis consultam */
@@ -15,17 +16,22 @@
 
 /* ───────────────────────── período (no cabeçalho) ───────────────────────── */
 
-.pv .adm-dash-period { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 0; max-width: 100%; }
-.pv .adm-dash-period-note { margin: 0; color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.4; }
-
-.pv .adm-dash-range { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; min-height: 44px; padding: 0 8px 0 16px; border-radius: 999px; background: #fff; font-size: 14px; transition: box-shadow .2s; }
-.pv .adm-dash-range:focus-within { box-shadow: inset 0 0 0 2px var(--brand); }
-.pv .adm-dash-range-k { color: var(--adm-text-muted); font-weight: 500; }
-.pv .adm-dash-range-sep { color: var(--adm-text-muted); }
-.pv .adm-dash-range input { height: 40px; width: 132px; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-weight: 600; color: var(--ink); padding: 0 4px; }
-/* sem espaço ao lado do título o seletor desce para a linha de baixo, onde fica alinhado à esquerda, com o título */
+/*
+ * O seletor (e a linha de apoio embaixo) fica à direita do título enquanto cabe; sem espaço ele desce para a linha de
+ * baixo e deve alinhar à ESQUERDA, junto do título. CSS não enxerga a quebra, então o limite é a largura em que ela
+ * acontece (título 320 px + respiro 24 px + a largura do seletor), com folga: passar um pouco do ponto só deixa o
+ * seletor, já do tamanho do próprio conteúdo, alinhado à esquerda dentro da própria caixa (não se nota); ficar abaixo
+ * dele deixaria o seletor embaixo do título e alinhado à direita (se nota).
+ * - atalhos: ~480 px de segmento, e a linha de apoio com "Atualizado em" tem ~500 px → quebra perto de 850 px; limite 920;
+ * - "Personalizado": o segmento e os dois campos De/Até ficam na mesma linha (~870 px) → quebra perto de 1210 px; limite 1280.
+ */
 @container adm-dash (max-width: 920px) {
-  .pv .adm-dash .adm-dash-period { align-items: flex-start; }
+  .pv .adm-dash .adm-period { align-items: flex-start; text-align: left; }
+  .pv .adm-dash .adm-period-row { justify-content: flex-start; }
+}
+@container adm-dash (max-width: 1280px) {
+  .pv .adm-dash .adm-period:has(.adm-period-range) { align-items: flex-start; text-align: left; }
+  .pv .adm-dash .adm-period:has(.adm-period-range) .adm-period-row { justify-content: flex-start; }
 }
 
 /* ───────────────────────── faixas de números ───────────────────────── */
@@ -38,19 +44,15 @@
  * O número de colunas vem do painel (`--c-lg`, `--c-md`, `--c-sm`) e da largura do painel (`@container adm-dash`).
  */
 .pv .adm-dash-strip { --adm-dash-cols: var(--c-lg, 4); display: grid; grid-template-columns: repeat(var(--adm-dash-cols), minmax(0, 1fr)); margin: 0 -14px; overflow: hidden; }
-.pv .adm-dash .adm-dash-strip > .adm-fig { padding: 8px 14px 10px; border-radius: 16px; }
+.pv .adm-dash .adm-dash-strip > .adm-fig { padding: 8px 14px 10px; border-radius: var(--adm-r-md); }
 .pv .adm-dash .adm-dash-strip > .adm-fig::before { content: ""; position: absolute; left: -1.5px; top: 14px; bottom: 14px; width: 1.5px; background: var(--line); pointer-events: none; }
 .pv .adm-dash .adm-dash-strip > .adm-fig::after { content: ""; position: absolute; top: -1.5px; left: 14px; right: 14px; height: 1.5px; background: var(--line); pointer-events: none; }
-/* número grande, dinheiro que encolhe para caber e "Não apurado" ocupam a mesma altura: o tipo do número fica na mesma linha em todos */
+/* número grande, dinheiro que encolhe para caber e "Não apurado" ocupam a mesma altura: o apoio e a seta de cada número ficam na mesma linha em todos */
 .pv .adm-dash .adm-dash-strip .adm-fig-value { display: flex; align-items: center; min-height: calc(var(--adm-fig-max) * 1.08); }
 .pv .adm-dash .adm-dash-strip .adm-fig-value[data-unavailable="true"] { padding: 0; }
 /* o número que leva a uma lista ganha um fundo discreto; o anel de foco fica por dentro (a faixa corta o que sai dela) */
 .pv .adm-dash .adm-dash-strip > .adm-fig[data-link="true"]:hover { background: rgba(5, 5, 5, .035); box-shadow: none; }
 .pv .adm-dash .adm-dash-strip .adm-fig-link:focus-visible { outline-offset: -3px; }
-
-/* "+7 no período", "dos quais R$ ... comprometidos": o texto e o "i" com a regra do número citado */
-.pv .adm-dash-hint { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 2px 6px; }
-.pv .adm-dash .adm-dash-hint .adm-info { position: relative; z-index: 2; }
 
 /* Usuários e Criadores dividem a linha na proporção dos números (3 e 1): cada número com a mesma largura */
 .pv .adm-dash-row { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 24px; }
@@ -76,65 +78,48 @@
   .pv .adm-dash .adm-dash-split { grid-template-columns: minmax(0, 1fr); }
 }
 
-.pv .adm-dash-foot { margin: 14px 0 0; color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.45; }
+/*
+ * Cabeçalho dos dois cartões ("Ver todos" / "Ver tudo"): o título e a linha de apoio ocupam o que sobra e quebram
+ * linha dentro da própria coluna; o botão fica sempre à direita. Sem isto o `flex-wrap` do cabeçalho do kit joga o botão
+ * para uma linha de baixo, alinhada à esquerda, assim que a linha de apoio é longa (a coluna de 5/12 é estreita).
+ */
+.pv .adm-dash-split .adm-card-h { flex-wrap: nowrap; align-items: flex-start; }
+.pv .adm-dash-split .adm-card-h > :first-child { flex: 1 1 0; min-width: 0; }
+.pv .adm-dash-split .adm-card-actions { flex: none; margin-left: auto; }
 
-/* carregando: linhas de esqueleto no lugar das linhas de dados (mesmo ritmo, sem pular de tamanho) */
-.pv .adm-dash-sk-row { display: flex; flex-direction: column; gap: 10px; padding: 16px 0; }
-.pv .adm-dash-sk-row:first-of-type { padding-top: 0; }
-.pv .adm-dash-sk-row + .adm-dash-sk-row { border-top: 1.5px solid var(--line); }
-.pv .adm-dash-sk-tags { display: flex; gap: 6px; }
-.pv .adm-dash-sk-ev { gap: 8px; padding: 12px 0; }
-
-/* ── precisa de atenção ── */
+/* ── precisa de atenção: uma linha por alerta (gravidade, título, contagem, seta); a regra fica recolhida ── */
 
 .pv .adm-dash-alerts { list-style: none; margin: 0 -12px; padding: 0; display: flex; flex-direction: column; }
-.pv .adm-dash-alert { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: 20px; padding: 16px 12px; border-radius: 16px; transition: background .15s; }
+.pv .adm-dash-alert { position: relative; padding: 14px 12px; border-radius: var(--adm-r-md); transition: background .15s; }
 .pv .adm-dash-alert + .adm-dash-alert::before { content: ""; position: absolute; top: -.75px; left: 12px; right: 12px; height: 1.5px; background: var(--line); pointer-events: none; }
 .pv .adm-dash-alert[data-link="true"]:hover { background: rgba(5, 5, 5, .03); }
-.pv .adm-dash-alert:has(.adm-dash-alert-link:focus-visible) { box-shadow: inset 0 0 0 2px var(--brand); }
-.pv .adm-dash-alert-main { min-width: 0; }
-.pv .adm-dash-alert-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.pv .adm-dash-alert-title { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; line-height: 1.35; overflow-wrap: anywhere; }
+.pv .adm-dash-alert:has(.adm-dash-alert-link:focus-visible) { box-shadow: var(--adm-ring); }
+.pv .adm-dash-alert-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.pv .adm-dash-alert-title { flex: 1 1 200px; min-width: 0; margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; line-height: 1.35; overflow-wrap: anywhere; }
 /* link esticado: a linha inteira clica; o foco aparece como anel na linha (acima) */
 .pv .adm-dash-alert-link { color: inherit; text-decoration: none; }
 .pv .adm-dash-alert-link::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
 .pv .adm-dash-alert-link:focus-visible { outline: none; }
-.pv .adm-dash-alert-desc { margin: 4px 0 0; color: var(--adm-text-muted); font-size: 13.5px; line-height: 1.5; }
-/* a regra exata fica sempre à vista: é o que diferencia fato registrado de heurística */
-.pv .adm-dash-alert-rule { margin: 6px 0 0; color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.5; overflow-wrap: anywhere; }
-.pv .adm-dash-alert-rule-k { color: var(--ink); font-weight: 600; margin-right: 2px; }
-.pv .adm-dash-alert-side { display: flex; align-items: center; gap: 10px; padding-top: 2px; }
-.pv .adm-dash-alert-count { text-align: right; }
-.pv .adm-dash-alert-count b { display: block; font-size: 24px; font-weight: 600; letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; }
-.pv .adm-dash-alert-count small { display: block; margin-top: 4px; color: var(--adm-text-muted); font-size: 12px; }
+.pv .adm-dash-alert-side { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.pv .adm-dash-alert-count { display: inline-flex; align-items: baseline; gap: 6px; }
+.pv .adm-dash-alert-count b { font-size: 20px; font-weight: 600; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.pv .adm-dash-alert-count small { color: var(--adm-text-muted); font-size: 12.5px; }
 .pv .adm-dash-alert-go { color: var(--adm-text-muted); display: inline-flex; transition: transform .25s var(--ease), color .2s; }
 .pv .adm-dash-alert[data-link="true"]:hover .adm-dash-alert-go { color: var(--ink); transform: translateX(2px); }
 
+/* a regra exata (é o que separa fato registrado de heurística) fica num detalhe: acima do link esticado, para clicar nele */
+.pv .adm-dash-alert-more { position: relative; z-index: 2; width: fit-content; max-width: 100%; margin-top: 6px; }
+.pv .adm-dash-alert-more[open] { width: auto; }
+/* alvo de toque do "Como é calculado" sem engordar a linha */
+.pv .adm-dash-alert-more > .adm-summary { position: relative; }
+.pv .adm-dash-alert-more > .adm-summary::after { content: ""; position: absolute; left: -6px; right: -6px; top: calc((100% - var(--adm-hit)) / 2); bottom: calc((100% - var(--adm-hit)) / 2); }
+.pv .adm-dash-alert-desc { margin: 8px 0 0; color: var(--adm-text-muted); font-size: 13.5px; line-height: 1.5; }
+.pv .adm-dash-alert-more .adm-alert-rule { font-size: 12.5px; }
+
 @container adm-dash (max-width: 520px) {
-  .pv .adm-dash .adm-dash-alert { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
-  .pv .adm-dash .adm-dash-alert-side { padding-top: 0; }
-  .pv .adm-dash .adm-dash-alert-count { text-align: left; display: flex; align-items: baseline; gap: 8px; }
-  .pv .adm-dash .adm-dash-alert-count small { margin-top: 0; }
+  .pv .adm-dash .adm-dash-alert-title { flex-basis: 100%; order: 3; }
+  .pv .adm-dash .adm-dash-alert-side { order: 2; }
 }
-
-/* ── atividade recente: linha do tempo compacta ── */
-
-.pv .adm-dash-tl { list-style: none; margin: 0; padding: 0; }
-.pv .adm-dash-ev { position: relative; padding: 0 0 20px 26px; }
-.pv .adm-dash-ev:last-child { padding-bottom: 0; }
-/* ponto vazado = fato que o sistema já guardava; ponto roxo = ação do time (registrada em log) */
-.pv .adm-dash-ev::before { content: ""; position: absolute; left: 0; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 2px rgba(5, 5, 5, .28); }
-.pv .adm-dash-ev[data-source="log"]::before { background: var(--brand); box-shadow: none; }
-.pv .adm-dash-ev::after { content: ""; position: absolute; left: 4.25px; top: 20px; bottom: -4px; width: 1.5px; background: var(--line); }
-.pv .adm-dash-ev:last-child::after { display: none; }
-.pv .adm-dash-ev-title { margin: 0; font-size: 14px; font-weight: 500; line-height: 1.45; overflow-wrap: anywhere; }
-.pv .adm-dash-ev-title a { color: inherit; text-decoration: none; border-radius: 4px; }
-.pv .adm-dash-ev-title a:hover { text-decoration: underline; text-underline-offset: 3px; }
-.pv .adm-dash-ev-title a:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
-.pv .adm-dash-ev-meta { display: flex; flex-wrap: wrap; margin-top: 3px; color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.45; }
-.pv .adm-dash-ev-meta > * + *::before { content: "·"; margin: 0 7px; }
-.pv .adm-dash-ev-reason { margin: 6px 0 0; color: var(--adm-text-muted); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.pv .adm-dash-ev-reason-k { color: var(--ink); font-weight: 600; }
 
 /* ───────────────────────── tablet e celular ───────────────────────── */
 
@@ -142,18 +127,15 @@
   .pv .adm-dash-row, .pv .adm-dash-split { gap: 20px; }
 }
 
-@media (max-width: 760px) {
-  /* o período ocupa a linha inteira; o controle segmentado rola dentro dele (o do protótipo já faz isso) */
-  .pv .adm-dash .adm-dash-period { width: 100%; align-items: stretch; }
-  .pv .adm-dash-range { justify-content: space-between; }
+@media (max-width: 560px) {
   .pv .adm-dash-strip { margin: 0 -12px; }
   .pv .adm-dash .adm-dash-strip > .adm-fig { padding: 8px 12px 10px; }
   .pv .adm-dash .adm-dash-strip > .adm-fig::after { left: 12px; right: 12px; }
   .pv .adm-dash-alerts { margin: 0 -10px; }
-  .pv .adm-dash-alert { padding: 14px 10px; }
+  .pv .adm-dash-alert { padding: 12px 10px; }
   .pv .adm-dash-alert + .adm-dash-alert::before { left: 10px; right: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pv .adm-dash-alert, .pv .adm-dash-alert-go, .pv .adm-dash-range { transition: none; }
+  .pv .adm-dash-alert, .pv .adm-dash-alert-go { transition: none; }
 }

@@ -18,8 +18,14 @@ export interface AdminKeyValueItem {
 
 interface AdminKeyValueListProps {
   items: readonly AdminKeyValueItem[];
-  /** 2 colunas no desktop (1 no celular). */
+  /** 2 colunas no desktop (1 no celular). Só vale em `layout="list"`. */
   columns?: 1 | 2;
+  /**
+   * `list` (padrão): uma linha por item, rótulo à esquerda e valor à direita, com divisores finos.
+   * `strip`: faixa de itens curtos lado a lado (grade que quebra em quantas colunas couberem, sem divisores),
+   * rótulo em cima e valor embaixo: a faixa do "Sistema" da Saúde.
+   */
+  layout?: "list" | "strip";
 }
 
 function isEmpty(value: ReactNode): boolean {
@@ -27,9 +33,10 @@ function isEmpty(value: ReactNode): boolean {
 }
 
 /** Rótulo/valor em lista de definição (`dl`), com divisores finos: detalhes de workspace, usuário, campanha. */
-export function AdminKeyValueList({ items, columns = 1 }: AdminKeyValueListProps) {
+export function AdminKeyValueList({ items, columns = 1, layout = "list" }: AdminKeyValueListProps) {
+  const strip = layout === "strip";
   return (
-    <dl className="adm-kv" data-columns={columns === 2 ? "2" : undefined}>
+    <dl className="adm-kv" data-columns={!strip && columns === 2 ? "2" : undefined} data-layout={strip ? "strip" : undefined}>
       {items.map((item) => (
         <div className="adm-kv-row" key={item.label}>
           <dt>

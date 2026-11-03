@@ -75,36 +75,63 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("WorkspacesListPage · dados", () => {
-  it("título, subtítulo e uma linha por workspace com cada coluna", async () => {
+  it("título, subtítulo e uma linha por workspace com as seis colunas (Workspace, Responsável, Status, Campanhas, Aportes, Criado em)", async () => {
     renderWithQuery(<WorkspacesListPage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Workspaces" })).toBeInTheDocument();
-    expect(screen.getByText("Todos os clientes da plataforma")).toBeInTheDocument();
+    expect(screen.getByText("Todos os clientes da plataforma.")).toBeInTheDocument();
 
     const row = await waitFor(() => rowOf("Café Serra Verde"));
+    const headers = screen.getAllByRole("columnheader");
+    expect(headers).toHaveLength(6);
+    ["Workspace", "Responsável", "Status", "Campanhas", "Aportes", "Criado em"].forEach((name, index) => {
+      expect(headers[index]).toHaveTextContent(new RegExp(`^${name}`));
+    });
     expect(within(row).getByText(/11\.222\.333\/0001-81 · #00000002/)).toBeInTheDocument();
     expect(within(row).getByText("Helena Prado")).toBeInTheDocument();
     expect(within(row).getByText("helena@serraverde.com.br")).toBeInTheDocument();
+    // o estado é só o selo; a atividade é um texto cinza sem repetir a palavra "Ativo"
     expect(within(row).getByText("Ativo", { selector: ".adm-badge" })).toBeInTheDocument();
-    expect(within(row).getByText(/Ativo · há 3 dias/)).toBeInTheDocument();
-    expect(within(row).getByText("6")).toBeInTheDocument(); // membros
+    expect(within(row).getByText("há 3 dias")).toBeInTheDocument();
+    expect(within(row).queryByText(/Ativo ·/)).not.toBeInTheDocument();
     expect(within(row).getByText("2", { selector: "b" })).toBeInTheDocument(); // publicadas
-    expect(within(row).getByText(/\/ 8/)).toBeInTheDocument(); // total de campanhas
-    expect(within(row).getByText("41")).toBeInTheDocument(); // criadores
+    expect(within(row).getByText(/de 8/)).toBeInTheDocument(); // total de campanhas
+    expect(within(row).getByText("publicadas")).toBeInTheDocument(); // a dica é texto visível, não só `title`
     expect(within(row).getByText("R$ 1.234.567,89")).toBeInTheDocument(); // aportes, exato
-    expect(within(row).getByText("R$ 45.000,50")).toBeInTheDocument(); // custódia, exata
     expect(within(row).getByText("12/03/2025")).toBeInTheDocument();
+  });
+
+  it("membros, criadores e em custódia saem da lista (continuam no detalhe)", async () => {
+    renderWithQuery(<WorkspacesListPage />);
+    const row = await waitFor(() => rowOf("Café Serra Verde"));
+    expect(within(row).queryByText("41")).not.toBeInTheDocument(); // criadores
+    expect(within(row).queryByText("R$ 45.000,50")).not.toBeInTheDocument(); // custódia
+    expect(within(row).queryByText("6")).not.toBeInTheDocument(); // membros
+    for (const header of ["Membros", "Criadores", "Em custódia"]) {
+      expect(screen.queryByRole("columnheader", { name: new RegExp(header) })).not.toBeInTheDocument();
+    }
+  });
+
+  it("a atividade de quem nunca usou diz 'Sem atividade'; quem parou mostra a data, sempre em cinza e sem a palavra do estado", async () => {
+    renderWithQuery(<WorkspacesListPage />);
+    await screen.findByText("Studio Lume Fotografia");
+    expect(within(rowOf("Studio Lume Fotografia")).getByText("Sem atividade")).toBeInTheDocument();
+    expect(within(rowOf("Clínica Vida Plena")).getByText("01/08/2026")).toBeInTheDocument();
+    expect(within(rowOf("Clínica Vida Plena")).queryByText(/Inativo/)).not.toBeInTheDocument();
   });
 
   it("sem responsável aparece como aviso claro; mais de um dono mostra '+N'", async () => {
     renderWithQuery(<WorkspacesListPage />);
     await screen.findByText("Studio Lume Fotografia");
 
-    expect(within(rowOf("Studio Lume Fotografia")).getByText("Sem responsável")).toBeInTheDocument();
-    expect(within(rowOf("Studio Lume Fotografia")).getByText("Suspenso", { selector: ".adm-badge" })).toBeInTheDocument();
-    expect(within(rowOf("Studio Lume Fotografia")).getByText("Sem atividade")).toBeInTheDocument();
+    const studio = rowOf("Studio Lume Fotografia");
+    expect(within(studio).getByText("Sem responsável", { selector: ".adm-badge" })).toHaveAttribute("data-tone", "warn");
+    expect(within(studio).getByText(/inconsistência a investigar/)).toBeVisible();
+    expect(within(studio).getByText("Suspenso", { selector: ".adm-badge" })).toBeInTheDocument();
     expect(within(rowOf("Clínica Vida Plena")).getByText("+1")).toHaveAttribute("title", "2 proprietários");
-    expect(within(rowOf("Clínica Vida Plena")).getByText(/Inativo ·/)).toBeInTheDocument();
+    expect(within(rowOf("Clínica Vida Plena")).getByText("proprietário a mais")).toBeInTheDocument();
+    // o "+N" é o selo da célula do kit (ao lado do nome), não uma caixa própria de Workspaces
+    expect(within(rowOf("Clínica Vida Plena")).getByText("+1").closest(".adm-entity-badge")).not.toBeNull();
     expect(within(rowOf("Café Serra Verde")).queryByText(/^\+\d/)).not.toBeInTheDocument();
   });
 
@@ -119,7 +146,6 @@ describe("WorkspacesListPage · dados", () => {
     await screen.findByText("Café Serra Verde");
 
     expect(screen.getByRole("button", { name: "Como é calculado: Aportes" })).toHaveAccessibleDescription(DEFINITIONS.funded_cents);
-    expect(screen.getByRole("button", { name: "Como é calculado: Em custódia" })).toHaveAccessibleDescription(DEFINITIONS.custody_cents);
     expect(screen.getByRole("button", { name: "Como é calculado: Responsável" })).toHaveAccessibleDescription(DEFINITIONS.owner);
     expect(screen.getByRole("button", { name: "Como é calculado: Status" })).toHaveAccessibleDescription(
       new RegExp(DEFINITIONS.activity.slice(0, 20)),
@@ -142,7 +168,7 @@ describe("WorkspacesListPage · estados", () => {
     api.adminList.mockReturnValue(pending.promise);
     const { container } = renderWithQuery(<WorkspacesListPage />);
 
-    expect(screen.getByRole("status")).toHaveTextContent("Carregando…");
+    expect(screen.getAllByRole("status").some((region) => region.textContent === "Carregando…")).toBe(true);
     expect(container.querySelectorAll(".adm-row .adm-sk").length).toBeGreaterThan(0);
     expect(screen.queryByText("Café Serra Verde")).not.toBeInTheDocument();
   });
@@ -173,7 +199,7 @@ describe("WorkspacesListPage · estados", () => {
     routeReads(api.adminList, { "/admin/workspaces": listOf([]) });
     renderWithQuery(<WorkspacesListPage />);
 
-    expect(await screen.findByText("Nenhum workspace por aqui")).toBeInTheDocument();
+    expect(await screen.findByText("Nenhum workspace ainda")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Limpar busca e filtros" })).not.toBeInTheDocument();
   });
 
@@ -193,8 +219,46 @@ describe("WorkspacesListPage · filtros (URL e API)", () => {
     renderWithQuery(<WorkspacesListPage />);
     await screen.findByText("Café Serra Verde");
     expect(lastParams()).toEqual({ page: 1, per_page: 25, sort_by: "created_at", order: "desc" });
-    expect(screen.getByRole("button", { name: "Todos, exceto excluídos" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Todos" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("combobox", { name: "Tipo" })).toHaveValue("brand");
+    expect(screen.getByRole("button", { name: "Excluídos" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("o segmento tem só Todos, Ativos, Suspensos e Arquivados; 'Excluídos' é um filtro da barra", async () => {
+    renderWithQuery(<WorkspacesListPage />);
+    await screen.findByText("Café Serra Verde");
+    const segment = screen.getByRole("group", { name: "Status do workspace" });
+    expect(within(segment).getAllByRole("button").map((b) => b.textContent)).toEqual(["Todos", "Ativos", "Suspensos", "Arquivados"]);
+    expect(within(segment).queryByRole("button", { name: "Excluídos" })).not.toBeInTheDocument();
+  });
+
+  it("'Excluídos' é o liga/desliga do kit: fica à vista na linha da barra (inline) e não é um botão feito à mão", async () => {
+    renderWithQuery(<WorkspacesListPage />);
+    await screen.findByText("Café Serra Verde");
+    const toggle = screen.getByRole("button", { name: "Excluídos" });
+    expect(toggle).toHaveAttribute("data-toggle", "true");
+    // à vista no celular: "Uso recente" e "Excluídos" estão na linha dos filtros inline; "Tipo" e "Criado em" ficam no painel "Filtros"
+    const inline = document.querySelector(".adm-filters-inline") as HTMLElement;
+    expect(inline).toContainElement(toggle);
+    expect(within(inline).getByRole("combobox", { name: "Uso recente" })).toBeInTheDocument();
+    expect(within(inline).queryByRole("combobox", { name: "Tipo" })).not.toBeInTheDocument();
+    expect(within(inline).queryByRole("group", { name: "Criado em" })).not.toBeInTheDocument();
+    const panel = document.querySelector(".adm-filters-panel") as HTMLElement;
+    expect(within(panel).getByRole("combobox", { name: "Tipo" })).toBeInTheDocument();
+    expect(within(panel).getByRole("group", { name: "Criado em" })).toBeInTheDocument();
+  });
+
+  it("'Excluídos' entra na contagem de 'Filtros (n)' e 'Limpar filtros' o desfaz uma vez só (o chip e o botão não se duplicam)", async () => {
+    fakeRouter.set({ status: "deleted" });
+    renderWithQuery(<WorkspacesListPage />);
+    await screen.findByText("Café Serra Verde");
+    expect(screen.getByRole("button", { name: /^Filtros/ })).toHaveTextContent("Filtros1");
+    expect(screen.getAllByRole("button", { name: "Remover filtro Status: Excluídos" })).toHaveLength(1);
+
+    await userEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    await waitFor(() => expect(fakeRouter.search).toEqual({}));
+    expect(screen.getByRole("button", { name: "Excluídos" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
   });
 
   it("a URL manda: estado, atividade, tipo e página chegam à API e ao controle", async () => {
@@ -204,7 +268,7 @@ describe("WorkspacesListPage · filtros (URL e API)", () => {
 
     expect(lastParams()).toMatchObject({ status: "archived", activity: "inactive", kind: "orphan", page: 2 });
     expect(screen.getByRole("button", { name: "Arquivados" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("combobox", { name: "Atividade" })).toHaveValue("inactive");
+    expect(screen.getByRole("combobox", { name: "Uso recente" })).toHaveValue("inactive");
     expect(screen.getByRole("combobox", { name: "Tipo" })).toHaveValue("orphan");
   });
 
@@ -212,8 +276,7 @@ describe("WorkspacesListPage · filtros (URL e API)", () => {
     ["Ativos", "active"],
     ["Suspensos", "suspended"],
     ["Arquivados", "archived"],
-    ["Excluídos", "deleted"],
-  ])("segmento %s manda status=%s e volta à página 1; 'Todos, exceto excluídos' devolve o padrão", async (label, value) => {
+  ])("segmento %s manda status=%s e volta à página 1; 'Todos' devolve o padrão", async (label, value) => {
     fakeRouter.set({ page: 3 });
     renderWithQuery(<WorkspacesListPage />);
     await screen.findByText("Café Serra Verde");
@@ -222,9 +285,43 @@ describe("WorkspacesListPage · filtros (URL e API)", () => {
     await waitFor(() => expect(lastParams()).toMatchObject({ status: value, page: 1 }));
     expect(fakeRouter.search).toEqual({ status: value });
 
-    await userEvent.click(screen.getByRole("button", { name: "Todos, exceto excluídos" }));
+    await userEvent.click(screen.getByRole("button", { name: "Todos" }));
     await waitFor(() => expect(lastParams()).not.toHaveProperty("status"));
     expect(fakeRouter.search).toEqual({});
+  });
+
+  it("'Excluídos' manda status=deleted (o mesmo valor de antes) e vira chip; clicar de novo, ou no chip, volta ao padrão", async () => {
+    fakeRouter.set({ page: 3 });
+    renderWithQuery(<WorkspacesListPage />);
+    await screen.findByText("Café Serra Verde");
+
+    await userEvent.click(screen.getByRole("button", { name: "Excluídos" }));
+    await waitFor(() => expect(lastParams()).toMatchObject({ status: "deleted", page: 1 }));
+    expect(fakeRouter.search).toEqual({ status: "deleted" });
+    expect(screen.getByRole("button", { name: "Excluídos" })).toHaveAttribute("aria-pressed", "true");
+    // nenhum botão do segmento fica marcado: o estado vem do filtro
+    for (const label of ["Todos", "Ativos", "Suspensos", "Arquivados"]) {
+      expect(screen.getByRole("button", { name: label })).toHaveAttribute("aria-pressed", "false");
+    }
+
+    await userEvent.click(screen.getByRole("button", { name: "Remover filtro Status: Excluídos" }));
+    await waitFor(() => expect(lastParams()).not.toHaveProperty("status"));
+    expect(fakeRouter.search).toEqual({});
+
+    // a consulta de `deleted` já está em cache: o que prova o clique é a URL
+    await userEvent.click(screen.getByRole("button", { name: "Excluídos" }));
+    await waitFor(() => expect(fakeRouter.search).toEqual({ status: "deleted" }));
+    await userEvent.click(screen.getByRole("button", { name: "Excluídos" }));
+    await waitFor(() => expect(fakeRouter.search).toEqual({}));
+  });
+
+  it("link do Dashboard com status=deleted abre a lista de excluídos, com o chip ativo", async () => {
+    fakeRouter.set({ status: "deleted" });
+    renderWithQuery(<WorkspacesListPage />);
+    await screen.findByText("Café Serra Verde");
+    expect(lastParams()).toMatchObject({ status: "deleted" });
+    expect(screen.getByRole("button", { name: "Remover filtro Status: Excluídos" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Excluídos" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("busca (nome, responsável, identificador) vai como `search` e fica na URL", async () => {
@@ -240,7 +337,7 @@ describe("WorkspacesListPage · filtros (URL e API)", () => {
     renderWithQuery(<WorkspacesListPage />);
     await screen.findByText("Café Serra Verde");
 
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Atividade" }), "never");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Uso recente" }), "never");
     await waitFor(() => expect(lastParams()).toMatchObject({ activity: "never" }));
 
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Tipo" }), "all");
@@ -252,9 +349,30 @@ describe("WorkspacesListPage · filtros (URL e API)", () => {
 
     expect(fakeRouter.search).toEqual({ activity: "never", kind: "all", created_from: "2026-10-01", created_to: "2026-10-31" });
 
-    await userEvent.click(screen.getByRole("button", { name: "Remover filtro Atividade: Sem atividade" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remover filtro Uso recente: Nunca usaram" }));
     await waitFor(() => expect(lastParams()).not.toHaveProperty("activity"));
     expect(lastParams()).toMatchObject({ kind: "all", created_from: "2026-10-01" });
+  });
+
+  it("'Limpar filtros' também desfaz 'Excluídos', sem um reset sobrescrever o outro", async () => {
+    fakeRouter.set({ status: "deleted", activity: "never", search: "serra" });
+    renderWithQuery(<WorkspacesListPage />);
+    await screen.findByText("Café Serra Verde");
+
+    await userEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    await waitFor(() => expect(lastParams()).not.toHaveProperty("status"));
+    expect(lastParams()).not.toHaveProperty("activity");
+    expect(fakeRouter.search).toEqual({ search: "serra" });
+  });
+
+  it("o botão de atualizar fica no fim da barra (só ícone) e consulta a lista de novo", async () => {
+    renderWithQuery(<WorkspacesListPage />);
+    await screen.findByText("Café Serra Verde");
+    expect(within(document.querySelector(".adm-head") as HTMLElement).queryByRole("button", { name: "Atualizar" })).not.toBeInTheDocument();
+
+    const calls = api.adminList.mock.calls.length;
+    await userEvent.click(within(document.querySelector(".adm-filters") as HTMLElement).getByRole("button", { name: "Atualizar" }));
+    await waitFor(() => expect(api.adminList.mock.calls.length).toBeGreaterThan(calls));
   });
 
   it("'Limpar filtros' devolve tudo ao padrão (menos a busca digitada)", async () => {
@@ -295,7 +413,6 @@ describe("WorkspacesListPage · ordenação", () => {
   it.each([
     ["Workspace", "name", "asc"],
     ["Status", "last_activity", "desc"],
-    ["Membros", "members", "desc"],
     ["Campanhas", "campaigns", "desc"],
   ])("cabeçalho %s ordena por %s, começando em %s", async (header, sortBy, order) => {
     renderWithQuery(<WorkspacesListPage />);
@@ -304,13 +421,35 @@ describe("WorkspacesListPage · ordenação", () => {
     await waitFor(() => expect(lastParams()).toMatchObject({ sort_by: sortBy, order }));
   });
 
-  it("colunas sem ordenação no contrato (Responsável, Criadores, Em custódia) não viram botão", async () => {
+  it("coluna sem ordenação no contrato (Responsável) não vira botão", async () => {
     renderWithQuery(<WorkspacesListPage />);
     await screen.findByText("Café Serra Verde");
     const table = screen.getByRole("table", { name: "Workspaces" });
-    for (const header of ["Responsável", "Criadores", "Em custódia"]) {
-      expect(within(table).queryByRole("button", { name: new RegExp(`^${header}`) })).not.toBeInTheDocument();
-    }
+    expect(within(table).queryByRole("button", { name: /^Responsável/ })).not.toBeInTheDocument();
+  });
+
+  it("um link com sort_by=members (coluna que saiu da lista) continua valendo na consulta", async () => {
+    fakeRouter.set({ sort_by: "members", order: "desc" });
+    renderWithQuery(<WorkspacesListPage />);
+    await screen.findByText("Café Serra Verde");
+    expect(lastParams()).toMatchObject({ sort_by: "members", order: "desc" });
+  });
+
+  it("com sort_by=members na URL, o 'Ordenar por' do celular fica neutro (nenhuma coluna marcada) e continua usável", async () => {
+    fakeRouter.set({ sort_by: "members", order: "desc" });
+    renderWithQuery(<WorkspacesListPage />);
+    await screen.findByText("Café Serra Verde");
+
+    const select = screen.getByRole("combobox", { name: "Ordenar por" });
+    expect(select).toHaveValue("");
+    expect(screen.queryByRole("button", { name: /Ordem (de|c)crescente/ })).not.toBeInTheDocument();
+    // nenhuma coluna aparece como ordenada
+    for (const header of screen.getAllByRole("columnheader")) expect(header).not.toHaveAttribute("aria-sort", "ascending");
+    for (const header of screen.getAllByRole("columnheader")) expect(header).not.toHaveAttribute("aria-sort", "descending");
+
+    await userEvent.selectOptions(select, "volume");
+    await waitFor(() => expect(lastParams()).toMatchObject({ sort_by: "volume", order: "desc", page: 1 }));
+    expect(fakeRouter.search).toEqual({ sort_by: "volume" }); // `desc` é o padrão da lista e não vai para a URL
   });
 });
 

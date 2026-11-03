@@ -17,6 +17,7 @@ import type {
   AdminWorkspaceRole,
   AdminWorkspaceStatus,
 } from "@/shared/admin-platform.types";
+import type { AdminNotificationStatus } from "@/shared/types";
 
 export const WORKSPACE_STATUS_LABEL: Record<AdminWorkspaceStatus, string> = {
   active: "Ativo",
@@ -91,6 +92,31 @@ export const ALERT_SEVERITY_LABEL: Record<AdminAlertSeverity, string> = {
 export const ALERT_KIND_LABEL: Record<AdminAlertKind, string> = {
   alert: "Alerta",
   suggestion: "Sugestão",
+};
+
+/** Status de um comunicado (notificação) do Admin. */
+export const NOTIFICATION_STATUS_LABEL: Record<AdminNotificationStatus, string> = {
+  draft: "Rascunho",
+  scheduled: "Agendada",
+  sending: "Enviando",
+  sent: "Enviada",
+  partially_failed: "Entrega parcial",
+  failed: "Falhou",
+  cancelled: "Cancelada",
+};
+
+/**
+ * Cor da etiqueta do comunicado (os mesmos nomes de tom do `AdminBadge`): em espera (agendada, enviando, parcial)
+ * âmbar, enviada verde, falha vermelha, o resto cinza.
+ */
+export const NOTIFICATION_STATUS_TONE: Record<AdminNotificationStatus, "ok" | "warn" | "bad" | "muted"> = {
+  draft: "muted",
+  scheduled: "warn",
+  sending: "warn",
+  sent: "ok",
+  partially_failed: "warn",
+  failed: "bad",
+  cancelled: "muted",
 };
 
 export const ACTIVITY_KIND_LABEL: Record<AdminActivityKind, string> = {

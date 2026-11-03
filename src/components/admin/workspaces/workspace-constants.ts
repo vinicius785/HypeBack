@@ -42,23 +42,30 @@ export const WORKSPACE_LIST_CONFIG: AdminListStateConfig<WorkspaceFilterKey> = {
 };
 
 /**
- * O primeiro é o padrão do servidor: tudo que ainda existe para o cliente (ativos, suspensos e arquivados).
- * Excluídos só aparecem em "Excluídos". Por isso o rótulo diz "exceto excluídos": "Todos" ficou para onde
- * significa todos de verdade (em Usuários, `all` inclui as contas excluídas).
+ * Segmento de estado da lista. O primeiro é o padrão do servidor: tudo que ainda existe para o cliente
+ * (ativos, suspensos e arquivados), então "Todos" é "todos, exceto excluídos". Os excluídos são um filtro à
+ * parte (`WORKSPACE_DELETED_STATUS`, o botão "Excluídos" da barra), mas moram no mesmo parâmetro `status` da URL:
+ * os valores de cada estado (e os links do Dashboard, `?status=suspended`) não mudaram.
  */
 export const WORKSPACE_STATUS_OPTIONS: readonly AdminFilterOption[] = [
-  { value: "", label: "Todos, exceto excluídos" },
+  { value: "", label: "Todos" },
   { value: "active", label: "Ativos" },
   { value: "suspended", label: "Suspensos" },
   { value: "archived", label: "Arquivados" },
-  { value: "deleted", label: "Excluídos" },
 ];
 
+/** Valor de `status` do filtro "Excluídos" (o quinto estado, fora do segmento). */
+export const WORKSPACE_DELETED_STATUS = "deleted";
+
+/**
+ * "Uso recente" é a atividade real derivada (`activity`), não o estado do ciclo de vida: as respostas são curtas
+ * ("Uso recente: Sim") para não repetir "Ativos" com outro sentido. Os valores da URL continuam os mesmos.
+ */
 export const WORKSPACE_ACTIVITY_OPTIONS: readonly AdminFilterOption[] = [
   { value: "", label: "Qualquer" },
-  { value: "active", label: "Ativos" },
-  { value: "inactive", label: "Inativos" },
-  { value: "never", label: "Sem atividade" },
+  { value: "active", label: "Sim" },
+  { value: "inactive", label: "Não" },
+  { value: "never", label: "Nunca usaram" },
 ];
 
 export const WORKSPACE_KIND_OPTIONS: readonly AdminFilterOption[] = [
@@ -68,8 +75,12 @@ export const WORKSPACE_KIND_OPTIONS: readonly AdminFilterOption[] = [
   { value: "all", label: "Todos" },
 ];
 
+/**
+ * Filtros da barra, fora o liga/desliga "Excluídos" (que depende do estado da tela). "Uso recente" fica sempre à
+ * vista (`inline`); "Tipo" e "Criado em" moram no painel "Filtros" do celular (no desktop se misturam à linha).
+ */
 export const WORKSPACE_LIST_FILTERS: readonly AdminFilterDef[] = [
-  { kind: "select", key: "activity", label: "Atividade", options: WORKSPACE_ACTIVITY_OPTIONS, defaultValue: "" },
+  { kind: "select", key: "activity", label: "Uso recente", options: WORKSPACE_ACTIVITY_OPTIONS, defaultValue: "", inline: true },
   { kind: "select", key: "kind", label: "Tipo", options: WORKSPACE_KIND_OPTIONS, defaultValue: "brand" },
   { kind: "date-range", label: "Criado em", fromKey: "created_from", toKey: "created_to" },
 ];

@@ -1,83 +1,114 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
+import {
+  AdminEmptyState,
+  AdminErrorState,
+  AdminFilterBar,
+  AdminLoadMore,
+  AdminSearchInput,
+  AdminSection,
+  AdminSkeleton,
+} from "@/components/admin/platform";
 import { GroupCardPv } from "@/components/groups/pv-group";
-import { I } from "@/components/prototype/ui";
-import { useSlidingIndicator } from "@/hooks/admin/use-sliding-indicator";
 import { useGroups } from "@/hooks/use-groups";
 import { getUploadUrl } from "@/lib/utils/api";
 import type { GroupStatusFilter } from "@/shared/types";
 
-const TABS: Array<{ id: GroupStatusFilter; label: string }> = [
-  { id: "active", label: "Ativos" },
-  { id: "deleted", label: "Arquivados" },
-  { id: "all", label: "Todos" },
-];
+import "@/styles/admin-community.css";
+
+const STATUS_OPTIONS = [
+  { value: "active", label: "Ativos" },
+  { value: "deleted", label: "Arquivados" },
+  { value: "all", label: "Todos" },
+] as const;
+
+const DEFAULT_STATUS: GroupStatusFilter = "active";
+
+/** Cartões em carregamento: o mesmo desenho da grade de grupos (capa quadrada, nome, descrição). */
+function GroupsSkeleton() {
+  return (
+    <div className="adm-com-gsk" role="status">
+      <span className="adm-sr">Carregando grupos…</span>
+      <div className="gpx-g" aria-hidden="true">
+        {Array.from({ length: 6 }, (_, index) => (
+          <div className="adm-com-gsk-card" key={index}>
+            <span className="adm-com-gsk-img">
+              <AdminSkeleton width="100%" height="100%" radius="var(--adm-r-md)" />
+            </span>
+            <div className="adm-com-gsk-body">
+              <AdminSkeleton height={18} width="62%" />
+              <AdminSkeleton height={12} width="92%" />
+              <AdminSkeleton height={12} width={`${70 - (index % 3) * 10}%`} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /**
- * Aba Grupos da Comunidade: os grupos dos criadores (ativos, arquivados ou todos), a busca e o cartão de criar um
- * novo. Abrir um grupo ou criar um leva às rotas filhas (`/admin/groups/$groupId`, `/admin/groups/new`), que
- * abrem como diálogo por cima desta lista.
+ * Aba Grupos da Comunidade: os grupos dos criadores (ativos, arquivados ou todos) e a busca. Abrir um grupo ou
+ * criar um leva às rotas filhas (`/admin/groups/$groupId`, `/admin/groups/new`), que abrem como diálogo por
+ * cima desta lista. Só há UM "Criar grupo" na tela, o do cabeçalho da página: o estado vazio só orienta para ele
+ * (sem repetir o botão) e, numa busca sem resultado, a ação é "Limpar busca". Arquivados/Todos contam como
+ * filtro (chip e "Limpar filtros" voltam aos Ativos).
  */
 export function CommunityGroups() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<GroupStatusFilter>("active");
+  const [status, setStatus] = useState<GroupStatusFilter>(DEFAULT_STATUS);
   const [search, setSearch] = useState("");
 
-  const {
-    data,
-    isLoading,
-    error,
-    hasNextPage,
-    fetchNextPage,
-    isFetchingNextPage,
-  } = useGroups({ status: activeTab, search });
+  const query = useGroups({ status, search });
+  const groups = useMemo(() => query.data?.pages.flatMap((page) => page.items) ?? [], [query.data]);
 
-  const groups = useMemo(
-    () => data?.pages.flatMap((p) => p.items) ?? [],
-    [data],
-  );
-
-  const { containerRef, indicatorRef } = useSlidingIndicator<HTMLDivElement>(activeTab);
-
-  const goNew = () => navigate({ to: "/admin/groups/new" });
-  const q = search.trim();
-  const showNew = activeTab !== "deleted" && !q;
-
-  const body = () => {
-    if (isLoading)
-      return (
-        <div className="ov-empty big lvx-em">
-          <small>Carregando…</small>
-        </div>
-      );
-    if (error)
-      return (
-        <div className="ov-empty big lvx-em">
-          <span>
-            <I n="x" />
-          </span>
-          <b>Erro ao carregar os grupos</b>
-          <small>{error instanceof Error ? error.message : "Tente novamente."}</small>
-        </div>
-      );
-    if (groups.length === 0 && !showNew)
-      return (
-        <div className="ov-empty big lvx-em">
-          <span>
-            <I n="users" />
-          </span>
-          <b>{q ? "Nenhum grupo encontrado" : "Nenhum grupo arquivado"}</b>
-          <small>
-            {q
-              ? "Ajuste a busca ou crie um novo grupo."
-              : "Grupos arquivados aparecem aqui."}
-          </small>
-        </div>
-      );
-    return (
+  let body: ReactNode;
+  if (query.isLoading) {
+    body = <GroupsSkeleton />;
+  } else if (query.error) {
+    body = (
+      <AdminSection flush>
+        <AdminErrorState
+          compact
+          title="Não foi possível carregar os grupos"
+          message={query.error instanceof Error ? query.error.message : undefined}
+          onRetry={() => void query.refetch()}
+          retrying={query.isRefetching}
+        />
+      </AdminSection>
+    );
+  } else if (groups.length === 0) {
+    body = (
+      <AdminSection flush>
+        {search ? (
+          <AdminEmptyState
+            compact
+            icon="search"
+            title="Nenhum grupo encontrado"
+            description={`Nenhum grupo corresponde a “${search}”.`}
+            action={
+              <button type="button" className="btn out adm-btn-sm" onClick={() => setSearch("")}>
+                Limpar busca
+              </button>
+            }
+          />
+        ) : status === "deleted" ? (
+          <AdminEmptyState compact icon="users" title="Nenhum grupo arquivado" description="Grupos arquivados aparecem aqui." />
+        ) : (
+          <AdminEmptyState
+            compact
+            icon="users"
+            title="Nenhum grupo ainda"
+            description="Use o botão “Criar grupo”, no topo da página, para reunir os criadores em torno de um tema."
+          />
+        )}
+      </AdminSection>
+    );
+  } else {
+    body = (
       <>
-        <div className="gpx-g">
+        <div className="gpx-g" aria-busy={query.isPlaceholderData ? true : undefined}>
           {groups.map((g, k) => (
             <GroupCardPv
               key={g.id}
@@ -101,67 +132,33 @@ export function CommunityGroups() {
               }}
             />
           ))}
-          {showNew && (
-            <button
-              type="button"
-              className="gpx-c gpx-nw"
-              style={{ ["--k" as string]: groups.length }}
-              onClick={goNew}
-            >
-              <span>
-                <I n="plus" />
-              </span>
-              <b>Criar grupo</b>
-              <small>Reúna os criadores em torno de um tema</small>
-            </button>
-          )}
         </div>
-        {hasNextPage && (
-          <div className="gpx-more">
-            <button
-              type="button"
-              className="btn out"
-              disabled={isFetchingNextPage}
-              onClick={() => fetchNextPage()}
-            >
-              {isFetchingNextPage ? "Carregando..." : "Carregar mais"}
-            </button>
-          </div>
-        )}
+        <AdminLoadMore
+          loaded={groups.length}
+          hasMore={!!query.hasNextPage}
+          loading={query.isFetchingNextPage}
+          onLoadMore={() => void query.fetchNextPage()}
+          noun={{ singular: "grupo", plural: "grupos" }}
+        />
       </>
     );
-  };
+  }
 
   return (
-    <>
-      <div className="tools fade gpx-tl">
-        <div className="seg" id="gpseg" ref={containerRef}>
-          <i className="ind" ref={indicatorRef} />
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={activeTab === t.id ? "on" : ""}
-              onClick={() => setActiveTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <span style={{ flex: 1 }} />
-        <label className="find">
-          <I n="search" cls="sm" />
-          <input
-            placeholder="Buscar grupos"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            autoComplete="off"
-          />
-        </label>
-      </div>
-      <div className="fade gpx-rs" key={activeTab}>
-        {body()}
-      </div>
-    </>
+    <div className="adm-com-stack">
+      <AdminFilterBar
+        segment={{
+          options: STATUS_OPTIONS,
+          value: status,
+          onChange: (value) => setStatus(value as GroupStatusFilter),
+          ariaLabel: "Status dos grupos",
+        }}
+        segmentDefault={DEFAULT_STATUS}
+        search={<AdminSearchInput value={search} onSearch={setSearch} placeholder="Buscar grupos" label="Buscar grupos" />}
+        searchLabel="Buscar grupos"
+      />
+
+      {body}
+    </div>
   );
 }

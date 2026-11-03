@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { createContext, useContext, type CSSProperties, type ReactNode } from "react";
 
 import { I } from "@/components/prototype/ui";
 import { EMPTY_TEXT, figureText, isFigureAvailable } from "@/lib/admin/format";
@@ -10,6 +10,7 @@ import { AdminLink, type AdminLinkTarget } from "./admin-link";
 import { AdminSkeleton } from "./admin-skeleton";
 
 import "@/styles/admin-platform.css";
+import "@/styles/admin-kit-ext.css";
 
 export interface AdminFigureCardProps {
   label: string;
@@ -23,7 +24,22 @@ export interface AdminFigureCardProps {
   size?: "md" | "sm";
   /** `plain` tira o cartão (fundo, raio, respiro) para usar dentro de uma seção. */
   variant?: "card" | "plain";
+  /**
+   * Mostra o selo de tipo (Realizado, Posição atual…) no rodapé do cartão. Padrão: sim (ou o da grade: veja
+   * `AdminFigureGrid quiet`). Com `false` o selo some do cartão e vira uma linha "Tipo: Realizado" dentro do
+   * popover do "i" do rótulo, que continua dizendo a regra e o significado do tipo.
+   */
+  showKind?: boolean;
+  /**
+   * Definição do `hint` ("no período = últimos 30 dias"). Entra no popover do "i" do rótulo, como mais um
+   * parágrafo, em vez de o texto de apoio ganhar um segundo "i". Só quando o cartão não tem "i" do rótulo
+   * (sem número ainda) o `hint` ganha o seu próprio.
+   */
+  hintInfo?: ReactNode;
 }
+
+/** `AdminFigureGrid quiet`: os cartões filhos assumem `showKind={false}` sem repetir a prop em cada um. */
+const QuietFiguresContext = createContext(false);
 
 /**
  * Largura do texto do valor em "unidades": letra e dígito contam 1; ponto, vírgula, espaço e símbolo, ½.
@@ -40,7 +56,19 @@ export function figureTextUnits(text: string): number {
  * Posição atual, Calculado, Aproximado, Não apurado) e o "i" com a regra de cálculo. Número que não existe
  * no banco (`unavailable`) nunca vira "0": é "Não apurado", em cinza.
  */
-export function AdminFigureCard({ label, figure, loading, to, hint, size = "md", variant = "card" }: AdminFigureCardProps) {
+export function AdminFigureCard({
+  label,
+  figure,
+  loading,
+  to,
+  hint,
+  size = "md",
+  variant = "card",
+  showKind,
+  hintInfo,
+}: AdminFigureCardProps) {
+  const quiet = useContext(QuietFiguresContext);
+  const kindVisible = showKind ?? !quiet;
   const available = isFigureAvailable(figure);
   const kind = figure?.kind;
   const valueText = figure ? figureText(figure) : EMPTY_TEXT;
@@ -57,8 +85,12 @@ export function AdminFigureCard({ label, figure, loading, to, hint, size = "md",
         <span className="adm-fig-label">{label}</span>
         {!loading && figure ? (
           <AdminInfoPopover label={label}>
-            <p>{figure.definition}</p>
-            <p>{FIGURE_KIND_HELP[figure.kind]}</p>
+            <AdminInfoPopover.Paragraph>{figure.definition}</AdminInfoPopover.Paragraph>
+            {hintInfo ? <AdminInfoPopover.Paragraph>{hintInfo}</AdminInfoPopover.Paragraph> : null}
+            {kindVisible ? null : (
+              <AdminInfoPopover.Paragraph className="adm-fig-kindline">Tipo: {FIGURE_KIND_LABEL[figure.kind]}</AdminInfoPopover.Paragraph>
+            )}
+            <AdminInfoPopover.Paragraph>{FIGURE_KIND_HELP[figure.kind]}</AdminInfoPopover.Paragraph>
           </AdminInfoPopover>
         ) : null}
       </div>
@@ -79,14 +111,20 @@ export function AdminFigureCard({ label, figure, loading, to, hint, size = "md",
           >
             {valueText}
           </div>
-          {figure || hint ? (
+          {(figure && (kindVisible || to)) || hint ? (
             <div className="adm-fig-foot">
-              {kind ? (
+              {kind && kindVisible ? (
                 <span className="adm-kind" data-kind={kind}>
                   {FIGURE_KIND_LABEL[kind]}
                 </span>
               ) : null}
-              {hint ? <span>{hint}</span> : null}
+              {hint ? (
+                <span className="adm-fig-hint">
+                  {hint}
+                  {/* o "i" do rótulo já leva a definição do hint; sem ele (número ainda não chegou) o hint ganha o seu */}
+                  {hintInfo && !figure ? <AdminInfoPopover label={label}>{hintInfo}</AdminInfoPopover> : null}
+                </span>
+              ) : null}
               {to ? (
                 <span className="adm-fig-go" aria-hidden="true">
                   <I n="chev" cls="sm" />
@@ -102,7 +140,16 @@ export function AdminFigureCard({ label, figure, loading, to, hint, size = "md",
   );
 }
 
-/** Grade responsiva de `AdminFigureCard` (4 colunas no desktop, 2 no celular). */
-export function AdminFigureGrid({ children }: { children: ReactNode }) {
-  return <div className="adm-figs">{children}</div>;
+/**
+ * Grade responsiva de `AdminFigureCard` (4 colunas no desktop, 2 no celular).
+ * `quiet` tira o selo de tipo de todos os cartões (cada um pode voltar com `showKind`): o tipo passa a viver só no popover do "i".
+ */
+export function AdminFigureGrid({ children, quiet = false }: { children: ReactNode; quiet?: boolean }) {
+  return (
+    <QuietFiguresContext.Provider value={quiet}>
+      <div className="adm-figs" data-quiet={quiet ? "true" : undefined}>
+        {children}
+      </div>
+    </QuietFiguresContext.Provider>
+  );
 }

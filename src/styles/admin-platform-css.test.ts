@@ -11,6 +11,8 @@ import { describe, expect, it } from "vitest";
 const read = (name: string) => readFileSync(resolve(__dirname, name), "utf8");
 const platformCss = read("admin-platform.css");
 const usersCss = read("admin-users.css");
+const actionMenuCss = read("admin-kit-action-menu.css");
+const teamCss = read("admin-team.css");
 const prototypeCss = read("prototype.css");
 
 const adminCssFiles: Record<string, string> = Object.fromEntries(
@@ -93,9 +95,13 @@ describe("anel de foco que não é cortado", () => {
 });
 
 describe("botão Suspender (contorno vermelho)", () => {
-  it("usa uma classe do Admin com estilo explícito: fundo branco, texto e contorno vermelhos, preenchido no hover", () => {
-    expect(usersCss).toMatch(/\.pv \.btn\.adm-btn-danger-out \{[^}]*background: #fff;[^}]*color: var\(--adm-bad\);[^}]*box-shadow: inset 0 0 0 1\.5px var\(--adm-bad\)/);
-    expect(usersCss).toMatch(/\.pv \.btn\.adm-btn-danger-out:hover:not\(:disabled\) \{[^}]*background: var\(--adm-bad\);[^}]*color: #fff/);
+  it("usa uma classe do kit com estilo explícito (tokens): fundo de superfície, texto e contorno vermelhos, preenchido no hover", () => {
+    expect(actionMenuCss).toMatch(/\.pv \.btn\.adm-btn-danger-out \{[^}]*background: var\(--adm-surface\);[^}]*color: var\(--adm-bad\);[^}]*box-shadow: inset 0 0 0 1\.5px var\(--adm-bad\)/);
+    expect(actionMenuCss).toMatch(/\.pv \.btn\.adm-btn-danger-out:hover:not\(:disabled\) \{[^}]*background: var\(--adm-bad\);[^}]*color: var\(--adm-surface\)/);
+  });
+
+  it("a cópia que Usuários tinha foi apagada: a regra mora só no kit", () => {
+    expect(usersCss).not.toContain("adm-btn-danger-out");
   });
 
   it("o componente não usa `btn out dng`, que depende da ordem das regras do prototype.css", () => {
@@ -122,5 +128,78 @@ describe("texto só para leitor de tela (.adm-sr)", () => {
     expect(sr).toMatch(/position:\s*absolute/);
     expect(sr).not.toMatch(/(^|[\s;])(top|left|right|bottom|inset):/);
     expect(page).toMatch(/position:\s*relative/);
+  });
+});
+
+describe("tokens, breakpoints e cabeçalhos do kit (admin-platform.css)", () => {
+  // tudo que vem depois do bloco de tokens (`.pv { ... }`), onde os literais dos tokens são declarados
+  const body = platformCss.slice(platformCss.indexOf("/* ───────────────────────── página"));
+
+  it("só usa os três breakpoints oficiais em @media (560, 900, 1100) e a preferência de movimento", () => {
+    const widths = [...platformCss.matchAll(/@media\s*\(max-width:\s*(\d+)px\)/g)].map((m) => Number(m[1]));
+    expect(widths.length).toBeGreaterThan(0);
+    for (const w of widths) expect([560, 900, 1100]).toContain(w);
+    expect(platformCss).not.toMatch(/@media\s*\(min-width/);
+  });
+
+  it("fundo de superfície, hover, roxo de texto, anel de foco e sombra de popover vêm dos tokens", () => {
+    expect(body).not.toMatch(/background:\s*#fff\b/);
+    expect(body).not.toMatch(/#e4e4e4|#e2e2e2/i);
+    expect(body).not.toMatch(/#7a1fc4/i);
+    expect(body).not.toMatch(/inset 0 0 0 2px var\(--brand\)/);
+    expect(body).not.toMatch(/box-shadow:\s*0 18px 40px/);
+    expect(body).toMatch(/\.adm-pop \{[^}]*box-shadow:\s*var\(--adm-shadow-pop\)/);
+    expect(body).toMatch(/\.adm-search:focus-within \{\s*box-shadow:\s*var\(--adm-ring\)/);
+  });
+
+  it("--adm-muted-strong continua existindo, mas é só um alias do --adm-text-muted", () => {
+    expect(platformCss).toMatch(/--adm-muted-strong:\s*var\(--adm-text-muted\)/);
+  });
+
+  it("cabeçalho de coluna (tabela e cartão do celular) em frase normal, 12.5px, sem caixa alta nem espaçamento largo", () => {
+    const th = platformCss.match(/\.pv \.adm-th \{([^}]*)\}/)?.[1] ?? "";
+    expect(th).toMatch(/font-size:\s*12\.5px/);
+    expect(th).not.toMatch(/uppercase|letter-spacing/);
+    const before = platformCss.match(/\.pv \.adm-cell::before \{([^}]*)\}/)?.[1] ?? "";
+    expect(before).toMatch(/font-size:\s*12\.5px/);
+    expect(before).not.toMatch(/uppercase|letter-spacing/);
+  });
+
+  it("o h1 do cabeçalho é 32px acima de 900, 30px até 900 e 28px até 560", () => {
+    expect(platformCss).toMatch(/\.pv \.adm-head h1 \{[^}]*font-size:\s*32px/);
+    const tablet = platformCss.match(/@media \(max-width: 900px\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
+    expect(tablet).toMatch(/\.adm-head h1 \{ font-size: 30px; \}/);
+    const phone = platformCss.match(/@media \(max-width: 560px\) \{\s*\n\s*\.pv \.adm-head h1([\s\S]*?)\n\}/)?.[0] ?? "";
+    expect(phone).toMatch(/\.adm-head h1 \{ font-size: 28px; \}/);
+  });
+
+  it("'reduzir movimento' desliga as transições e a pulsação do kit", () => {
+    const reduce = platformCss.slice(platformCss.indexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(reduce).toMatch(/\.adm-sk \{ animation: none; \}/);
+    expect(reduce).toMatch(/transition:\s*none/);
+  });
+});
+
+describe("Usuários e Equipe: tokens do kit e breakpoints oficiais", () => {
+  for (const [name, css] of [
+    ["admin-users.css", usersCss],
+    ["admin-team.css", teamCss],
+  ] as const) {
+    it(`${name}: superfície, divisor e foco vêm dos tokens, sem literais soltos`, () => {
+      expect(css).not.toMatch(/background:\s*#fff\b/);
+      expect(css).not.toMatch(/#f4f4f4|#e4e4e4/i);
+      expect(css).not.toMatch(/rgba\(5, 5, 5/);
+      expect(css).not.toMatch(/outline:\s*3px solid var\(--brand\)/);
+      expect(css).not.toMatch(/border-radius:\s*(14|16|18|20|24)px/);
+    });
+
+    it(`${name}: só usa os breakpoints oficiais (560, 900, 1100)`, () => {
+      for (const match of css.matchAll(/@media\s*\(max-width:\s*(\d+)px\)/g)) expect([560, 900, 1100]).toContain(Number(match[1]));
+    });
+  }
+
+  it("as classes dos seletores antigos (workspace e conta) saíram: o seletor é o do kit", () => {
+    expect(usersCss).not.toMatch(/adm-users-picker|adm-users-tip|adm-users-proxy/);
+    expect(teamCss).not.toMatch(/adm-team-result|adm-team-picked|adm-team-results/);
   });
 });

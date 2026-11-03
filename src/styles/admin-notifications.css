@@ -1,0 +1,19 @@
+/*
+ * Notificações do Admin (`src/components/admin/admin-notification-list.tsx` e a página): só as células da lista.
+ * A tabela, as abas, o diálogo de confirmação e a etiqueta de estado vêm do kit (`admin-platform.css`).
+ *
+ * Mesmas regras do kit: prefixo `adm-ntf-`, tudo sob `.pv`, nenhuma classe curta do protótipo usada nem redefinida.
+ * Texto de apoio em `--adm-text-muted` (o `--muted` do protótipo não passa de 4,5:1).
+ */
+
+/* título em negrito e o começo do texto da mensagem: duas linhas no máximo (o texto inteiro está na linha expandida) */
+.pv .adm-ntf-msg { min-width: 0; }
+.pv .adm-ntf-msg b { display: block; font-size: 14px; font-weight: 600; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.pv .adm-ntf-msg small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin-top: 2px; color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.45; overflow-wrap: anywhere; }
+
+/* valor principal e linhas de apoio embaixo (público, quando saiu) */
+.pv .adm-ntf-two { min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; overflow-wrap: anywhere; }
+.pv .adm-ntf-two small { color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.45; }
+
+/* a mensagem inteira na linha expandida: respeita as quebras de linha que o admin escreveu */
+.pv .adm-ntf-full { white-space: pre-wrap; }

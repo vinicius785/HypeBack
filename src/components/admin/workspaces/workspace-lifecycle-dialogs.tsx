@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { toast } from "sonner";
 
 import {
+  adminToast,
   AdminConfirmDialog,
   AdminErrorState,
   AdminSkeletonLines,
@@ -124,11 +124,11 @@ function TransitionDialog({
     setError(null);
     try {
       await mutation.mutateAsync({ reason });
-      toast.success(copy.done);
+      adminToast.success(copy.done);
       onClose();
     } catch (failure) {
       if (refreshIfStale(failure)) {
-        toast.error(workspaceErrorMessage(failure));
+        adminToast.error(workspaceErrorMessage(failure));
         onClose();
         return;
       }
@@ -213,11 +213,11 @@ function DangerDialog({
     }
     try {
       await mutation.mutateAsync({ reason, confirm_name: confirmText.trim(), impact_token: data.impact_token });
-      toast.success(copy.done);
+      adminToast.success(copy.done);
       onClose();
     } catch (failure) {
       if (refreshIfStale(failure)) {
-        toast.error(workspaceErrorMessage(failure));
+        adminToast.error(workspaceErrorMessage(failure));
         onClose();
         return;
       }

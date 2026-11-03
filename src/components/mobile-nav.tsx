@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 
 import { I } from "@/components/prototype/ui";
@@ -7,6 +7,7 @@ import { useNavSections } from "@/components/navigation/use-nav-sections";
 import { Brand, ROLE_LABEL, isCampaignScopedPath, useLogout } from "@/components/sidebar";
 import { WorkspaceStatusChip } from "@/components/workspace-state/workspace-status-chip";
 import { useWorkspaceContext } from "@/contexts/workspace-context";
+import { useModalBehavior } from "@/hooks/admin/use-modal-behavior";
 import type { Workspace } from "@/shared/types";
 
 /** Telas que usam a base da tela (assistentes, estúdio de live): sem barra flutuante. */
@@ -33,22 +34,19 @@ export function MobileNav({ scope = "workspace" }: { scope?: NavScope }) {
   const [open, setOpen] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLButtonElement>(null);
+  const sheetId = useId();
 
   // Fecha a gaveta ao trocar de tela.
   useEffect(() => setOpen(false), [pathname]);
 
+  // Gaveta aberta = diálogo modal: foco entra na gaveta, Tab fica preso nela, Escape fecha e a rolagem da página trava.
+  useModalBehavior({ open, containerRef: sheetRef, onEscape: () => setOpen(false) });
+
+  // Ao fechar, o foco volta para o botão "Mais" (o `opener` do hook pode ser o <body>: o Safari não foca botão no clique).
+  const wasOpen = useRef(false);
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("keydown", onKey);
-    sheetRef.current?.querySelector<HTMLElement>("button")?.focus();
-    const trigger = moreRef.current;
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      trigger?.focus();
-    };
+    if (wasOpen.current && !open) moreRef.current?.focus();
+    wasOpen.current = open;
   }, [open]);
 
   if (HIDE_ON.some((re) => re.test(pathname))) return null;
@@ -58,6 +56,8 @@ export function MobileNav({ scope = "workspace" }: { scope?: NavScope }) {
   const extraSections = sections
     .map((section) => ({ ...section, items: section.items.filter((item) => !item.pinned) }))
     .filter((section) => section.items.length > 0);
+  // Foco inicial da gaveta: o primeiro item de navegação (e não o seletor de workspace, que vem antes no DOM).
+  const firstNavId = extraSections[0]?.items[0]?.id;
   const extraHrefs = [...extraSections.flatMap((section) => section.items.map((item) => item.href)), "/settings", "/workspace"];
   const moreOn = open || extraHrefs.some((href) => isOn(href));
 
@@ -91,6 +91,7 @@ export function MobileNav({ scope = "workspace" }: { scope?: NavScope }) {
           aria-label="Mais opções"
           aria-haspopup="dialog"
           aria-expanded={open}
+          aria-controls={sheetId}
           onClick={() => setOpen((v) => !v)}
         >
           <I n="more" />
@@ -100,7 +101,17 @@ export function MobileNav({ scope = "workspace" }: { scope?: NavScope }) {
 
       <div id="bmore" className={open ? "on" : ""}>
         <div className="bms-bd" onClick={() => setOpen(false)} />
-        <div ref={sheetRef} className="bms" role="dialog" aria-modal="true" aria-label="Mais opções" aria-hidden={!open}>
+        {/* `inert` fechada: o conteúdo some da ordem de tabulação e da leitura de tela (a gaveta só está fora da vista, não fora do DOM) */}
+        <div
+          ref={sheetRef}
+          id={sheetId}
+          className="bms"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Mais opções"
+          aria-hidden={open ? undefined : true}
+          inert={!open}
+        >
           <div className="bms-gr" aria-hidden="true" />
 
           {!platform && workspaces.length > 0 && (
@@ -139,6 +150,7 @@ export function MobileNav({ scope = "workspace" }: { scope?: NavScope }) {
                     type="button"
                     className={`bms-t${isOn(item.href) ? " on" : ""}`}
                     aria-current={isOn(item.href) ? "page" : undefined}
+                    data-adm-autofocus={item.id === firstNavId ? "" : undefined}
                     onClick={() => go(item.href)}
                   >
                     <span>
@@ -154,7 +166,12 @@ export function MobileNav({ scope = "workspace" }: { scope?: NavScope }) {
           <div className="bms-sc">
             <small>Conta</small>
             <div>
-              <button type="button" className={`bms-t${isOn("/settings") ? " on" : ""}`} onClick={() => go("/settings")}>
+              <button
+                type="button"
+                className={`bms-t${isOn("/settings") ? " on" : ""}`}
+                data-adm-autofocus={firstNavId ? undefined : ""}
+                onClick={() => go("/settings")}
+              >
                 <span>
                   <I n="user" cls="sm" />
                 </span>

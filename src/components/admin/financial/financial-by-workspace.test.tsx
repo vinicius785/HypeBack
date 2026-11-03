@@ -13,10 +13,6 @@ vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
   return { ...actual, adminGet: client.adminGet, adminList: client.adminList, adminFeed: client.adminFeed };
 });
 
-vi.mock("@/components/admin/users/admin-workspace-picker", async () => ({
-  AdminWorkspacePicker: (await import("./workspace-picker-stub")).WorkspacePickerStub,
-}));
-
 import { AdminApiError } from "@/lib/admin/admin-client";
 import { currentSearch } from "@/test/render-admin-route";
 
@@ -46,6 +42,8 @@ function lastQuery(): Record<string, unknown> {
 async function openByWorkspace(url = "/admin/financial?tab=by-workspace") {
   const view = renderFinancial(url);
   const table = await screen.findByRole("table", { name: "Financeiro por workspace" });
+  // a tabela existe já no esqueleto: as linhas só depois da primeira resposta
+  await waitFor(() => expect(table).not.toHaveAttribute("aria-busy", "true"));
   return { ...view, table };
 }
 
@@ -98,7 +96,24 @@ describe("Por workspace: dados", () => {
     const info = within(table).getByRole("button", { name: "Como é calculado: Custódia" });
     expect(info).toHaveAccessibleDescription("Saldo em custódia agora (não depende do período).");
     expect(within(table).getByRole("button", { name: "Como é calculado: Pago via PIX" })).toHaveAccessibleDescription("PIX concluído no período.");
-    expect(screen.getByText(/Aportes, liberado e pago via PIX são do período escolhido/)).toBeInTheDocument();
+  });
+
+  it("a nota de escopo (período × posição de agora) fica sob a tabela, não ao lado da busca", async () => {
+    const { table } = await openByWorkspace();
+    const note = screen.getByText(/Aportes, liberado e pago via PIX são do período escolhido/);
+    expect(note).toHaveTextContent("Custódia e comprometido são a posição de agora.");
+    expect(note.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    expect(note.closest(".adm-filters")).toBeNull();
+  });
+
+  it("a barra tem a busca (com nome) e o 'Atualizar' só com o ícone no fim", async () => {
+    const { container } = await openByWorkspace();
+    expect(container.querySelectorAll(".adm-filters")).toHaveLength(1);
+    const refresh = screen.getByRole("button", { name: "Atualizar" });
+    expect(refresh).toHaveAttribute("data-icon-only", "true");
+    expect(refresh.closest(".adm-filters")).not.toBeNull();
+    await userEvent.click(refresh);
+    await waitFor(() => expect(listCalls().length).toBeGreaterThan(1));
   });
 
   it("a linha do workspace abre a aba Financeiro do detalhe (/admin/workspaces/:id?tab=financial)", async () => {
@@ -161,7 +176,7 @@ describe("Por workspace: consulta, período, ordenação, busca e página", () =
     const { router } = await openByWorkspace("/admin/financial?tab=by-workspace&page=2");
     await waitFor(() => expect(lastQuery().page).toBe(2));
 
-    const search = screen.getByRole("searchbox", { name: "Buscar workspace" });
+    const search = screen.getByRole("searchbox", { name: "Buscar workspaces" });
     await userEvent.type(search, "café{Enter}");
     await waitFor(() => expect(lastQuery()).toMatchObject({ search: "café", page: 1 }));
     expect(currentSearch(router)).toMatchObject({ tab: "by-workspace", search: "café" });

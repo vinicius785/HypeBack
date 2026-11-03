@@ -1,0 +1,45 @@
+/*
+ * AdminListSkeleton (`platform/admin-list-skeleton.tsx`): esqueleto de lista em quatro desenhos (linhas, linha do tempo, alertas e faixa).
+ * Tudo sob `.pv`, prefixo `adm-lsk`. Os blocos em si (`.adm-sk`) vêm de admin-platform.css: cor chapada que
+ * pulsa, sem gradiente. Aqui só entra a disposição das linhas.
+ */
+
+/* `relative`: o texto `.adm-sr` é absoluto e, sem âncora, saltaria para outro bloco e poderia criar rolagem */
+.pv .adm-lsk { position: relative; display: flex; flex-direction: column; width: 100%; }
+
+.pv .adm-lsk-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--adm-rule);
+}
+.pv .adm-lsk-row:last-child { border-bottom: 0; }
+
+/* coluna de texto: ocupa o que sobra e deixa o bloco da direita no canto */
+.pv .adm-lsk-main { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; min-width: 0; }
+.pv .adm-lsk-main > .adm-sk { max-width: 100%; }
+.pv .adm-lsk-row > .adm-sk { flex: none; }
+
+/* selo do alerta (um só por linha) */
+.pv .adm-lsk-tags { display: flex; gap: 8px; }
+
+/* faixa: 4 itens curtos lado a lado (rótulo + valor), sem linhas separadas */
+.pv .adm-lsk-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; padding: 4px 0; }
+.pv .adm-lsk-cell { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.pv .adm-lsk-cell > .adm-sk { max-width: 100%; }
+
+/* linha do tempo: o ponto fica na altura da primeira linha de texto, como o ponto de verdade */
+.pv .adm-lsk[data-variant="timeline"] .adm-lsk-row { align-items: flex-start; border-bottom: 0; padding: 8px 0; }
+.pv .adm-lsk[data-variant="timeline"] .adm-lsk-dot { margin-top: 5px; }
+
+/* celular: o bloco da direita cabe menos; o texto cede */
+@media (max-width: 560px) {
+  .pv .adm-lsk-row { gap: 12px; }
+  .pv .adm-lsk-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; }
+}
+
+/* sem pulsação: o bloco fica chapado (a regra geral de `.adm-sk` já faz isso; repetida aqui para não depender dela) */
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-lsk .adm-sk { animation: none; }
+}

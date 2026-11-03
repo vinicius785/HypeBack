@@ -39,12 +39,6 @@ export const PERIOD_LABEL: Record<AdminPeriodChoice, string> = {
   custom: "Personalizado",
 };
 
-/** Opções na ordem em que aparecem no seletor. */
-export const PERIOD_OPTIONS: ReadonlyArray<{ value: AdminPeriodChoice; label: string }> = [
-  ...PERIOD_PRESETS.map((value) => ({ value, label: PERIOD_LABEL[value] })),
-  { value: "custom", label: PERIOD_LABEL.custom },
-];
-
 /** Período já resolvido: o que a pessoa escolheu e os dias de São Paulo que isso vira. */
 export interface AdminPeriod extends AdminDateRange {
   preset: AdminPeriodChoice;
@@ -262,9 +256,4 @@ export function periodLabel(period: AdminPeriod): string {
     case "custom":
       return "Período personalizado";
   }
-}
-
-/** Rótulo e dias juntos: "Últimos 30 dias: 02/10/2026 – 31/10/2026". */
-export function describePeriod(period: AdminPeriod): string {
-  return `${periodLabel(period)}: ${formatPeriodRange(period)}`;
 }

@@ -3,14 +3,17 @@ import { useState } from "react";
 import {
   AdminEmptyState,
   AdminErrorState,
+  AdminListSkeleton,
   AdminPager,
   AdminSection,
   AdminSegmentedControl,
-  AdminSkeleton,
+  AdminTimeline,
+  groupTimelineByDay,
   type AdminFilterOption,
 } from "@/components/admin/platform";
 import { useAdminPageClamp } from "@/hooks/admin/use-admin-list-query-state";
 import { useAdminUserAudit, type AdminUserAuditView } from "@/hooks/admin/use-admin-users";
+import { ADMIN_TIME_ZONE } from "@/lib/admin/format";
 
 import { AdminUserAuditEntry } from "./admin-user-audit-entry";
 
@@ -26,22 +29,6 @@ const EMPTY_TEXT_BY_VIEW: Record<AdminUserAuditView, { title: string; descriptio
     description: "Esta pessoa não fez nenhuma ação registrada no histórico de auditoria.",
   },
 };
-
-function ActivitySkeleton() {
-  return (
-    <div className="adm-users-log-skeleton" aria-hidden="true">
-      {Array.from({ length: 4 }, (_, index) => (
-        <div className="adm-users-log-skeleton-row" key={index}>
-          <AdminSkeleton width={110} height={14} />
-          <div>
-            <AdminSkeleton width={`${46 + ((index * 13) % 28)}%`} height={16} />
-            <AdminSkeleton width="34%" height={13} style={{ marginTop: 8 }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 /**
  * Aba Atividade: a trilha de auditoria da conta. Duas visões, as duas vindas de `GET /admin/audit-log`:
@@ -64,6 +51,8 @@ export function AdminUserActivityTab({ userId }: { userId: number }) {
     { value: "actor", label: "Feitas por esta pessoa", count: actor.data?.meta.total },
   ];
   const entries = current.data?.data ?? [];
+  // Por dia no fuso do negócio, na ordem em que a API manda (da mais recente para a mais antiga).
+  const dayGroups = groupTimelineByDay(entries, (entry) => entry.created_at, { timeZone: ADMIN_TIME_ZONE });
   const showError = current.isError && !current.data;
 
   return (
@@ -84,22 +73,21 @@ export function AdminUserActivityTab({ userId }: { userId: number }) {
         />
 
         {current.isLoading ? (
-          <>
-            <span className="adm-sr" role="status">
-              Carregando histórico…
-            </span>
-            <ActivitySkeleton />
-          </>
+          <AdminListSkeleton variant="timeline" rows={4} ariaLabel="Carregando histórico…" />
         ) : showError ? (
           <AdminErrorState compact error={current.error} onRetry={() => void current.refetch()} retrying={current.isFetching} />
         ) : entries.length === 0 ? (
           <AdminEmptyState compact {...EMPTY_TEXT_BY_VIEW[view]} />
         ) : (
-          <ol className="adm-users-log" aria-label="Histórico de ações" aria-busy={current.isFetching ? true : undefined}>
-            {entries.map((entry) => (
-              <AdminUserAuditEntry key={entry.id} entry={entry} view={view} />
-            ))}
-          </ol>
+          <AdminTimeline
+            ariaLabel="Histórico de ações"
+            busy={current.isFetching}
+            groups={dayGroups.map((group) => ({
+              key: group.key,
+              label: group.label,
+              items: group.items.map((entry) => <AdminUserAuditEntry key={entry.id} entry={entry} view={view} />),
+            }))}
+          />
         )}
       </div>
 

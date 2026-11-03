@@ -2,7 +2,8 @@
  * Tela "Equipe" do Admin: papéis, pessoas e troca de papel.
  *
  * O QUE PRECISA FUNCIONAR:
- *   - os três papéis aparecem com o que podem e quantas pessoas têm cada um;
+ *   - as pessoas vêm primeiro (a linha abre a conta); os três papéis ficam recolhidos em "O que cada papel pode fazer",
+ *     com o que podem e quantas pessoas têm cada um;
  *   - o administrador adiciona pessoas e altera papéis (motivo obrigatório, Idempotency-Key, erro em português);
  *   - o papel só habilita a confirmação quando difere do atual; "Tirar da equipe" é uma ação perigosa;
  *   - o último administrador não sai (erro do servidor traduzido);
@@ -35,7 +36,7 @@ import { toAdminApiError } from "@/lib/admin/admin-client";
 import type { AdminPlatformTeam } from "@/shared/admin-platform.types";
 
 import { listResult, makeUserDetail } from "../users/admin-users-test-data";
-import { renderRoutes } from "../users/admin-users-test-utils";
+import { renderRoutes, stubRoute } from "../users/admin-users-test-utils";
 import { AdminTeamPage } from "./admin-team-page";
 import { TEAM_SEARCH_MIN } from "./team-role-dialog";
 
@@ -69,8 +70,10 @@ function serve(team: AdminPlatformTeam = TEAM) {
   });
 }
 
+const ROUTES = [{ path: "/admin/team", component: AdminTeamPage }, stubRoute("/admin/users/$userId")];
+
 async function renderPage() {
-  const view = renderRoutes([{ path: "/admin/team", component: AdminTeamPage }], "/admin/team");
+  const view = renderRoutes(ROUTES, "/admin/team");
   await screen.findByRole("heading", { level: 1, name: "Equipe" });
   await screen.findByText("Caio Teodoro");
   return { ...view, user: userEvent.setup() };
@@ -85,8 +88,28 @@ beforeEach(() => {
 });
 
 describe("Equipe: papéis e pessoas", () => {
+  it("as pessoas vêm antes dos papéis, e os papéis ficam recolhidos", async () => {
+    const { container } = await renderPage();
+    const people = screen.getByRole("table", { name: "Equipe da plataforma" });
+    const summary = screen.getByText("O que cada papel pode fazer");
+    expect(people.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect((summary.closest("details") as HTMLDetailsElement).open).toBe(false);
+    expect(container.querySelectorAll("details[open]")).toHaveLength(0);
+  });
+
+  it("enquanto a equipe carrega, o bloco de papéis é um esqueleto e o erro da tabela não troca a página", async () => {
+    mocks.adminGet.mockImplementation(() => new Promise(() => undefined));
+    const { container } = renderRoutes(ROUTES, "/admin/team");
+    await screen.findByRole("heading", { level: 1, name: "Equipe" });
+    expect(container.querySelector(".adm-team-roles-skel")).toBeInTheDocument();
+    // uma só região de status para o carregamento (a da tabela)
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(screen.queryByText("O que cada papel pode fazer")).not.toBeInTheDocument();
+  });
+
   it("um cartão por papel, com o que pode, o que não pode e quantas pessoas", async () => {
-    await renderPage();
+    const { user } = await renderPage();
+    await user.click(screen.getByText("O que cada papel pode fazer"));
     const cards = screen.getAllByRole("article");
     expect(cards).toHaveLength(3);
     expect(cards[0]).toHaveTextContent("Administrador");
@@ -96,7 +119,14 @@ describe("Equipe: papéis e pessoas", () => {
     expect(within(cards[2]).getByLabelText("O que Somente leitura pode")).toHaveTextContent("Ver todas as telas do Admin");
   });
 
-  it("lista as pessoas com papel e situação; a própria conta diz 'Você' e não tem botão", async () => {
+  it("a coluna do estado se chama 'Status', a de ações tem nome para leitor de tela e a linha abre a conta", async () => {
+    await renderPage();
+    const headers = within(screen.getByRole("table", { name: "Equipe da plataforma" })).getAllByRole("columnheader");
+    expect(headers.map((h) => h.getAttribute("aria-label") ?? h.textContent)).toEqual(["Pessoa", "Papel", "Status", "Ações"]);
+    expect(screen.getByRole("link", { name: /Caio Teodoro/ })).toHaveAttribute("href", "/admin/users/7");
+  });
+
+  it("lista as pessoas com papel e status; a própria conta diz 'Você' e não tem botão", async () => {
     await renderPage();
     expect(within(rowOf("Caio Teodoro")).getByText("Suporte")).toBeInTheDocument();
     expect(within(rowOf("Leo Ramos")).getByText("Suspenso")).toBeInTheDocument();
@@ -139,7 +169,7 @@ describe("Equipe: alterar papel (administrador)", () => {
     expect(path).toBe("/admin/users/7/platform-role");
     expect(body).toEqual({ role: "viewer", reason: "Mudança de função na equipe" });
     expect(options.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/i);
-    expect(mocks.toastSuccess).toHaveBeenCalledWith("Papel definido: Somente leitura.");
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Papel definido: Somente leitura.", expect.anything());
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
@@ -152,7 +182,7 @@ describe("Equipe: alterar papel (administrador)", () => {
     await user.click(screen.getByRole("button", { name: "Tirar da equipe" }));
     await waitFor(() => expect(mocks.adminPatch).toHaveBeenCalled());
     expect(mocks.adminPatch.mock.calls[0][1]).toEqual({ role: null, reason: "Saiu da empresa" });
-    expect(mocks.toastSuccess).toHaveBeenCalledWith("Pessoa tirada da equipe.");
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Pessoa tirada da equipe.", expect.anything());
   });
 
   it("LAST_PLATFORM_ADMIN: explica que precisa promover outra conta e deixa o diálogo aberto", async () => {
@@ -180,17 +210,36 @@ describe("Equipe: alterar papel (administrador)", () => {
 });
 
 describe("Equipe: adicionar pessoa", () => {
-  it("busca só depois do mínimo de letras, escolhe a conta e o papel, e envia", async () => {
-    mocks.adminPatch.mockResolvedValue({ user_id: 20, role: "support", previous_role: null });
-    const { user } = await renderPage();
-    await user.click(screen.getByRole("button", { name: "Adicionar pessoa" }));
+  async function openAdd() {
+    const ctx = await renderPage();
+    await ctx.user.click(screen.getByRole("button", { name: "Adicionar pessoa" }));
     const dialog = await screen.findByRole("dialog", { name: "Adicionar pessoa à equipe" });
+    return { ...ctx, dialog };
+  }
 
-    expect(within(dialog).getByText(new RegExp(`pelo menos ${TEAM_SEARCH_MIN} letras`))).toBeInTheDocument();
+  it("busca só depois do mínimo de letras, escolhe a conta no seletor e o papel, e envia", async () => {
+    mocks.adminPatch.mockResolvedValue({ user_id: 20, role: "support", previous_role: null });
+    const { user, dialog } = await openAdd();
+
+    // a escolha é obrigatória: a pílula pede uma conta (nunca promete um "Todos") e não há dica fixa no diálogo
+    const pill = within(dialog).getByRole("button", { name: /^Conta:/ });
+    expect(pill).toHaveTextContent("Escolha…");
+    expect(pill).not.toHaveTextContent("Todos");
+    expect(within(dialog).queryByText(new RegExp(`pelo menos ${TEAM_SEARCH_MIN} letras`))).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: /Limpar/ })).not.toBeInTheDocument();
     expect(mocks.adminList).not.toHaveBeenCalled();
 
-    await user.type(within(dialog).getByLabelText("Conta"), "bia");
-    const option = await within(dialog).findByRole("option", { name: /Bia Santos/ });
+    await user.click(pill);
+    const search = await screen.findByRole("combobox", { name: "Buscar conta" });
+    // a dica do seletor toma o lugar do vazio enganoso, sem "Todos" na lista, e nada vai ao servidor antes do mínimo
+    expect((await screen.findAllByText(`Digite pelo menos ${TEAM_SEARCH_MIN} letras`)).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("option", { name: /Todos|Escolha uma conta/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("Nenhuma conta ativa encontrada")).not.toBeInTheDocument();
+    await user.type(search, "b");
+    expect(screen.getAllByText(`Digite pelo menos ${TEAM_SEARCH_MIN} letras`).length).toBeGreaterThan(0);
+    expect(mocks.adminList).not.toHaveBeenCalled();
+    await user.type(search, "ia");
+    const option = await screen.findByRole("option", { name: /Bia Santos/ });
     expect(mocks.adminList).toHaveBeenCalledWith(
       "/admin/users",
       expect.objectContaining({ search: "bia", kind: "brand", status: "active" }),
@@ -198,6 +247,7 @@ describe("Equipe: adicionar pessoa", () => {
     );
     await user.click(option);
 
+    expect(within(dialog).getByRole("button", { name: /^Conta:/ })).toHaveTextContent("Bia Santos");
     expect(screen.getByRole("button", { name: "Salvar papel" })).toBeDisabled();
     await user.click(within(dialog).getByRole("radio", { name: /Suporte/ }));
     await user.type(within(dialog).getByLabelText(/Motivo/), "Entrou no time de suporte");
@@ -208,12 +258,34 @@ describe("Equipe: adicionar pessoa", () => {
     expect(mocks.adminPatch.mock.calls[0][1]).toEqual({ role: "support", reason: "Entrou no time de suporte" });
   });
 
-  it("sem resultado: diz que só contas de marca ativas entram", async () => {
-    const { user } = await renderPage();
-    await user.click(screen.getByRole("button", { name: "Adicionar pessoa" }));
-    const dialog = await screen.findByRole("dialog", { name: "Adicionar pessoa à equipe" });
-    await user.type(within(dialog).getByLabelText("Conta"), "zzz");
-    expect(await within(dialog).findByText(/Nenhuma conta ativa encontrada/)).toBeInTheDocument();
+  it("sem resultado: o seletor diz que não achou (a busca já passou do mínimo de letras)", async () => {
+    const { user, dialog } = await openAdd();
+    await user.click(within(dialog).getByRole("button", { name: /^Conta:/ }));
+    await user.type(await screen.findByRole("combobox", { name: "Buscar conta" }), "zzz");
+    expect(await screen.findByText("Nenhuma conta ativa encontrada")).toBeInTheDocument();
+    expect(screen.queryByText(/Digite pelo menos/)).not.toBeInTheDocument();
+  });
+
+  it("Esc fecha primeiro o seletor, depois o diálogo; gravando, nem o Esc nem o fechar fecham", async () => {
+    mocks.adminPatch.mockReturnValue(new Promise(() => undefined));
+    const { user, dialog } = await openAdd();
+    await user.click(within(dialog).getByRole("button", { name: /^Conta:/ }));
+    await screen.findByRole("combobox", { name: "Buscar conta" });
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("combobox", { name: "Buscar conta" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Adicionar pessoa à equipe" })).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: /^Conta:/ }));
+    await user.type(await screen.findByRole("combobox", { name: "Buscar conta" }), "bia");
+    await user.click(await screen.findByRole("option", { name: /Bia Santos/ }));
+    await user.click(within(dialog).getByRole("radio", { name: /Suporte/ }));
+    await user.type(within(dialog).getByLabelText(/Motivo/), "Entrou no time de suporte");
+    await user.click(screen.getByRole("button", { name: "Salvar papel" }));
+
+    expect(await screen.findByRole("button", { name: "Salvando…" })).toBeDisabled();
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog", { name: "Adicionar pessoa à equipe" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Fechar" })).toBeDisabled();
   });
 });
 
@@ -230,7 +302,11 @@ describe("Equipe: sem permissão de administrador", () => {
     mocks.adminGet.mockImplementation(async () => {
       throw toAdminApiError(500, { message: "falhou" });
     });
-    renderRoutes([{ path: "/admin/team", component: AdminTeamPage }], "/admin/team");
+    renderRoutes(ROUTES, "/admin/team");
+    // o erro é da tabela, inline: a página (título e ação) continua, e os papéis não aparecem sem dados
     expect(await screen.findByRole("button", { name: /Tentar de novo|Tentar novamente/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Equipe" })).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Equipe da plataforma" })).toBeInTheDocument();
+    expect(screen.queryByText("O que cada papel pode fazer")).not.toBeInTheDocument();
   });
 });

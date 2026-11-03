@@ -10,6 +10,7 @@ export function renderCreators(url = "/admin/creators") {
       { path: "/admin/creators", component: AdminCreatorsScreen, validateSearch: validateAdminCreatorsSearch },
       stubRoute("/admin/campaigns/$campaignId"),
       stubRoute("/admin/workspaces/$workspaceId"),
+      stubRoute("/admin/users/$userId"),
     ],
     url,
   );

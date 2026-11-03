@@ -38,6 +38,10 @@ describe("menu lateral (CSS)", () => {
     expect(body).toMatch(/text-transform:\s*uppercase/);
   });
 
+  it("o título do grupo tem 11px (não 10.5px)", () => {
+    expect(rule(".pv .side .sb-nav h6 {")).toMatch(/font-size:\s*11px/);
+  });
+
   it("a divisória entre grupos tem baixo contraste (no máximo 12% de branco)", () => {
     const body = rule(".pv .side .sb-group + .sb-group {");
     const alpha = Number(/border-top:[^;]*rgba\(255,\s*255,\s*255,\s*([\d.]+)\)/.exec(body)?.[1]);
@@ -60,7 +64,7 @@ describe("menu lateral (CSS)", () => {
     expect(rail).toMatch(/\.pv \.side \.sb-nav h6\s*\{[^}]*display:\s*none/);
   });
 
-  it("a lista de workspaces abre para o lado, com largura própria, no trilho de 56px", () => {
+  it("a lista de workspaces abre para o lado, com largura própria, no trilho de 84px", () => {
     const rail = css.slice(css.indexOf("@media (max-width: 1100px)"));
     expect(rail).toMatch(/\.pv \.side \.wsl\s*\{[^}]*width:\s*\d+px/);
   });

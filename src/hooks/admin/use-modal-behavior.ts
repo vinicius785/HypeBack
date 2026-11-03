@@ -55,6 +55,7 @@ interface ModalBehaviorOptions {
  * - Escape chama `onEscape` e não chega a mais ninguém (nem à tela por baixo); com `onEscape` ausente
  *   (ex.: gravando) o Escape é só engolido;
  * - a rolagem da página fica travada enquanto estiver aberto.
+ * - teclas vindas de um popover do kit (`[data-adm-layer]`, em portal fora do diálogo) ficam com o popover.
  * O `aria-modal`, o `role` e os rótulos são do componente que renderiza.
  *
  * O ouvinte fica na `window`, em captura: roda antes dos ouvintes de `document` que as outras telas
@@ -84,6 +85,10 @@ export function useModalBehavior({ open, containerRef, onEscape }: ModalBehavior
       if (openStack[openStack.length - 1] !== token) return;
       // Escape durante a composição de um IME só cancela a composição.
       if (event.isComposing) return;
+      // Popover do kit (menu, seletor, dica) aberto de dentro do diálogo vive num portal fora dele: o Escape fecha
+      // primeiro o popover (uma coisa por vez) e o Tab dentro dele é dele (não puxa o foco ao primeiro controle).
+      if (event.key === "Escape" && document.querySelector("[data-adm-layer]")) return;
+      if (event.target instanceof Element && event.target.closest("[data-adm-layer]")) return;
 
       if (event.key === "Escape") {
         event.preventDefault();

@@ -75,11 +75,12 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("WorkspaceDetailPage · cabeçalho", () => {
-  it("carregando: esqueleto com o 'voltar' já funcionando", async () => {
+  it("carregando: esqueleto no padrão dos outros detalhes (título 'Workspace' para leitor de tela) com o 'voltar' já funcionando", async () => {
     api.adminGet.mockReturnValue(deferred<never>().promise);
     renderPage();
 
-    expect(screen.getByRole("status")).toHaveTextContent("Carregando o workspace…");
+    expect(screen.getByRole("status")).toHaveTextContent("Carregando workspace…");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Workspace");
     expect(screen.getByRole("link", { name: "Workspaces" })).toHaveAttribute("href", "/admin/workspaces");
   });
 
@@ -92,6 +93,10 @@ describe("WorkspaceDetailPage · cabeçalho", () => {
     expect(meta).toHaveTextContent("Responsável Helena Prado");
     expect(meta).toHaveTextContent("Cliente desde 12/03/2025");
     expect(meta).toHaveTextContent("Última atividade há 3 dias");
+    // a regra da última atividade mora no "i" (o Resumo não repete a data)
+    expect(within(meta).getByRole("button", { name: "Como é calculado: Última atividade" })).toHaveAccessibleDescription(
+      /updated_at do workspace não conta/,
+    );
     expect(screen.getByRole("navigation", { name: "Navegação" })).toHaveTextContent("Workspaces");
     expect(screen.getByRole("link", { name: "Workspaces" })).toHaveAttribute("href", "/admin/workspaces");
   });
@@ -107,11 +112,15 @@ describe("WorkspaceDetailPage · cabeçalho", () => {
     const first = renderPage();
     expect(await screen.findByText("e mais 1", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("Sem atividade registrada")).toBeInTheDocument();
+    // sem atividade a regra continua à mão: era a única explicação de "Última atividade" que o Resumo deu antes
+    expect(screen.getByRole("button", { name: "Como é calculado: Última atividade" })).toHaveAccessibleDescription(
+      /updated_at do workspace não conta/,
+    );
     first.unmount();
 
     serve("active", { owners: [] });
     renderPage();
-    expect(await screen.findByText("Sem responsável", { selector: ".adm-head-meta .adm-workspaces-noowner" })).toBeInTheDocument();
+    expect(await screen.findByText("Sem responsável", { selector: ".adm-head-meta .adm-badge" })).toHaveAttribute("data-tone", "warn");
   });
 
   it("etiqueta de tipo só quando não é cliente (marca)", async () => {
@@ -128,14 +137,13 @@ describe("WorkspaceDetailPage · cabeçalho", () => {
 });
 
 describe("WorkspaceDetailPage · erros", () => {
-  it("workspace inexistente: 'Não encontrado' sem botão de tentar de novo, e dá para voltar à lista", async () => {
+  it("workspace inexistente: 'Não encontramos este workspace' (kit), sem tentar de novo, e dá para voltar à lista", async () => {
     api.adminGet.mockRejectedValue(toAdminApiError(404, { statusCode: 404, message: "Workspace não encontrado." }));
     renderPage();
 
-    expect(await screen.findByText("Não encontrado")).toBeInTheDocument();
-    expect(screen.getByText("Não encontramos este workspace. O link pode estar incorreto.")).toBeInTheDocument();
+    expect(await screen.findByText("Não encontramos este workspace")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Tentar de novo/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Workspaces" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Voltar para Workspaces" })).toHaveAttribute("href", "/admin/workspaces");
   });
 
   it("recurso ainda não disponível no servidor", async () => {
@@ -171,12 +179,14 @@ describe("WorkspaceDetailPage · menu Ações e edição", () => {
     expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(items);
   });
 
-  it("Excluir é o item perigoso; o menu é um só (não uma fileira de botões)", async () => {
+  it("Excluir é o último item, separado e em vermelho; o menu é um só (não uma fileira de botões)", async () => {
     renderPage();
     await userEvent.click(await screen.findByRole("button", { name: "Ações" }));
 
-    expect(screen.getByRole("menuitem", { name: "Excluir" })).toHaveAttribute("data-danger", "true");
-    expect(screen.getByRole("menuitem", { name: "Suspender" })).not.toHaveAttribute("data-danger");
+    expect(screen.getByRole("menuitem", { name: "Excluir" })).toHaveAttribute("data-tone", "danger");
+    expect(screen.getByRole("menuitem", { name: "Suspender" })).not.toHaveAttribute("data-tone");
+    expect(screen.getAllByRole("menuitem").at(-1)).toHaveTextContent("Excluir");
+    expect(screen.getByRole("separator")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Suspender" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ações" })).toHaveAttribute("aria-expanded", "true");
   });

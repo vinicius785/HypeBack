@@ -2,77 +2,51 @@
  * Admin da plataforma — Usuários (`src/components/admin/users`).
  *
  * Mesmas regras do kit (`admin-platform.css`): prefixo `adm-users-` e tudo sob `.pv`; nenhuma classe curta ou
- * genérica do protótipo é usada nem redefinida aqui; a tabela, as abas, os cartões, os diálogos e as etiquetas
- * vêm do kit. Aqui só o que é próprio de Usuários: células da lista, o seletor de workspace (peça compartilhada
- * com outras telas), a explicação discreta das ações e a linha do tempo da auditoria.
+ * genérica do protótipo é usada nem redefinida aqui; a tabela, as abas, os cartões, os diálogos, o menu "Mais",
+ * a linha do tempo e as etiquetas vêm do kit. Aqui só o que é próprio de Usuários: células da lista, o aviso
+ * discreto de quando a conta não aceita ação e o antes/depois da auditoria.
  * Visual: cores chapadas, divisores finos, sem gradiente; roxo só no foco e no estado ativo.
  */
 
-/*
- * "Suspender" no cabeçalho: botão de contorno vermelho. Não usa `.btn.out.dng` do protótipo: `.pv .btn.dng`
- * (fundo vermelho, texto branco) vem depois de `.pv .btn.out` no prototype.css, tem a mesma especificidade e
- * ganha, então o botão sairia chapado de vermelho ao lado do "Encerrar sessões". Aqui o estilo é explícito
- * e não depende da ordem das regras do protótipo.
- */
-.pv .btn.adm-btn-danger-out { background: #fff; color: var(--adm-bad); box-shadow: inset 0 0 0 1.5px var(--adm-bad); }
-.pv .btn.adm-btn-danger-out:hover:not(:disabled) { background: var(--adm-bad); color: #fff; }
-.pv .btn.adm-btn-danger-out:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
-
 /* ───────────────────────── lista: células ───────────────────────── */
 
-.pv .adm-users-kind { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; font-size: 14px; }
+/* etiquetas ao lado do nome (`badge` do AdminEntityCell): tipo que destoa do filtro e "Admin da plataforma" */
+.pv .adm-users-person-badges { display: inline-flex; align-items: center; gap: 6px; }
 
-.pv .adm-users-ws { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; line-height: 1.4; }
-.pv .adm-users-ws-item { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
-.pv .adm-users-ws-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 500; text-decoration: none; }
-.pv .adm-users-ws-name:hover { text-decoration: underline; text-underline-offset: 3px; }
-.pv .adm-users-ws-name:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
-.pv .adm-users-ws-role { flex: none; color: var(--adm-text-muted); font-size: 12px; }
-.pv .adm-users-ws-more { color: var(--adm-text-muted); font-size: 12px; font-weight: 600; }
+/* vínculos: nome (link de texto do kit) e papel; o "+N" e o "i" na última linha */
+.pv .adm-users-ws { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13.5px; line-height: 1.4; }
+.pv .adm-users-ws-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; min-width: 0; }
+.pv .adm-users-ws-role { flex: none; color: var(--adm-text-muted); font-size: 12.5px; }
+.pv .adm-users-ws-more { display: inline-flex; align-items: center; gap: 6px; color: var(--adm-text-muted); font-size: 12.5px; font-weight: 600; }
 
-/*
- * Texto com dica ao passar o mouse (última sessão, "+N"): a linha da tabela tem um link esticado por cima (z-index 1)
- * que engoliria o `title`; com z-index 2 a dica aparece, e clicar nesse trecho não abre o detalhe (o resto da linha abre).
- */
-.pv .adm-users-tip { position: relative; z-index: 2; cursor: help; text-decoration: underline dotted; text-decoration-color: var(--hair); text-underline-offset: 3px; }
-
-.pv .adm-users-role { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+/* última sessão: "aprox. há 3 horas" e o instante exato embaixo */
+.pv .adm-users-session { display: flex; flex-direction: column; gap: 1px; }
+.pv .adm-users-session small { color: var(--adm-text-muted); font-size: 12.5px; }
 
 /* ───────────────────────── detalhe ───────────────────────── */
 
-/* explicação discreta quando a conta não aceita ação: texto pequeno e cinza, sem caixa colorida */
-.pv .adm-users-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; max-width: 400px; color: var(--adm-text-muted); font-size: 13px; line-height: 1.45; }
-.pv .adm-users-note .ico { margin-top: 1px; }
+/* aba Vínculos: papel e, quando há, a etiqueta de permissões personalizadas com o "i" */
+.pv .adm-users-role { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 
-.pv .adm-users-proxy { margin: 18px 0 0; padding-top: 16px; border-top: 1.5px solid var(--line); max-width: 72ch; color: var(--adm-text-muted); font-size: 13px; line-height: 1.55; }
-.pv .adm-users-proxy b { color: var(--ink); font-weight: 600; }
+/* explicação discreta quando a conta não aceita ação: texto pequeno e cinza, sem caixa colorida, abaixo do cabeçalho */
+.pv .adm-users-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: var(--adm-text-muted); font-size: 13px; line-height: 1.45; }
+.pv .adm-users-note .ico { flex: none; margin-top: 1px; }
 
 /* ───────────────────────── atividade (auditoria) ───────────────────────── */
 
 .pv .adm-users-activity { display: flex; flex-direction: column; gap: 20px; padding: 0 26px 24px; }
 .pv .adm-users-activity-foot { border-top: 1.5px solid var(--line); }
 
-.pv .adm-users-log { list-style: none; margin: 0; padding: 0; }
-.pv .adm-users-log-item { display: grid; grid-template-columns: 148px minmax(0, 1fr); gap: 4px 20px; padding: 16px 0; border-top: 1.5px solid var(--line); }
-.pv .adm-users-log > .adm-users-log-item:first-child { border-top: 0; padding-top: 0; }
-.pv .adm-users-log > .adm-users-log-item:last-child { padding-bottom: 0; }
-.pv .adm-users-log-when { padding-top: 2px; color: var(--adm-text-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
-.pv .adm-users-log-body { min-width: 0; }
-.pv .adm-users-log-title { display: block; font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; }
-.pv .adm-users-log-meta { margin: 2px 0 0; color: var(--adm-text-muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
-.pv .adm-users-log-meta a { color: var(--ink); font-weight: 500; text-decoration: none; }
-.pv .adm-users-log-meta a:hover { text-decoration: underline; text-underline-offset: 3px; }
-.pv .adm-users-log-meta a:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
-.pv .adm-users-log-role { color: var(--adm-text-muted); }
-.pv .adm-users-log-reason { margin: 8px 0 0; font-size: 13.5px; line-height: 1.5; overflow-wrap: anywhere; }
+/* o motivo vem logo abaixo do título do evento, sempre visível (o resto fica no "Ver detalhes") */
+.pv .adm-users-log-reason { display: block; margin-top: 2px; font-size: 13px; font-weight: 400; line-height: 1.5; overflow-wrap: anywhere; }
 .pv .adm-users-log-reason span { color: var(--adm-text-muted); font-weight: 600; }
-.pv .adm-users-log-more { margin-top: 10px; }
-.pv .adm-users-log-detail { display: flex; flex-direction: column; gap: 14px; margin-top: 10px; }
-.pv .adm-users-log-ip { margin: 0; color: var(--adm-text-muted); font-size: 12px; }
+.pv .adm-users-log-role { color: var(--adm-text-muted); }
+.pv .adm-users-log-detail { display: flex; flex-direction: column; gap: 14px; }
+.pv .adm-users-log-ip { margin: 0; color: var(--adm-text-muted); font-size: 12.5px; }
 
-/* antes e depois: uma linha por campo, "Status  Ativo → Suspenso" */
-.pv .adm-users-diff { margin: 0; max-width: 560px; padding: 4px 16px; border-radius: 16px; background: var(--bg); font-size: 13px; }
-.pv .adm-users-diff-row { display: grid; grid-template-columns: minmax(96px, 168px) minmax(0, 1fr); gap: 4px 16px; padding: 9px 0; border-top: 1.5px solid rgba(5, 5, 5, .07); }
+/* antes e depois: uma linha por campo, "Status  Ativo → Suspenso" (sobre o fundo cinza do detalhe, em branco) */
+.pv .adm-users-diff { margin: 0; max-width: 560px; padding: 4px 16px; border-radius: var(--adm-r-md); background: var(--adm-surface); font-size: 13px; }
+.pv .adm-users-diff-row { display: grid; grid-template-columns: minmax(96px, 168px) minmax(0, 1fr); gap: 4px 16px; padding: 9px 0; border-top: 1.5px solid var(--adm-rule); }
 .pv .adm-users-diff-row:first-child { border-top: 0; }
 .pv .adm-users-diff dt { color: var(--adm-text-muted); font-weight: 500; overflow-wrap: anywhere; }
 .pv .adm-users-diff dt code { font-size: 12px; }
@@ -80,61 +54,11 @@
 .pv .adm-users-diff-old { color: var(--adm-text-muted); }
 .pv .adm-users-diff-arrow { margin: 0 8px; color: var(--adm-text-muted); }
 .pv .adm-users-diff-title { display: block; margin-bottom: 6px; font-size: 12.5px; font-weight: 600; }
-.pv .adm-users-diff-raw { margin: 0; max-width: 560px; max-height: 220px; overflow: auto; padding: 12px 16px; border-radius: 16px; background: var(--bg); font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
-
-.pv .adm-users-log-skeleton { display: flex; flex-direction: column; gap: 22px; }
-.pv .adm-users-log-skeleton-row { display: grid; grid-template-columns: 148px minmax(0, 1fr); gap: 4px 20px; }
-
-/* ───────────────────────── seletor de workspace (peça compartilhada) ───────────────────────── */
-
-.pv .adm-users-picker { position: relative; flex: 0 1 300px; min-width: 220px; }
-.pv .adm-users-picker-field { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 8px 0 16px; border-radius: 999px; background: #fff; color: var(--ink); font-size: 14px; transition: box-shadow .2s, background .25s, color .25s; }
-.pv .adm-users-picker-field:focus-within { box-shadow: inset 0 0 0 2px var(--brand); }
-.pv .adm-users-picker-k { flex: none; color: var(--adm-text-muted); font-weight: 500; white-space: nowrap; }
-.pv .adm-users-picker-field input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; font: inherit; font-size: 14px; font-weight: 600; color: inherit; text-overflow: ellipsis; }
-.pv .adm-users-picker-field input::placeholder { color: var(--ink); font-weight: 600; opacity: 1; }
-.pv .adm-users-picker-field input:disabled { cursor: not-allowed; }
-.pv .adm-users-picker[data-disabled="true"] { opacity: .5; }
-.pv .adm-users-picker-clear,
-.pv .adm-users-picker-chev { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--adm-text-muted); }
-.pv .adm-users-picker-chev .ico { width: 14px; height: 14px; transform: rotate(90deg); }
-.pv .adm-users-picker-clear { transition: background .2s, color .2s; }
-.pv .adm-users-picker-clear:hover { background: var(--bg); color: var(--ink); }
-.pv .adm-users-picker-clear:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
-
-/* com um workspace escolhido a pílula fica preta, como os outros filtros ativos do kit */
-.pv .adm-users-picker[data-active="true"] .adm-users-picker-field { background: var(--ink); color: #fff; }
-.pv .adm-users-picker[data-active="true"] .adm-users-picker-k { color: rgba(255, 255, 255, .62); }
-.pv .adm-users-picker[data-active="true"] .adm-users-picker-field input::placeholder { color: #fff; }
-.pv .adm-users-picker[data-active="true"] .adm-users-picker-clear { color: rgba(255, 255, 255, .8); }
-.pv .adm-users-picker[data-active="true"] .adm-users-picker-clear:hover { background: rgba(255, 255, 255, .16); color: #fff; }
-
-.pv .adm-users-picker-pop { position: absolute; z-index: 40; left: 0; top: calc(100% + 6px); width: max(100%, 320px); max-width: min(420px, calc(100vw - 32px)); overflow: hidden; border-radius: 20px; background: #fff; color: var(--ink); box-shadow: 0 18px 40px -12px rgba(5, 5, 5, .3), inset 0 0 0 1.5px var(--adm-rule); }
-.pv .adm-users-picker-list { list-style: none; margin: 0; padding: 6px; max-height: 320px; overflow-y: auto; scrollbar-width: thin; }
-.pv .adm-users-picker-opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 14px; cursor: pointer; }
-.pv .adm-users-picker-opt[data-active="true"] { background: var(--bg); }
-.pv .adm-users-picker-opt-text { min-width: 0; }
-.pv .adm-users-picker-opt b { display: block; font-size: 14px; font-weight: 600; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv .adm-users-picker-opt small { display: block; margin-top: 1px; color: var(--adm-text-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv .adm-users-picker-opt .ico { flex: none; color: var(--brand); }
-.pv .adm-users-picker-status { margin: 0; padding: 10px 18px 12px; color: var(--adm-text-muted); font-size: 12.5px; }
-.pv .adm-users-picker-list:not([hidden]) + .adm-users-picker-status { border-top: 1.5px solid var(--line); }
-.pv .adm-users-picker-error { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 14px 18px; color: var(--adm-bad); font-size: 13px; line-height: 1.45; }
+.pv .adm-users-diff-raw { margin: 0; max-width: 560px; max-height: 220px; overflow: auto; padding: 12px 16px; border-radius: var(--adm-r-md); background: var(--adm-surface); font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* ───────────────────────── celular ───────────────────────── */
 
-@media (max-width: 760px) {
+@media (max-width: 560px) {
   .pv .adm-users-activity { padding: 0 20px 20px; }
-  .pv .adm-users-log-item,
-  .pv .adm-users-log-skeleton-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-  .pv .adm-users-log-when { padding-top: 0; }
   .pv .adm-users-diff-row { grid-template-columns: minmax(0, 1fr); gap: 2px; }
-  /* o seletor ocupa a linha inteira e vai para baixo da busca e do botão "Filtros" */
-  .pv .adm-users-picker { flex: 1 1 100%; order: 5; }
-  .pv .adm-users-note { max-width: none; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pv .adm-users-picker-field,
-  .pv .adm-users-picker-clear { transition: none; }
 }

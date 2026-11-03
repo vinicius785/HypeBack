@@ -4,7 +4,6 @@ import { civilDateInSaoPaulo } from "@/lib/admin/format";
 
 import {
   addCivilDays,
-  adjustCustomRange,
   defaultPeriod,
   detectPreset,
   isCivilDate,
@@ -125,39 +124,5 @@ describe("resolvePeriod (o que a URL traz vira um período válido)", () => {
   it("nunca passa de hoje: to no futuro vira hoje; from no futuro volta ao padrão", () => {
     expect(resolvePeriod({ from: "2026-10-20", to: "2026-12-31" }, TODAY)).toEqual({ from: "2026-10-20", to: TODAY });
     expect(resolvePeriod({ from: "2026-11-05" }, TODAY)).toEqual(defaultPeriod(TODAY));
-  });
-});
-
-describe("adjustCustomRange (edição dos campos de data)", () => {
-  const current = { from: "2026-10-05", to: "2026-10-20" };
-
-  it("mudar só um limite mantém o outro", () => {
-    expect(adjustCustomRange({ from: "2026-10-01" }, current, TODAY)).toEqual({ from: "2026-10-01", to: "2026-10-20" });
-    expect(adjustCustomRange({ to: "2026-10-25" }, current, TODAY)).toEqual({ from: "2026-10-05", to: "2026-10-25" });
-  });
-
-  it("intervalo invertido: o outro limite acompanha", () => {
-    expect(adjustCustomRange({ from: "2026-10-25" }, current, TODAY)).toEqual({ from: "2026-10-25", to: "2026-10-25" });
-    expect(adjustCustomRange({ to: "2026-10-01" }, current, TODAY)).toEqual({ from: "2026-10-01", to: "2026-10-01" });
-  });
-
-  it("passou de 366 dias: o outro limite anda para o máximo", () => {
-    expect(adjustCustomRange({ from: "2025-01-01" }, current, TODAY)).toEqual({ from: "2025-01-01", to: "2026-01-01" });
-    expect(adjustCustomRange({ to: "2026-10-31" }, { from: "2025-01-01", to: "2025-06-01" }, TODAY)).toEqual({
-      from: "2025-10-31",
-      to: "2026-10-31",
-    });
-    expect(periodDays(adjustCustomRange({ from: "2025-01-01" }, current, TODAY))).toBe(PERIOD_MAX_DAYS);
-  });
-
-  it("nada passa de hoje", () => {
-    expect(adjustCustomRange({ to: "2027-01-01" }, current, TODAY)).toEqual({ from: "2026-10-05", to: TODAY });
-    expect(adjustCustomRange({ from: "2027-01-01" }, current, TODAY)).toEqual({ from: TODAY, to: TODAY });
-  });
-
-  it("valor inválido ou vazio não muda nada", () => {
-    expect(adjustCustomRange({ from: "" }, current, TODAY)).toBe(current);
-    expect(adjustCustomRange({ to: "2026-02-30" }, current, TODAY)).toBe(current);
-    expect(adjustCustomRange({}, current, TODAY)).toBe(current);
   });
 });

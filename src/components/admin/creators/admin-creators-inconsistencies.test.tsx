@@ -53,16 +53,21 @@ describe("Inconsistências: itens", () => {
     expect(client.adminList).not.toHaveBeenCalled();
   });
 
-  it("cada item mostra título, descrição, quantidade e o tipo (alerta objetivo ou sugestão)", async () => {
-    await renderLoaded();
+  it("cada item é um AdminAlertItem do kit: título, descrição, quantidade e o tipo (alerta ou sugestão), sem gravidade nem regra", async () => {
+    const { container } = await renderLoaded();
+    expect(container.querySelector(".adm-alerts")).not.toBeNull();
+    expect(container.querySelectorAll(".adm-alerts > article.adm-alert")).toHaveLength(3);
     const alert = screen.getByRole("article", { name: "Workspaces de marca sem proprietário" });
-    expect(within(alert).getByText("Alerta objetivo")).toHaveAttribute("title", "Fato objetivo armazenado no banco de dados.");
+    expect(within(alert).getByText("Alerta")).toBeInTheDocument();
+    // o servidor não manda gravidade, regra nem origem: nada de "Como é calculado" nem de selo de gravidade
+    expect(within(alert).queryByText("Como é calculado")).not.toBeInTheDocument();
+    expect(alert.querySelector(".adm-alert-tags")?.children).toHaveLength(1);
     expect(within(alert).getByText(/Há membros, mas nenhum com o papel/)).toBeInTheDocument();
     expect(within(alert).getByText("3")).toBeInTheDocument();
     expect(within(alert).getByText("ocorrências")).toBeInTheDocument();
 
     const suggestion = screen.getByRole("article", { name: "Criadores sem rede social ativa" });
-    expect(within(suggestion).getByText("Sugestão")).toHaveAttribute("title", expect.stringContaining("Heurística"));
+    expect(within(suggestion).getByText("Sugestão")).toBeInTheDocument();
     expect(within(suggestion).getByText("8")).toBeInTheDocument();
 
     const single = screen.getByRole("article", { name: "Campanhas finalizadas ainda com reserva" });
@@ -102,7 +107,7 @@ describe("Inconsistências: itens", () => {
   it("quando há mais ocorrências que exemplos, diz quantos está mostrando", async () => {
     await renderLoaded();
     const suggestion = screen.getByRole("article", { name: "Criadores sem rede social ativa" });
-    expect(within(suggestion).getByText("Mostrando 1 de 8")).toBeInTheDocument();
+    expect(within(suggestion).getByText(/Mostrando 1 de 8 exemplos\./)).toBeInTheDocument();
     // todos os exemplos à mostra: nada a avisar
     const alert = screen.getByRole("article", { name: "Workspaces de marca sem proprietário" });
     expect(within(alert).queryByText(/Mostrando/)).not.toBeInTheDocument();
@@ -110,20 +115,21 @@ describe("Inconsistências: itens", () => {
 
   it("mostra quando o servidor calculou (no fuso de São Paulo) e explica a diferença entre alerta e sugestão", async () => {
     await renderLoaded();
-    const section = screen.getByRole("region", { name: "Inconsistências" });
+    const section = screen.getByRole("region", { name: "Alertas e sugestões" });
     expect(section).toHaveTextContent("Calculado em 31/10/2026 12:00.");
-    expect(section).toHaveTextContent("Alerta objetivo é um fato guardado no banco; sugestão é uma heurística");
+    expect(section).toHaveTextContent("Alerta é um fato objetivo guardado no banco; sugestão é uma heurística");
   });
 
   it("sem `computed_at` não inventa horário", async () => {
     client.adminGetEnvelope.mockImplementation(async () => ({ data: INCONSISTENCIES, meta: undefined }));
     await renderLoaded();
-    expect(screen.getByRole("region", { name: "Inconsistências" })).not.toHaveTextContent("Calculado em");
+    expect(screen.getByRole("region", { name: "Alertas e sugestões" })).not.toHaveTextContent("Calculado em");
   });
 
-  it("'Atualizar' consulta de novo (só refaz a leitura)", async () => {
+  it("'Atualizar' é um ícone no canto da seção e consulta de novo (só refaz a leitura)", async () => {
     await renderLoaded();
     expect(client.adminGetEnvelope).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Atualizar" })).toHaveAttribute("data-icon-only", "true");
     await userEvent.click(screen.getByRole("button", { name: "Atualizar" }));
     await waitFor(() => expect(client.adminGetEnvelope).toHaveBeenCalledTimes(2));
     expect(client.adminPost).not.toHaveBeenCalled();
@@ -132,10 +138,11 @@ describe("Inconsistências: itens", () => {
 });
 
 describe("Inconsistências: estados", () => {
-  it("primeira carga: esqueleto e aviso para leitor de tela", async () => {
+  it("primeira carga: esqueleto de alertas (o do kit) e aviso para leitor de tela", async () => {
     client.adminGetEnvelope.mockImplementation(() => new Promise(() => {}));
-    renderCreators(URL);
-    expect(await screen.findByRole("status")).toHaveTextContent("Carregando…");
+    const { container } = renderCreators(URL);
+    expect(await screen.findByText("Carregando inconsistências…")).toBeInTheDocument();
+    expect(container.querySelector(".adm-lsk[data-variant='alerts']")).not.toBeNull();
     expect(screen.queryByRole("article")).not.toBeInTheDocument();
   });
 

@@ -3,7 +3,14 @@ import { describe, expect, it } from "vitest";
 import { formatBRLFromCents } from "@/lib/admin/format";
 import type { AdminActivityEvent, AdminAlert, AdminOverview } from "@/shared/admin-platform.types";
 
-import { activityLink, ATTENTION_LIMIT, buildDashboardAreas, pickAttentionAlerts, type DashboardStat } from "./dashboard-model";
+import {
+  activityLink,
+  ATTENTION_LIMIT,
+  buildDashboardAreas,
+  dashboardPeriodRule,
+  pickAttentionAlerts,
+  type DashboardStat,
+} from "./dashboard-model";
 import { ALERTS, EVENTS, figure, OVERVIEW } from "./dashboard-fixtures";
 
 const RANGE = { from: "2026-10-02", to: "2026-10-31" };
@@ -46,16 +53,26 @@ describe("buildDashboardAreas: o que cada painel mostra", () => {
     expect(stat("financial.paid-pix").figure).toBe(OVERVIEW.financial.paid_pix_in_period);
   });
 
-  it("o texto de cada painel acompanha a janela de atividade do servidor", () => {
-    expect(stats().areas.workspaces.description).toContain("30 dias");
-    expect(stats({ ...OVERVIEW, activity_window_days: 45 }).areas.workspaces.description).toContain("45 dias");
-    expect(stats(null).areas.workspaces.description).not.toMatch(/\d/);
+  it("os painéis têm só o título: a regra do período saiu da descrição e mora em dashboardPeriodRule", () => {
+    const { areas } = stats();
+    for (const area of Object.values(areas)) expect(area).not.toHaveProperty("description");
+  });
+});
+
+describe("dashboardPeriodRule: a regra do período numa frase por assunto", () => {
+  it("diz o que segue o período e o que é a posição de agora", () => {
+    const [follows, now] = dashboardPeriodRule(30);
+    expect(follows).toMatch(/Seguem o período/);
+    expect(follows).toMatch(/aportes/);
+    expect(follows).toMatch(/PIX/);
+    expect(now).toMatch(/agora/);
+    expect(now).toMatch(/custódia/);
   });
 
-  it("o dinheiro explica o que segue o período e o que é a posição de agora", () => {
-    const description = stats().areas.financial.description;
-    expect(description).toMatch(/período/);
-    expect(description).toMatch(/agora/);
+  it("a janela de atividade acompanha o servidor; sem ela (carregando) não inventa número", () => {
+    expect(dashboardPeriodRule(30).join(" ")).toContain("últimos 30 dias");
+    expect(dashboardPeriodRule(45).join(" ")).toContain("últimos 45 dias");
+    expect(dashboardPeriodRule(undefined).join(" ")).not.toMatch(/\d/);
   });
 });
 

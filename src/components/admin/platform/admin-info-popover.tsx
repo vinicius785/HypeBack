@@ -2,12 +2,44 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type 
 import { createPortal } from "react-dom";
 
 import "@/styles/admin-platform.css";
+import "@/styles/admin-kit-info-popover.css";
 
 interface AdminInfoPopoverProps {
-  /** O que o botão explica ("Aportes recebidos"): vai no nome acessível. */
-  label: string;
-  /** O texto da definição. */
+  /**
+   * O que o botão explica ("Aportes recebidos"): vai no nome acessível, depois do `prefix`
+   * ("Como é calculado: Aportes recebidos"). Pode faltar quando `triggerLabel` já diz tudo.
+   */
+  label?: string;
+  /**
+   * Nome acessível COMPLETO do botão, no lugar de `prefix` + `label`. Use quando o "i" explica outra coisa
+   * que não um cálculo ("Quem são os outros 3 workspaces", "O que são permissões personalizadas").
+   */
+  triggerLabel?: string;
+  /**
+   * Início do nome acessível quando não há `triggerLabel` (padrão "Como é calculado"). `""` usa só o `label`
+   * ("Linha do tempo"). Ignorado com `triggerLabel`.
+   */
+  prefix?: string;
+  /**
+   * O texto da definição. Para vários parágrafos use `AdminInfoPopover.Paragraph` (um `<span>` em bloco):
+   * `<p>` quebraria o HTML quando o "i" está dentro de um parágrafo (subtítulo do cabeçalho, descrição da seção).
+   */
   children: ReactNode;
+}
+
+/** Nome acessível do botão: `triggerLabel`, ou `prefix: label`, ou só um dos dois. */
+function triggerName({ label, triggerLabel, prefix = "Como é calculado" }: Pick<AdminInfoPopoverProps, "label" | "triggerLabel" | "prefix">): string {
+  if (triggerLabel) return triggerLabel;
+  if (label && prefix) return `${prefix}: ${label}`;
+  return label || prefix;
+}
+
+/**
+ * Parágrafo seguro do conteúdo do "i": um `<span>` em bloco (válido dentro de `<p>`, `<h2>`, `<button>`…),
+ * com o espaçamento e a cor de apoio do balão. O primeiro é o texto principal; os seguintes ficam em cinza.
+ */
+function AdminInfoParagraph({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <span className={`adm-info-p ${className}`.trim()}>{children}</span>;
 }
 
 /**
@@ -18,9 +50,12 @@ interface AdminInfoPopoverProps {
  *   botão (`aria-describedby` aceita elemento oculto), então é lido ao focar, sem precisar abrir nada; o
  *   balão visual é só para quem enxerga;
  * - o balão é um portal com `position: fixed`, ajustado para nunca sair da tela (vira para cima se faltar
- *   espaço embaixo), e fecha ao rolar, redimensionar ou clicar fora.
+ *   espaço embaixo), e fecha ao rolar, redimensionar ou clicar fora;
+ * - o nome do botão é "Como é calculado: <label>" por padrão; `prefix` troca o início e `triggerLabel` o nome inteiro;
+ * - o texto fica em `<span>` (nunca `<div>`/`<p>`), então o "i" pode ficar dentro de um parágrafo; para mais de
+ *   um parágrafo use `AdminInfoPopover.Paragraph`.
  */
-export function AdminInfoPopover({ label, children }: AdminInfoPopoverProps) {
+export function AdminInfoPopover({ label, triggerLabel, prefix, children }: AdminInfoPopoverProps) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -77,7 +112,7 @@ export function AdminInfoPopover({ label, children }: AdminInfoPopoverProps) {
         ref={buttonRef}
         type="button"
         className="adm-info"
-        aria-label={`Como é calculado: ${label}`}
+        aria-label={triggerName({ label, triggerLabel, prefix })}
         aria-describedby={descriptionId}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
@@ -90,7 +125,7 @@ export function AdminInfoPopover({ label, children }: AdminInfoPopoverProps) {
       </span>
       {open
         ? createPortal(
-            <div className="pv">
+            <div className="pv" data-adm-layer="">
               <div
                 ref={popRef}
                 className="adm-pop"
@@ -106,3 +141,5 @@ export function AdminInfoPopover({ label, children }: AdminInfoPopoverProps) {
     </>
   );
 }
+
+AdminInfoPopover.Paragraph = AdminInfoParagraph;

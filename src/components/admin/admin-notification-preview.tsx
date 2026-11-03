@@ -40,7 +40,8 @@ export function AdminNotificationPreview({
   return (
     <>
       <small className="ntw-pl">Prévia no celular</small>
-      <div className="ntp-ph">
+      {/* o celular é só desenho do que a pessoa está escrevendo; o resumo abaixo diz o essencial */}
+      <div className="ntp-ph" aria-hidden="true">
         <div className="ntp-t">
           <b>{clock}</b>
           <span>{day}</span>

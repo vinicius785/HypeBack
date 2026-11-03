@@ -1,0 +1,33 @@
+/*
+ * AdminRefreshButton (kit do Admin): botão secundário "Atualizar", com texto ou só o ícone.
+ *
+ * Reúne o giro que estava copiado em admin-activity.css (adm-act-spin), admin-health.css (adm-health-spin) e
+ * admin-financial.css (adm-fin-spin): mesma volta de 1 s, agora num lugar só e com prefers-reduced-motion.
+ * Tudo sob `.pv`, só tokens `--adm-*`. O fundo branco/cinza vem do `.btn.out` e das regras de cartão do kit.
+ */
+
+.pv .btn.adm-refresh {
+  height: var(--adm-hit);
+  min-width: var(--adm-hit);
+  padding: 0 16px;
+  font-size: 13px;
+  justify-content: center;
+  white-space: nowrap;
+}
+.pv .btn.adm-refresh[data-icon-only="true"] { width: var(--adm-hit); padding: 0; }
+.pv .btn.adm-refresh:focus-visible { outline: 0; box-shadow: var(--adm-ring); }
+.pv .btn.adm-refresh:disabled { opacity: .45; cursor: not-allowed; }
+
+.pv .adm-refresh .ico { flex: none; transition: opacity .2s; }
+
+/* Atualizando: o clique é ignorado (aria-disabled, o foco fica) e o ícone gira. */
+.pv .btn.adm-refresh[aria-busy="true"] { cursor: progress; }
+.pv .btn.adm-refresh[aria-busy="true"]:active { transform: none; }
+.pv .adm-refresh[aria-busy="true"] .ico { animation: adm-refresh-spin 1s linear infinite; }
+@keyframes adm-refresh-spin { to { transform: rotate(360deg); } }
+
+/* Sem movimento: o ícone não gira e apaga um pouco, para o estado ainda ser visível (e o `aria-busy` segue dizendo). */
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-refresh[aria-busy="true"] .ico { animation: none; opacity: .45; }
+  .pv .btn.adm-refresh:active { transform: none; }
+}

@@ -68,13 +68,12 @@ export function WorkspaceCampaignsTab({ workspace }: { workspace: AdminWorkspace
       width: "104px",
       align: "right",
       definition: definitionOf(definitions, "participants", "creators"),
+      // "em andamento de" é visível (não só `title`): o primeiro número é só uma parte do segundo
       cell: (campaign) => (
-        <span
-          className="adm-num"
-          title={`${formatInt(campaign.participants.participating)} em andamento de ${formatInt(campaign.participants.total)} participações`}
-        >
+        <span className="adm-num">
           <b>{formatInt(campaign.participants.participating)}</b>
-          <span className="adm-muted"> / {formatInt(campaign.participants.total)}</span>
+          <span className="adm-muted"> de {formatInt(campaign.participants.total)}</span>
+          <small className="adm-sub">em andamento</small>
         </span>
       ),
     },
@@ -111,7 +110,7 @@ export function WorkspaceCampaignsTab({ workspace }: { workspace: AdminWorkspace
   ];
 
   return (
-    <div className="adm-workspaces-panel">
+    <>
       <AdminTable
         caption="Campanhas do workspace"
         columns={columns}
@@ -134,6 +133,6 @@ export function WorkspaceCampaignsTab({ workspace }: { workspace: AdminWorkspace
           ) : undefined
         }
       />
-    </div>
+    </>
   );
 }

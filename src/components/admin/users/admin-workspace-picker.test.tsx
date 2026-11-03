@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState, type ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,7 +16,7 @@ import type { AdminWorkspaceRef } from "@/shared/admin-platform.types";
 
 import { WS_AURORA, WS_CAFE, WS_LUME, listResult, makeWorkspaceItem } from "./admin-users-test-data";
 import { createTestQueryClient } from "./admin-users-test-utils";
-import { AdminWorkspacePicker } from "./admin-workspace-picker";
+import { AdminWorkspacePicker, useAdminWorkspaceSelection } from "./admin-workspace-picker";
 
 const WORKSPACES = [
   makeWorkspaceItem({ id: WS_CAFE, name: "Café Serra Verde" }),
@@ -62,8 +62,12 @@ function setup(props: Parameters<typeof Harness>[0] = {}) {
       <Harness {...props} />
     </QueryClientProvider>,
   );
-  return { user, ...view, combobox: () => screen.getByRole("combobox", { name: /Workspace/ }) };
+  return { user, ...view, trigger: () => screen.getByRole("button", { name: /^Workspace/ }) };
 }
+
+/** A busca fica dentro do popover: existe só com a lista aberta. */
+const search = () => screen.getByRole("combobox", { name: /^Buscar workspace/i }) as HTMLInputElement;
+const options = () => within(screen.getByRole("listbox", { name: /Workspace/ })).getAllByRole("option");
 
 beforeEach(() => {
   client.adminList.mockReset();
@@ -72,23 +76,26 @@ beforeEach(() => {
 });
 
 describe("AdminWorkspacePicker: acessibilidade e abertura", () => {
-  it("é um combobox com nome, fechado por padrão, e não consulta o servidor até abrir", () => {
-    const { combobox } = setup();
-    expect(combobox()).toHaveAttribute("aria-expanded", "false");
-    expect(combobox()).toHaveAttribute("aria-autocomplete", "list");
-    expect(combobox()).toHaveAttribute("placeholder", "Todos");
+  it("é uma pílula com nome, fechada por padrão, e não consulta o servidor até abrir", () => {
+    const { trigger } = setup();
+    expect(trigger()).toHaveTextContent("Workspace:Todos");
+    expect(trigger()).toHaveAttribute("aria-haspopup", "dialog");
+    expect(trigger()).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(client.adminList).not.toHaveBeenCalled();
   });
 
   it("clicar abre a lista e busca os clientes (kind=brand) pelo nome, 10 por vez", async () => {
-    const { user, combobox } = setup();
-    await user.click(combobox());
+    const { user, trigger } = setup();
+    await user.click(trigger());
 
-    expect(combobox()).toHaveAttribute("aria-expanded", "true");
+    expect(trigger()).toHaveAttribute("aria-expanded", "true");
     const listbox = await screen.findByRole("listbox", { name: "Workspace" });
-    expect(combobox()).toHaveAttribute("aria-controls", listbox.id);
-    expect(within(listbox).getAllByRole("option")).toHaveLength(3);
+    expect(search()).toHaveAttribute("aria-controls", listbox.id);
+    expect(search()).toHaveAttribute("aria-autocomplete", "list");
+    // "Todos" no topo e os três workspaces
+    await waitFor(() => expect(options()).toHaveLength(4));
     expect(client.adminList).toHaveBeenCalledWith(
       "/admin/workspaces",
       { search: "", kind: "brand", per_page: 10, sort_by: "name", order: "asc" },
@@ -97,8 +104,8 @@ describe("AdminWorkspacePicker: acessibilidade e abertura", () => {
   });
 
   it("cada opção mostra o nome, o e-mail do dono e o estado quando não é ativo", async () => {
-    const { user, combobox } = setup();
-    await user.click(combobox());
+    const { user, trigger } = setup();
+    await user.click(trigger());
     expect(await screen.findByRole("option", { name: /Café Serra Verde.*bernardo@cafeserraverde\.com\.br/ })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /Studio Lume Fotografia.*paula@lume\.com\.br · Suspenso/ })).toBeInTheDocument();
     // sem dono e ativo: só o nome
@@ -107,17 +114,24 @@ describe("AdminWorkspacePicker: acessibilidade e abertura", () => {
 
   it("aceita outro rótulo, outro texto vazio, outro tipo de workspace e outro limite", async () => {
     const { user } = setup({ label: "Workspace de origem", placeholder: "Qualquer", kind: "all", limit: 5 });
-    const combobox = screen.getByRole("combobox", { name: "Workspace de origem" });
-    expect(combobox).toHaveAttribute("placeholder", "Qualquer");
-    await user.click(combobox);
+    const trigger = screen.getByRole("button", { name: /^Workspace de origem:/ });
+    expect(trigger).toHaveTextContent("Qualquer");
+    await user.click(trigger);
     await screen.findByRole("listbox", { name: "Workspace de origem" });
     expect(client.adminList.mock.calls[0][1]).toMatchObject({ kind: "all", per_page: 5 });
   });
 
+  it("variant=filterBar não mostra o × nem com um workspace escolhido", async () => {
+    client.adminGet.mockResolvedValue({ id: WS_CAFE, name: "Café Serra Verde" });
+    setup({ initial: WS_CAFE, variant: "filterBar" });
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Workspace:/ })).toHaveTextContent("Café Serra Verde"));
+    expect(screen.queryByRole("button", { name: /Limpar/ })).not.toBeInTheDocument();
+  });
+
   it("desabilitado: não abre nem consulta", async () => {
-    const { user, combobox } = setup({ disabled: true });
-    expect(combobox()).toBeDisabled();
-    await user.click(combobox());
+    const { user, trigger } = setup({ disabled: true });
+    expect(trigger()).toBeDisabled();
+    await user.click(trigger());
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(client.adminList).not.toHaveBeenCalled();
   });
@@ -125,12 +139,13 @@ describe("AdminWorkspacePicker: acessibilidade e abertura", () => {
 
 describe("AdminWorkspacePicker: busca com atraso", () => {
   it("digitar espera a pessoa parar: uma só consulta, com o texto inteiro", async () => {
-    const { user, combobox } = setup();
-    await user.click(combobox());
+    const { user, trigger } = setup();
+    await user.click(trigger());
     await screen.findByRole("listbox");
+    await waitFor(() => expect(client.adminList).toHaveBeenCalled());
     client.adminList.mockClear();
 
-    await user.type(combobox(), "lume");
+    await user.type(search(), "lume");
     // nenhuma das teclas intermediárias ("l", "lu", "lum") foi à API
     expect(client.adminList).not.toHaveBeenCalled();
 
@@ -141,91 +156,109 @@ describe("AdminWorkspacePicker: busca com atraso", () => {
   });
 
   it("o atraso é configurável", async () => {
-    const { user, combobox } = setup({ debounceMs: 10 });
-    await user.click(combobox());
+    const { user, trigger } = setup({ debounceMs: 10 });
+    await user.click(trigger());
     await screen.findByRole("listbox");
+    await waitFor(() => expect(client.adminList).toHaveBeenCalled());
     client.adminList.mockClear();
-    await user.type(combobox(), "au");
+    await user.type(search(), "au");
     await waitFor(() => expect(client.adminList).toHaveBeenCalled());
     expect(client.adminList.mock.calls.at(-1)?.[1]).toMatchObject({ search: "au" });
   });
 
   it("sem resultado: diz o que foi buscado", async () => {
-    const { user, combobox } = setup();
-    await user.click(combobox());
+    const { user, trigger } = setup();
+    await user.click(trigger());
     await screen.findByRole("listbox");
-    await user.type(combobox(), "zzz");
-    expect(await screen.findByText("Nenhum workspace encontrado para “zzz”.")).toBeInTheDocument();
+    await user.type(search(), "zzz");
+    expect(await screen.findByText("Nenhum workspace encontrado")).toBeInTheDocument();
+    expect(screen.getByText("Nada encontrado para “zzz”. Tente outro termo.")).toBeInTheDocument();
     expect(screen.queryByRole("option")).not.toBeInTheDocument();
   });
 
   it("mais resultados do que cabem: avisa quantos aparecem e pede para refinar", async () => {
     client.adminList.mockResolvedValue(listResult(WORKSPACES, 70, { per_page: 3 }));
-    const { user, combobox } = setup();
-    await user.click(combobox());
+    const { user, trigger } = setup();
+    await user.click(trigger());
     expect(await screen.findByText("Mostrando 3 de 70. Digite para refinar a busca.")).toBeInTheDocument();
   });
 
   it("carregando: avisa enquanto a primeira busca não chega", async () => {
     client.adminList.mockReturnValue(new Promise(() => undefined));
-    const { user, combobox } = setup();
-    await user.click(combobox());
-    expect(await screen.findByText("Carregando workspaces…")).toBeInTheDocument();
-    expect(combobox()).toHaveAttribute("aria-busy", "true");
+    const { user, trigger } = setup();
+    await user.click(trigger());
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Carregando…"));
+    // nenhum workspace ainda: só a opção "Todos"
+    expect(screen.getAllByRole("option")).toHaveLength(1);
+    expect(screen.queryByRole("option", { name: /Café Serra Verde/ })).not.toBeInTheDocument();
   });
 });
 
 describe("AdminWorkspacePicker: escolher e limpar", () => {
-  it("clicar numa opção escolhe, fecha a lista, mostra o nome e mantém o foco no campo", async () => {
+  it("clicar numa opção escolhe, fecha a lista, mostra o nome e devolve o foco à pílula", async () => {
     const onPick = vi.fn();
-    const { user, combobox } = setup({ onPick });
-    await user.click(combobox());
+    const { user, trigger } = setup({ onPick });
+    await user.click(trigger());
     await user.click(await screen.findByRole("option", { name: /Aurora Beauty Studio/ }));
 
     expect(onPick).toHaveBeenCalledTimes(1);
     expect(onPick).toHaveBeenCalledWith({ id: WS_AURORA, name: "Aurora Beauty Studio" });
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    expect(combobox()).toHaveValue("Aurora Beauty Studio");
-    expect(combobox()).toHaveAttribute("aria-expanded", "false");
-    expect(combobox()).toHaveFocus();
+    expect(trigger()).toHaveTextContent("Workspace:Aurora Beauty Studio");
+    expect(trigger()).toHaveAttribute("aria-expanded", "false");
+    expect(trigger()).toHaveFocus();
     // o nome já é conhecido: nem precisa buscar o detalhe do workspace
     expect(client.adminGet).not.toHaveBeenCalled();
   });
 
   it("a opção escolhida aparece marcada ao abrir de novo", async () => {
-    const { user, combobox } = setup();
-    await user.click(combobox());
+    const { user, trigger } = setup();
+    await user.click(trigger());
     await user.click(await screen.findByRole("option", { name: /Studio Lume/ }));
-    await user.click(combobox());
+    await user.click(trigger());
     expect(await screen.findByRole("option", { name: /Studio Lume/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("option", { name: /Café Serra Verde/ })).toHaveAttribute("aria-selected", "false");
   });
 
-  it("o × limpa a escolha: avisa quem usa, esvazia o campo e devolve o foco", async () => {
+  it("o × limpa a escolha: avisa quem usa, volta a 'Todos' e devolve o foco", async () => {
     const onPick = vi.fn();
-    const { user, combobox } = setup({ onPick });
-    await user.click(combobox());
+    const { user, trigger } = setup({ onPick });
+    await user.click(trigger());
     await user.click(await screen.findByRole("option", { name: /Café Serra Verde/ }));
-    expect(combobox()).toHaveValue("Café Serra Verde");
+    expect(trigger()).toHaveTextContent("Café Serra Verde");
 
     await user.click(screen.getByRole("button", { name: "Limpar workspace" }));
     expect(onPick).toHaveBeenLastCalledWith(null);
-    expect(combobox()).toHaveValue("");
-    expect(combobox()).toHaveFocus();
+    expect(trigger()).toHaveTextContent("Workspace:Todos");
+    expect(trigger()).toHaveFocus();
     expect(screen.queryByRole("button", { name: "Limpar workspace" })).not.toBeInTheDocument();
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
-  it("sem escolha não há ×; com clearable desligado também não", async () => {
+  it("a opção 'Todos' da lista também limpa", async () => {
+    const onPick = vi.fn();
+    const { user, trigger } = setup({ onPick });
+    await user.click(trigger());
+    await user.click(await screen.findByRole("option", { name: /Café Serra Verde/ }));
+    await user.click(trigger());
+    await user.click(await screen.findByRole("option", { name: "Todos" }));
+    expect(onPick).toHaveBeenLastCalledWith(null);
+    expect(trigger()).toHaveTextContent("Workspace:Todos");
+  });
+
+  it("sem escolha não há ×", () => {
     setup();
     expect(screen.queryByRole("button", { name: /Limpar/ })).not.toBeInTheDocument();
   });
 
-  it("clearable=false: escolhido, mas sem ×", async () => {
+  it("clearable=false: escolhido, mas sem × e sem a opção 'Todos'", async () => {
     client.adminGet.mockResolvedValue({ id: WS_CAFE, name: "Café Serra Verde" });
-    setup({ initial: WS_CAFE, clearable: false });
-    await waitFor(() => expect(screen.getByRole("combobox")).toHaveValue("Café Serra Verde"));
+    const { user, trigger } = setup({ initial: WS_CAFE, clearable: false });
+    await waitFor(() => expect(trigger()).toHaveTextContent("Café Serra Verde"));
     expect(screen.queryByRole("button", { name: /Limpar/ })).not.toBeInTheDocument();
+    await user.click(trigger());
+    await screen.findByRole("option", { name: /Café Serra Verde/ });
+    expect(screen.queryByRole("option", { name: "Todos" })).not.toBeInTheDocument();
   });
 
   it("o × leva o nome do campo", async () => {
@@ -234,91 +267,128 @@ describe("AdminWorkspacePicker: escolher e limpar", () => {
     expect(await screen.findByRole("button", { name: "Limpar workspace de origem" })).toBeInTheDocument();
   });
 
-  it("digitar sem escolher e sair do campo volta ao workspace escolhido", async () => {
-    const { user, combobox } = setup();
-    await user.click(combobox());
+  it("digitar sem escolher e sair da lista mantém o workspace escolhido", async () => {
+    const { user, trigger } = setup();
+    await user.click(trigger());
     await user.click(await screen.findByRole("option", { name: /Studio Lume/ }));
-    await user.click(combobox());
+    await user.click(trigger());
     await user.keyboard("qualquer coisa");
-    expect(combobox()).toHaveValue("qualquer coisa");
-    await user.tab(); // sai do campo (vai para o ×) e depois do seletor
+    expect(search()).toHaveValue("qualquer coisa");
     await user.tab();
-    expect(combobox()).toHaveValue("Studio Lume Fotografia");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(trigger()).toHaveTextContent("Workspace:Studio Lume Fotografia");
   });
 });
 
 describe("AdminWorkspacePicker: o workspace escolhido vem só como id (URL recarregada)", () => {
   it("busca o nome do workspace e o mostra", async () => {
     client.adminGet.mockResolvedValue({ id: WS_CAFE, name: "Café Serra Verde" });
-    const { combobox } = setup({ initial: WS_CAFE });
+    const { trigger } = setup({ initial: WS_CAFE });
 
-    expect(combobox()).toHaveValue("Carregando…");
-    await waitFor(() => expect(combobox()).toHaveValue("Café Serra Verde"));
+    expect(trigger()).toHaveTextContent("Carregando…");
+    await waitFor(() => expect(trigger()).toHaveTextContent("Workspace:Café Serra Verde"));
     expect(client.adminGet).toHaveBeenCalledWith(`/admin/workspaces/${WS_CAFE}`, undefined, expect.anything());
-    // a lista só é consultada quando a pessoa abre o campo
+    // a lista só é consultada quando a pessoa abre o seletor
     expect(client.adminList).not.toHaveBeenCalled();
   });
 
   it("workspace que não existe mais: mostra o começo do id (e ainda dá para limpar)", async () => {
     client.adminGet.mockRejectedValue(new AdminApiError({ status: 404, code: "NOT_FOUND", message: "x" }));
-    const { combobox } = setup({ initial: WS_CAFE });
-    await waitFor(() => expect(combobox()).toHaveValue("Workspace 7a1e0000…"));
+    const { trigger } = setup({ initial: WS_CAFE });
+    await waitFor(() => expect(trigger()).toHaveTextContent("Workspace 7a1e0000…"));
     expect(screen.getByRole("button", { name: "Limpar workspace" })).toBeInTheDocument();
   });
 
-  it("o id some (limpo por fora, ex.: 'Limpar filtros'): o campo esvazia", async () => {
+  it("o id some (limpo por fora, ex.: 'Limpar filtros'): a pílula volta a 'Todos'", async () => {
     client.adminGet.mockResolvedValue({ id: WS_CAFE, name: "Café Serra Verde" });
     const view = render(
       <QueryClientProvider client={createTestQueryClient()}>
         <AdminWorkspacePicker value={WS_CAFE} onChange={() => undefined} />
       </QueryClientProvider>,
     );
-    await waitFor(() => expect(screen.getByRole("combobox")).toHaveValue("Café Serra Verde"));
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Workspace:/ })).toHaveTextContent("Café Serra Verde"));
     view.rerender(
       <QueryClientProvider client={createTestQueryClient()}>
         <AdminWorkspacePicker value="" onChange={() => undefined} />
       </QueryClientProvider>,
     );
-    expect(screen.getByRole("combobox")).toHaveValue("");
+    expect(screen.getByRole("button", { name: /^Workspace:/ })).toHaveTextContent("Workspace:Todos");
+  });
+});
+
+describe("useAdminWorkspaceSelection: o chip do filtro", () => {
+  function renderSelection(id: string | null | undefined, options?: Parameters<typeof useAdminWorkspaceSelection>[1]) {
+    return renderHook(() => useAdminWorkspaceSelection(id, options), {
+      wrapper: ({ children }) => <QueryClientProvider client={createTestQueryClient()}>{children}</QueryClientProvider>,
+    });
+  }
+
+  it("sem id: nenhum workspace e nenhum chip, sem consultar", () => {
+    const { result } = renderSelection("");
+    expect(result.current).toEqual({ workspace: null, summary: null });
+    expect(client.adminGet).not.toHaveBeenCalled();
+  });
+
+  it("com id: 'Workspace: Carregando…' e depois o nome buscado", async () => {
+    client.adminGet.mockResolvedValue({ id: WS_CAFE, name: "Café Serra Verde" });
+    const { result } = renderSelection(WS_CAFE);
+    expect(result.current.summary).toBe("Workspace: Carregando…");
+    await waitFor(() => expect(result.current.summary).toBe("Workspace: Café Serra Verde"));
+    expect(result.current.workspace).toEqual({ id: WS_CAFE, name: "Café Serra Verde" });
+  });
+
+  it("nome já conhecido: usa-o sem consultar; o rótulo é configurável", () => {
+    const { result } = renderSelection(WS_CAFE, { label: "Origem", known: { id: WS_CAFE, name: "Café Serra Verde" } });
+    expect(result.current.summary).toBe("Origem: Café Serra Verde");
+    expect(client.adminGet).not.toHaveBeenCalled();
+  });
+
+  it("nome conhecido de outro workspace não vale: busca o do id atual", async () => {
+    client.adminGet.mockResolvedValue({ id: WS_LUME, name: "Studio Lume Fotografia" });
+    const { result } = renderSelection(WS_LUME, { known: { id: WS_CAFE, name: "Café Serra Verde" } });
+    await waitFor(() => expect(result.current.summary).toBe("Workspace: Studio Lume Fotografia"));
   });
 });
 
 describe("AdminWorkspacePicker: teclado", () => {
-  it("↓ abre a lista e move o destaque; ↑ volta; Enter escolhe", async () => {
+  it("↓ na pílula abre a lista; ↓ ↑ movem o destaque; Enter escolhe", async () => {
     const onPick = vi.fn();
-    const { user, combobox } = setup({ onPick });
+    const { user, trigger } = setup({ onPick });
     await user.tab();
-    expect(combobox()).toHaveFocus();
+    expect(trigger()).toHaveFocus();
 
     await user.keyboard("{ArrowDown}");
-    expect(combobox()).toHaveAttribute("aria-expanded", "true");
-    const options = await screen.findAllByRole("option");
-    expect(combobox()).toHaveAttribute("aria-activedescendant", options[0].id);
+    expect(trigger()).toHaveAttribute("aria-expanded", "true");
+    await waitFor(() => expect(options()).toHaveLength(4)); // Todos + 3
+    const items = options();
+    expect(search()).toHaveFocus();
+    expect(search()).toHaveAttribute("aria-activedescendant", items[0].id);
 
     await user.keyboard("{ArrowDown}");
-    expect(combobox()).toHaveAttribute("aria-activedescendant", options[1].id);
+    expect(search()).toHaveAttribute("aria-activedescendant", items[1].id);
     await user.keyboard("{ArrowDown}{ArrowDown}");
-    expect(combobox()).toHaveAttribute("aria-activedescendant", options[2].id); // para no último
+    expect(search()).toHaveAttribute("aria-activedescendant", items[3].id);
     await user.keyboard("{ArrowUp}");
-    expect(combobox()).toHaveAttribute("aria-activedescendant", options[1].id);
+    expect(search()).toHaveAttribute("aria-activedescendant", items[2].id);
 
     await user.keyboard("{Enter}");
     expect(onPick).toHaveBeenCalledWith({ id: WS_LUME, name: "Studio Lume Fotografia" });
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    expect(combobox()).toHaveValue("Studio Lume Fotografia");
+    expect(trigger()).toHaveTextContent("Workspace:Studio Lume Fotografia");
   });
 
   it("o destaque volta ao primeiro resultado a cada busca nova", async () => {
-    const { user, combobox } = setup({ debounceMs: 10 });
+    const { user, trigger } = setup({ debounceMs: 10 });
     await user.tab();
-    await user.keyboard("{ArrowDown}{ArrowDown}");
-    await screen.findAllByRole("option");
     await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(options()).toHaveLength(4));
+    await user.keyboard("{ArrowDown}{ArrowDown}");
     await user.keyboard("a");
     await waitFor(() => {
-      const options = screen.getAllByRole("option");
-      expect(combobox()).toHaveAttribute("aria-activedescendant", options[0].id);
+      const items = options();
+      expect(search()).toHaveAttribute("aria-activedescendant", items[0].id);
     });
+    expect(trigger()).toHaveAttribute("aria-expanded", "true");
   });
 
   it("Esc fecha só a lista (não escolhe nada e não chega ao diálogo em volta)", async () => {
@@ -333,31 +403,31 @@ describe("AdminWorkspacePicker: teclado", () => {
         </div>
       </QueryClientProvider>,
     );
-    const combobox = screen.getByRole("combobox");
-    await user.click(combobox);
+    await user.click(screen.getByRole("button", { name: /^Workspace:/ }));
     await screen.findByRole("listbox");
 
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(onPick).not.toHaveBeenCalled();
     expect(outer).not.toHaveBeenCalledWith("Escape");
+    expect(screen.getByRole("button", { name: /^Workspace:/ })).toHaveFocus();
 
     // com a lista fechada, o Esc segue para quem está em volta
     await user.keyboard("{Escape}");
     expect(outer).toHaveBeenCalledWith("Escape");
   });
 
-  it("Tab sai do campo e fecha a lista sem escolher", async () => {
+  it("Tab sai da busca e fecha a lista sem escolher", async () => {
     const onPick = vi.fn();
-    const { user, combobox } = setup({ onPick });
-    await user.click(combobox());
+    const { user, trigger } = setup({ onPick });
+    await user.click(trigger());
     await screen.findByRole("listbox");
     await user.tab();
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(onPick).not.toHaveBeenCalled();
   });
 
-  it("Enter só escolhe com a lista aberta: fechada, deixa o formulário em volta enviar", async () => {
+  it("Enter na busca escolhe sem enviar o formulário em volta", async () => {
     const onSubmit = vi.fn((event: { preventDefault: () => void }) => event.preventDefault());
     const onPick = vi.fn();
     const user = userEvent.setup();
@@ -370,22 +440,19 @@ describe("AdminWorkspacePicker: teclado", () => {
       </QueryClientProvider>,
     );
     await user.tab();
-    await user.keyboard("{Enter}");
-    expect(onSubmit).toHaveBeenCalledTimes(1);
-
     await user.keyboard("{ArrowDown}");
-    await screen.findAllByRole("option");
-    await user.keyboard("{Enter}");
+    await waitFor(() => expect(options()).toHaveLength(4));
+    await user.keyboard("{ArrowDown}{Enter}");
     expect(onPick).toHaveBeenCalledTimes(1);
-    expect(onSubmit).toHaveBeenCalledTimes(1); // escolher não enviou o formulário
+    expect(onSubmit).not.toHaveBeenCalled(); // escolher não enviou o formulário
   });
 });
 
 describe("AdminWorkspacePicker: erros", () => {
   it("erro de servidor: mostra o motivo e 'Tentar de novo' busca outra vez", async () => {
     client.adminList.mockRejectedValue(toAdminApiError(500, { message: "Internal server error" }));
-    const { user, combobox } = setup();
-    await user.click(combobox());
+    const { user, trigger } = setup();
+    await user.click(trigger());
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("O servidor teve um problema. Tente novamente em instantes.");
@@ -395,20 +462,20 @@ describe("AdminWorkspacePicker: erros", () => {
     expect(await screen.findByRole("option", { name: /Café Serra Verde/ })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     // clicar em "Tentar de novo" não fechou a lista
-    expect(combobox()).toHaveAttribute("aria-expanded", "true");
+    expect(trigger()).toHaveAttribute("aria-expanded", "true");
   });
 
   it("rota que o servidor ainda não tem: diz exatamente isso", async () => {
     client.adminList.mockRejectedValue(toAdminApiError(404, { message: "Cannot GET /api/backoffice/admin/workspaces" }));
-    const { user, combobox } = setup();
-    await user.click(combobox());
+    const { user, trigger } = setup();
+    await user.click(trigger());
     expect(await screen.findByRole("alert")).toHaveTextContent("A busca de workspaces ainda não está disponível no servidor.");
   });
 
   it("sem permissão: o motivo, sem botão de tentar de novo (repetir não muda nada)", async () => {
     client.adminList.mockRejectedValue(toAdminApiError(403, { message: "Forbidden resource" }));
-    const { user, combobox } = setup();
-    await user.click(combobox());
+    const { user, trigger } = setup();
+    await user.click(trigger());
     expect(await screen.findByRole("alert")).toHaveTextContent("Você não tem permissão para acessar este recurso.");
     expect(screen.queryByRole("button", { name: "Tentar de novo" })).not.toBeInTheDocument();
   });

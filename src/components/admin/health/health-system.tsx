@@ -1,16 +1,17 @@
 import type { ReactNode } from "react";
+import type { UseQueryResult } from "@tanstack/react-query";
 
 import {
   AdminBadge,
   AdminErrorState,
+  AdminInfoPopover,
   AdminKeyValueList,
+  AdminListSkeleton,
   AdminSection,
-  AdminSkeleton,
   type AdminBadgeTone,
   type AdminKeyValueItem,
 } from "@/components/admin/platform";
-import { useAdminSystemHealth } from "@/hooks/admin/use-admin-health";
-import { figureText, formatDateTime, formatInt, formatRelativeTime } from "@/lib/admin/format";
+import { figureText, formatDateTime, formatInt } from "@/lib/admin/format";
 import type { AdminSystemHealth } from "@/shared/admin-platform.types";
 
 import "@/styles/admin-health.css";
@@ -20,7 +21,8 @@ type ServiceStatus = AdminSystemHealth["database"]["status"] | AdminSystemHealth
 const SERVICE_LABEL: Record<ServiceStatus, string> = {
   ok: "Operando",
   down: "Fora do ar",
-  disabled: "Desativado neste ambiente",
+  // Curto de propósito: a faixa tem colunas de ~160 px e o selo não quebra linha; o "neste ambiente" fica na linha de apoio.
+  disabled: "Desativado",
 };
 
 const SERVICE_TONE: Record<ServiceStatus, AdminBadgeTone> = { ok: "ok", down: "bad", disabled: "muted" };
@@ -63,58 +65,67 @@ function systemItems(system: AdminSystemHealth): AdminKeyValueItem[] {
     {
       label: "Jobs agendados",
       // O contrato manda `kind: 'unavailable'`: a tela diz "Não apurado" e explica; nunca inventa um estado.
-      value: figureText(system.scheduled_jobs),
-      definition: system.scheduled_jobs.definition,
+      // O "i" explica POR QUE não é apurado (não um cálculo): fica ao lado do valor, com nome acessível próprio.
+      value: (
+        <>
+          {figureText(system.scheduled_jobs)}
+          {system.scheduled_jobs.definition ? (
+            <AdminInfoPopover triggerLabel="Por que os jobs agendados não são apurados">{system.scheduled_jobs.definition}</AdminInfoPopover>
+          ) : null}
+        </>
+      ),
     },
   ];
 }
 
-interface HealthSystemProps {
-  /** "Agora" do relógio da tela (renova sozinho): faz o "verificado há…" andar. */
-  now: number;
+/**
+ * O resumo da faixa: vermelho dizendo quem caiu; senão verde, dizendo QUEM foi verificado. O selo só olha banco e Redis
+ * (não os jobs nem o snapshot), então o texto nomeia os dois: "Banco e Redis operando". Redis desativado não é falha e
+ * não é "operando": nesse caso o texto diz só "Banco de dados operando".
+ */
+export function overallStatus(system: AdminSystemHealth): { tone: AdminBadgeTone; text: string } {
+  const down = [
+    system.database.status === "down" ? "Banco de dados" : null,
+    system.redis.status === "down" ? "Redis" : null,
+  ].filter((name): name is string => name !== null);
+  if (down.length > 0) return { tone: "bad", text: `Fora do ar: ${down.join(" e ")}` };
+
+  const databaseOk = system.database.status === "ok";
+  const redisOk = system.redis.status === "ok";
+  if (databaseOk && redisOk) return { tone: "ok", text: "Banco e Redis operando" };
+  if (databaseOk) return { tone: "ok", text: "Banco de dados operando" };
+  if (redisOk) return { tone: "ok", text: "Redis operando" };
+  return { tone: "ok", text: "Banco e Redis sem falhas" };
 }
 
-/** Sistema: banco, Redis, snapshot de métricas e jobs agendados (não apurado), com a hora da última verificação. */
-export function HealthSystem({ now }: HealthSystemProps) {
-  const query = useAdminSystemHealth();
+interface HealthSystemProps {
+  /** A consulta do estado do sistema (a página a faz, porque o "verificado há…" do cabeçalho também a usa). */
+  query: UseQueryResult<AdminSystemHealth, unknown>;
+}
+
+/**
+ * Sistema, em faixa no TOPO da página (um banco fora do ar não pode ficar abaixo de listas longas): selo verde ou
+ * vermelho com o resumo (só banco e Redis) e, embaixo, banco, Redis, snapshot de métricas e jobs agendados (não
+ * apurado) numa `AdminKeyValueList` em faixa, um ao lado do outro. A hora da verificação NÃO se repete aqui: ela é
+ * uma só, no cabeçalho.
+ */
+export function HealthSystem({ query }: HealthSystemProps) {
   const system = query.data;
 
   let body: ReactNode;
   if (query.error && !system) {
     body = <AdminErrorState compact error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />;
   } else if (!system) {
-    body = (
-      <div role="status">
-        <span className="adm-sr">Carregando…</span>
-        {Array.from({ length: 4 }, (_, index) => (
-          <div className="adm-health-sys-skeleton" key={index} aria-hidden="true">
-            <AdminSkeleton height={13} width={120} />
-            <AdminSkeleton height={20} width={`${28 + index * 6}%`} />
-          </div>
-        ))}
-      </div>
-    );
+    body = <AdminListSkeleton variant="strip" ariaLabel="Carregando o estado do sistema…" />;
   } else {
-    body = <AdminKeyValueList items={systemItems(system)} />;
+    body = <AdminKeyValueList layout="strip" items={systemItems(system)} />;
   }
 
+  const status = system ? overallStatus(system) : null;
   return (
     <AdminSection
       title="Sistema"
-      description={
-        system ? (
-          <>
-            Verificado{" "}
-            <time dateTime={system.checked_at} title={`${formatDateTime(system.checked_at)}, horário de São Paulo`}>
-              {formatRelativeTime(system.checked_at, now)}
-            </time>
-            .
-          </>
-        ) : (
-          "Banco de dados, Redis e o processo diário de métricas."
-        )
-      }
-      className="adm-health-card"
+      actions={status ? <AdminBadge tone={status.tone}>{status.text}</AdminBadge> : undefined}
     >
       {query.error && system ? <AdminErrorState compact error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
       {body}

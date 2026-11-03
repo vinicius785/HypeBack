@@ -111,7 +111,9 @@ function renderPage() {
   );
 }
 
-const region = (name: string) => screen.getByRole("region", { name });
+const region = (name: string | RegExp) => screen.getByRole("region", { name });
+/** "Precisa de atenção · N": o N (total do servidor) vai no título. */
+const ATTENTION = /^Precisa de atenção/;
 
 /** O cartão de número pelo rótulo, dentro de um painel. */
 function card(panel: HTMLElement, label: string): HTMLElement {
@@ -123,7 +125,12 @@ function card(panel: HTMLElement, label: string): HTMLElement {
 }
 // O dinheiro sai com espaço sem quebra entre "R$" e o valor: aqui vira espaço comum para comparar.
 const valueOf = (element: HTMLElement) => element.querySelector(".adm-fig-value")?.textContent?.replace(/\u00a0/g, " ");
-const kindOf = (element: HTMLElement) => element.querySelector(".adm-kind")?.textContent;
+/** O tipo do número (Realizado, Posição atual…) vive só no popover do "i" do rótulo, na linha "Tipo: X" da descrição do botão. */
+const kindOf = (element: HTMLElement) => {
+  const info = element.querySelector<HTMLButtonElement>(".adm-info");
+  const description = info ? document.getElementById(info.getAttribute("aria-describedby") ?? "") : null;
+  return description?.querySelector(".adm-fig-kindline")?.textContent?.replace(/^Tipo: /, "");
+};
 
 /** O erro que o cliente real devolve para o status (429: "Muitas tentativas…", 403: "Sem permissão"). */
 const apiError = (status: number) => toAdminApiError(status, undefined);
@@ -153,11 +160,46 @@ afterEach(() => {
 });
 
 describe("cabeçalho", () => {
-  it("é o Dashboard, com o subtítulo e quando os números foram calculados (horário de São Paulo)", async () => {
+  it("é o Dashboard, com o subtítulo; uma só linha de apoio junta o período, o fuso e quando os números foram calculados", async () => {
     renderPage();
     expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
     expect(screen.getByText("Saúde da plataforma em um relance.")).toBeInTheDocument();
-    expect(await screen.findByText("Atualizado em 31/10/2026 12:00")).toBeInTheDocument();
+    expect(
+      await screen.findByText("02/10/2026 – 31/10/2026 · Dias de São Paulo · Atualizado em 31/10/2026 12:00"),
+    ).toBeInTheDocument();
+    // não há mais "Atualizado em" solto nem nota de período repetida
+    expect(screen.getAllByText(/Atualizado em/)).toHaveLength(1);
+    expect(screen.getAllByText(/Dias de São Paulo/)).toHaveLength(1);
+  });
+
+  it("o 'i' da linha de apoio diz o que segue o período e o que é a posição de agora (e a janela de atividade)", async () => {
+    renderPage();
+    await loaded();
+    // o "i" não explica um cálculo: o nome acessível é só "Como ler o período" (sem o prefixo "Como é calculado")
+    const info = screen.getByRole("button", { name: "Como ler o período" });
+    expect(within(info.closest(".adm-period-summary") as HTMLElement).queryByRole("button", { name: /Como é calculado/ })).not.toBeInTheDocument();
+    expect(info).toHaveAccessibleDescription(/Seguem o período escolhido: .*aportes.*PIX/);
+    expect(info).toHaveAccessibleDescription(/posição de agora.*custódia.*cobranças pendentes/);
+    expect(info).toHaveAccessibleDescription(/atividade nos últimos 30 dias/);
+    // uma frase por parágrafo do kit (blocos seguros dentro do `<div aria-live>` do resumo)
+    const paragraphs = info.parentElement!.querySelectorAll(".adm-info-p");
+    expect(paragraphs).toHaveLength(3);
+    expect(info.closest(".adm-period-summary")).not.toBeNull();
+  });
+
+  it("as seções de números têm só o título (sem a descrição longa que repetia a regra do período)", async () => {
+    renderPage();
+    await loaded();
+    for (const name of ["Clientes", "Usuários", "Criadores", "Campanhas", "Dinheiro"]) {
+      const section = region(name);
+      expect(section.querySelector(".adm-card-h p")).toBeNull();
+    }
+  });
+
+  it("não tem botão Atualizar no cabeçalho (o Dashboard não tinha e continua sem)", async () => {
+    renderPage();
+    await loaded();
+    expect(screen.queryByRole("button", { name: /Atualizar/ })).not.toBeInTheDocument();
   });
 
   it("só consulta as rotas novas do contrato (nada de /admin/dashboard/*)", async () => {
@@ -176,7 +218,7 @@ describe("carregando", () => {
     api.adminFeed.mockImplementation(never);
     const { container } = renderPage();
 
-    for (const name of ["Clientes", "Usuários", "Criadores", "Campanhas", "Dinheiro", "Precisa de atenção", "Atividade recente"]) {
+    for (const name of ["Clientes", "Usuários", "Criadores", "Campanhas", "Dinheiro", ATTENTION, "Atividade recente"]) {
       expect(region(name)).toBeInTheDocument();
     }
     const busy = container.querySelectorAll('.adm-fig[aria-busy="true"]');
@@ -186,6 +228,10 @@ describe("carregando", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByText("Carregando alertas…")).toBeInTheDocument();
     expect(screen.getByText("Carregando atividade…")).toBeInTheDocument();
+    // esqueletos do kit (um por seção de lista), cada um com a sua região de estado para o leitor de tela
+    expect(container.querySelectorAll('.adm-lsk[role="status"]')).toHaveLength(2);
+    expect(container.querySelector('.adm-lsk[data-variant="alerts"]')).not.toBeNull();
+    expect(container.querySelector('.adm-lsk[data-variant="timeline"]')).not.toBeNull();
     expect(screen.queryByText("Tudo em ordem")).not.toBeInTheDocument();
     expect(screen.queryByText("Nenhuma atividade ainda")).not.toBeInTheDocument();
     // o cartão em esqueleto já é clicável
@@ -209,13 +255,14 @@ describe("números", () => {
     const clients = region("Clientes");
     expect(valueOf(card(clients, "Clientes"))).toBe("50");
     expect(kindOf(card(clients, "Clientes"))).toBe("Posição atual");
+    // o tipo não é selo no corpo do cartão: só no "i"
+    expect(clients.querySelector(".adm-kind")).toBeNull();
     expect(card(clients, "Clientes")).toHaveTextContent("+6 no período");
     expect(valueOf(card(clients, "Ativos"))).toBe("27");
     expect(kindOf(card(clients, "Ativos"))).toBe("Calculado");
     expect(valueOf(card(clients, "Inativos"))).toBe("13");
     expect(valueOf(card(clients, "Suspensos"))).toBe("5");
     expect(valueOf(card(clients, "Arquivados"))).toBe("4");
-    expect(within(clients).getByText(/atividade nos últimos 30 dias/)).toBeInTheDocument();
   });
 
   it("usuários e criadores", async () => {
@@ -289,15 +336,22 @@ describe("números", () => {
     expect(button).toHaveAccessibleDescription(/Calculado a partir de outros números/);
   });
 
-  it("o texto de apoio cita o número com a própria definição (novos no período, comprometido)", async () => {
+  it("o texto de apoio não tem um segundo 'i': a definição do número citado entra no 'i' do rótulo, com o nome dele", async () => {
     renderPage();
     await loaded();
-    expect(screen.getByRole("button", { name: "Como é calculado: Novos clientes no período" })).toHaveAccessibleDescription(
-      /Definição de novos clientes\./,
+    const clients = card(region("Clientes"), "Clientes");
+    expect(clients.querySelectorAll(".adm-info")).toHaveLength(1);
+    expect(within(clients).getByRole("button", { name: "Como é calculado: Clientes" })).toHaveAccessibleDescription(
+      /Novos clientes no período: Definição de novos clientes\./,
     );
-    expect(screen.getByRole("button", { name: "Como é calculado: Comprometido" })).toHaveAccessibleDescription(
-      /Definição de comprometido\./,
+    expect(screen.queryByRole("button", { name: "Como é calculado: Novos clientes no período" })).not.toBeInTheDocument();
+
+    const custody = card(region("Dinheiro"), "Saldo em custódia");
+    expect(custody.querySelectorAll(".adm-info")).toHaveLength(1);
+    expect(within(custody).getByRole("button", { name: "Como é calculado: Saldo em custódia" })).toHaveAccessibleDescription(
+      /Comprometido: Definição de comprometido\./,
     );
+    expect(screen.queryByRole("button", { name: "Como é calculado: Comprometido" })).not.toBeInTheDocument();
   });
 
   it("zero que existe no banco aparece como zero (não é 'não apurado')", async () => {
@@ -365,10 +419,10 @@ describe("cada número leva à lista com o mesmo filtro", () => {
 });
 
 describe("Precisa de atenção", () => {
-  it("alertas de verdade primeiro (do mais grave ao menos), depois sugestões; no máximo 6, cada um com tipo e gravidade", async () => {
+  it("alertas de verdade primeiro (do mais grave ao menos), depois sugestões; no máximo 6, cada um só com gravidade, título e contagem", async () => {
     renderPage();
     await loaded();
-    const panel = region("Precisa de atenção");
+    const panel = region(ATTENTION);
     const rows = within(panel).getAllByRole("listitem");
     expect(rows).toHaveLength(6);
     expect(rows.map((row) => row.querySelector("h3")?.textContent)).toEqual([
@@ -379,41 +433,66 @@ describe("Precisa de atenção", () => {
       "Alerta informativo sem destino",
       "Campanhas publicadas sem nenhuma participação",
     ]);
-    const kinds = rows.map((row) => within(row).getByText(/^(Alerta|Sugestão)$/).textContent);
-    expect(kinds).toEqual(["Alerta", "Alerta", "Alerta", "Alerta", "Alerta", "Sugestão"]);
-    expect(within(rows[0]).getByText("Crítico")).toBeInTheDocument();
-    expect(within(rows[2]).getByText("Atenção")).toBeInTheDocument();
-    expect(within(rows[4]).getByText("Informativo")).toBeInTheDocument();
-    expect(within(rows[5]).getByText("Atenção")).toBeInTheDocument();
+    // a gravidade é o único selo da linha; o tipo (alerta ou sugestão) vai para o detalhe recolhido
+    const badges = rows.map((row) => Array.from(row.querySelectorAll(".adm-badge")).map((badge) => badge.textContent));
+    expect(badges).toEqual([["Crítico"], ["Crítico"], ["Atenção"], ["Atenção"], ["Informativo"], ["Atenção"]]);
+    const kinds = rows.map((row) => row.querySelector("details")!.textContent);
+    expect(kinds.map((text) => /Alerta \(fato registrado no banco\)|Sugestão \(heurística/.exec(text ?? "")?.[0])).toEqual([
+      "Alerta (fato registrado no banco)",
+      "Alerta (fato registrado no banco)",
+      "Alerta (fato registrado no banco)",
+      "Alerta (fato registrado no banco)",
+      "Alerta (fato registrado no banco)",
+      "Sugestão (heurística",
+    ]);
     // as duas sugestões que não couberam ficam de fora
     expect(within(panel).queryByText("Clientes sem atividade há mais de 30 dias")).not.toBeInTheDocument();
     expect(within(panel).queryByText("Criadores com cadastro incompleto há mais de 14 dias")).not.toBeInTheDocument();
   });
 
-  it("a regra exata de cada um está sempre à vista (é o que separa fato registrado de heurística)", async () => {
+  it("o título traz o total do servidor ('Precisa de atenção · 8'), e 'Mostrando N de M' não existe mais", async () => {
     renderPage();
     await loaded();
-    const panel = region("Precisa de atenção");
+    expect(within(region(ATTENTION)).getByRole("heading", { level: 2, name: "Precisa de atenção · 8" })).toBeInTheDocument();
+    expect(screen.queryByText(/Mostrando/)).not.toBeInTheDocument();
+  });
+
+  it("a regra exata de cada um fica recolhida em 'Como é calculado' (é o que separa fato registrado de heurística), sem sumir", async () => {
+    renderPage();
+    await loaded();
+    const panel = region(ATTENTION);
+    const rows = within(panel).getAllByRole("listitem");
+    for (const row of rows) {
+      const details = row.querySelector("details")!;
+      expect(details).not.toHaveAttribute("open");
+      expect(within(details).getByText("Como é calculado", { selector: "summary" })).toBeInTheDocument();
+      expect(within(details).getByText("Regra")).toBeInTheDocument();
+    }
     expect(
       within(panel).getByText("influencer_withdrawals com status pendente e requested_at anterior a 72 horas atrás."),
     ).toBeInTheDocument();
     expect(within(panel).getByText("Regra de Campanhas publicadas sem nenhuma participação.")).toBeInTheDocument();
     expect(within(panel).getAllByText("Regra")).toHaveLength(6);
     expect(within(panel).getByText("Descrição de Saques de criadores travados.")).toBeInTheDocument();
+
+    // abrir o detalhe não leva a lugar nenhum (o link esticado fica por baixo dele)
+    await userEvent.click(within(rows[0]).getByText("Como é calculado"));
+    expect(rows[0].querySelector("details")).toHaveAttribute("open");
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 
   it("mostra quantas ocorrências, no singular e no plural", async () => {
     renderPage();
     await loaded();
-    const rows = within(region("Precisa de atenção")).getAllByRole("listitem");
-    expect(rows[0]).toHaveTextContent(/1\s*ocorrência$/);
-    expect(rows[2]).toHaveTextContent(/5\s*ocorrências$/);
+    const rows = within(region(ATTENTION)).getAllByRole("listitem");
+    expect(rows[0].querySelector(".adm-dash-alert-count")).toHaveTextContent(/^1\s*ocorrência$/);
+    expect(rows[2].querySelector(".adm-dash-alert-count")).toHaveTextContent(/^5\s*ocorrências$/);
   });
 
   it("cada um leva ao destino que o servidor mandou (rota da tela + filtros); sem destino não é link", async () => {
     renderPage();
     await loaded();
-    const panel = region("Precisa de atenção");
+    const panel = region(ATTENTION);
     expect(within(panel).getByRole("link", { name: "Saques de criadores travados" })).toHaveAttribute(
       "href",
       "/admin/financial?type=withdrawal",
@@ -431,28 +510,26 @@ describe("Precisa de atenção", () => {
     expect(within(panel).getByText("Alerta informativo sem destino")).toBeInTheDocument();
   });
 
-  it("'Ver todos' vai para a Saúde da plataforma e avisa que mostra 6 de 8", async () => {
+  it("'Ver todos' vai para a Saúde da plataforma", async () => {
     renderPage();
     await loaded();
-    const panel = region("Precisa de atenção");
-    expect(within(panel).getByRole("link", { name: "Ver todos" })).toHaveAttribute("href", "/admin/health");
-    expect(within(panel).getByText(/Mostrando 6 de 8/)).toBeInTheDocument();
+    expect(within(region(ATTENTION)).getByRole("link", { name: "Ver todos" })).toHaveAttribute("href", "/admin/health");
   });
 
-  it("com até 6, mostra todos e nenhum aviso de 'Mostrando'", async () => {
+  it("com até 6, mostra todos e o título conta os mesmos", async () => {
     serve({ alerts: () => ({ data: ALERTS.slice(0, 3), meta: {} }) });
     renderPage();
     await screen.findByText("Cobranças PIX expiradas sem pagamento");
-    const panel = region("Precisa de atenção");
+    const panel = region(ATTENTION);
     expect(within(panel).getAllByRole("listitem")).toHaveLength(3);
-    expect(within(panel).queryByText(/Mostrando/)).not.toBeInTheDocument();
+    expect(within(panel).getByRole("heading", { level: 2, name: "Precisa de atenção · 3" })).toBeInTheDocument();
   });
 
   it("sem nenhum: 'Tudo em ordem', com a hora do cálculo, e 'Ver todos' segue disponível", async () => {
     serve({ alerts: () => ({ data: [], meta: { computed_at: "2026-10-31T15:00:00.000Z" } }) });
     renderPage();
     expect(await screen.findByText("Tudo em ordem")).toBeInTheDocument();
-    const panel = region("Precisa de atenção");
+    const panel = region(ATTENTION);
     expect(within(panel).getByText(/Nenhum alerta nem sugestão no momento\. Calculado em 31\/10\/2026 12:00\./)).toBeInTheDocument();
     expect(within(panel).queryByRole("listitem")).not.toBeInTheDocument();
     expect(within(panel).getByRole("link", { name: "Ver todos" })).toHaveAttribute("href", "/admin/health");
@@ -468,7 +545,7 @@ describe("Precisa de atenção", () => {
       },
     });
     renderPage();
-    const panel = region("Precisa de atenção");
+    const panel = region(ATTENTION);
     expect(await within(panel).findByRole("alert")).toHaveTextContent("Muitas tentativas em pouco tempo");
     // os números e a atividade seguem normais
     expect(valueOf(card(region("Clientes"), "Ativos"))).toBe("27");
@@ -488,7 +565,7 @@ describe("Precisa de atenção", () => {
       },
     });
     renderPage();
-    const panel = region("Precisa de atenção");
+    const panel = region(ATTENTION);
     const alert = await within(panel).findByRole("alert");
     expect(alert).toHaveTextContent("Recurso indisponível");
     expect(alert).toHaveTextContent("Este recurso ainda não está disponível no servidor.");
@@ -498,13 +575,19 @@ describe("Precisa de atenção", () => {
   it("resposta fora do contrato (não é uma lista) é erro, não 'tudo em ordem'", async () => {
     serve({ alerts: () => ({ data: { alerts: [] }, meta: {} }) });
     renderPage();
-    const alert = await within(region("Precisa de atenção")).findByRole("alert");
+    const alert = await within(region(ATTENTION)).findByRole("alert");
     expect(alert).toHaveTextContent("O servidor respondeu em um formato inesperado.");
     expect(screen.queryByText("Tudo em ordem")).not.toBeInTheDocument();
   });
 });
 
 describe("Atividade recente", () => {
+  it("diz em uma linha que não é o log completo (o registro inteiro está em 'Ver tudo')", async () => {
+    renderPage();
+    await loaded();
+    expect(within(region("Atividade recente")).getByText(/não é um log completo/)).toBeInTheDocument();
+  });
+
   it("pede os 8 eventos mais recentes e mostra no máximo 8, na ordem do servidor", async () => {
     renderPage();
     await loaded();
@@ -529,19 +612,29 @@ describe("Atividade recente", () => {
     expect(within(rows[4]).getByText("Campanha criada")).toBeInTheDocument();
   });
 
-  it("ação do time mostra quem fez e o motivo; fato do sistema não repete quem aparece na frase", async () => {
+  it("ação do time mostra quem fez e, recolhido em 'Ver detalhes', o motivo; fato do sistema não repete quem aparece na frase", async () => {
     renderPage();
     await loaded();
     const rows = within(region("Atividade recente")).getAllByRole("listitem");
     expect(within(rows[0]).getByText("Marina Albuquerque")).toBeInTheDocument();
     expect(within(rows[0]).getByText("Ação administrativa")).toBeInTheDocument();
-    expect(rows[0]).toHaveTextContent("Motivo Pagamento em disputa com o financeiro; aguardando retorno do cliente.");
-    expect(rows[0]).toHaveAttribute("data-source", "log");
+    expect(rows[0]).toHaveTextContent("Motivo: Pagamento em disputa com o financeiro; aguardando retorno do cliente.");
+    // o motivo fica atrás do botão "Ver detalhes" (recolhido), que abre e fecha
+    const toggle = within(rows[0]).getByRole("button", { name: "Ver detalhes" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    const reason = within(rows[0]).getByText(/Pagamento em disputa/).closest(".adm-tl-detail") as HTMLElement;
+    expect(reason).toHaveAttribute("hidden");
+    await userEvent.click(toggle);
+    expect(reason).not.toHaveAttribute("hidden");
+    expect(within(rows[0]).getByRole("button", { name: "Ocultar detalhes" })).toHaveAttribute("aria-expanded", "true");
+    // as ações do time ganham o marcador roxo (tom da marca), os fatos do sistema não
+    expect(rows[0]).toHaveAttribute("data-tone", "brand");
+    expect(rows[1]).toHaveAttribute("data-tone", "neutral");
     // saque pago: o criador está na frase e só nela
     expect(within(rows[1]).queryByText("Diana Santana")).not.toBeInTheDocument();
     expect(rows[1]).not.toHaveTextContent("Motivo");
-    expect(rows[1]).toHaveAttribute("data-source", "derived");
-    expect(within(region("Atividade recente")).getAllByRole("listitem").filter((row) => row.dataset.source === "log")).toHaveLength(2);
+    expect(within(rows[1]).queryByRole("button", { name: /detalhes/ })).not.toBeInTheDocument();
+    expect(within(region("Atividade recente")).getAllByRole("listitem").filter((row) => row.dataset.tone === "brand")).toHaveLength(2);
   });
 
   it("cada evento leva ao que mudou (workspace, campanha, usuário); sem destino é só texto", async () => {
@@ -565,6 +658,21 @@ describe("Atividade recente", () => {
     renderPage();
     await loaded();
     expect(within(region("Atividade recente")).getByRole("link", { name: "Ver tudo" })).toHaveAttribute("href", "/admin/activity");
+  });
+
+  it("'Ver tudo' fica nas ações do cabeçalho do cartão (à direita, como 'Ver todos' de 'Precisa de atenção') e a descrição é a linha de apoio do título", async () => {
+    renderPage();
+    await loaded();
+    for (const [name, link] of [
+      ["Atividade recente", "Ver tudo"],
+      [ATTENTION, "Ver todos"],
+    ] as const) {
+      const header = region(name).querySelector(".adm-card-h")!;
+      const action = within(header as HTMLElement).getByRole("link", { name: link });
+      expect(action.closest(".adm-card-actions")).not.toBeNull();
+    }
+    const header = region("Atividade recente").querySelector(".adm-card-h")!;
+    expect(header.querySelector("h2 + p")).toHaveTextContent("Ações do time e fatos que o sistema registra; não é um log completo.");
   });
 
   it("sem eventos: estado vazio com o que esperar", async () => {
@@ -661,7 +769,7 @@ describe("falhas nos números", () => {
     expect(screen.getByRole("button", { name: "30 dias", pressed: true })).toBeInTheDocument();
     // sem permissão não adianta tentar de novo: o botão só aparece onde adianta
     expect(within(region("Números da plataforma")).queryByRole("button", { name: "Tentar de novo" })).not.toBeInTheDocument();
-    expect(within(region("Precisa de atenção")).getByRole("button", { name: "Tentar de novo" })).toBeInTheDocument();
+    expect(within(region(ATTENTION)).getByRole("button", { name: "Tentar de novo" })).toBeInTheDocument();
     expect(within(region("Atividade recente")).getByRole("button", { name: "Tentar de novo" })).toBeInTheDocument();
   });
 });
@@ -669,13 +777,13 @@ describe("falhas nos números", () => {
 describe("período", () => {
   const overviewCalls = () => api.adminGet.mock.calls.map((call) => call[1] as { from: string; to: string });
 
-  it("padrão: 30 dias contando hoje, em dias de São Paulo, e a linha discreta diz isso", async () => {
+  it("padrão: 30 dias contando hoje, em dias de São Paulo, e a linha de apoio diz isso", async () => {
     renderPage();
     await loaded();
     expect(overviewCalls()).toEqual([{ from: "2026-10-02", to: "2026-10-31" }]);
     expect(screen.getByRole("button", { name: "30 dias", pressed: true })).toBeInTheDocument();
-    expect(screen.getByText("02/10/2026 – 31/10/2026 · Dias de São Paulo")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Início do período")).not.toBeInTheDocument();
+    expect(screen.getByText(/^02\/10\/2026 – 31\/10\/2026 · Dias de São Paulo/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("De")).not.toBeInTheDocument();
   });
 
   it("o seletor tem os seis períodos, na ordem do produto", () => {
@@ -718,7 +826,7 @@ describe("período", () => {
     await waitFor(() => expect(overviewCalls().at(-1)).toEqual(range));
     expect(router.search).toEqual({ period: key });
     expect(screen.getByRole("button", { name, pressed: true })).toBeInTheDocument();
-    expect(screen.getByText(`${text} · Dias de São Paulo`)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`^${text} · Dias de São Paulo`))).toBeInTheDocument();
     const [options] = router.navigate.mock.calls.at(-1)!;
     expect(options).toMatchObject({ to: ".", replace: true, resetScroll: false });
   });
@@ -804,11 +912,11 @@ describe("período", () => {
       await loaded();
       await userEvent.click(screen.getByRole("button", { name: "Personalizado" }));
 
-      expect(screen.getByLabelText("Início do período")).toHaveValue("2026-10-02");
-      expect(screen.getByLabelText("Fim do período")).toHaveValue("2026-10-31");
+      expect(screen.getByLabelText("De")).toHaveValue("2026-10-02");
+      expect(screen.getByLabelText("Até")).toHaveValue("2026-10-31");
       expect(router.search).toEqual({ period: "custom", from: "2026-10-02", to: "2026-10-31" });
       expect(screen.getByRole("button", { name: "Personalizado", pressed: true })).toBeInTheDocument();
-      expect(screen.getByText("Dias de São Paulo · até 366 dias")).toBeInTheDocument();
+      expect(screen.getByText(/^Dias de São Paulo · até 366 dias/)).toBeInTheDocument();
       expect(overviewCalls()).toHaveLength(1);
     });
 
@@ -816,63 +924,70 @@ describe("período", () => {
       renderPage();
       await loaded();
       await userEvent.click(screen.getByRole("button", { name: "Personalizado" }));
-      expect(screen.getByLabelText("Início do período")).toHaveAttribute("max", "2026-10-31");
-      expect(screen.getByLabelText("Fim do período")).toHaveAttribute("max", "2026-10-31");
+      expect(screen.getByLabelText("De")).toHaveAttribute("max", "2026-10-31");
+      expect(screen.getByLabelText("Até")).toHaveAttribute("max", "2026-10-31");
     });
 
     it("mexer no início consulta de novo com o from/to novos", async () => {
       renderPage();
       await loaded();
       await userEvent.click(screen.getByRole("button", { name: "Personalizado" }));
-      fireEvent.change(screen.getByLabelText("Início do período"), { target: { value: "2026-09-01" } });
+      fireEvent.change(screen.getByLabelText("De"), { target: { value: "2026-09-01" } });
 
       await waitFor(() => expect(overviewCalls().at(-1)).toEqual({ from: "2026-09-01", to: "2026-10-31" }));
       expect(router.search).toEqual({ period: "custom", from: "2026-09-01", to: "2026-10-31" });
-      expect(screen.getByLabelText("Início do período")).toHaveValue("2026-09-01");
+      expect(screen.getByLabelText("De")).toHaveValue("2026-09-01");
     });
 
     it("mexer no fim consulta de novo", async () => {
       renderPage();
       await loaded();
       await userEvent.click(screen.getByRole("button", { name: "Personalizado" }));
-      fireEvent.change(screen.getByLabelText("Fim do período"), { target: { value: "2026-10-15" } });
+      fireEvent.change(screen.getByLabelText("Até"), { target: { value: "2026-10-15" } });
       await waitFor(() => expect(overviewCalls().at(-1)).toEqual({ from: "2026-10-02", to: "2026-10-15" }));
     });
 
-    it("fim antes do início: o início acompanha (a ponta que a pessoa não mexeu)", async () => {
+    it("fim antes do início: avisa e mantém o período anterior (não empurra a outra ponta)", async () => {
       router.setSearch({ period: "custom", from: "2026-09-01", to: "2026-10-31" });
       renderPage();
       await loaded();
-      fireEvent.change(screen.getByLabelText("Fim do período"), { target: { value: "2026-08-15" } });
-      await waitFor(() => expect(overviewCalls().at(-1)).toEqual({ from: "2026-08-15", to: "2026-08-15" }));
-      expect(screen.getByLabelText("Início do período")).toHaveValue("2026-08-15");
+      const navigations = router.navigate.mock.calls.length;
+      fireEvent.change(screen.getByLabelText("Até"), { target: { value: "2026-08-15" } });
+      expect(await screen.findByRole("alert")).toHaveTextContent("A data inicial não pode ser depois da data final.");
+      expect(screen.getByLabelText("De")).toHaveValue("2026-09-01");
+      expect(router.navigate.mock.calls).toHaveLength(navigations);
+      expect(overviewCalls()).toHaveLength(1);
+      expect(router.search).toEqual({ period: "custom", from: "2026-09-01", to: "2026-10-31" });
     });
 
-    it("início que estoura os 366 dias do contrato: o fim encolhe", async () => {
+    it("início que estoura os 366 dias do contrato: avisa e mantém o período anterior", async () => {
       router.setSearch({ period: "custom", from: "2026-09-01", to: "2026-10-31" });
       renderPage();
       await loaded();
-      fireEvent.change(screen.getByLabelText("Início do período"), { target: { value: "2025-01-01" } });
-      await waitFor(() => expect(overviewCalls().at(-1)).toEqual({ from: "2025-01-01", to: "2026-01-01" }));
+      fireEvent.change(screen.getByLabelText("De"), { target: { value: "2025-01-01" } });
+      expect(await screen.findByRole("alert")).toHaveTextContent("O período pode ter no máximo 366 dias.");
+      expect(overviewCalls()).toHaveLength(1);
+      expect(router.search).toEqual({ period: "custom", from: "2026-09-01", to: "2026-10-31" });
     });
 
-    it("fim no futuro é limitado a hoje (e, sendo o mesmo período, nem consulta de novo)", async () => {
+    it("fim no futuro: avisa (o período nunca passa de hoje) e não consulta de novo", async () => {
       router.setSearch({ period: "custom", from: "2026-10-01", to: "2026-10-31" });
       renderPage();
       await loaded();
-      fireEvent.change(screen.getByLabelText("Fim do período"), { target: { value: "2026-12-31" } });
-      await waitFor(() => expect(screen.getByLabelText("Fim do período")).toHaveValue("2026-10-31"));
+      fireEvent.change(screen.getByLabelText("Até"), { target: { value: "2026-12-31" } });
+      expect(await screen.findByRole("alert")).toHaveTextContent("As datas não podem passar de 31/10/2026.");
       expect(overviewCalls()).toHaveLength(1);
+      expect(router.search).toEqual({ period: "custom", from: "2026-10-01", to: "2026-10-31" });
     });
 
-    it("campo apagado (digitando) é ignorado: nada é consultado e o campo volta ao último valor válido", async () => {
+    it("campo apagado (digitando): avisa que faltam datas e nada é consultado", async () => {
       router.setSearch({ period: "custom", from: "2026-10-01", to: "2026-10-31" });
       renderPage();
       await loaded();
       const navigations = router.navigate.mock.calls.length;
-      fireEvent.change(screen.getByLabelText("Início do período"), { target: { value: "" } });
+      fireEvent.change(screen.getByLabelText("De"), { target: { value: "" } });
+      expect(await screen.findByRole("alert")).toHaveTextContent("Informe as duas datas.");
       expect(router.navigate.mock.calls).toHaveLength(navigations);
-      expect(screen.getByLabelText("Início do período")).toHaveValue("2026-10-01");
       expect(overviewCalls()).toHaveLength(1);
     });
 
@@ -881,8 +996,8 @@ describe("período", () => {
       renderPage();
       await loaded();
       expect(overviewCalls()).toEqual([{ from: "2026-09-01", to: "2026-09-15" }]);
-      expect(screen.getByLabelText("Início do período")).toHaveValue("2026-09-01");
-      expect(screen.getByLabelText("Fim do período")).toHaveValue("2026-09-15");
+      expect(screen.getByLabelText("De")).toHaveValue("2026-09-01");
+      expect(screen.getByLabelText("Até")).toHaveValue("2026-09-15");
     });
 
     it("sair do personalizado esconde as datas e tira as chaves da URL", async () => {
@@ -890,7 +1005,7 @@ describe("período", () => {
       renderPage();
       await loaded();
       await userEvent.click(screen.getByRole("button", { name: "7 dias" }));
-      await waitFor(() => expect(screen.queryByLabelText("Início do período")).not.toBeInTheDocument());
+      await waitFor(() => expect(screen.queryByLabelText("De")).not.toBeInTheDocument());
       expect(router.search).toEqual({ period: "7d" });
     });
   });

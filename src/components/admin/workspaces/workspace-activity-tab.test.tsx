@@ -75,13 +75,40 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("WorkspaceActivityTab · linha do tempo", () => {
-  it("cada evento com data e hora de São Paulo, o tipo, a frase pronta e quem fez", async () => {
+  it("usa a linha do tempo do kit (lista com nome) e o filtro fica numa barra com o atualizar só de ícone", async () => {
+    renderTab();
+    await screen.findByText("Aporte de R$ 2.500,00 pago");
+    expect(screen.getByRole("list", { name: "Atividade do workspace" })).toBeInTheDocument();
+    const bar = document.querySelector(".adm-filters") as HTMLElement;
+    expect(within(bar).getByRole("group", { name: "O que mostrar na atividade" })).toBeInTheDocument();
+    expect(within(bar).getByRole("button", { name: "Atualizar" })).toBeInTheDocument();
+  });
+
+  it("os eventos vêm agrupados por dia de São Paulo, com o cabeçalho do dia e a hora em cada evento", async () => {
+    renderTab();
+    await screen.findByText("Aporte de R$ 2.500,00 pago");
+
+    // 29/10 01:30 UTC é 28/10 22:30 em São Paulo: cai no dia 28, junto da campanha das 12:30; o aporte é de 20/10
+    const days = screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
+    expect(days).toEqual(["Quarta-feira, 28 de outubro", "Terça-feira, 20 de outubro"]);
+
+    const day28 = screen.getByRole("heading", { name: "Quarta-feira, 28 de outubro" }).closest("li") as HTMLElement;
+    expect(within(day28).getByText('Workspace "Café Serra Verde" suspenso')).toBeInTheDocument();
+    expect(within(day28).getByText('Campanha "Festival Café Serra Verde" criada')).toBeInTheDocument();
+    expect(within(day28).queryByText("Aporte de R$ 2.500,00 pago")).not.toBeInTheDocument();
+    const day20 = screen.getByRole("heading", { name: "Terça-feira, 20 de outubro" }).closest("li") as HTMLElement;
+    expect(within(day20).getByText("Aporte de R$ 2.500,00 pago")).toBeInTheDocument();
+  });
+
+  it("cada evento com a hora de São Paulo (a data completa na dica), o tipo, a frase pronta e quem fez", async () => {
     renderTab();
     await screen.findByText("Aporte de R$ 2.500,00 pago");
 
     const campanha = screen.getByText('Campanha "Festival Café Serra Verde" criada').closest("li") as HTMLElement;
     expect(within(campanha).getByText("Campanha criada")).toBeInTheDocument(); // o tipo (ACTIVITY_KIND_LABEL)
-    expect(within(campanha).getByText("28/10/2026 12:30")).toBeInTheDocument();
+    const hora = within(campanha).getByText("12:30");
+    expect(hora).toHaveAttribute("title", "28/10/2026 12:30, horário de São Paulo");
+    expect(hora.closest("time")).toHaveAttribute("datetime", CAMPAIGN_EVENT.occurred_at);
     expect(within(campanha).getByText("por Helena Prado")).toBeInTheDocument();
 
     const aporte = screen.getByText("Aporte de R$ 2.500,00 pago").closest("li") as HTMLElement;
@@ -95,10 +122,10 @@ describe("WorkspaceActivityTab · linha do tempo", () => {
 
     const acao = screen.getByText('Workspace "Café Serra Verde" suspenso').closest("li") as HTMLElement;
     expect(within(acao).getByText("Ação administrativa")).toBeInTheDocument();
-    expect(within(acao).getByText("28/10/2026 22:30")).toBeInTheDocument();
+    expect(within(acao).getByText("22:30")).toHaveAttribute("title", "28/10/2026 22:30, horário de São Paulo");
     expect(within(acao).getByText("Motivo: Cobrança em aberto")).toBeInTheDocument();
-    expect(within(acao).getByRole("button", { name: "Ver antes e depois" })).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getAllByRole("button", { name: "Ver antes e depois" })).toHaveLength(1);
+    expect(within(acao).getByRole("button", { name: "Ver detalhes" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getAllByRole("button", { name: "Ver detalhes" })).toHaveLength(1);
   });
 
   it("pede a atividade DESTE workspace pelo cursor; sem filtro, nada de `kind`", async () => {
@@ -163,7 +190,7 @@ describe("WorkspaceActivityTab · antes e depois (auditoria, sob demanda)", () =
     await screen.findByText('Workspace "Café Serra Verde" suspenso');
     expect(api.adminList).not.toHaveBeenCalled();
 
-    await userEvent.click(screen.getByRole("button", { name: "Ver antes e depois" }));
+    await userEvent.click(screen.getByRole("button", { name: "Ver detalhes" }));
     await waitFor(() => expect(api.adminList).toHaveBeenCalled());
     expect(api.adminList.mock.calls[0][0]).toBe(AUDIT);
     // 01:30 UTC de 29/10 é 22:30 de 28/10 em São Paulo
@@ -173,18 +200,18 @@ describe("WorkspaceActivityTab · antes e depois (auditoria, sob demanda)", () =
   it("mostra quem registrou, o IP e a tabela antes → depois; recolher esconde e reabrir não consulta de novo", async () => {
     renderTab();
     await screen.findByText('Workspace "Café Serra Verde" suspenso');
-    await userEvent.click(screen.getByRole("button", { name: "Ver antes e depois" }));
+    await userEvent.click(screen.getByRole("button", { name: "Ver detalhes" }));
 
     const table = await screen.findByRole("table", { name: "Antes e depois da ação" });
     expect(within(table).getByText("Estado")).toBeInTheDocument();
     expect(within(table).getByText("Ativo")).toBeInTheDocument();
     expect(within(table).getByText("Suspenso")).toBeInTheDocument();
     expect(screen.getByText(/Registrado por Marina Albuquerque \(marina@hype.com.br\) · IP 203.0.113.10/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ocultar antes e depois" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Ocultar detalhes" })).toHaveAttribute("aria-expanded", "true");
 
-    await userEvent.click(screen.getByRole("button", { name: "Ocultar antes e depois" }));
+    await userEvent.click(screen.getByRole("button", { name: "Ocultar detalhes" }));
     expect(screen.queryByRole("table", { name: "Antes e depois da ação" })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Ver antes e depois" }));
+    await userEvent.click(screen.getByRole("button", { name: "Ver detalhes" }));
     expect(await screen.findByRole("table", { name: "Antes e depois da ação" })).toBeInTheDocument();
     expect(api.adminList).toHaveBeenCalledTimes(1);
   });
@@ -193,15 +220,16 @@ describe("WorkspaceActivityTab · antes e depois (auditoria, sob demanda)", () =
     api.adminList.mockReturnValue(deferred<never>().promise);
     renderTab();
     await screen.findByText('Workspace "Café Serra Verde" suspenso');
-    await userEvent.click(screen.getByRole("button", { name: "Ver antes e depois" }));
+    await userEvent.click(screen.getByRole("button", { name: "Ver detalhes" }));
     expect(await screen.findByText("Carregando o registro da ação…")).toBeInTheDocument();
+    expect(screen.queryByText("Não encontramos o registro desta ação na auditoria.")).not.toBeInTheDocument();
   });
 
   it("registro que não está no dia consultado: avisa em vez de inventar", async () => {
     routeReads(api.adminList, { [AUDIT]: () => listOf([makeAuditEntry({ id: 99, created_at: "2020-01-01T00:00:00.000Z", reason: "outro" })]) });
     renderTab();
     await screen.findByText('Workspace "Café Serra Verde" suspenso');
-    await userEvent.click(screen.getByRole("button", { name: "Ver antes e depois" }));
+    await userEvent.click(screen.getByRole("button", { name: "Ver detalhes" }));
     expect(await screen.findByText("Não encontramos o registro desta ação na auditoria.")).toBeInTheDocument();
   });
 
@@ -209,7 +237,7 @@ describe("WorkspaceActivityTab · antes e depois (auditoria, sob demanda)", () =
     api.adminList.mockRejectedValue(apiError(500, "SERVER_ERROR", "boom"));
     renderTab();
     await screen.findByText('Workspace "Café Serra Verde" suspenso');
-    await userEvent.click(screen.getByRole("button", { name: "Ver antes e depois" }));
+    await userEvent.click(screen.getByRole("button", { name: "Ver detalhes" }));
 
     const retry = await screen.findByRole("button", { name: /Tentar de novo/ }, { timeout: 3000 });
     routeReads(api.adminList, { [AUDIT]: () => listOf([makeAuditEntry({ id: 7, created_at: "2026-10-29T01:30:00.000Z" })]) });
@@ -222,7 +250,7 @@ describe("WorkspaceActivityTab · estados", () => {
   it("carregando", async () => {
     api.adminFeed.mockReturnValue(deferred<never>().promise);
     renderTab();
-    expect(screen.getByRole("status")).toHaveTextContent("Carregando a atividade…");
+    expect(screen.getAllByRole("status").some((region) => region.textContent === "Carregando a atividade…")).toBe(true);
   });
 
   it("vazio: sem filtro e com o filtro de ações do Admin", async () => {
@@ -232,6 +260,10 @@ describe("WorkspaceActivityTab · estados", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Ações do Admin" }));
     expect(await screen.findByText("Nenhuma ação do Admin neste workspace")).toBeInTheDocument();
+
+    // com filtro ativo, a única ação do vazio é sair dele
+    await userEvent.click(screen.getByRole("button", { name: "Mostrar tudo" }));
+    expect(await screen.findByText("Nenhuma atividade registrada")).toBeInTheDocument();
   });
 
   it("erro com 'Tentar de novo' e recurso indisponível", async () => {

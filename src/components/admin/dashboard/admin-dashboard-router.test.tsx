@@ -119,8 +119,8 @@ describe("Dashboard com o roteador real", () => {
 
   it("abre direto num período da URL (link compartilhado)", async () => {
     renderAt("/admin/dashboard?period=custom&from=2026-09-01&to=2026-09-15");
-    expect(await screen.findByLabelText("Início do período")).toHaveValue("2026-09-01");
-    expect(screen.getByLabelText("Fim do período")).toHaveValue("2026-09-15");
+    expect(await screen.findByLabelText("De")).toHaveValue("2026-09-01");
+    expect(screen.getByLabelText("Até")).toHaveValue("2026-09-15");
     await waitFor(() => expect(overviewParams()).toEqual([{ from: "2026-09-01", to: "2026-09-15" }]));
   });
 
@@ -128,7 +128,7 @@ describe("Dashboard com o roteador real", () => {
     renderAt("/admin/dashboard?period=decada&from=2026-02-30");
     expect(await screen.findByRole("button", { name: "30 dias", pressed: true })).toBeInTheDocument();
     await waitFor(() => expect(overviewParams()).toEqual([{ from: "2026-10-02", to: "2026-10-31" }]));
-    expect(screen.queryByLabelText("Início do período")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("De")).not.toBeInTheDocument();
   });
 
   it.each([
@@ -152,13 +152,13 @@ describe("Dashboard com o roteador real", () => {
 
   it("um alerta leva à rota do servidor com os filtros na busca; 'Ver todos' abre a Saúde", async () => {
     const router = renderAt("/admin/dashboard");
-    const attention = await screen.findByRole("region", { name: "Precisa de atenção" });
+    const attention = await screen.findByRole("region", { name: /^Precisa de atenção/ });
     await userEvent.click(await within(attention).findByRole("link", { name: "Saques de criadores travados" }));
     expect(await screen.findByTestId("destino")).toHaveTextContent("/admin/financial");
     expect(router.state.location.search).toEqual({ type: "withdrawal" });
 
     router.history.back();
-    const back = await screen.findByRole("region", { name: "Precisa de atenção" });
+    const back = await screen.findByRole("region", { name: /^Precisa de atenção/ });
     await userEvent.click(within(back).getByRole("link", { name: "Ver todos" }));
     expect(await screen.findByTestId("destino")).toHaveTextContent("/admin/health");
   });

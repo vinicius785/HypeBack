@@ -2,9 +2,9 @@
  * Composer de publicação no grupo no padrão do protótipo (mesma lógica de
  * `group-post-composer.tsx`: upload deferido, imagem OU vídeo, poster do vídeo).
  */
-import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useEffect, useId, useRef, useState } from "react";
 
+import { adminErrorMessage, adminToast } from "@/components/admin/platform";
 import { I } from "@/components/prototype/ui";
 import {
   useCreateGroupPost,
@@ -24,7 +24,18 @@ type Attachment =
   | { kind: "image"; file: File }
   | { kind: "video"; file: File; poster: File | null };
 
-export function PvPostComposer({ groupId }: { groupId: string }) {
+interface PvPostComposerProps {
+  groupId: string;
+  /**
+   * Avisa quando o composer está enviando (upload da mídia e publicação) ou lendo o vídeo. O diálogo que o contém
+   * liga isso ao `busy` do `PvOverlay`: Esc e o fundo não fecham no meio do envio. Tem de ser estável (um `setState`).
+   * Ao desmontar com envio em andamento, avisa que parou, para o diálogo não ficar travado.
+   */
+  onBusyChange?: (busy: boolean) => void;
+}
+
+export function PvPostComposer({ groupId, onBusyChange }: PvPostComposerProps) {
+  const textId = useId();
   const [content, setContent] = useState("");
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -38,6 +49,12 @@ export function PvPostComposer({ groupId }: { groupId: string }) {
   const isSubmitting =
     createPost.isPending || uploadImage.isPending || uploadVideo.isPending;
   const isBusy = isSubmitting || probing;
+
+  useEffect(() => {
+    if (!isBusy || !onBusyChange) return;
+    onBusyChange(true);
+    return () => onBusyChange(false);
+  }, [isBusy, onBusyChange]);
 
   useEffect(() => {
     if (!attachment) {
@@ -55,7 +72,7 @@ export function PvPostComposer({ groupId }: { groupId: string }) {
     if (!file) return;
     const error = validateGroupCoverFile(file);
     if (error) {
-      toast.error(error);
+      adminToast.error(error);
       return;
     }
     setAttachment({ kind: "image", file });
@@ -67,7 +84,7 @@ export function PvPostComposer({ groupId }: { groupId: string }) {
     if (!file) return;
     const error = validateCommunityVideoFile(file);
     if (error) {
-      toast.error(error);
+      adminToast.error(error);
       return;
     }
     setProbing(true);
@@ -75,7 +92,7 @@ export function PvPostComposer({ groupId }: { groupId: string }) {
       const { durationSeconds, poster } = await probeVideoFile(file);
       if (durationSeconds > COMMUNITY_VIDEO_LIMITS.maxDurationSeconds) {
         const limitMinutes = COMMUNITY_VIDEO_LIMITS.maxDurationSeconds / 60;
-        toast.error(
+        adminToast.error(
           `O vídeo tem ${Math.round(durationSeconds)}s e o limite é de ${limitMinutes} minutos.`,
         );
         return;
@@ -117,11 +134,9 @@ export function PvPostComposer({ groupId }: { groupId: string }) {
       });
       setContent("");
       setAttachment(null);
-      toast.success("Conteúdo publicado no grupo.");
+      adminToast.success("Conteúdo publicado no grupo.");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Não foi possível publicar.",
-      );
+      adminToast.error(adminErrorMessage(err, "Não foi possível publicar."));
     }
   };
 
@@ -133,10 +148,11 @@ export function PvPostComposer({ groupId }: { groupId: string }) {
         void submit();
       }}
     >
-      <label className="n4l" style={{ margin: 0 }}>
+      <label className="n4l" style={{ margin: 0 }} htmlFor={textId}>
         Publicar no grupo
       </label>
       <textarea
+        id={textId}
         className="cm-ta"
         rows={3}
         maxLength={MAX_CONTENT}

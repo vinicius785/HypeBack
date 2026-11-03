@@ -7,8 +7,8 @@ import { LAST_SESSION_EXPLANATION, sessionClientText } from "./admin-users-forma
 import "@/styles/admin-users.css";
 
 /**
- * Aba Sessões: quantos logins ainda valem, a última sessão usada e onde. A data é uma aproximação e a aba diz
- * isso por extenso (não é um registro de acessos).
+ * Aba Sessões: quantos logins ainda valem, a última sessão usada e onde. A data é uma aproximação: a explicação
+ * (não é um registro de acessos) fica no "i" ao lado do rótulo, em vez de um parágrafo sempre aberto.
  */
 export function AdminUserSessionsTab({ user }: { user: AdminUserDetail }) {
   const { active_count: activeCount, last_used_at: lastUsedAt, clients } = user.sessions;
@@ -28,6 +28,7 @@ export function AdminUserSessionsTab({ user }: { user: AdminUserDetail }) {
             label: "Última sessão usada",
             value: lastUsedAt ? `aprox. ${formatDateTime(lastUsedAt)}` : "Nenhuma sessão aberta",
             hint: lastUsedAt ? formatRelativeTime(lastUsedAt) : "A pessoa nunca entrou ou já saiu.",
+            definition: LAST_SESSION_EXPLANATION,
           },
           {
             label: "Conectada em",
@@ -35,9 +36,6 @@ export function AdminUserSessionsTab({ user }: { user: AdminUserDetail }) {
           },
         ]}
       />
-      <p className="adm-users-proxy">
-        <b>Como é calculado.</b> {LAST_SESSION_EXPLANATION}
-      </p>
     </AdminSection>
   );
 }

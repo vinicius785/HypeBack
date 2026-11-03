@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 
+import { AdminEmptyState, AdminErrorState, AdminSkeleton } from "@/components/admin/platform";
 import { I } from "@/components/prototype/ui";
 import { useNiches } from "@/hooks/use-niches";
 import { useAdminCampaignLookup } from "@/hooks/use-admin-notifications";
@@ -91,21 +92,69 @@ function Chip({
   );
 }
 
+/** Chips em carregamento: o mesmo tamanho dos chips que vão chegar. */
+function ChipsSkeleton({ label }: { label: string }) {
+  return (
+    <div className="nchips" role="status">
+      <span className="adm-sr">{label}</span>
+      {[132, 96, 148, 112, 84].map((width, index) => (
+        <AdminSkeleton key={index} width={width} height={38} radius={999} />
+      ))}
+    </div>
+  );
+}
+
 const toggle = <T,>(list: T[], v: T): T[] =>
   list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
 
 const onlyDigits = (s: string) => parseInt(s.replace(/\D/g, ""), 10) || 0;
+
+interface PickerQuery {
+  isLoading: boolean;
+  isError: boolean;
+  isFetching: boolean;
+  refetch: () => unknown;
+  error: unknown;
+}
+
+/**
+ * Estado de uma lista de chips que vem de uma consulta: carregando (esqueleto), erro (com "Tentar de novo") ou
+ * vazio. `null` quando há o que mostrar: quem chama desenha os chips.
+ */
+function pickerState(
+  query: PickerQuery,
+  count: number,
+  text: { loading: string; error: string; empty: string; emptyHint?: string; icon: string },
+): ReactNode | null {
+  if (query.isLoading) return <ChipsSkeleton label={text.loading} />;
+  if (query.isError && count === 0) {
+    return (
+      <AdminErrorState
+        compact
+        error={query.error}
+        title={text.error}
+        onRetry={() => void query.refetch()}
+        retrying={query.isFetching}
+      />
+    );
+  }
+  if (count === 0) return <AdminEmptyState compact icon={text.icon} title={text.empty} description={text.emptyHint} />;
+  return null;
+}
 
 export function AdminAudienceBuilder({
   value,
   onChange,
 }: AdminAudienceBuilderProps) {
   const [campaignSearch, setCampaignSearch] = useState("");
-  const { data: niches = [] } = useNiches();
-  const { data: campaigns = [], isLoading: loadingCampaigns } =
-    useAdminCampaignLookup(campaignSearch, {
-      enabled: value.type === "campaign",
-    });
+  const typeLabelId = useId();
+  const campaignSearchId = useId();
+  const niches = useNiches();
+  const campaignsQuery = useAdminCampaignLookup(campaignSearch, {
+    enabled: value.type === "campaign",
+  });
+  const campaigns = campaignsQuery.data ?? [];
+  const nicheList = niches.data ?? [];
 
   const campaignChips = useMemo(
     () =>
@@ -118,14 +167,17 @@ export function AdminAudienceBuilder({
 
   return (
     <>
-      <div className="n4c">
-        <label className="n4l">Quem vai receber</label>
+      <div className="n4c" role="group" aria-labelledby={typeLabelId}>
+        <span className="n4l" id={typeLabelId}>
+          Quem vai receber
+        </span>
         <div className="n4tm ntw-au">
           {TYPE_OPTIONS.map(([k, l]) => (
             <button
               key={k}
               type="button"
               className={value.type === k ? "on" : ""}
+              aria-pressed={value.type === k}
               onClick={() => value.type !== k && onChange(defaultsForType(k))}
             >
               {l}
@@ -136,8 +188,11 @@ export function AdminAudienceBuilder({
 
       {value.type === "campaign" && (
         <div className="n4c">
-          <label className="n4l">Campanha</label>
+          <label className="n4l" htmlFor={campaignSearchId}>
+            Campanha
+          </label>
           <input
+            id={campaignSearchId}
             className="cm-in"
             placeholder="Buscar campanha pelo título"
             value={campaignSearch}
@@ -145,53 +200,64 @@ export function AdminAudienceBuilder({
             autoComplete="off"
             style={{ marginBottom: 12 }}
           />
-          <div className="nchips">
-            {campaignChips.map((c) => (
-              <Chip
-                key={c.id}
-                on={value.campaign_id === c.id}
-                onClick={() => onChange({ type: "campaign", campaign_id: c.id })}
-              >
-                {c.label}
-              </Chip>
-            ))}
-            {campaignChips.length === 0 && (
-              <small style={{ color: "var(--muted)" }}>
-                {loadingCampaigns ? "Carregando…" : "Nenhuma campanha encontrada"}
-              </small>
-            )}
-          </div>
+          {pickerState(campaignsQuery, campaignChips.length, {
+            loading: "Carregando campanhas…",
+            error: "Não foi possível carregar as campanhas",
+            empty: campaignSearch.trim() ? "Nenhuma campanha encontrada" : "Nenhuma campanha disponível",
+            emptyHint: campaignSearch.trim() ? "Ajuste a busca pelo título." : undefined,
+            icon: "search",
+          }) ?? (
+            <div className="nchips">
+              {campaignChips.map((c) => (
+                <Chip
+                  key={c.id}
+                  on={value.campaign_id === c.id}
+                  onClick={() => onChange({ type: "campaign", campaign_id: c.id })}
+                >
+                  {c.label}
+                </Chip>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {value.type === "niche" && (
-        <div className="n4c">
-          <label className="n4l">Nichos</label>
-          <div className="nchips">
-            {niches.map((n) => (
-              <Chip
-                key={n.id}
-                on={value.niche_ids.includes(Number(n.id))}
-                onClick={() =>
-                  onChange({
-                    type: "niche",
-                    niche_ids: toggle(value.niche_ids, Number(n.id)),
-                  })
-                }
-              >
-                {n.name}
-              </Chip>
-            ))}
-            {niches.length === 0 && (
-              <small style={{ color: "var(--muted)" }}>Carregando…</small>
-            )}
-          </div>
+        <div className="n4c" role="group" aria-labelledby={`${typeLabelId}-niche`}>
+          <span className="n4l" id={`${typeLabelId}-niche`}>
+            Nichos
+          </span>
+          {pickerState(niches, nicheList.length, {
+            loading: "Carregando nichos…",
+            error: "Não foi possível carregar os nichos",
+            empty: "Nenhum nicho cadastrado",
+            icon: "tag",
+          }) ?? (
+            <div className="nchips">
+              {nicheList.map((n) => (
+                <Chip
+                  key={n.id}
+                  on={value.niche_ids.includes(Number(n.id))}
+                  onClick={() =>
+                    onChange({
+                      type: "niche",
+                      niche_ids: toggle(value.niche_ids, Number(n.id)),
+                    })
+                  }
+                >
+                  {n.name}
+                </Chip>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {value.type === "followers" && (
-        <div className="n4c">
-          <label className="n4l">Faixa de seguidores</label>
+        <div className="n4c" role="group" aria-labelledby={`${typeLabelId}-followers`}>
+          <span className="n4l" id={`${typeLabelId}-followers`}>
+            Faixa de seguidores
+          </span>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <input
               className="cm-in"
@@ -227,8 +293,10 @@ export function AdminAudienceBuilder({
 
       {value.type === "location" && (
         <>
-          <div className="n4c">
-            <label className="n4l">Estados</label>
+          <div className="n4c" role="group" aria-labelledby={`${typeLabelId}-states`}>
+            <span className="n4l" id={`${typeLabelId}-states`}>
+              Estados
+            </span>
             <div className="nchips">
               {BRAZILIAN_STATES.map((s) => (
                 <Chip
@@ -248,10 +316,11 @@ export function AdminAudienceBuilder({
             </div>
           </div>
           <div className="n4c">
-            <label className="n4l">
+            <label className="n4l" htmlFor={`${typeLabelId}-cities`}>
               Cidades <em>opcional, separadas por vírgula</em>
             </label>
             <input
+              id={`${typeLabelId}-cities`}
               className="cm-in"
               placeholder="Ex.: São Paulo, Rio de Janeiro"
               value={(value.cities ?? []).join(", ")}

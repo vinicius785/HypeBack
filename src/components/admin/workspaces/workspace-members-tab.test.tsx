@@ -14,6 +14,7 @@ vi.mock("@/lib/admin/admin-client", async (importOriginal) => ({
   ...api,
 }));
 vi.mock("@tanstack/react-router", async () => (await import("./test-support")).routerModuleMock());
+// o `adminToast` do kit é quem fala com o `sonner`: o aviso chega com o texto e as opções (duração)
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import { toast } from "sonner";
@@ -98,7 +99,7 @@ describe("WorkspaceMembersTab · lista", () => {
     const caio = rowOf("Caio Ramos");
     expect(within(caio).getByText("Membro")).toBeInTheDocument();
     expect(within(caio).getByText("permissões personalizadas")).toBeInTheDocument();
-    expect(within(caio).getByText("—")).toHaveAttribute("title", expect.stringMatching(/Sem sessão registrada/));
+    expect(within(caio).getByText("Sem sessão")).toHaveAttribute("title", expect.stringMatching(/Sem sessão registrada/));
     expect(within(helena).queryByText("permissões personalizadas")).not.toBeInTheDocument();
   });
 
@@ -221,7 +222,7 @@ describe("WorkspaceMembersTab · adicionar membro", () => {
     expect(path).toBe(MEMBERS_PATH);
     expect(body).toEqual({ reason: "Novo analista financeiro do cliente", email: "novo.analista@empresa.com.br", role: "financeiro" });
     expect(options.idempotencyKey).toMatch(UUID_V4);
-    expect(toast.success).toHaveBeenCalledWith("Membro adicionado.");
+    expect(toast.success).toHaveBeenCalledWith("Membro adicionado.", expect.anything());
     await waitFor(() => expect(api.adminList.mock.calls.length).toBeGreaterThan(before)); // a lista foi consultada de novo
   });
 
@@ -284,7 +285,7 @@ describe("WorkspaceMembersTab · alterar papel", () => {
     expect(path).toBe(`${MEMBERS_PATH}/12`);
     expect(body).toEqual({ reason: "Passou a aprovar conteúdos", role: "aprovador" });
     expect(options.idempotencyKey).toMatch(UUID_V4);
-    expect(toast.success).toHaveBeenCalledWith("Papel de Caio Ramos alterado para Aprovador.");
+    expect(toast.success).toHaveBeenCalledWith("Papel de Caio Ramos alterado para Aprovador.", expect.anything());
   });
 
   it("quem tem permissões personalizadas: avisa que elas sobrescrevem o papel e não escolhe papel por ele", async () => {
@@ -314,7 +315,49 @@ describe("WorkspaceMembersTab · alterar papel", () => {
     await userEvent.click(button("Alterar papel"));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/estado do workspace mudou/));
+    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/estado do workspace mudou/), expect.anything());
+  });
+});
+
+describe("WorkspaceMembersTab · ações da linha", () => {
+  it("'Alterar papel' fica visível na linha; 'Remover' (destrutivo) só aparece no menu '⋯', separado e em vermelho", async () => {
+    renderTab();
+    await screen.findByText("Caio Ramos");
+    const caio = rowOf("Caio Ramos");
+
+    expect(within(caio).getByRole("button", { name: "Alterar papel de Caio Ramos" })).toHaveTextContent("Alterar papel");
+    expect(within(caio).queryByRole("button", { name: /^Remover/ })).not.toBeInTheDocument();
+
+    const trigger = within(caio).getByRole("button", { name: "Ações de Caio Ramos" });
+    await userEvent.click(trigger);
+    const items = screen.getAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual(["Remover do workspace"]);
+    expect(items[0]).toHaveAttribute("data-tone", "danger");
+
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("a pessoa é a célula do kit: avatar, e-mail e o selo 'Admin da plataforma' ao lado do nome", async () => {
+    renderTab();
+    await screen.findByText("Marina Albuquerque");
+    const person = within(rowOf("Marina Albuquerque")).getByText("marina@hype.com.br").closest(".adm-entity") as HTMLElement;
+    expect(person.querySelector(".adm-entity-av")).not.toBeNull();
+    // o selo mora no título da célula (o nome encolhe antes de o selo sumir), não numa caixa própria de Workspaces
+    expect(person.querySelector(".adm-entity-title .adm-entity-badge")).toHaveTextContent("Admin da plataforma");
+    expect(person.querySelector(".adm-workspaces-person")).toBeNull();
+    expect(person.closest(".adm-workspaces-person")).toBeNull();
+  });
+
+  it("a conta excluída avisa no apoio da pessoa, que pode ocupar duas linhas (subtitleWrap)", async () => {
+    const gone = makeMember({ user_id: 77, name: "Kaique Lima", email: "kaique@kappa.com.br", user_status: "deleted", last_session_at: null });
+    routeReads(api.adminList, { [MEMBERS_PATH]: () => listOf([gone], 1, 1, 100) });
+    renderTab(makeDetail("active", { counts: { ...makeDetail().counts, members: 0 } }));
+    await screen.findByText("Kaique Lima");
+    const warning = within(rowOf("Kaique Lima")).getByText("Conta excluída: não conta como acesso");
+    expect(warning.closest("small")).toHaveAttribute("data-wrap", "true");
+    expect(warning.closest("small")).toHaveTextContent("kaique@kappa.com.br");
   });
 });
 
@@ -322,7 +365,9 @@ describe("WorkspaceMembersTab · remover", () => {
   async function openRemove(name: string) {
     renderTab();
     await screen.findByText(name);
-    await userEvent.click(button(`Remover ${name}`));
+    // "Remover" mora no menu "⋯" da linha (a ação destrutiva sai da vista); a confirmação e o motivo são os mesmos
+    await userEvent.click(button(`Ações de ${name}`));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Remover do workspace" }));
   }
 
   it("explica o que acontece e envia só o motivo (POST .../remove)", async () => {
@@ -343,7 +388,7 @@ describe("WorkspaceMembersTab · remover", () => {
     expect(path).toBe(`${MEMBERS_PATH}/12/remove`);
     expect(body).toEqual({ reason: "Saiu da empresa" });
     expect(options.idempotencyKey).toMatch(UUID_V4);
-    expect(toast.success).toHaveBeenCalledWith("Caio Ramos foi removido do workspace.");
+    expect(toast.success).toHaveBeenCalledWith("Caio Ramos foi removido do workspace.", expect.anything());
   });
 
   it.each([
@@ -369,7 +414,7 @@ describe("WorkspaceMembersTab · workspace que não aceita alterações", () => 
 
     expect(screen.queryByRole("button", { name: "Adicionar membro" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Alterar papel de/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Remover / })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Ações de/ })).not.toBeInTheDocument();
     expect(screen.getByText("Workspace excluído: o acesso não pode ser alterado.")).toBeInTheDocument();
   });
 

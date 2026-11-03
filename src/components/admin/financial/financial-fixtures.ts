@@ -2,6 +2,7 @@
 import type { AdminFeedResult, AdminListResult } from "@/lib/admin/admin-client";
 import type {
   AdminFigure,
+  AdminWorkspaceListItem,
   AdminFigureKind,
   AdminFinancialByWorkspaceRow,
   AdminFinancialFigures,
@@ -154,3 +155,28 @@ export const BY_WORKSPACE_DEFINITIONS: Record<string, string> = {
   released_cents: "Liberado a criadores no período.",
   paid_pix_cents: "PIX concluído no período.",
 };
+
+/** Um workspace como a busca do seletor (`GET /admin/workspaces`) o devolve. */
+export const CAFE_WORKSPACE_ITEM: AdminWorkspaceListItem = {
+  id: CAFE_ID,
+  name: "Café Serra Verde",
+  photo: null,
+  tax_id: null,
+  kind: "brand",
+  status: "active",
+  status_changed_at: null,
+  owner: { user_id: 9, name: "Bernardo Medeiros Moraes", email: "bernardo@cafeserraverde.com.br" },
+  owners_count: 1,
+  created_at: "2025-03-10T12:00:00.000Z",
+  activity: { state: "active", last_activity_at: "2026-10-29T12:00:00.000Z", window_days: 30 },
+  last_session_at: null,
+  members_count: 4,
+  campaigns_count: 3,
+  published_campaigns_count: 1,
+  creators_count: 5,
+  funded_cents: 1_000_000,
+  custody_cents: 250_000,
+};
+
+/** O que `GET /admin/workspaces/:id` devolve para o seletor resolver o nome de um id da URL (só o nome importa). */
+export const CAFE_WORKSPACE_DETAIL = { id: CAFE_ID, name: "Café Serra Verde" };

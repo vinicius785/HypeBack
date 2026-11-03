@@ -16,6 +16,10 @@ interface AdminAvatarProps {
 interface AdminEntityCellProps extends AdminAvatarProps {
   /** Linha de apoio (e-mail do dono, workspace da campanha, CNPJ). */
   subtitle?: ReactNode;
+  /** Selo ao lado do nome ("Verificado", "Duplicado"): o nome encolhe com reticências antes de o selo sumir. */
+  badge?: ReactNode;
+  /** Deixa o apoio ocupar até 2 linhas em vez de cortar com reticências (padrão: 1 linha). */
+  subtitleWrap?: boolean;
 }
 
 /** Iniciais do nome, sem símbolos soltos ("Acme & Co" → "AC"). */
@@ -61,13 +65,20 @@ export function AdminAvatar({ name, photo, shape = "round", size = 40 }: AdminAv
 }
 
 /** Avatar + nome + apoio: a primeira coluna das listas de workspaces, usuários, campanhas e criadores. */
-export function AdminEntityCell({ name, subtitle, photo, shape = "round", size = 40 }: AdminEntityCellProps) {
+export function AdminEntityCell({ name, subtitle, photo, shape = "round", size = 40, badge, subtitleWrap }: AdminEntityCellProps) {
   return (
     <div className="adm-entity">
       <AdminAvatar name={name} photo={photo} shape={shape} size={size} />
       <span className="adm-entity-text">
-        <b title={name}>{name}</b>
-        {subtitle ? <small>{subtitle}</small> : null}
+        {badge ? (
+          <span className="adm-entity-title">
+            <b title={name}>{name}</b>
+            <span className="adm-entity-badge">{badge}</span>
+          </span>
+        ) : (
+          <b title={name}>{name}</b>
+        )}
+        {subtitle ? <small data-wrap={subtitleWrap ? "true" : undefined}>{subtitle}</small> : null}
       </span>
     </div>
   );

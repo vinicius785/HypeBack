@@ -20,6 +20,7 @@ vi.mock("@/hooks/admin/use-admin-creators-profile", () => ({
 }));
 vi.mock("@/components/admin/users/admin-workspace-picker", () => ({
   AdminWorkspacePicker: () => <div data-testid="workspace-picker" />,
+  useAdminWorkspaceSelection: () => ({ summary: undefined }),
 }));
 
 import { AdminCampaignsList } from "@/components/admin/campaigns/admin-campaigns-list";

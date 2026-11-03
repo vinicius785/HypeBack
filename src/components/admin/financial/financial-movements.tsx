@@ -1,12 +1,25 @@
-import { AdminBadge, AdminLink, AdminSegmentedControl, AdminTable, type AdminBadgeTone, type AdminTableColumn } from "@/components/admin/platform";
-import { AdminWorkspacePicker } from "@/components/admin/users/admin-workspace-picker";
+import { useState } from "react";
+
+import {
+  AdminBadge,
+  AdminFilterBar,
+  AdminInfoPopover,
+  AdminLink,
+  AdminLoadMore,
+  AdminTable,
+  type AdminBadgeTone,
+  type AdminFilterDef,
+  type AdminTableColumn,
+} from "@/components/admin/platform";
+import { AdminWorkspacePicker, useAdminWorkspaceSelection } from "@/components/admin/users/admin-workspace-picker";
 import { useAdminFinancialMovements } from "@/hooks/admin/use-admin-financial";
 import { useAdminListQueryState } from "@/hooks/admin/use-admin-list-query-state";
-import { formatBRLFromCents, formatDateTime, formatInt } from "@/lib/admin/format";
+import { formatBRLFromCents, formatDateTime } from "@/lib/admin/format";
 import { FIGURE_KIND_HELP, FIGURE_KIND_LABEL, MOVEMENT_TYPE_LABEL } from "@/lib/admin/labels";
-import type { AdminDateRange, AdminFinancialMovement, AdminMovementType } from "@/shared/admin-platform.types";
+import type { AdminDateRange, AdminFinancialMovement, AdminMovementType, AdminWorkspaceRef } from "@/shared/admin-platform.types";
 
 import { CopyValue } from "./copy-value";
+import { FinancialRefreshButton } from "./financial-refresh";
 import { isMovementType, isWorkspaceId, MOVEMENTS_FILTER_CONFIG } from "./financial-search";
 
 import "@/styles/admin-financial.css";
@@ -50,10 +63,6 @@ export function movementAmountText(movement: Pick<AdminFinancialMovement, "direc
   return `${sign ? `${sign} ` : ""}${formatBRLFromCents(movement.amount_cents)}`;
 }
 
-function plural(count: number, one: string, many: string): string {
-  return `${formatInt(count)} ${count === 1 ? one : many}`;
-}
-
 function MovementCell({ movement }: { movement: AdminFinancialMovement }) {
   return (
     <div className="adm-fin-mov">
@@ -72,7 +81,7 @@ function AmountCell({ movement }: { movement: AdminFinancialMovement }) {
   return (
     <div className="adm-fin-amount" data-direction={movement.direction}>
       <b aria-label={`${DIRECTION_LABEL[movement.direction]}: ${formatBRLFromCents(movement.amount_cents)}`}>{movementAmountText(movement)}</b>
-      <span className="adm-kind" data-kind={movement.kind} title={FIGURE_KIND_HELP[movement.kind]}>
+      <span className="adm-kind" data-kind={movement.kind}>
         {FIGURE_KIND_LABEL[movement.kind]}
       </span>
     </div>
@@ -107,15 +116,48 @@ function PartiesCell({ movement }: { movement: AdminFinancialMovement }) {
   );
 }
 
+/**
+ * Os tipos de número que uma movimentação pode trazer (`kind` do contrato: todos), com o que cada um quer dizer (o "i"
+ * da coluna Valor). Antes cada rótulo levava a frase no `title`; sem a lista inteira, "Aproximado" ou "Não apurado" ficariam sem explicação.
+ */
+const AMOUNT_KINDS = Object.keys(FIGURE_KIND_LABEL) as (keyof typeof FIGURE_KIND_LABEL)[];
+
+const AMOUNT_DEFINITION = (
+  <>
+    {AMOUNT_KINDS.map((kind) => (
+      <AdminInfoPopover.Paragraph key={kind}>
+        <b>{FIGURE_KIND_LABEL[kind]}:</b> {FIGURE_KIND_HELP[kind]}
+      </AdminInfoPopover.Paragraph>
+    ))}
+  </>
+);
+
+/** Para onde a movimentação veio (cobrança, lançamento, saque, transferência); os ids para rastrear abrem na linha. */
 function OriginCell({ movement }: { movement: AdminFinancialMovement }) {
+  return <span className="adm-sub adm-fin-origin">{ORIGIN_TYPE_LABEL[movement.origin.type] ?? movement.origin.type}</span>;
+}
+
+/** Linha aberta: os ids de origem (e o externo, quando há), que se copiam com um clique. */
+function OriginIds({ movement }: { movement: AdminFinancialMovement }) {
   const { origin } = movement;
   const typeLabel = ORIGIN_TYPE_LABEL[origin.type] ?? origin.type;
   return (
-    <div className="adm-fin-origin">
-      <span className="adm-sub">{typeLabel}</span>
-      <CopyValue value={origin.id} label={`id de origem (${typeLabel})`} />
-      {origin.external_id ? <CopyValue value={origin.external_id} label={`id externo (${typeLabel})`} /> : null}
-    </div>
+    <dl className="adm-fin-ids">
+      <div>
+        <dt>Id de origem</dt>
+        <dd>
+          <CopyValue value={origin.id} label={`id de origem (${typeLabel})`} />
+        </dd>
+      </div>
+      {origin.external_id ? (
+        <div>
+          <dt>Id externo</dt>
+          <dd>
+            <CopyValue value={origin.external_id} label={`id externo (${typeLabel})`} />
+          </dd>
+        </div>
+      ) : null}
+    </dl>
   );
 }
 
@@ -123,24 +165,31 @@ const COLUMNS: readonly AdminTableColumn<AdminFinancialMovement>[] = [
   {
     key: "occurred_at",
     header: "Data",
-    width: "104px",
+    width: "136px",
     nowrap: true,
     wide: true,
     cell: (m) => {
-      const text = formatDateTime(m.occurred_at);
-      const [date, time] = text.split(" ");
+      const [date, time] = formatDateTime(m.occurred_at).split(" ");
       return (
-        <span className="adm-fin-when" title={`${text}, horário de São Paulo`}>
+        <time className="adm-fin-when" dateTime={m.occurred_at}>
           <span>{date}</span>
           {time ? <small>{time}</small> : null}
-        </span>
+        </time>
       );
     },
   },
   { key: "movement", header: "Movimentação", width: "minmax(0, 1.5fr)", primary: true, cell: (m) => <MovementCell movement={m} /> },
-  { key: "amount", header: "Valor", width: "minmax(150px, 0.9fr)", align: "right", nowrap: true, cell: (m) => <AmountCell movement={m} /> },
+  {
+    key: "amount",
+    header: "Valor",
+    width: "minmax(150px, 0.9fr)",
+    align: "right",
+    nowrap: true,
+    definition: AMOUNT_DEFINITION,
+    cell: (m) => <AmountCell movement={m} />,
+  },
   { key: "parties", header: "Workspace e criador", width: "minmax(0, 1.4fr)", cell: (m) => <PartiesCell movement={m} /> },
-  { key: "origin", header: "Origem", width: "minmax(0, 1.2fr)", cell: (m) => <OriginCell movement={m} /> },
+  { key: "origin", header: "Origem", width: "minmax(0, 0.9fr)", cell: (m) => <OriginCell movement={m} /> },
 ];
 
 interface FinancialMovementsProps {
@@ -150,7 +199,7 @@ interface FinancialMovementsProps {
 /**
  * Movimentações: o feed global por cursor (cobranças, lançamentos, saques e transferências), do mais recente
  * para o mais antigo, com filtro de tipo, de workspace e o período da página. "Carregar mais" pede a página
- * seguinte com o cursor da anterior.
+ * seguinte com o cursor da anterior. Os ids de origem abrem na própria linha.
  */
 export function FinancialMovements({ period }: FinancialMovementsProps) {
   const state = useAdminListQueryState(MOVEMENTS_FILTER_CONFIG);
@@ -158,39 +207,59 @@ export function FinancialMovements({ period }: FinancialMovementsProps) {
   const type: AdminMovementType | "" = isMovementType(state.filters.type) ? state.filters.type : "";
   const workspaceId = isWorkspaceId(state.filters.workspace_id) ? state.filters.workspace_id : "";
   const filtered = !!type || !!workspaceId;
+  // O workspace que a pessoa acabou de escolher: o chip mostra o nome já, sem piscar "Carregando…" até a URL atualizar.
+  const [pickedWorkspace, setPickedWorkspace] = useState<AdminWorkspaceRef | null>(null);
+  const workspace = useAdminWorkspaceSelection(workspaceId || null, { known: pickedWorkspace });
 
   const { query, rows } = useAdminFinancialMovements({ type, workspaceId, period });
   const failedToLoadMore = query.isFetchNextPageError;
 
   const clear = () => state.setFilters({ type: "", workspace_id: "" });
 
-  return (
-    <div className="adm-fin-stack">
-      <div className="adm-fin-bar">
-        <AdminSegmentedControl
-          ariaLabel="Tipo de movimentação"
-          options={TYPE_OPTIONS}
-          value={type}
-          onChange={(value) => state.setFilter("type", value)}
-        />
+  const filters: AdminFilterDef[] = [
+    {
+      kind: "custom",
+      id: "workspace",
+      label: "Workspace",
+      inline: true,
+      summary: workspace.summary,
+      onClear: () => state.setFilter("workspace_id", ""),
+      render: () => (
         <AdminWorkspacePicker
+          variant="filterBar"
           label="Workspace"
           placeholder="Todos"
           value={workspaceId || null}
-          onChange={(workspace) => state.setFilter("workspace_id", workspace?.id ?? "")}
+          onChange={(picked) => {
+            setPickedWorkspace(picked);
+            state.setFilter("workspace_id", picked?.id ?? "");
+          }}
         />
-        {filtered ? (
-          <button type="button" className="adm-textbtn" onClick={clear}>
-            Limpar filtros
-          </button>
-        ) : null}
-      </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="adm-fin-stack">
+      <AdminFilterBar
+        segment={{
+          ariaLabel: "Tipo de movimentação",
+          options: TYPE_OPTIONS,
+          value: type,
+          onChange: (value) => state.setFilter("type", value),
+        }}
+        segmentDefault=""
+        filters={filters}
+        trailing={<FinancialRefreshButton />}
+      />
 
       <AdminTable
         caption="Movimentações financeiras"
         columns={COLUMNS}
         rows={query.isLoading ? undefined : rows}
         rowKey={(m) => m.id}
+        renderExpanded={(m) => <OriginIds movement={m} />}
+        expandLabel={(m) => `Ids de origem: ${MOVEMENT_TYPE_LABEL[m.type] ?? m.type} de ${formatDateTime(m.occurred_at)}`}
         loading={query.isLoading}
         refreshing={query.isFetching && !query.isLoading && !query.isFetchingNextPage}
         error={query.error}
@@ -211,15 +280,13 @@ export function FinancialMovements({ period }: FinancialMovementsProps) {
         footer={
           rows.length > 0 ? (
             <div className="adm-fin-more">
-              <span role="status">
-                {plural(rows.length, "movimentação carregada", "movimentações carregadas")}
-                {query.hasNextPage ? "" : " · fim da lista"}
-              </span>
-              {query.hasNextPage ? (
-                <button type="button" className="btn out adm-btn-sm" disabled={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>
-                  {query.isFetchingNextPage ? "Carregando…" : "Carregar mais"}
-                </button>
-              ) : null}
+              <AdminLoadMore
+                loaded={rows.length}
+                hasMore={!!query.hasNextPage}
+                loading={query.isFetchingNextPage}
+                onLoadMore={() => void query.fetchNextPage()}
+                noun={{ singular: "movimentação", plural: "movimentações", feminine: true }}
+              />
             </div>
           ) : undefined
         }

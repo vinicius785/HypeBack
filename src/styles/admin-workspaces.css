@@ -2,9 +2,13 @@
  * Admin da plataforma — módulo Workspaces (`src/components/admin/workspaces`).
  *
  * Mesmas regras do kit (`admin-platform.css`): prefixo `adm-workspaces-`, tudo sob `.pv`, nenhuma classe
- * genérica do protótipo usada ou redefinida, sem gradiente. Do kit só se reaproveitam classes que ele já
- * documenta como suas (`adm-textbtn`, `adm-kind`, `adm-conseq`, `adm-field`, `adm-input`, `adm-num`, `adm-muted`,
- * `adm-sub`, `adm-sr`, `adm-summary`); aqui fica só o que é próprio de Workspaces.
+ * genérica do protótipo usada ou redefinida, sem gradiente. Cores de superfície, raios, foco e sombra vêm dos
+ * tokens `--adm-*`; breakpoints só os oficiais do Admin (560, 900, 1100). Do kit se reaproveitam classes que ele
+ * já documenta como suas (`adm-textbtn`, `adm-kind`, `adm-conseq`, `adm-field`, `adm-input`, `adm-num`,
+ * `adm-muted`, `adm-sub`, `adm-sr`, `adm-summary`, `adm-textlink`); aqui fica só o que é próprio de Workspaces.
+ * A lista, o menu de ações, o período e a linha do tempo são do kit (`AdminTable`, `AdminActionMenu`,
+ * `AdminPeriodSelect`, `AdminTimeline`) e a pessoa/responsável é um `AdminEntityCell` (selo e apoio que quebra): não
+ * há CSS deles aqui.
  */
 
 /* ───────────────────────── avisos e texto de apoio ───────────────────────── */
@@ -12,64 +16,29 @@
 .pv .adm-workspaces-quiet { margin: 0; color: var(--adm-text-muted); font-size: 13px; line-height: 1.5; }
 .pv .adm-workspaces-quiet[data-error="true"] { color: var(--adm-bad); }
 
-/* workspace sem proprietário: a inconsistência precisa ser vista, na lista e no detalhe */
-.pv .adm-workspaces-noowner { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: 999px; background: var(--adm-warn-bg); color: var(--adm-warn); font-size: 12px; font-weight: 600; white-space: nowrap; }
-
-.pv .adm-workspaces-notice { display: flex; align-items: flex-start; gap: 14px; background: #fff; border-radius: var(--adm-radius); padding: 20px 24px; }
+.pv .adm-workspaces-notice { display: flex; align-items: flex-start; gap: 14px; background: var(--adm-surface); border-radius: var(--adm-r-lg); padding: 20px 24px; }
 .pv .adm-workspaces-notice .ico { width: 22px; height: 22px; margin-top: 1px; color: var(--adm-bad); }
 .pv .adm-workspaces-notice b { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
-.pv .adm-workspaces-notice p { margin: 4px 0 0; color: rgba(5, 5, 5, .72); font-size: 14px; line-height: 1.5; }
+.pv .adm-workspaces-notice p { margin: 4px 0 0; color: var(--adm-text-muted); font-size: 14px; line-height: 1.5; }
 
 /* ───────────────────────── lista ───────────────────────── */
 
-/*
- * A tabela tem nove colunas, mais do que os cortes do kit (1180px e 960px de largura da tabela) comportam
- * sem espremer o nome e o responsável. Os mesmos cortes de coluna (`hideBelow` lg e md), só que em larguras
- * maiores; abaixo de 721px vale o modo empilhado do kit, que mostra tudo.
- */
-@container adm-table (min-width: 721px) and (max-width: 1400px) {
-  .pv .adm-workspaces-table .adm-thead,
-  .pv .adm-workspaces-table .adm-row { grid-template-columns: var(--adm-cols-lg); }
-  .pv .adm-workspaces-table .adm-th[data-hide="lg"],
-  .pv .adm-workspaces-table .adm-cell[data-hide="lg"] { display: none; }
-}
+/* workspace sem proprietário: o selo e o porquê, visíveis na linha (não só em dica) */
+.pv .adm-workspaces-noowner { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
+.pv .adm-workspaces-noowner small { color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.35; }
 
-@container adm-table (min-width: 721px) and (max-width: 1100px) {
-  .pv .adm-workspaces-table .adm-thead,
-  .pv .adm-workspaces-table .adm-row { grid-template-columns: var(--adm-cols-md); }
-  .pv .adm-workspaces-table .adm-th[data-hide="md"],
-  .pv .adm-workspaces-table .adm-cell[data-hide="md"] { display: none; }
-}
-
-.pv .adm-workspaces-owner { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.pv .adm-workspaces-owner-text { min-width: 0; }
-.pv .adm-workspaces-owner-text b { display: block; font-size: 14px; font-weight: 600; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv .adm-workspaces-owner-text small { display: block; margin-top: 1px; color: var(--adm-text-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv .adm-workspaces-more { flex: none; display: inline-grid; place-items: center; height: 22px; padding: 0 8px; border-radius: 999px; background: var(--bg); color: var(--ink); font-size: 11.5px; font-weight: 700; }
-
+/* estado: o selo e, embaixo, a atividade como texto cinza ("há 2 dias") */
 .pv .adm-workspaces-status { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; min-width: 0; }
 .pv .adm-workspaces-activity { color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.3; white-space: nowrap; }
+/* teve atividade dentro da janela: o texto sobe para a cor principal (o estado inteiro vai por extenso para leitor de tela) */
 .pv .adm-workspaces-activity[data-state="active"] { color: var(--ink); }
 
-/* ───────────────────────── detalhe: cabeçalho ───────────────────────── */
-
-.pv .adm-workspaces-menu { position: relative; }
-.pv .adm-workspaces-menu-chev { transform: rotate(90deg); margin-right: -4px; }
-.pv .adm-workspaces-menu-list { position: absolute; right: 0; top: calc(100% + 8px); z-index: 40; min-width: 200px; display: flex; flex-direction: column; padding: 6px; border-radius: 20px; background: #fff; box-shadow: 0 18px 40px -12px rgba(5, 5, 5, .35), 0 0 0 1.5px var(--adm-rule); }
-.pv .adm-workspaces-menu-item { width: 100%; padding: 11px 14px; border-radius: 14px; font-size: 14px; font-weight: 600; text-align: left; }
-.pv .adm-workspaces-menu-item:hover { background: var(--bg); }
-.pv .adm-workspaces-menu-item:focus-visible { outline: none; background: var(--bg); box-shadow: inset 0 0 0 2px var(--brand); }
-.pv .adm-workspaces-menu-item[data-danger="true"] { color: var(--adm-bad); }
+/* ───────────────────────── detalhe: abas e painéis ───────────────────────── */
 
 .pv .adm-workspaces-tabs { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .pv .adm-workspaces-panel { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .pv .adm-workspaces-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px; }
 .pv .adm-workspaces-toolbar > p { margin: 0; color: var(--adm-text-muted); font-size: 14px; }
-
-/* controles segmentados fora da barra de filtros: rolam por dentro em vez de estourar a largura */
-.pv .adm-workspaces-toolbar .seg,
-.pv .adm-workspaces-period .seg,
-.pv .adm-workspaces-group-head .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 
 /* ───────────────────────── detalhe: resumo ───────────────────────── */
 
@@ -82,93 +51,87 @@
 
 .pv .adm-workspaces-columns { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 .pv .adm-workspaces-stack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.pv .adm-workspaces-owners { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
 
 .pv .adm-workspaces-lines span { display: block; }
 .pv .adm-workspaces-text { white-space: pre-wrap; }
-.pv .adm-workspaces-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; overflow-wrap: anywhere; }
+/* identificadores e valores técnicos (uuid, antes/depois do log): uma só pilha monoespaçada */
+.pv .adm-workspaces-code,
+.pv .adm-workspaces-impact-log dd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; overflow-wrap: anywhere; }
 
-.pv .adm-workspaces-owners { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
-.pv .adm-workspaces-warning { padding: 14px 16px; border-radius: 18px; background: var(--adm-warn-bg); color: var(--adm-warn); }
+.pv .adm-workspaces-warning { padding: 14px 16px; border-radius: var(--adm-r-md); background: var(--adm-warn-bg); color: var(--adm-warn); }
 .pv .adm-workspaces-warning b { font-size: 14px; font-weight: 600; }
 .pv .adm-workspaces-warning p { margin: 4px 0 8px; font-size: 13.5px; line-height: 1.5; }
-.pv .adm-workspaces-warning .adm-textbtn { color: var(--adm-warn); padding-left: 0; text-decoration-color: currentColor; }
+.pv .adm-workspaces-warning .adm-textbtn { min-height: var(--adm-hit); color: var(--adm-warn); padding-left: 0; text-decoration-color: currentColor; }
+.pv .adm-workspaces-warning .adm-textbtn:focus-visible { box-shadow: var(--adm-ring); outline: none; }
 
 /* ───────────────────────── detalhe: usuários ───────────────────────── */
 
-.pv .adm-workspaces-person { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.pv .adm-workspaces-person-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.pv .adm-workspaces-person-name { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
-.pv .adm-workspaces-person-name b { max-width: 100%; font-size: 14px; font-weight: 600; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv .adm-workspaces-person-text small { color: var(--adm-text-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv .adm-workspaces-person-text small.adm-workspaces-deleted { color: var(--adm-bad); font-weight: 600; }
-.pv .adm-workspaces-rowactions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 0 6px; }
-.pv .adm-workspaces-rowactions .adm-textbtn[data-danger="true"] { color: var(--adm-bad); text-decoration-color: rgba(198, 32, 39, .35); }
-.pv .adm-workspaces-rowactions .adm-textbtn[data-danger="true"]:hover { text-decoration-color: var(--adm-bad); }
+/* aviso da conta excluída: vai no apoio da pessoa (`AdminEntityCell` com `subtitleWrap`), em linha própria e em vermelho */
+.pv .adm-workspaces-deleted { display: block; margin-top: 1px; color: var(--adm-bad); font-weight: 600; }
+
+/* papel e, ao lado, "Alterar papel" (sempre visível, com alvo de toque) */
+.pv .adm-workspaces-role { display: flex; align-items: center; flex-wrap: wrap; gap: 0 10px; min-width: 0; }
+.pv .adm-workspaces-role .adm-textbtn { min-height: var(--adm-hit); }
 
 /* ───────────────────────── detalhe: financeiro ───────────────────────── */
 
-.pv .adm-workspaces-period { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; }
-.pv .adm-workspaces-dates { display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 8px 0 14px; border-radius: 999px; background: #fff; color: var(--adm-text-muted); transition: box-shadow .2s; }
-.pv .adm-workspaces-dates:focus-within { box-shadow: inset 0 0 0 2px var(--brand); }
-.pv .adm-workspaces-dates input { height: 100%; width: 128px; min-width: 0; padding: 0 4px; border: 0; outline: 0; background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); }
+.pv .adm-workspaces-periodbar { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; }
+.pv .adm-workspaces-periodbar > .adm-period { flex: 1 1 auto; min-width: 0; }
 
 .pv .adm-workspaces-group { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.pv .adm-workspaces-group h3 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -.02em; line-height: 1.25; }
-.pv .adm-workspaces-group-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; }
+.pv .adm-workspaces-group h2 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -.02em; line-height: 1.25; }
+.pv .adm-workspaces-group h3 { margin: 0; color: var(--adm-text-muted); font-size: 13px; font-weight: 600; line-height: 1.4; }
 
-.pv .adm-workspaces-origin { display: flex; flex-direction: column; min-width: 0; font-size: 13px; }
-.pv .adm-workspaces-origin code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; color: var(--adm-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv .adm-workspaces-links { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; }
-.pv .adm-workspaces-links a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--adm-rule); text-underline-offset: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv .adm-workspaces-links a:hover { text-decoration-color: var(--ink); }
-.pv .adm-workspaces-amount[data-direction="internal"] { color: var(--adm-text-muted); }
-.pv .adm-workspaces-loadmore { display: flex; justify-content: center; padding: 14px 20px; }
+/* "Ver detalhes": o restante dos números, recolhido */
+.pv .adm-workspaces-more > .adm-summary { min-height: var(--adm-hit); padding: 0 6px; }
+.pv .adm-workspaces-more > .adm-summary:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+.pv .adm-workspaces-more-body { display: flex; flex-direction: column; gap: 18px; padding-top: 4px; }
+
+/* campanha e criador da movimentação: links de texto do kit (`AdminLink textLink`), um por linha; o kit cuida do alvo de toque */
+.pv .adm-workspaces-links { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; max-width: 100%; font-size: 13px; }
+
+/* valor + o selo do tipo do valor logo abaixo (sinal só no valor) */
+.pv .adm-workspaces-amount { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.pv .adm-workspaces-amount[data-direction="internal"] > .adm-num { color: var(--adm-text-muted); }
+
+/* identificador copiável (linha expandida) */
+.pv .adm-workspaces-copy { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
 
 /* ───────────────────────── detalhe: atividade ───────────────────────── */
 
-.pv .adm-workspaces-timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.pv .adm-workspaces-event { display: grid; grid-template-columns: 136px minmax(0, 1fr); gap: 4px 20px; padding: 18px 0; border-top: 1.5px solid var(--line); }
-.pv .adm-workspaces-timeline > .adm-workspaces-event:first-child { border-top: 0; padding-top: 0; }
-.pv .adm-workspaces-timeline > .adm-workspaces-event:last-child { padding-bottom: 0; }
-.pv .adm-workspaces-event time { padding-top: 2px; color: var(--adm-text-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
-.pv .adm-workspaces-event-main { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
-.pv .adm-workspaces-event-kind { color: var(--adm-text-muted); font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
-.pv .adm-workspaces-event-title { margin: 0; font-size: 14.5px; font-weight: 500; line-height: 1.45; }
-.pv .adm-workspaces-event-main small { color: var(--adm-text-muted); font-size: 12.5px; }
-.pv .adm-workspaces-event-reason { margin: 4px 0 0; padding: 8px 12px; border-radius: 14px; background: var(--bg); color: rgba(5, 5, 5, .8); font-size: 13.5px; line-height: 1.5; overflow-wrap: anywhere; }
-.pv .adm-workspaces-expand { margin-top: 2px; padding-left: 0; }
-.pv .adm-workspaces-event-main > div[id] { align-self: stretch; }
+/* o motivo da ação fica à vista, abaixo da frase do evento */
+.pv .adm-workspaces-reason { display: block; margin-top: 4px; padding: 8px 12px; border-radius: var(--adm-r-sm); background: var(--bg); color: var(--adm-text-muted); font-size: 13.5px; font-weight: 400; line-height: 1.5; overflow-wrap: anywhere; }
 
-.pv .adm-workspaces-diff { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
-.pv .adm-workspaces-diff-grid { border-radius: 18px; background: var(--bg); overflow: clip; font-size: 13px; }
+.pv .adm-workspaces-diff { display: flex; flex-direction: column; gap: 10px; }
+.pv .adm-workspaces-diff-grid { border-radius: var(--adm-r-md); background: var(--bg); overflow: clip; font-size: 13px; }
 .pv .adm-workspaces-diff-grid [role="row"] { display: grid; grid-template-columns: minmax(88px, .6fr) minmax(0, 1fr) minmax(0, 1fr); }
-.pv .adm-workspaces-diff-grid [role="row"] + [role="row"] { border-top: 1.5px solid #e2e2e2; }
+.pv .adm-workspaces-diff-grid [role="row"] + [role="row"] { border-top: 1.5px solid var(--adm-hover); }
 .pv .adm-workspaces-diff-grid [role="row"] > span { padding: 9px 14px; overflow-wrap: anywhere; }
-.pv .adm-workspaces-diff-head > span { color: var(--adm-text-muted); font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.pv .adm-workspaces-diff-head > span { color: var(--adm-text-muted); font-size: 12.5px; font-weight: 600; }
 .pv .adm-workspaces-diff-grid [role="rowheader"] { color: var(--adm-text-muted); font-weight: 500; }
 .pv .adm-workspaces-impact-log dl { margin: 8px 0 0; display: grid; gap: 6px; font-size: 13px; }
 .pv .adm-workspaces-impact-log dl > div { display: grid; grid-template-columns: minmax(88px, .6fr) minmax(0, 2fr); gap: 12px; }
 .pv .adm-workspaces-impact-log dt { color: var(--adm-text-muted); }
-.pv .adm-workspaces-impact-log dd { margin: 0; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+.pv .adm-workspaces-impact-log dd { margin: 0; }
 
 /* ───────────────────────── diálogos ───────────────────────── */
 
-.pv .adm-workspaces-impact { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 20px; background: var(--bg); }
+.pv .adm-workspaces-impact { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: var(--adm-r-md); background: var(--bg); }
 .pv .adm-workspaces-impact h3 { margin: 0; font-size: 13px; font-weight: 600; }
 .pv .adm-workspaces-facts { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 20px; }
 .pv .adm-workspaces-fact dt { color: var(--adm-text-muted); font-size: 12px; font-weight: 500; }
 .pv .adm-workspaces-fact dd { margin: 1px 0 0; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .pv .adm-workspaces-fact dd small { display: block; margin-top: 1px; color: var(--adm-text-muted); font-size: 12px; font-weight: 400; }
 
-.pv .adm-workspaces-blockers { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 20px; background: var(--adm-bad-bg); }
+.pv .adm-workspaces-blockers { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: var(--adm-r-md); background: var(--adm-bad-bg); }
 .pv .adm-workspaces-blockers > b { color: var(--adm-bad); font-size: 14px; font-weight: 600; }
 .pv .adm-workspaces-blockers ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-.pv .adm-workspaces-blockers li { display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; line-height: 1.45; color: rgba(5, 5, 5, .8); }
+.pv .adm-workspaces-blockers li { display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; line-height: 1.45; color: var(--adm-text-muted); }
 .pv .adm-workspaces-blocker-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; color: var(--ink); font-weight: 600; }
 .pv .adm-workspaces-blocker-title em { font-style: normal; color: var(--adm-bad); font-variant-numeric: tabular-nums; }
 .pv .adm-workspaces-blockers p { margin: 0; font-size: 13.5px; line-height: 1.5; }
-.pv .adm-dialog .adm-workspaces-blockers .btn.out { align-self: flex-start; background: #fff; }
-.pv .adm-dialog .adm-workspaces-blockers .btn.out:hover:not(:disabled) { background: #f4f4f4; }
+.pv .adm-dialog .adm-workspaces-blockers .btn.out { align-self: flex-start; background: var(--adm-surface); }
 
 .pv .adm-workspaces-form { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px 12px; }
 .pv .adm-workspaces-form-field { grid-column: span 6; min-width: 0; }
@@ -182,26 +145,14 @@
 
 /* ───────────────────────── tablet e celular ───────────────────────── */
 
-@container adm-table (max-width: 720px) {
-  .pv .adm-workspaces-rowactions { justify-content: flex-start; }
-}
-
-@media (max-width: 1000px) {
+@media (max-width: 900px) {
   .pv .adm-workspaces-columns { grid-template-columns: minmax(0, 1fr); }
 }
 
-@media (max-width: 760px) {
-  .pv .adm-workspaces-menu { flex: 1 1 auto; display: flex; }
-  .pv .adm-workspaces-menu > .btn { flex: 1 1 auto; justify-content: center; }
-  .pv .adm-workspaces-menu-list { left: 0; right: 0; }
+@media (max-width: 560px) {
   .pv .adm-workspaces-money { grid-template-columns: minmax(0, 1fr); gap: 18px; }
   .pv .adm-workspaces-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pv .adm-workspaces-notice { padding: 18px 20px; border-radius: 24px; }
-  .pv .adm-workspaces-event { grid-template-columns: minmax(0, 1fr); }
-}
-
-@media (max-width: 560px) {
+  .pv .adm-workspaces-notice { padding: 18px 20px; }
   .pv .adm-workspaces-form-field[data-span] { grid-column: 1 / -1; }
   .pv .adm-workspaces-facts { grid-template-columns: minmax(0, 1fr); }
-  .pv .adm-workspaces-dates { width: 100%; justify-content: space-between; }
 }

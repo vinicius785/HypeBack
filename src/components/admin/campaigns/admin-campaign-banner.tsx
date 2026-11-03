@@ -16,8 +16,10 @@ function resolveBanner(banner: string | null): string | undefined {
 }
 
 /**
- * Banner da campanha na proporção 5:2 em que ele é feito (1280 × 512), inteiro e sem corte; sem banner (ou com a
- * imagem quebrada) entram as iniciais do título. Decorativo: o título já está ao lado.
+ * Banner da campanha numa caixa na proporção 5:2 em que ele é feito (1280 × 512). A imagem preenche a caixa
+ * (`object-fit: cover`): na proporção certa aparece inteira; um arquivo de outra proporção é cortado nas bordas em
+ * vez de deixar faixas vazias. Sem banner (ou com a imagem quebrada) entram as iniciais do título. Decorativo: o
+ * título já está ao lado.
  */
 export function AdminCampaignBanner({ title, banner }: { title: string; banner: string | null }) {
   const url = resolveBanner(banner);

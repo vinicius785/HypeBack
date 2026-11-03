@@ -1,0 +1,48 @@
+/*
+ * Admin da plataforma — dica (`AdminTooltip`) e botão só-ícone (`AdminIconButton`), em `admin-tooltip.tsx`.
+ *
+ * Mesmas regras do kit (`admin-platform.css`): prefixo `adm-`, tudo sob `.pv`, tokens `--adm-*`.
+ * Sem sombra, exceto a dica (um popover: `--adm-shadow-pop`). Vermelho só no botão destrutivo.
+ */
+
+/* ───────────────────────── dica ───────────────────────── */
+
+.pv .adm-tip-wrap { display: inline-flex; }
+/* botão desabilitado engole o mouse: o evento passa a ser do invólucro, e a dica ainda explica o botão */
+.pv .adm-tip-wrap > :disabled { pointer-events: none; }
+
+.pv .adm-tip {
+  position: fixed; top: 0; left: 0; z-index: 310;
+  max-width: min(260px, calc(100vw - 16px)); padding: 6px 10px; border-radius: var(--adm-r-sm);
+  background: var(--ink); color: var(--adm-surface);
+  font-size: 13px; font-weight: 500; line-height: 1.4;
+  box-shadow: var(--adm-shadow-pop);
+  animation: adm-tip-in .12s ease-out both;
+}
+@keyframes adm-tip-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ───────────────────────── botão só-ícone ───────────────────────── */
+
+.pv .adm-ibtn {
+  position: relative; flex: none; display: inline-grid; place-items: center;
+  width: var(--adm-hit); height: var(--adm-hit); padding: 0; border-radius: var(--adm-r-sm);
+  background: transparent; color: var(--ink);
+  transition: background .15s;
+}
+.pv .adm-ibtn .ico { width: 18px; height: 18px; }
+.pv .adm-ibtn:hover:not(:disabled) { background: var(--adm-hover); }
+.pv .adm-ibtn:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+.pv .adm-ibtn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* tamanho pequeno: o desenho encolhe, mas a área clicável continua com o alvo mínimo de toque */
+.pv .adm-ibtn[data-size="sm"] { width: 32px; height: 32px; }
+.pv .adm-ibtn[data-size="sm"] .ico { width: 16px; height: 16px; }
+.pv .adm-ibtn[data-size="sm"]::after { content: ""; position: absolute; inset: calc((32px - var(--adm-hit)) / 2); }
+
+.pv .adm-ibtn[data-tone="danger"] { color: var(--adm-bad); }
+.pv .adm-ibtn[data-tone="danger"]:hover:not(:disabled) { background: var(--adm-bad-bg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-tip { animation: none; }
+  .pv .adm-ibtn { transition: none; }
+}

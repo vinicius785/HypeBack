@@ -49,7 +49,6 @@ export interface DashboardStat {
 export interface DashboardArea {
   id: DashboardAreaId;
   title: string;
-  description?: string;
   /** Colunas do painel por largura útil: larga, média e estreita (no celular estreito é sempre uma). */
   columns: { lg: number; md: number; sm: number };
   stats: DashboardStat[];
@@ -100,9 +99,6 @@ export function buildDashboardAreas(overview: AdminOverview | undefined, range: 
     workspaces: {
       id: "workspaces",
       title: "Clientes",
-      description: windowDays
-        ? `Workspaces de marca. Ativo é quem teve atividade nos últimos ${windowDays} dias.`
-        : "Workspaces de marca, por situação.",
       columns: { lg: 6, md: 3, sm: 2 },
       stats: [
         {
@@ -143,7 +139,6 @@ export function buildDashboardAreas(overview: AdminOverview | undefined, range: 
     users: {
       id: "users",
       title: "Usuários",
-      description: "Contas de marca, agência e administrador.",
       columns: { lg: 3, md: 3, sm: 2 },
       stats: [
         {
@@ -171,7 +166,6 @@ export function buildDashboardAreas(overview: AdminOverview | undefined, range: 
     creators: {
       id: "creators",
       title: "Criadores",
-      description: "Base de criadores cadastrados.",
       columns: { lg: 1, md: 1, sm: 1 },
       stats: [
         {
@@ -186,7 +180,6 @@ export function buildDashboardAreas(overview: AdminOverview | undefined, range: 
     campaigns: {
       id: "campaigns",
       title: "Campanhas",
-      description: "Por situação, agora. As criadas seguem o período escolhido.",
       columns: { lg: 5, md: 3, sm: 2 },
       stats: [
         { id: "campaigns.total", label: "Campanhas", figure: campaigns?.total, to: link(CAMPAIGNS) },
@@ -220,8 +213,6 @@ export function buildDashboardAreas(overview: AdminOverview | undefined, range: 
     financial: {
       id: "financial",
       title: "Dinheiro",
-      description:
-        "Aportes, liberações e PIX seguem o período escolhido; custódia e cobranças pendentes são a posição de agora.",
       columns: { lg: 3, md: 3, sm: 2 },
       stats: [
         {
@@ -265,6 +256,20 @@ export function buildDashboardAreas(overview: AdminOverview | undefined, range: 
       ],
     },
   };
+}
+
+/**
+ * A regra do período em frases curtas (vai no "i" ao lado do seletor, no lugar da descrição que cada painel repetia):
+ * o que segue o período escolhido, o que é a posição de agora e, com a janela do servidor, o que é "ativo".
+ * Sem `windowDays` (carregando) a frase da janela não aparece, em vez de inventar um número.
+ */
+export function dashboardPeriodRule(windowDays?: number): string[] {
+  const lines = [
+    "Seguem o período escolhido: novos no período, campanhas criadas, aportes, liberações a criadores e PIX pagos.",
+    "São a posição de agora, sem período: totais por situação, saldo em custódia e cobranças pendentes.",
+  ];
+  if (windowDays) lines.push(`Cliente ativo é quem teve atividade nos últimos ${windowDays} dias.`);
+  return lines;
 }
 
 // ---------------------------------------------------------------------------

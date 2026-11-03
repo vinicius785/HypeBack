@@ -2,50 +2,37 @@
  * Financeiro global do Admin (`src/components/admin/financial`).
  *
  * Mesmas regras do kit (`admin-platform.css`): prefixo `adm-fin-`, tudo sob `.pv`, nenhuma classe curta do
- * protótipo (.big .tag .box .lk .on .out .card .stat .cell .chart .pill .chip...) usada nem redefinida. A
- * tabela é o `AdminTable` do kit (div + ARIA); aqui só o conteúdo das células e o respiro entre os blocos.
+ * protótipo (.big .tag .box .lk .on .out .card .stat .cell .chart .pill .chip...) usada nem redefinida, só
+ * tokens `--adm-*` (superfície, hover, anel de foco, raios) em vez de literais. A tabela é o `AdminTable` do kit
+ * (div + ARIA), o período é o `AdminPeriodSelect` e a barra é a `AdminFilterBar`; aqui só o conteúdo das células
+ * e o respiro entre os blocos. Breakpoints do Admin: 560 · 900 · 1100.
  * Visual de Início: cartões brancos, hairlines, preto/cinza, roxo só como acento; sem gradiente.
  */
 
 .pv .adm-fin-stack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .pv .adm-fin-stack > * { min-width: 0; }
 
-/* ───────────────────────── barra de ferramentas ───────────────────────── */
-
-.pv .adm-fin-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; min-width: 0; }
-.pv .adm-fin-bar-note { margin: 0; flex: 1 1 280px; color: var(--adm-text-muted); font-size: 13px; line-height: 1.5; }
-
-.pv .adm-fin-refresh .ico { transition: transform .3s var(--ease); }
-.pv .adm-fin-refresh[aria-busy="true"] .ico { animation: adm-fin-spin 1s linear infinite; }
-@keyframes adm-fin-spin { to { transform: rotate(360deg); } }
-
-/* período */
-.pv .adm-fin-period { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.pv .adm-fin-period-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; min-width: 0; }
-.pv .adm-fin-period .seg { max-width: 100%; }
-.pv .adm-fin-period-range { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 12px; color: var(--adm-text-muted); font-size: 13px; line-height: 1.5; }
-.pv .adm-fin-period-range b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* período + "Atualizar" (só na visão geral, que não tem barra de filtros) lado a lado no cabeçalho */
+.pv .adm-fin-tools { display: flex; align-items: flex-start; gap: 8px; max-width: 100%; min-width: 0; }
+/* alinha o ícone com a linha dos atalhos (o controle segmentado tem 4px de respiro) */
+.pv .adm-fin-tools .btn.adm-refresh { flex: none; margin-top: 4px; }
 
 /* ───────────────────────── visão geral ───────────────────────── */
 
-.pv .adm-fin-note { margin: 0; padding: 16px 20px; border-radius: 20px; background: #fff; color: rgba(5, 5, 5, .78); font-size: 13.5px; line-height: 1.6; }
+/* uma linha de nota, sem cartão: a explicação completa está no "i" do cabeçalho */
+.pv .adm-fin-note { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 16px; color: var(--adm-text-muted); font-size: 13px; line-height: 1.5; }
 .pv .adm-fin-note b { color: var(--ink); font-weight: 600; }
-.pv .adm-fin-note-meta { display: block; margin-top: 8px; color: var(--adm-text-muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.pv .adm-fin-note-meta { font-variant-numeric: tabular-nums; }
 
-.pv .adm-fin-alert { background: #fff; border-radius: var(--adm-radius); overflow: clip; }
+/* nota sob a tabela de "Por workspace" (o que é do período e o que é a posição de agora) */
+.pv .adm-fin-table-note { margin: 0; color: var(--adm-text-muted); font-size: 13px; line-height: 1.5; }
 
-.pv .adm-fin-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px 32px; }
-.pv .adm-fin-group-criadores .adm-fin-figs { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+/* os indicadores da seção sem o respiro de cartão: a grade do kit com folga maior entre números */
+.pv .adm-fin-group .adm-figs { grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 24px 32px; }
+.pv .adm-fin-group-criadores .adm-figs { grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); }
 
-.pv .adm-fin-recon { margin-top: 20px; padding-top: 16px; border-top: 1.5px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
-.pv .adm-fin-recon p { margin: 0; color: var(--adm-text-muted); font-size: 13px; line-height: 1.55; max-width: 78ch; }
-.pv .adm-fin-recon b { color: var(--ink); font-weight: 600; }
-.pv .adm-fin-link { color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--adm-rule); }
-.pv .adm-fin-link:hover { text-decoration-color: var(--ink); }
-.pv .adm-fin-link:focus-visible,
-.pv .adm-fin-entity:focus-visible,
-.pv .adm-fin-sublink:focus-visible,
-.pv .adm-fin-copy-btn:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
+/* o foco dos links das células e dos links de texto é do kit (`.adm-cell a`, `.adm-textlink`); aqui só o botão de copiar */
+.pv .adm-fin-copy-btn:focus-visible { outline: none; box-shadow: var(--adm-ring); }
 
 /* ───────────────────────── movimentações ───────────────────────── */
 
@@ -59,7 +46,7 @@
 .pv .adm-fin-amount { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
 .pv .adm-fin-amount b { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 /* lançamento interno só mudou de bolso: sem sinal e mais discreto */
-.pv .adm-fin-amount[data-direction="internal"] b { color: rgba(5, 5, 5, .72); }
+.pv .adm-fin-amount[data-direction="internal"] b { color: var(--adm-text-muted); }
 
 .pv .adm-fin-parties { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .pv .adm-fin-entity { color: var(--ink); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
@@ -67,18 +54,27 @@
 .pv .adm-fin-sublink { color: inherit; text-decoration: none; overflow-wrap: anywhere; }
 .pv .adm-fin-sublink:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 
-.pv .adm-fin-origin { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; max-width: 100%; }
-.pv .adm-fin-copy { display: inline-flex; min-width: 0; max-width: 100%; }
-.pv .adm-fin-copy-btn { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; height: 24px; padding: 0 8px; border-radius: 8px; background: var(--bg); color: var(--adm-text-muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; transition: background .2s, color .2s; }
-.pv .adm-fin-copy-btn:hover { background: #e4e4e4; color: var(--ink); }
-.pv .adm-fin-copy-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv .adm-fin-copy-btn .ico { width: 13px; height: 13px; flex: none; }
+/* sem a margem de cima do `.adm-sub`: é a única coisa da célula e alinha com o texto das outras colunas */
+.pv .adm-sub.adm-fin-origin { margin-top: 0; }
 
-.pv .adm-fin-more { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; padding: 14px 20px; color: var(--adm-text-muted); font-size: 13px; }
+/* linha aberta: os ids para rastrear, cada um com o botão de copiar no alvo de toque do Admin */
+.pv .adm-fin-ids { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px 24px; }
+.pv .adm-fin-ids dt { color: var(--adm-text-muted); font-size: 12.5px; font-weight: 600; }
+.pv .adm-fin-ids dd { margin: 4px 0 0; min-width: 0; }
+
+.pv .adm-fin-copy { display: inline-flex; min-width: 0; max-width: 100%; }
+.pv .adm-fin-copy-btn { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; min-height: var(--adm-hit); padding: 4px 12px; border-radius: var(--adm-r-sm); background: var(--adm-surface); color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; text-align: left; transition: background .2s, color .2s; }
+.pv .adm-fin-copy-btn:hover { background: var(--adm-hover); }
+.pv .adm-fin-copy-text { min-width: 0; overflow-wrap: anywhere; }
+.pv .adm-fin-copy-btn .ico { width: 14px; height: 14px; flex: none; color: var(--adm-text-muted); }
+
+/* "Carregar mais" no pé da tabela: o respiro lateral que o rodapé do kit não tem */
+.pv .adm-fin-more { padding: 0 24px 16px; }
 
 /* ───────────────────────── por workspace ───────────────────────── */
 
-.pv .adm-fin-unassigned { padding-left: 48px; min-width: 0; }
+/* alinha com o nome das outras linhas: o avatar de 36px do `AdminEntityCell` mais o vão de 12px */
+.pv .adm-fin-unassigned { padding-left: calc(36px + 12px); min-width: 0; }
 .pv .adm-fin-unassigned b { display: block; font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
 .pv .adm-fin-unassigned small { display: block; margin-top: 1px; color: var(--adm-text-muted); font-size: 12.5px; }
 
@@ -88,15 +84,10 @@
 @container adm-table (max-width: 720px) {
   .pv .adm-fin-amount { align-items: flex-start; }
   .pv .adm-fin-unassigned { padding-left: 0; }
-  .pv .adm-fin-more { padding: 12px 18px; }
+  .pv .adm-fin-more { padding: 0 18px 14px; }
 }
 
-@media (max-width: 760px) {
-  .pv .adm-fin-note { padding: 14px 16px; border-radius: 18px; }
-  .pv .adm-fin-figs { grid-template-columns: minmax(0, 1fr); gap: 18px; }
-  .pv .adm-fin-group-criadores .adm-fin-figs { grid-template-columns: minmax(0, 1fr); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pv .adm-fin-refresh[aria-busy="true"] .ico { animation: none; }
+@media (max-width: 560px) {
+  .pv .adm-fin-group .adm-figs,
+  .pv .adm-fin-group-criadores .adm-figs { grid-template-columns: minmax(0, 1fr); gap: 18px; }
 }

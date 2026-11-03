@@ -55,7 +55,11 @@ describe("Criadores: cabeçalho e abas", () => {
   it("título, subtítulo e as três abas, com a de criadores aberta por padrão", async () => {
     renderCreators();
     expect(await screen.findByRole("heading", { level: 1, name: "Criadores" })).toBeInTheDocument();
-    expect(screen.getByText("A base de criadores da plataforma.")).toBeInTheDocument();
+    // o aviso de "somente leitura" é um só, no subtítulo, e vale para as três abas
+    expect(
+      screen.getByText("A base de criadores da plataforma. Somente leitura: nada é fundido ou alterado automaticamente."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
 
     const tabs = within(screen.getByRole("tablist", { name: "Seções de criadores" })).getAllByRole("tab");
     expect(tabs.map((tab) => tab.textContent)).toEqual(["Criadores", "Duplicados", "Inconsistências"]);
@@ -76,7 +80,7 @@ describe("Criadores: cabeçalho e abas", () => {
     await screen.findByText("Rafael Borges Mendes");
 
     await userEvent.click(screen.getByRole("tab", { name: "Duplicados" }));
-    expect(await screen.findByRole("article", { name: /E-mail/ })).toBeInTheDocument();
+    expect(await screen.findByRole("table", { name: "Duplicados" })).toBeInTheDocument();
     expect(currentSearch(router)).toEqual({ tab: "duplicates" });
     expect(screen.getByRole("tab", { name: "Duplicados" })).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByRole("table", { name: "Criadores" })).not.toBeInTheDocument();
@@ -85,7 +89,7 @@ describe("Criadores: cabeçalho e abas", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Inconsistências" }));
     expect(await screen.findByRole("article", { name: "Workspaces de marca sem proprietário" })).toBeInTheDocument();
     expect(currentSearch(router)).toEqual({ tab: "inconsistencies" });
-    expect(screen.queryByRole("article", { name: /E-mail/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Duplicados" })).not.toBeInTheDocument();
 
     // voltar para a primeira aba não escreve nada na URL
     await userEvent.click(screen.getByRole("tab", { name: "Criadores" }));
@@ -99,7 +103,7 @@ describe("Criadores: cabeçalho e abas", () => {
     expect(client.adminList.mock.calls.at(-1)?.[1]).toMatchObject({ registration: "incomplete", network: "tiktok", search: "ana" });
 
     await userEvent.click(screen.getByRole("tab", { name: "Duplicados" }));
-    await screen.findByRole("article", { name: /E-mail/ });
+    await screen.findByRole("table", { name: "Duplicados" });
     expect(currentSearch(router)).toEqual({ tab: "duplicates" });
     const dupCall = client.adminList.mock.calls.filter(([path]) => path === "/admin/creators/duplicates").at(-1);
     expect(dupCall?.[1]).toEqual({ page: 1, per_page: 10 });
@@ -124,7 +128,7 @@ describe("Criadores: cabeçalho e abas", () => {
 
   it("o painel aberto é ligado à aba (WAI-ARIA)", async () => {
     renderCreators("/admin/creators?tab=duplicates");
-    await screen.findByRole("article", { name: /E-mail/ });
+    await screen.findByRole("table", { name: "Duplicados" });
     const panel = screen.getByRole("tabpanel");
     expect(panel).toHaveAttribute("aria-labelledby", screen.getByRole("tab", { name: "Duplicados" }).id);
   });
@@ -133,7 +137,7 @@ describe("Criadores: cabeçalho e abas", () => {
     renderCreators();
     await screen.findByText("Rafael Borges Mendes");
     await userEvent.click(screen.getByRole("tab", { name: "Duplicados" }));
-    await screen.findByRole("article", { name: /E-mail/ });
+    await screen.findByRole("table", { name: "Duplicados" });
     await userEvent.click(screen.getByRole("tab", { name: "Inconsistências" }));
     await screen.findByRole("article", { name: "Workspaces de marca sem proprietário" });
     await waitFor(() => expect(client.adminGetEnvelope).toHaveBeenCalled());

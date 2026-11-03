@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 
 import {
   AdminFilterBar,
+  AdminInfoPopover,
   AdminPager,
+  AdminRefreshButton,
   AdminSearchInput,
   AdminTable,
   type AdminFilterDef,
@@ -18,6 +20,7 @@ import {
   FirstCampaignCell,
   NetworksCell,
   RegistrationCell,
+  userTarget,
 } from "./admin-creators-cells";
 import {
   minFollowersOptions,
@@ -43,7 +46,11 @@ function pickDefinition(
 
 /**
  * Aba "Criadores": a base de criadores da plataforma, somente leitura. Nenhuma ação altera criador aqui; o servidor
- * não tem rota para isso neste contrato.
+ * não tem rota para isso neste contrato. A linha leva ao usuário (`/admin/users/:userId`).
+ *
+ * "Perfil" é uma coisa só nesta tela: o segmento (Todos, Completo, Incompleto, Conta externa), a coluna e as etiquetas
+ * dela falam do estado dos dados do cadastro; "Cadastrado em" é só a data (coluna e filtro). Na URL continuam
+ * `registration`, `created_from` e `created_to`.
  */
 export function AdminCreatorsList() {
   const list = useAdminListQueryState(ADMIN_CREATOR_LIST_CONFIG);
@@ -61,7 +68,7 @@ export function AdminCreatorsList() {
       label: "Seguidores mínimos",
       options: minFollowersOptions(list.filters.min_followers),
     },
-    { kind: "date-range", label: "Cadastro em", fromKey: "created_from", toKey: "created_to" },
+    { kind: "date-range", label: "Cadastrado em", fromKey: "created_from", toKey: "created_to" },
   ];
 
   const columns: AdminTableColumn<AdminCreatorListItem>[] = [
@@ -76,9 +83,18 @@ export function AdminCreatorsList() {
     {
       key: "networks",
       header: "Redes",
+      // no cartão do celular a rede e os seguidores precisam da linha inteira para ficar legíveis e alinhados
+      wide: true,
       width: "minmax(0, 2fr)",
       cell: (creator) => <NetworksCell creator={creator} />,
-      definition: "Redes sociais do criador, com o @ e os seguidores de cada uma. UGC não é rede social: aparece só como etiqueta.",
+      definition: (
+        <>
+          <AdminInfoPopover.Paragraph>
+            Redes sociais do criador, com o @ e os seguidores de cada uma. UGC não é rede social: aparece só como etiqueta.
+          </AdminInfoPopover.Paragraph>
+          <AdminInfoPopover.Paragraph>Rede inativa: os seguidores dela não entram no total.</AdminInfoPopover.Paragraph>
+        </>
+      ),
     },
     {
       key: "followers",
@@ -106,25 +122,27 @@ export function AdminCreatorsList() {
     },
     {
       key: "registration",
-      header: "Cadastro",
+      header: "Perfil",
+      wide: true,
       width: "minmax(0, 1.7fr)",
       cell: (creator) => <RegistrationCell creator={creator} />,
       definition: (
         <>
-          <p>
+          <AdminInfoPopover.Paragraph>
             {pickDefinition(
               definitions,
               ["registration"],
               "Completo: tem os dados mínimos de cadastro. Incompleto: faltam dados (veja a lista). Conta externa: criada por convite e nunca assumida pela pessoa.",
             )}
-          </p>
-          <p>O rótulo é uma sugestão de atenção, não um erro.</p>
+          </AdminInfoPopover.Paragraph>
+          <AdminInfoPopover.Paragraph>O rótulo é uma sugestão de atenção, não um erro.</AdminInfoPopover.Paragraph>
         </>
       ),
     },
     {
       key: "first_campaign",
       header: "Primeira campanha",
+      wide: true,
       hideBelow: "lg",
       width: "minmax(0, 1.8fr)",
       cell: (creator) => <FirstCampaignCell creator={creator} />,
@@ -136,7 +154,7 @@ export function AdminCreatorsList() {
     },
     {
       key: "created",
-      header: "Cadastro em",
+      header: "Cadastrado em",
       sortKey: "created_at",
       hideBelow: "md",
       nowrap: true,
@@ -153,26 +171,22 @@ export function AdminCreatorsList() {
   ) : undefined;
 
   return (
-    <div className="adm-creators-panel">
+    <>
       <AdminFilterBar
         segment={{
           options: REGISTRATION_FILTER_OPTIONS,
           value: list.filters.registration,
           onChange: (value) => list.setFilter("registration", value),
-          ariaLabel: "Cadastro",
+          ariaLabel: "Perfil",
         }}
-        search={
-          <AdminSearchInput
-            value={list.search}
-            onSearch={list.setSearch}
-            placeholder="Buscar por nome, e-mail ou @ da rede"
-            label="Buscar criadores"
-          />
-        }
+        segmentDefault=""
+        search={<AdminSearchInput value={list.search} onSearch={list.setSearch} placeholder="Buscar por nome, e-mail ou @ da rede" />}
+        searchLabel="Buscar criadores"
         filters={filters}
         values={list.filters}
         onChange={(patch) => list.setFilters(patch)}
         onClear={list.clearFilters}
+        trailing={<AdminRefreshButton iconOnly onClick={() => void query.refetch()} loading={query.isFetching} />}
       />
 
       <AdminTable
@@ -180,6 +194,7 @@ export function AdminCreatorsList() {
         columns={columns}
         rows={query.data?.data}
         rowKey={(creator) => creator.id}
+        rowLink={(creator) => userTarget(creator.id)}
         sort={{ by: list.sortBy, order: list.order }}
         onSort={(key) => list.toggleSort(key, key === "name" ? "asc" : "desc")}
         loading={query.isLoading}
@@ -191,24 +206,26 @@ export function AdminCreatorsList() {
           filtered
             ? {
                 title: "Nenhum criador encontrado",
-                description: "Nenhum criador combina com a busca e os filtros atuais.",
+                description: "Nenhum criador corresponde à busca e aos filtros atuais.",
                 action: emptyAction,
               }
             : { title: "Nenhum criador ainda", description: "Quando alguém se cadastrar como criador, aparece aqui." }
         }
         footer={
-          <AdminPager
-            page={meta?.page ?? list.page}
-            perPage={meta?.per_page ?? list.perPage}
-            total={meta?.total ?? 0}
-            onPageChange={list.setPage}
-            onPerPageChange={list.setPerPage}
-            disabled={query.isFetching}
-          />
+          meta ? (
+            <AdminPager
+              page={meta.page}
+              perPage={meta.per_page}
+              total={meta.total}
+              onPageChange={list.setPage}
+              onPerPageChange={list.setPerPage}
+              disabled={query.isFetching}
+            />
+          ) : undefined
         }
       />
 
       <AdminCreatorsProfile />
-    </div>
+    </>
   );
 }

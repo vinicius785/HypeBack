@@ -1,8 +1,14 @@
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 
-import { AdminAvatar, AdminBadge, AdminConfirmDialog, type AdminConfirmValues } from "@/components/admin/platform";
+import {
+  AdminBadge,
+  AdminConfirmDialog,
+  AdminEntityPicker,
+  adminToast,
+  type AdminConfirmValues,
+  type AdminEntityPickerSearchResult,
+} from "@/components/admin/platform";
 import { adminKeys } from "@/hooks/admin/admin-query-keys";
 import { ADMIN_TEAM_RESOURCE, useAdminSetPlatformRole } from "@/hooks/admin/use-admin-team";
 import { useAdminUsers } from "@/hooks/admin/use-admin-users";
@@ -21,11 +27,14 @@ export interface TeamTarget {
   role: AdminPlatformRole | null;
 }
 
-/** Sem digitar nada, a busca não vai ao servidor: o mínimo para a lista de contas fazer sentido. */
+/** Mínimo de letras da busca de contas: o do seletor (`minChars`) e o do `enabled` da consulta são este mesmo número. */
 export const TEAM_SEARCH_MIN = 2;
 
 /** Atraso (ms) entre a última tecla e a busca de contas. */
 const SEARCH_DEBOUNCE_MS = 300;
+
+/** A conta como o seletor a guarda: o que o diálogo precisa (`TeamTarget`) e o que a lista mostra de cada resultado. */
+type TeamAccount = TeamTarget & { isPlatformAdmin?: boolean };
 
 function RoleChoices({
   roles,
@@ -74,90 +83,75 @@ function RoleChoices({
   );
 }
 
-/** Escolha da conta que vai entrar na equipe: busca por nome ou e-mail entre as contas de marca ativas. */
+/**
+ * Busca de contas do seletor (`AdminEntityPicker`). Nasce fora do render: o seletor a chama como hook e pede sempre a
+ * mesma função. Sem o mínimo de letras a consulta nem sai (o seletor mostra a dica "Digite pelo menos N letras"): sem
+ * busca ela devolveria "todo mundo", que não é o que a pessoa pediu.
+ */
+function useTeamAccountSearch(term: string): AdminEntityPickerSearchResult<TeamAccount> {
+  const searching = term.length >= TEAM_SEARCH_MIN;
+  const results = useAdminUsers(
+    { search: searching ? term : undefined, kind: "brand", status: "active", per_page: 6 },
+    { enabled: searching },
+  );
+  return {
+    data: searching
+      ? results.data?.data.map((item) => ({
+          id: item.id,
+          name: item.name,
+          email: item.email,
+          role: null,
+          isPlatformAdmin: item.is_platform_admin,
+        }))
+      : undefined,
+    isLoading: results.isLoading,
+    isFetching: results.isFetching,
+    isError: results.isError,
+    total: results.data?.meta.total,
+    error: results.error,
+    retry: () => void results.refetch(),
+  };
+}
+
+/**
+ * Escolha da conta que vai entrar na equipe: busca por nome ou e-mail entre as contas de marca ativas. O seletor do
+ * kit cuida do resto: `minChars` mostra "Digite pelo menos N letras" no lugar do vazio e `required` tira o "Todos" e o
+ * × (a pílula diz "Escolha…", nunca "Todos").
+ */
 function AccountPicker({
   selected,
   onSelect,
   disabled,
 }: {
-  selected: TeamTarget | null;
-  onSelect: (target: TeamTarget | null) => void;
+  selected: TeamAccount | null;
+  onSelect: (account: TeamAccount | null) => void;
   disabled: boolean;
 }) {
-  const inputId = useId();
-  const [text, setText] = useState("");
-  const [term, setTerm] = useState("");
-
-  useEffect(() => {
-    const timer = setTimeout(() => setTerm(text.trim()), SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [text]);
-
-  const searching = term.length >= TEAM_SEARCH_MIN;
-  // Sem termo a lista nem sai: sem busca ela devolveria "todo mundo", que não é o que a pessoa pediu.
-  const results = useAdminUsers(
-    { search: searching ? term : undefined, kind: "brand", status: "active", per_page: 6 },
-    { enabled: searching },
-  );
-  const items = searching ? (results.data?.data ?? []) : [];
-
-  if (selected) {
-    return (
-      <div className="adm-team-picked">
-        <AdminAvatar name={selected.name} size={36} />
-        <span>
-          <b>{selected.name}</b>
-          <small>{selected.email}</small>
-        </span>
-        <button type="button" className="btn out adm-btn-sm" disabled={disabled} onClick={() => onSelect(null)}>
-          Trocar
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="adm-field">
-      <label htmlFor={inputId}>Conta</label>
-      <input
-        id={inputId}
-        type="search"
-        className="adm-input"
-        value={text}
-        autoComplete="off"
-        placeholder="Busque por nome ou e-mail"
-        readOnly={disabled}
-        onChange={(event) => setText(event.target.value)}
-      />
-      <div className="adm-team-results" role="listbox" aria-label="Contas encontradas">
-        {!searching ? (
-          <p className="adm-team-hint">Digite pelo menos {TEAM_SEARCH_MIN} letras para buscar.</p>
-        ) : results.isLoading ? (
-          <p className="adm-team-hint" role="status">
-            Buscando…
-          </p>
-        ) : items.length === 0 ? (
-          <p className="adm-team-hint">Nenhuma conta ativa encontrada. Só contas de marca ativas podem entrar na equipe.</p>
-        ) : (
-          items.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="option"
-              aria-selected={false}
-              className="adm-team-result"
-              onClick={() => onSelect({ id: item.id, name: item.name, email: item.email, role: null })}
-            >
-              <AdminAvatar name={item.name} photo={item.photo} size={32} />
-              <span>
-                <b>{item.name}</b>
-                <small>{item.email}</small>
-              </span>
-              {item.is_platform_admin ? <AdminBadge tone="brand" size="sm">Administrador</AdminBadge> : null}
-            </button>
-          ))
+      <AdminEntityPicker<TeamAccount>
+        label="Conta"
+        placeholder="Nome ou e-mail"
+        emptyTitle="Nenhuma conta ativa encontrada"
+        required
+        minChars={TEAM_SEARCH_MIN}
+        value={selected}
+        onChange={onSelect}
+        search={useTeamAccountSearch}
+        getKey={(item) => item.id}
+        getLabel={(item) => item.name}
+        renderOption={(item) => (
+          <>
+            <b>{item.name}</b>
+            <small>
+              {item.email}
+              {item.isPlatformAdmin ? " · Administrador da plataforma" : ""}
+            </small>
+          </>
         )}
-      </div>
+        debounceMs={SEARCH_DEBOUNCE_MS}
+        disabled={disabled}
+      />
     </div>
   );
 }
@@ -177,7 +171,7 @@ export function AdminTeamRoleDialog({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [account, setAccount] = useState<TeamTarget | null>(target ?? null);
+  const [account, setAccount] = useState<TeamAccount | null>(target ?? null);
   const [role, setRole] = useState<AdminPlatformRole | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const mutation = useAdminSetPlatformRole(account?.id ?? 0);
@@ -193,7 +187,7 @@ export function AdminTeamRoleDialog({
       { role, reason },
       {
         onSuccess: () => {
-          toast.success(role === null ? "Pessoa tirada da equipe." : `Papel definido: ${label(role)}.`);
+          adminToast.success(role === null ? "Pessoa tirada da equipe." : `Papel definido: ${label(role)}.`);
           onClose();
         },
         onError: (failure) => {

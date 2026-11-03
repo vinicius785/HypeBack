@@ -64,11 +64,10 @@ export function participationStatusGroups(byStatus: Readonly<Record<string, numb
  * contrato, em português de tela. Quando o servidor manda o texto, o dele vale.
  */
 export const CAMPAIGN_COLUMN_DEFINITIONS = {
-  owner: 'Não existe "responsável pela campanha" no banco: este é o proprietário do workspace.',
+  owner: "A campanha não tem responsável próprio no banco: vale o proprietário do workspace.",
   participants: "Total: todas as participações. Em andamento: os 14 estados ativos da regra de capacidade de vagas.",
   deliveries: 'Conteúdos com status "publicado".',
   pending: "Participações aguardando ação do time do cliente (roteiro, conteúdo ou participante pendentes).",
   committed: "Reservas em aberto desta campanha. É um compromisso, não um pagamento.",
   released: 'Valor liberado a criadores (em carência, disponível ou já sacado). Não é "pago via PIX".',
-  budget: "O banco não guarda o orçamento da campanha. O valor comprometido é o substituto honesto.",
 } as const;

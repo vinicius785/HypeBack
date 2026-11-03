@@ -3,6 +3,7 @@ import { useState } from "react";
 import { I } from "@/components/prototype/ui";
 import {
   AdminAvatar,
+  AdminBadge,
   AdminLink,
   AdminStatusBadge,
   type AdminLinkTarget,
@@ -20,6 +21,14 @@ import {
 } from "./creator-labels";
 
 import "@/styles/admin-creators.css";
+
+/**
+ * Detalhe do usuário de um criador: criador é um usuário, e `/admin/users/:userId` aceita o id dele (a API lê todos os
+ * tipos de conta nessa rota, e a tela do usuário já sabe chamar de "Criador").
+ */
+export function userTarget(userId: number): AdminLinkTarget {
+  return { to: "/admin/users/$userId", params: { userId: String(userId) } };
+}
 
 /** Foto, nome (com a etiqueta de suspenso, quando for o caso) e e-mail. */
 export function CreatorCell({ creator }: { creator: AdminCreatorListItem }) {
@@ -48,6 +57,7 @@ function NetworkLine({ network }: { network: AdminCreatorNetwork }) {
         {formatHandle(network.username)}
       </span>
       {network.disabled ? (
+        // O que "inativa" quer dizer está no "i" da coluna (a dica em `title` é só um reforço).
         <span className="adm-creators-net-off" title="Rede desativada: os seguidores dela não entram no total">
           inativa
         </span>
@@ -75,9 +85,9 @@ export function NetworksCell({ creator }: { creator: AdminCreatorListItem }) {
       ))}
       {ugc ? (
         <li>
-          <span className="adm-creators-ugc" title="Também produz conteúdo UGC (não é uma rede social)">
+          <AdminBadge tone="outline" size="sm" title="Também produz conteúdo UGC (não é uma rede social)">
             UGC
-          </span>
+          </AdminBadge>
         </li>
       ) : null}
     </ul>
@@ -97,7 +107,7 @@ function MissingList({ items }: { items: readonly string[] }) {
       {hidden > 0 ? (
         <>
           {" "}
-          <button type="button" className="adm-creators-more" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+          <button type="button" className="adm-textlink adm-creators-more" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
             {open ? "mostrar menos" : `+${hidden} ${hidden === 1 ? "item" : "itens"}`}
           </button>
         </>
@@ -106,7 +116,7 @@ function MissingList({ items }: { items: readonly string[] }) {
   );
 }
 
-/** Etiqueta do estado do cadastro e o que falta. O rótulo é uma sugestão de atenção, não um erro (ver o "i" do cabeçalho). */
+/** Etiqueta do perfil (completo, incompleto, conta externa) e o que falta. O rótulo é uma sugestão de atenção, não um erro (ver o "i" do cabeçalho). */
 export function RegistrationCell({ creator }: { creator: AdminCreatorListItem }) {
   const { state, missing } = creator.registration;
   return (
@@ -139,11 +149,11 @@ export function FirstCampaignCell({ creator }: { creator: AdminCreatorListItem }
   if (!first) return <span className="adm-muted">Nunca participou</span>;
   return (
     <div className="adm-creators-first">
-      <AdminLink to={campaignTarget(first.campaign.id)} className="adm-creators-first-title" title={first.campaign.title}>
+      <AdminLink to={campaignTarget(first.campaign.id)} textLink className="adm-creators-first-title" title={first.campaign.title}>
         {first.campaign.title}
       </AdminLink>
       <small>
-        <AdminLink to={workspaceTarget(first.workspace.id)} title={first.workspace.name}>
+        <AdminLink to={workspaceTarget(first.workspace.id)} textLink title={first.workspace.name}>
           {first.workspace.name}
         </AdminLink>
         {" · "}

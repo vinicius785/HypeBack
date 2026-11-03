@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
 
-import { AdminErrorState, AdminFigureCard, AdminInfoPopover, AdminSection } from "@/components/admin/platform";
+import { AdminErrorState, AdminFigureCard, AdminSection } from "@/components/admin/platform";
 import type { AdminDateRange, AdminOverview } from "@/shared/admin-platform.types";
 
 import { buildDashboardAreas, type DashboardArea, type DashboardHint } from "./dashboard-model";
@@ -13,12 +13,16 @@ interface DashboardStatAreasProps {
   period: AdminDateRange;
 }
 
-function HintText({ hint }: { hint: DashboardHint }) {
+/**
+ * A definição do número que o texto de apoio cita ("Novos clientes no período"): entra no "i" do rótulo, como mais um
+ * parágrafo (`hintInfo`), em vez de o apoio ter um segundo "i". O nome do número vai na frente, porque o "i" é de outro.
+ */
+function hintDefinition(hint: DashboardHint) {
+  if (!hint.label || !hint.definition) return undefined;
   return (
-    <span className="adm-dash-hint">
-      {hint.text}
-      {hint.label && hint.definition ? <AdminInfoPopover label={hint.label}>{hint.definition}</AdminInfoPopover> : null}
-    </span>
+    <>
+      <strong>{hint.label}:</strong> {hint.definition}
+    </>
   );
 }
 
@@ -30,7 +34,10 @@ interface StatAreaProps {
   periodLoading: boolean;
 }
 
-/** Um painel (cartão branco) com a faixa de números do assunto. Cada número é um `AdminFigureCard` que leva à sua lista. */
+/**
+ * Um painel (cartão branco) com a faixa de números do assunto, só com o título. Cada número é um `AdminFigureCard` que
+ * leva à sua lista; o tipo (Realizado, Posição atual…) e a regra vivem no "i" do rótulo, não no corpo.
+ */
 function StatArea({ area, loading, periodLoading }: StatAreaProps) {
   const style = {
     "--c-lg": area.columns.lg,
@@ -39,10 +46,10 @@ function StatArea({ area, loading, periodLoading }: StatAreaProps) {
   } as CSSProperties;
 
   return (
-    <AdminSection title={area.title} description={area.description}>
+    <AdminSection title={area.title}>
       <div className="adm-dash-strip" style={style}>
         {area.stats.map((stat) => {
-          const hint = stat.hint && !(stat.hint.periodic && periodLoading) ? <HintText hint={stat.hint} /> : undefined;
+          const hint = stat.hint && !(stat.hint.periodic && periodLoading) ? stat.hint : undefined;
           return (
             <AdminFigureCard
               key={stat.id}
@@ -50,7 +57,9 @@ function StatArea({ area, loading, periodLoading }: StatAreaProps) {
               label={stat.label}
               figure={stat.figure}
               to={stat.to}
-              hint={hint}
+              showKind={false}
+              hint={hint?.text}
+              hintInfo={hint ? hintDefinition(hint) : undefined}
               loading={loading || (periodLoading && stat.periodic === true)}
             />
           );

@@ -1,0 +1,83 @@
+/*
+ * Admin da plataforma — extensões de `AdminFigureCard`, `AdminFilterBar` e `AdminTable`.
+ *
+ * Fica num arquivo à parte porque `admin-platform.css` tem outro dono: aqui só entra o que é novo (indicador
+ * quieto, filtro na linha da barra, linha expansível, coluna de ações). O comportamento padrão dos três
+ * componentes continua o do kit.
+ *
+ * Mesmas regras do kit: prefixo `adm-`, tudo sob `.pv`, tokens `--adm-*` em vez de literais, sem sombra, foco
+ * por `box-shadow: var(--adm-ring)`, alvo de toque `var(--adm-hit)` e `prefers-reduced-motion` respeitado.
+ * Breakpoints do Admin: ≤560 celular · ≤900 tablet · ≤1100 trilho; na tabela, o que vale é a largura do
+ * contêiner (`@container adm-table`, 720 empilha).
+ */
+
+/* ───────────────────────── indicador (AdminFigureCard / AdminFigureGrid) ───────────────────────── */
+
+/* "Tipo: Realizado" dentro do popover do "i": a linha do tipo se destaca do texto de apoio (que é mais apagado) */
+.pv .adm-pop .adm-fig-kindline { color: var(--adm-surface); font-weight: 600; }
+/* o "i" que acompanha um texto de apoio fica na linha dele */
+.pv .adm-fig-hint .adm-info { margin-left: 6px; vertical-align: middle; }
+.pv .adm-fig-foot .adm-fig-hint .adm-info { position: relative; z-index: 2; }
+
+/* ───────────────────────── barra de filtros (AdminFilterBar) ───────────────────────── */
+
+/* filtro `inline`: na linha da barra, sem abrir "Filtros". No desktop os controles se misturam aos da linha */
+.pv .adm-filters-inline { display: contents; }
+/* busca embrulhada só para ganhar `role="search"` e nome: não muda o layout da linha */
+.pv .adm-filters-search { display: contents; }
+
+/* alvo de toque dos controles da barra */
+.pv .adm-filters .adm-pill { min-height: var(--adm-hit); }
+.pv .adm-filters .adm-textbtn { min-height: var(--adm-hit); display: inline-flex; align-items: center; }
+/* chip: a pílula continua baixa; a área de toque cresce até o alvo mínimo sem mexer no desenho */
+.pv .adm-chips .adm-chip { position: relative; }
+.pv .adm-chips .adm-chip::after { content: ""; position: absolute; left: 0; right: 0; top: calc((100% - var(--adm-hit)) / 2); bottom: calc((100% - var(--adm-hit)) / 2); }
+.pv .adm-filters .adm-chip:focus-visible,
+.pv .adm-filters .adm-textbtn:focus-visible,
+.pv .adm-filters .adm-pill:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+
+@media (max-width: 560px) {
+  /* no celular os filtros inline ficam numa linha própria, abaixo da busca e do botão "Filtros", sempre à vista */
+  /* o ícone de atualizar sobe para a linha da busca e do botão Filtros; os filtros inline ficam na linha de baixo */
+  .pv .adm-filters-trail { order: 1; }
+  .pv .adm-filters-inline { order: 2; }
+  .pv .adm-filters-inline { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; }
+  .pv .adm-filters-inline > .adm-select,
+  .pv .adm-filters-inline > .adm-daterange { flex: 1 1 100%; width: 100%; }
+  .pv .adm-filters-inline .adm-select-face { flex: 1; }
+  .pv .adm-filters-inline .adm-select .ico { margin-left: auto; }
+}
+
+/* ───────────────────────── tabela (AdminTable) ───────────────────────── */
+
+/* primeira célula de uma linha expansível: botão de abrir + o conteúdo da célula */
+.pv .adm-cell-lead { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.pv .adm-cell-lead-body { flex: 1 1 auto; min-width: 0; }
+.pv .adm-table .adm-expand { flex: none; display: inline-grid; place-items: center; width: var(--adm-hit); height: var(--adm-hit); margin-left: -8px; border-radius: var(--adm-r-sm); color: var(--adm-text-muted); background: none; transition: background .2s, color .2s; }
+.pv .adm-table .adm-expand:hover { background: var(--adm-hover); color: var(--ink); }
+.pv .adm-table .adm-expand:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+.pv .adm-table .adm-expand .ico { width: 16px; height: 16px; transition: transform .2s var(--ease); }
+.pv .adm-table .adm-expand[aria-expanded="true"] .ico { transform: rotate(90deg); }
+.pv .adm-table .adm-expand[aria-expanded="true"] { color: var(--ink); }
+
+/* o que a linha aberta mostra: logo abaixo da linha, alinhado ao texto da primeira coluna */
+.pv .adm-xrow { padding: 0 24px 16px calc(24px + var(--adm-hit) - 2px); }
+.pv .adm-xcell { min-width: 0; padding: 14px 16px; border-radius: var(--adm-r-sm); background: var(--bg); font-size: 14px; overflow-wrap: anywhere; }
+.pv .adm-row[data-expanded="true"] { padding-bottom: 8px; }
+
+/* coluna de ações: sempre à direita, nunca some; o cabeçalho dela só tem nome para leitor de tela */
+.pv .adm-table .adm-cell.adm-cell-actions { display: flex; align-items: center; justify-content: flex-end; justify-self: end; min-width: var(--adm-hit); }
+.pv .adm-table .adm-cell.adm-cell-actions > * { position: relative; z-index: 2; }
+.pv .adm-th-actions { min-width: var(--adm-hit); }
+
+@container adm-table (max-width: 720px) {
+  .pv .adm-xrow { padding: 0 18px 14px; }
+  /* cartão: as ações vão para o canto; o título (célula principal) deixa o espaço delas */
+  .pv .adm-table .adm-row[data-has-actions="true"] .adm-cell[data-primary="true"] { padding-right: calc(var(--adm-hit) + 4px); }
+  .pv .adm-table .adm-cell.adm-cell-actions { position: absolute; top: 8px; right: 10px; display: flex; flex-direction: row; align-items: center; justify-content: flex-end; width: auto; z-index: 2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-table .adm-expand,
+  .pv .adm-table .adm-expand .ico { transition: none; }
+}
