@@ -279,7 +279,8 @@ function AuthShell({ pathname }: { pathname: string }) {
             "au-form m-auto w-full max-w-[400px] py-10",
             "[&_h1]:!text-white [&_p]:!text-white/60 [&_label]:!text-white/80",
             "[&_.text-neutral-950]:!text-white [&_.text-neutral-700]:!text-white/75 [&_.text-neutral-500]:!text-white/60",
-            "[&_div.bg-white]:!bg-white/10 [&_input]:!text-white [&_div.bg-white_svg]:!stroke-white/70",
+            // O fundo do cartão do campo (`div.bg-white`) é da regra `.au-form` em `index.css`, junto da do autofill.
+            "[&_input]:!text-white [&_div.bg-white_svg]:!stroke-white/70",
             "[&_button[type=submit]]:!bg-primary-600 [&_button[type=submit]:hover]:!bg-primary-700",
           ].join(" ")}
         >

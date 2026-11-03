@@ -349,13 +349,21 @@
   .au-up, .au-pop, .au-float, .au-r, .au-l, .au-r form > *, .au-l form > *, .au-fill { animation: none !important; }
 }
 
-/* Telas de acesso: o preenchimento automático do navegador não pode clarear os campos escuros */
+/*
+ * Telas de acesso: campos escuros. A cor do cartão do campo e a do preenchimento automático do navegador saem da
+ * mesma variável: o autofill só pinta a caixa do <input> (a 20px das bordas do cartão), e com duas cores o campo
+ * preenchido aparecia em dois tons. As duas são opacas de propósito (a tinta do autofill precisa ser opaca para
+ * cobrir o fundo do navegador) e valem o que `bg-white/10` dava sobre o fundo preto. O layout não pode voltar a
+ * trocar o fundo do cartão por um `!bg-*` do Tailwind: o `!important` dele ganha desta regra.
+ */
+.au-form { --au-field: #232323; }
+.au-form div.bg-white { background-color: var(--au-field) !important; }
 .au-form input:-webkit-autofill,
 .au-form input:-webkit-autofill:hover,
 .au-form input:-webkit-autofill:focus {
   -webkit-text-fill-color: #fff;
   caret-color: #fff;
-  box-shadow: 0 0 0 1000px #1b1b1b inset;
+  box-shadow: 0 0 0 1000px var(--au-field) inset;
   border-radius: 9999px;
   transition: background-color 600000s 0s;
 }
