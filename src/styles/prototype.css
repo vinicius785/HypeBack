@@ -2588,3 +2588,28 @@
 .pv .pn-s .lt2.flag { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; background: var(--bg); border-radius: 99px; padding: 5px 12px; } .pv .pn-s .lt2.flag .ico { width: 14px; height: 14px; color: var(--danger); }
 .pv .kc-mt .ext { position: static; }
 .pv .kc-ft { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+
+/* Painel do card: blocos de decisão por perfil (Seleção, Roteiros, Envio e Conteúdo). Nome e @ à esquerda, valor à direita;
+   ação principal escura e maior, secundária branca, recusar discreto (só texto) para não competir com aprovar. */
+.pv .side2 .kb2-sel { display: flex; flex-direction: column; gap: 10px; }
+.pv .side2 .kb2-prof { background: var(--bg); border-radius: 22px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.pv .side2 .kb2-prof-h { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "n c" "u c"; column-gap: 12px; row-gap: 2px; align-items: center; }
+.pv .side2 .kb2-prof-h b { grid-area: n; font-size: 14.5px; letter-spacing: -.02em; min-width: 0; }
+.pv .side2 .kb2-prof-h small { grid-area: u; color: var(--muted); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .side2 .kb2-prof-h em { grid-area: c; font-style: normal; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; font-size: 15px; font-weight: 600; letter-spacing: -.03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pv .side2 .kb2-prof-h em span { font-size: 11px; font-weight: 500; letter-spacing: 0; color: var(--muted); }
+.pv .side2 .kb2-prof-h em.bad { color: var(--danger); }
+.pv .side2 .kb2-prof .drw-hint { margin: 0; font-size: 12.5px; line-height: 1.4; }
+.pv .side2 .kb2-prof .drw-hint.bad { background: #fef2f2; color: var(--danger); border-radius: 12px; padding: 8px 12px; font-weight: 500; }
+.pv .side2 .kb2-prof .kb2-r { display: flex; gap: 8px; }
+.pv .side2 .kb2-prof .kb2-r .btn { flex: 1 1 0; min-width: 0; }
+.pv .side2 .kb2-prof .kb2-r .btn:not(.out) { flex: 1.4 1 0; }
+.pv .side2 .kb2-prof .btn { height: 44px; }
+.pv .side2 .kb2-prof > .btn { width: 100%; }
+.pv .side2 .kb2-prof .btn.out { background: #fff; }
+.pv .side2 .kb2-prof .btn.out:hover { background: var(--ink); color: #fff; }
+.pv .side2 .kb2-prof .btn[disabled] { opacity: .4; pointer-events: none; }
+.pv .side2 .kb2-prof .kb2-r .btn.out.dng { background: #fff; color: var(--danger); }
+.pv .side2 .kb2-prof .kb2-r .btn.out.dng:hover { background: var(--danger); color: #fff; }
+.pv .side2 .kb2-prof > .btn.out.dng { background: transparent; color: var(--danger); height: 34px; font-size: 12.5px; font-weight: 600; }
+.pv .side2 .kb2-prof > .btn.out.dng:hover { background: #fee2e2; color: var(--danger); }
