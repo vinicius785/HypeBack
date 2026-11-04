@@ -22,6 +22,8 @@ import {
   orderedMessages,
   sortConversations,
   teamChatKeys,
+  UNAVAILABLE_RECHECK_MS,
+  unreadRefetchInterval,
   upsertMessage,
   useTeamChatMessages,
   useTeamChatUnread,
@@ -109,6 +111,28 @@ describe("hooks", () => {
     await waitFor(() => expect(result.current.total).toBe(4));
     expect(result.current.byConversation).toEqual({ "c-1": 4 });
     expect(result.current.unavailable).toBe(false);
+  });
+
+  it("aba aberta antes de a API ter o chat: reverifica sozinha e passa a funcionar sem recarregar", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      h.unread
+        .mockRejectedValueOnce(new TeamChatUnavailableError())
+        .mockResolvedValue({ total: 2, by_conversation: { "c-1": 2 } });
+      const { result } = renderHook(() => useTeamChatUnread(), { wrapper });
+      await waitFor(() => expect(result.current.unavailable).toBe(true));
+      await vi.advanceTimersByTimeAsync(UNAVAILABLE_RECHECK_MS + 1_000);
+      await waitFor(() => expect(result.current.unavailable).toBe(false));
+      expect(result.current.total).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("o intervalo é lento (30 s) com o chat indisponível e normal (60 s) quando funciona", () => {
+    expect(unreadRefetchInterval(new TeamChatUnavailableError())).toBe(UNAVAILABLE_RECHECK_MS);
+    expect(unreadRefetchInterval(null)).toBe(60_000);
+    expect(unreadRefetchInterval(new Error("rede"))).toBe(60_000);
   });
 
   it("API antiga (404): unavailable, sem repetir a chamada", async () => {

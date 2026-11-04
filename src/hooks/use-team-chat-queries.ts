@@ -45,6 +45,16 @@ type MessagesData = InfiniteData<TeamChatMessagesPage, string | undefined>;
 
 const UNREAD_POLL_MS = 60_000;
 
+/**
+ * Aba aberta ANTES de a API ter o chat (404 = "indisponível"): reverifica sozinha, sem exigir recarregar a página.
+ * Quando a API passa a responder, `unavailable` vira `false` e o socket liga na hora.
+ */
+export const UNAVAILABLE_RECHECK_MS = 30_000;
+
+/** Intervalo da consulta de não lidas: devagar quando o chat está indisponível, no ritmo normal quando funciona. */
+export const unreadRefetchInterval = (error: unknown): number =>
+  isTeamChatUnavailable(error) ? UNAVAILABLE_RECHECK_MS : UNREAD_POLL_MS;
+
 /** 404 de "API antiga" não se repete; o resto segue a política do app (sem repetir recusas de estado do workspace). */
 const retry = (failureCount: number, error: unknown) =>
   !isTeamChatUnavailable(error) && shouldRetryQuery(failureCount, error);
@@ -65,7 +75,7 @@ export function useTeamChatUnread(enabled = true) {
     enabled: enabled && !!workspaceId,
     staleTime: 30_000,
     // Reserva do socket: se ele cair, o contador ainda se corrige.
-    refetchInterval: (q) => (isTeamChatUnavailable(q.state.error) ? false : UNREAD_POLL_MS),
+    refetchInterval: (q) => unreadRefetchInterval(q.state.error),
     retry,
   });
   return {
