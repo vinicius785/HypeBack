@@ -344,14 +344,10 @@ function RouteComponent() {
 
   return (
     <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-5">
+      <div className="pv"><header className="head">
         <div>
-          <h1 className="mb-1.5 text-[40px] font-semibold leading-[1.05] tracking-[-0.04em]">
-            Campanhas
-          </h1>
-          <p className="text-[15px] text-neutral-500">
-            Crie, acompanhe e aprove tudo em um só lugar.
-          </p>
+          <h1>Campanhas</h1>
+          <p>Crie, acompanhe e aprove tudo em um só lugar.</p>
         </div>
         {permissions.campaigns_create && (
           <Link to="/campaigns/new" params={{}}>
@@ -361,7 +357,7 @@ function RouteComponent() {
             </Button>
           </Link>
         )}
-      </header>
+      </header></div>
 
       <div className="flex flex-wrap items-center gap-3">
         <div
