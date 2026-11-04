@@ -739,40 +739,42 @@ function CampaignsCarousel({
             <h2>Campanhas</h2>
             <p className="sub">Status, alcance e pendências de cada campanha</p>
           </div>
-          <button
-            type="button"
-            className="btn out"
-            aria-label={`Ver todas as campanhas (${total})`}
-            onClick={() => navigate({ to: "/campaigns" })}
-          >
-            Ver todas
-            <em>{total}</em>
-            <I n="chev" cls="sm" />
-          </button>
+          <div className="camp-act">
+            {(edge.prev || edge.next) && (
+              <>
+                <button
+                  type="button"
+                  className="trk-b prev"
+                  aria-label="Campanhas anteriores"
+                  disabled={!edge.prev}
+                  onClick={() => by(-1)}
+                >
+                  <I n="chev" cls="sm rot" />
+                </button>
+                <button
+                  type="button"
+                  className="trk-b next"
+                  aria-label="Próximas campanhas"
+                  disabled={!edge.next}
+                  onClick={() => by(1)}
+                >
+                  <I n="chev" cls="sm" />
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              className="btn out"
+              aria-label={`Ver todas as campanhas (${total})`}
+              onClick={() => navigate({ to: "/campaigns" })}
+            >
+              Ver todas
+              <em>{total}</em>
+              <I n="chev" cls="sm" />
+            </button>
+          </div>
         </div>
         <div className="trk-w">
-          {(edge.prev || edge.next) && (
-            <>
-              <button
-                type="button"
-                className="trk-b prev"
-                aria-label="Campanhas anteriores"
-                disabled={!edge.prev}
-                onClick={() => by(-1)}
-              >
-                <I n="chev" cls="sm rot" />
-              </button>
-              <button
-                type="button"
-                className="trk-b next"
-                aria-label="Próximas campanhas"
-                disabled={!edge.next}
-                onClick={() => by(1)}
-              >
-                <I n="chev" cls="sm" />
-              </button>
-            </>
-          )}
         <div className="track" ref={trackRef}>
           {rows.length === 0 ? (
             <div className="empty" style={{ flex: 1 }}>

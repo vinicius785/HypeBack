@@ -2074,10 +2074,10 @@
 .pv .camp-h .btn em { font-style: normal; font-size: 13px; font-weight: 700; background: var(--bg); border-radius: 999px; padding: 2px 9px; }
 .pv .trk-w { position: relative; }
 .pv .trk-w .track { padding-left: 0; padding-right: 0; scroll-padding: 0; }
-.pv .trk-b { position: absolute; top: 105px; transform: translateY(-50%); z-index: 6; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: var(--ink); display: grid; place-items: center; transition: background .2s, color .2s, opacity .2s; }
-.pv .trk-b.prev { left: 12px; } .pv .trk-b.next { right: 12px; }
+.pv .camp-act { display: flex; align-items: center; gap: 8px; flex: none; }
+.pv .trk-b { flex: none; width: 40px; height: 40px; border-radius: 50%; background: #fff; color: var(--ink); display: grid; place-items: center; transition: background .2s, color .2s, opacity .2s; }
 .pv .trk-b:hover:not(:disabled) { background: var(--ink); color: #fff; }
-.pv .trk-b:disabled { opacity: 0; pointer-events: none; }
+.pv .trk-b:disabled { opacity: .35; pointer-events: none; }
 .pv .trk-b:focus-visible, .pv .cc:focus-visible, .pv .camp-h .btn:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
 .pv .cc:hover { box-shadow: none; }
 .pv .cc-id small, .pv .cc-bh span { font-size: 14px; }
@@ -2086,7 +2086,6 @@
   .pv .camp-h { flex-direction: column; align-items: flex-start; }
   .pv .mh-empty { flex-wrap: wrap; }
   .pv .mh-empty .link { margin-left: 60px; }
-  .pv .trk-b { top: 96px; width: 40px; height: 40px; }
   .pv .msm { grid-template-columns: 1fr; gap: 14px; }
   .pv .msm > div { padding: 0; border-left: 0; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
   .pv .msm small { min-height: 0; }
