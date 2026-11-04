@@ -17,7 +17,9 @@
 .pv .stats .stat.clk.on { background: var(--bg); }
 .pv .stats .stat.clk.on small { color: var(--ink); font-weight: 600; }
 .pv .stats .stat.clk.zero b { color: var(--muted); }
-.pv .stats .stat.clk:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+/* Sem contorno em nenhum estado (nem de foco): o selecionado, o sob o mouse e o focado se distinguem só pelo fundo. */
+.pv .stats .stat.clk, .pv .stats .stat.clk:focus, .pv .stats .stat.clk:focus-visible { outline: none; box-shadow: none; }
+.pv .stats .stat.clk:focus-visible { background: var(--bg); }
 @media (max-width: 720px) { .pv .stats:has(.stat.clk) { grid-template-columns: repeat(2, 1fr); row-gap: 10px; } .pv .stats .stat.clk { border-left: 0; padding: 10px 14px; } }
 
 /* Barra: busca, filtros e ordenação (classes cx-* e cfw/cfm vêm do protótipo; aqui só o conteúdo do popover). */
