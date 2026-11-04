@@ -65,3 +65,40 @@
 @media (prefers-reduced-motion: reduce) {
   .pv .adm-com-list { transition: none; }
 }
+
+/* ───────────────────────── equipe (moderadores e contas oficiais) ───────────────────────── */
+
+/* Selo roxo de conta oficial: o mesmo ícone do app, na cor da marca. */
+.pv .adm-vfy { display: inline-flex; align-items: center; color: var(--brand); flex: none; vertical-align: -2px; margin-left: 4px; }
+.pv .adm-vfy .ico { width: 16px; height: 16px; }
+
+.pv .adm-team-note { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--adm-text-muted); max-width: 78ch; }
+.pv .adm-team-note b { color: var(--ink); font-weight: 600; }
+.pv .adm-team-hint { margin: -6px 0 0; font-size: 12.5px; color: var(--adm-text-muted); }
+
+.pv .adm-team-list { list-style: none; margin: 0; padding: 0; transition: opacity .2s; }
+.pv .adm-team-list[aria-busy="true"] { opacity: .55; }
+.pv .adm-team-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 16px 26px; border-top: 1.5px solid var(--line); }
+.pv .adm-team-list > .adm-team-row:first-child, [role="status"] > .adm-team-row:first-of-type { border-top: 0; }
+.pv .adm-team-id { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pv .adm-team-name { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; font-size: 14.5px; }
+.pv .adm-team-name b { font-weight: 600; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.pv .adm-team-id small { color: var(--adm-text-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .adm-team-chip { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; background: var(--bg); color: var(--ink); font-size: 11.5px; font-weight: 600; }
+
+.pv .adm-team-act { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+/* Interruptor em pílula: ligado = preto com a bolinha à direita; o roxo fica só para o selo. */
+.pv .adm-team-sw { display: inline-flex; align-items: center; gap: 9px; height: 36px; padding: 0 14px 0 8px; border-radius: 999px; background: var(--bg); color: var(--ink); font-size: 13px; font-weight: 600; white-space: nowrap; transition: background .2s, color .2s; }
+.pv .adm-team-sw:hover:not(:disabled) { background: var(--adm-hover); }
+.pv .adm-team-sw:disabled { opacity: .6; cursor: progress; }
+.pv .adm-team-sw-k { width: 26px; height: 16px; border-radius: 99px; background: #cfcfcf; position: relative; transition: background .2s; flex: none; }
+.pv .adm-team-sw-k::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.pv .adm-team-sw.on { background: var(--ink); color: #fff; }
+.pv .adm-team-sw.on:hover:not(:disabled) { background: #262626; }
+.pv .adm-team-sw.on .adm-team-sw-k { background: var(--brand); }
+.pv .adm-team-sw.on .adm-team-sw-k::after { transform: translateX(10px); }
+@media (max-width: 720px) {
+  .pv .adm-team-row { grid-template-columns: 44px minmax(0, 1fr); padding: 16px 18px; }
+  .pv .adm-team-act { grid-column: 1 / -1; justify-content: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) { .pv .adm-team-sw, .pv .adm-team-sw-k, .pv .adm-team-sw-k::after { transition: none; } }

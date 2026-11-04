@@ -1143,6 +1143,9 @@ export interface GroupPostAuthor {
   name: string;
   username?: string;
   avatar_url: string | null;
+  /** Selo roxo de conta oficial (concedido pelo Admin, em Comunidade › Equipe). */
+  is_verified?: boolean;
+  community_role?: "moderator" | null;
 }
 
 /** Post de um grupo (moderação — §4.7). */

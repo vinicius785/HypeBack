@@ -6,6 +6,7 @@ import { useAdminSearchParam } from "@/hooks/admin/use-admin-search-param";
 
 import { CommunityFeed } from "./community-feed";
 import { CommunityGroups } from "./community-groups";
+import { CommunityTeam } from "./community-team";
 import { COMMUNITY_TAB_IDS, DEFAULT_COMMUNITY_TAB, resolveCommunityTab, type CommunityTabId } from "./community-search";
 
 import "@/styles/admin-community.css";
@@ -13,10 +14,11 @@ import "@/styles/admin-community.css";
 const TABS: readonly AdminTabItem<CommunityTabId>[] = [
   { id: "feed", label: "Feed" },
   { id: "groups", label: "Grupos" },
+  { id: "team", label: "Equipe" },
 ];
 
 /** Fixo: não muda com a aba (o título da página diz o que ela é; a aba diz o que se vê). */
-const SUBTITLE = "O que os criadores publicam no app e os grupos deles: acompanhe, modere e crie grupos.";
+const SUBTITLE = "O que os criadores publicam no app e os grupos deles: acompanhe, modere, crie grupos e defina moderadores e contas oficiais.";
 
 const TAB_PREFIX = "adm-com";
 
@@ -51,6 +53,10 @@ export function CommunityPage() {
       </AdminTabPanel>
       <AdminTabPanel idPrefix={TAB_PREFIX} id="groups" active={tab === "groups"}>
         <CommunityGroups />
+      </AdminTabPanel>
+
+      <AdminTabPanel idPrefix={TAB_PREFIX} id="team" active={tab === "team"}>
+        <CommunityTeam />
       </AdminTabPanel>
 
       {/* Rotas filhas (/admin/groups/new, /admin/groups/$groupId): diálogo sobre a lista de grupos. */}

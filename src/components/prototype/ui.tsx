@@ -32,6 +32,7 @@ const MAP: Record<string, keyof typeof icons> = {
   more: "Ellipsis",
   shield: "Shield",
   verified: "CircleCheck",
+  seal: "BadgeCheck",
   lock: "Lock",
   gear: "Settings",
   grid: "LayoutGrid",

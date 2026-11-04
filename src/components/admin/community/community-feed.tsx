@@ -22,6 +22,8 @@ import { formatDateTime, formatInt, formatRelativeTime } from "@/lib/admin/forma
 import { getUploadUrl } from "@/lib/utils/api";
 import type { CommunityPostModeration } from "@/shared/services/community-posts";
 
+import { VerifiedBadge } from "./verified-badge";
+
 import "@/styles/admin-community.css";
 
 /** `all` = tudo o que os criadores publicam; `none` = só o que está fora de grupos (a API chama de "feed geral"). */
@@ -83,6 +85,7 @@ function FeedItem({ post, onRemove }: { post: CommunityPostModeration; onRemove:
       <div className="adm-com-body">
         <p className="adm-com-meta">
           <b>{author.name}</b>
+          {author.is_verified ? <VerifiedBadge /> : null}
           <time dateTime={post.created_at} title={formatDateTime(post.created_at)}>
             {formatRelativeTime(post.created_at)}
           </time>

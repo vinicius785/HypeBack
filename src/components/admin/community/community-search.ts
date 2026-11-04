@@ -3,7 +3,7 @@
  * grupos): o Feed é a aba padrão e por isso não aparece na URL; os diálogos de grupo (`/admin/groups/new`,
  * `/admin/groups/$groupId`) abrem por cima da aba Grupos.
  */
-export const COMMUNITY_TAB_IDS = ["feed", "groups"] as const;
+export const COMMUNITY_TAB_IDS = ["feed", "groups", "team"] as const;
 export type CommunityTabId = (typeof COMMUNITY_TAB_IDS)[number];
 export const DEFAULT_COMMUNITY_TAB: CommunityTabId = "feed";
 
