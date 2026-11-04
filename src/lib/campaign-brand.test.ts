@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { campaignBrand } from "./campaign-brand";
+import { brandsByCampaignId, campaignBrand } from "./campaign-brand";
 
 const agency = { name: "Você no Hype", photo: "/uploads/agencia.png" };
 
@@ -24,5 +24,18 @@ describe("campaignBrand", () => {
 
   it("sem marca e sem workspace não há marca", () => {
     expect(campaignBrand({}, undefined)).toBeUndefined();
+  });
+});
+
+describe("brandsByCampaignId", () => {
+  it("indexa a marca de cada campanha pelo id e ignora as sem marca", () => {
+    const map = brandsByCampaignId([
+      { id: "c1", brand: { id: "b1", name: "Speediance", photo: "/s.png" } },
+      { id: "c2", brand: null },
+      { id: "c3" },
+      { id: "c4", brand: { id: "b4", name: "", photo: null } },
+    ]);
+    expect([...map.keys()]).toEqual(["c1"]);
+    expect(map.get("c1")).toEqual({ id: "b1", name: "Speediance", photo: "/s.png" });
   });
 });

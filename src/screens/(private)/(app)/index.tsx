@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { NoWorkspaceState } from "@/components/onboarding/no-workspace-state";
 import { I } from "@/components/prototype/ui";
 import { CampaignTile, type CampaignBrand } from "@/components/campaign-card";
-import { campaignBrand } from "@/lib/campaign-brand";
+import { brandsByCampaignId, campaignBrand } from "@/lib/campaign-brand";
 
 export const Route = createFileRoute("/(private)/(app)/")({
   component: RouteComponent,
@@ -115,6 +115,8 @@ function RouteComponent() {
       });
   }, [campaignsData, overviewById]);
 
+  const brandById = useMemo(() => brandsByCampaignId(campaignsData), [campaignsData]);
+
   const displayedTableRows = useMemo((): TableRow[] => {
     if (usesAggregatedEndpoint && campaignTable.length > 0) {
       return [...campaignTable]
@@ -131,6 +133,8 @@ function RouteComponent() {
               title: c.title,
               description: c.description ?? "",
               status: c.status ?? "",
+              // O endpoint de métricas não traz a marca: vem da lista de campanhas.
+              brand: brandById.get(c.id) ?? null,
               max_influencers: 0,
               created_at: updated,
               updated_at: updated,
@@ -155,6 +159,7 @@ function RouteComponent() {
     campaignTable,
     overviewById,
     legacyTableRows,
+    brandById,
   ]);
 
   const showOverview =

@@ -11,3 +11,15 @@ export function campaignBrand(
   const b = campaign.brand;
   return b?.name ? { name: b.name, photo: b.photo ?? undefined } : workspace;
 }
+
+type ListedBrand = { id: string; name: string; photo?: string | null } | null | undefined;
+
+/**
+ * Marca de cada campanha da lista (id da campanha → marca). O Início monta as linhas a partir do endpoint de métricas,
+ * que não traz a marca; ela é buscada aqui, na lista de campanhas, que a traz.
+ */
+export function brandsByCampaignId(campaigns: Array<{ id: string; brand?: ListedBrand }>): Map<string, NonNullable<ListedBrand>> {
+  const map = new Map<string, NonNullable<ListedBrand>>();
+  for (const c of campaigns) if (c.brand?.name) map.set(c.id, c.brand);
+  return map;
+}
