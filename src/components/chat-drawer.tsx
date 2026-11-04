@@ -9,12 +9,14 @@ import {
   type OpenChatRequest,
 } from "@/components/creators-chat/creators-conversations";
 import { I } from "@/components/prototype/ui";
+import { installChatSoundUnlock, playMessageSound, useChatSoundPref } from "@/lib/chat-sound";
 import { OPEN_TEAM_CHAT_EVENT, type OpenTeamChatRequest } from "@/components/team-chat/open-team-chat";
 import { useSharedTeamChat } from "@/components/team-chat/team-chat-provider";
 import { TeamChatTab } from "@/components/team-chat/team-chat-tab";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useTeamChat } from "@/hooks/use-team-chat";
 import { useTeamChatEnabled, useTeamChatUnread } from "@/hooks/use-team-chat-queries";
+import { useWorkspaceQueryKey } from "@/hooks/use-workspace-query-key";
 
 export { openChatDrawer, type OpenChatRequest } from "@/components/creators-chat/creators-conversations";
 export { openTeamChat, type OpenTeamChatRequest } from "@/components/team-chat/open-team-chat";
@@ -39,13 +41,18 @@ export function ChatDrawerButton() {
   const [closing, setClosing] = useState(false);
   const [tab, setTab] = useState<DrawerTab>("creators");
   const [threadOpen, setThreadOpen] = useState(false);
+  // Sentido da troca de aba (para a lista deslizar do lado certo) e som de mensagem recebida (liga/desliga).
+  const [swap, setSwap] = useState<"" | "to-team" | "to-creators">("");
+  const [soundOn, setSoundOn] = useChatSoundPref();
   const [creatorsRequest, setCreatorsRequest] = useState<OpenChatRequest | null>(null);
   const [teamRequest, setTeamRequest] = useState<OpenTeamChatRequest | null>(null);
   // Conversa aberta pelo botão "Chat" de um criador: fica na lista mesmo sem notificação (como antes das abas).
   const [creatorsExtra, setCreatorsExtra] = useState<CreatorConversation | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: notifications = [] } = useNotifications();
+  const notificationsQuery = useNotifications();
+  const notifications = notificationsQuery.data ?? [];
+  const workspaceId = useWorkspaceQueryKey();
   const creatorsUnread = useMemo(() => countCreatorsUnread(notifications), [notifications]);
   const enabled = useTeamChatEnabled();
   const teamQuery = useTeamChatUnread(enabled);
@@ -56,6 +63,18 @@ export function ChatDrawerButton() {
   const chat = shared ?? own;
   const teamUnread = teamQuery.unavailable ? 0 : teamQuery.total;
   const totalUnread = creatorsUnread + teamUnread;
+
+  // Som: o contador de não lidas subiu (mensagem nova, com a gaveta aberta ou fechada). O primeiro valor carregado e a
+  // troca de workspace só definem o ponto de partida.
+  useEffect(() => installChatSoundUnlock(), []);
+  const unreadBase = useRef<{ ws: string | null | undefined; total: number } | null>(null);
+  const unreadReady = !notificationsQuery.isLoading && !teamQuery.isLoading;
+  useEffect(() => {
+    if (!unreadReady) return;
+    const base = unreadBase.current;
+    if (base && base.ws === workspaceId && totalUnread > base.total) playMessageSound();
+    unreadBase.current = { ws: workspaceId, total: totalUnread };
+  }, [totalUnread, unreadReady, workspaceId]);
 
   const requestClose = useCallback(() => {
     if (timer.current) return;
@@ -127,6 +146,7 @@ export function ChatDrawerButton() {
   const selectTab = (next: DrawerTab) => {
     if (next === tab) return;
     refocusTab.current = true;
+    setSwap(next === "team" ? "to-team" : "to-creators");
     setThreadOpen(false);
     // O pedido de abertura já foi atendido: ao voltar para a aba, não reabre a mesma conversa por cima da escolha.
     setCreatorsRequest(null);
@@ -150,6 +170,20 @@ export function ChatDrawerButton() {
           <h2>Mensagens</h2>
           <small>{totalUnread ? `${totalUnread} não lida${totalUnread > 1 ? "s" : ""}` : "Tudo em dia"}</small>
         </div>
+        <button
+          type="button"
+          className="round ch-snd"
+          aria-pressed={soundOn}
+          aria-label={soundOn ? "Desligar o som de mensagem recebida" : "Ligar o som de mensagem recebida"}
+          title={soundOn ? "Som ligado" : "Som desligado"}
+          onClick={() => {
+            setSoundOn(!soundOn);
+            // Ao ligar, toca uma vez para a pessoa ouvir como é.
+            if (!soundOn) playMessageSound(Date.now(), true);
+          }}
+        >
+          <I n={soundOn ? "volume" : "mute"} cls="sm" />
+        </button>
       </div>
       <div className="gtabs tc-tabs" role="tablist" aria-label="Tipo de conversa">
         {TABS.map((t) => (
@@ -178,10 +212,10 @@ export function ChatDrawerButton() {
   const drawer = (
     <div className="pv">
       <div className={`ovb on${cls}`} onClick={requestClose} />
-      <aside className={`ovp ch on${threadOpen ? " th" : ""}${cls}`} role="dialog" aria-label="Mensagens">
+      <aside className={`ovp ch on${threadOpen ? " th" : ""}${swap ? ` swap-${swap}` : ""}${cls}`} role="dialog" aria-label="Mensagens">
         {/* `display: contents`: o painel nomeia a aba para o leitor de tela sem virar uma caixa do layout (as colunas
             da lista e da conversa seguem como filhas diretas do flex da gaveta). */}
-        <div role="tabpanel" id={`chat-panel-${tab}`} aria-labelledby={`chat-tab-${tab}`} style={{ display: "contents" }}>
+        <div key={tab} role="tabpanel" id={`chat-panel-${tab}`} aria-labelledby={`chat-tab-${tab}`} style={{ display: "contents" }}>
           {tab === "creators" ? (
             <CreatorsChatTab
               top={top}

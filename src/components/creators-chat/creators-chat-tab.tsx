@@ -137,9 +137,10 @@ export function CreatorsChatTab({ top, request, extra, onExtraChange, onThreadCh
               <small>Tente outro nome ou filtro.</small>
             </div>
           ) : (
-            list.map((c) => (
+            list.map((c, i) => (
               <button
                 key={c.id}
+                style={{ ["--i" as string]: Math.min(i, 8) }}
                 type="button"
                 className={`ch-c${sel === c.id ? " on" : ""}${c.unread ? " un" : ""}`}
                 onClick={() => setSel(c.id)}

@@ -56,13 +56,14 @@ export function ConversationList({ conversations, selectedId, me, onSelect, onNe
           </div>
         ) : (
           <ul className="tc-ls" role="list" aria-label="Conversas da equipe">
-            {list.map((c) => {
+            {list.map((c, i) => {
               const channel = c.kind === "channel";
               return (
                 <li key={c.id}>
                   <button
                     type="button"
                     className={`ch-c${selectedId === c.id ? " on" : ""}${c.unread ? " un" : ""}`}
+                    style={{ ["--i" as string]: Math.min(i, 8) }}
                     aria-current={selectedId === c.id ? "true" : undefined}
                     onClick={() => onSelect(c.id)}
                   >

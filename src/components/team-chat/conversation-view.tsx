@@ -6,6 +6,8 @@ import type { TeamChatController } from "@/hooks/use-team-chat";
 import { generateIdempotencyKey } from "@/shared/utils/idempotency-key";
 import { isTeamChatUnavailable, type TeamChatAttachment, type TeamChatConversation } from "@/shared/services/team-chat";
 
+import { useIncomingSound } from "@/components/chat/use-incoming-sound";
+
 import { Composer } from "./composer";
 import { MessageList, type PendingMessage } from "./message-list";
 
@@ -50,6 +52,9 @@ export function ConversationView({ conversation, chat, me, onBack }: Conversatio
   const stickRef = useRef(true);
   const keepOffsetRef = useRef<number | null>(null);
   const { focusConversation, blurConversation, markRead, sendMessage } = chat;
+
+  const lastIncoming = [...messages].reverse().find((m) => m.sender_id !== me);
+  useIncomingSound(lastIncoming?.id ?? null, !query.isLoading);
 
   // A conversa aberta e visível é o que o servidor usa para não avisar no sino.
   useEffect(() => {

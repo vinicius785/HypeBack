@@ -16,8 +16,13 @@ const h = vi.hoisted(() => ({
   teamChat: vi.fn(),
   socketOpened: vi.fn(),
   socketClosed: vi.fn(),
+  play: vi.fn(),
 }));
 
+vi.mock("@/lib/chat-sound", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/chat-sound")>()),
+  playMessageSound: h.play,
+}));
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => h.navigate }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 vi.mock("@/contexts/workspace-context", () => ({
@@ -296,5 +301,42 @@ describe("socket da equipe no provedor do layout", () => {
     renderWith(true);
     await waitFor(() => expect(h.teamChat).toHaveBeenLastCalledWith({ enabled: false }));
     await waitFor(() => expect(h.socketClosed).toHaveBeenCalledTimes(h.socketOpened.mock.calls.length));
+  });
+});
+
+describe("som de mensagem recebida", () => {
+  it("toca quando o contador de não lidas sobe, e não na primeira carga", async () => {
+    h.play.mockClear();
+    h.notifications = [chatNotification("n1", false)];
+    h.unread.mockResolvedValue({ total: 0, by_conversation: {} });
+    const view = renderButton();
+    await waitFor(() => expect(h.unread).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(h.play).not.toHaveBeenCalled();
+    h.notifications = [chatNotification("n1", false), chatNotification("n2", false)];
+    view.rerender(<ChatDrawerButton />);
+    await waitFor(() => expect(h.play).toHaveBeenCalledTimes(1));
+    // Ler (contador cai) não toca.
+    h.notifications = [chatNotification("n1", true), chatNotification("n2", true)];
+    view.rerender(<ChatDrawerButton />);
+    expect(h.play).toHaveBeenCalledTimes(1);
+  });
+
+  it("o botão de som liga/desliga e lembra a escolha", async () => {
+    localStorage.removeItem("hype:chat-sound");
+    const user = userEvent.setup();
+    renderButton();
+    await user.click(screen.getByRole("button", { name: /^Chat/ }));
+    const toggle = await screen.findByRole("button", { name: "Desligar o som de mensagem recebida" });
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await user.click(toggle);
+    const off = await screen.findByRole("button", { name: "Ligar o som de mensagem recebida" });
+    expect(off).toHaveAttribute("aria-pressed", "false");
+    expect(localStorage.getItem("hype:chat-sound")).toBe("off");
+    await user.click(off);
+    expect(localStorage.getItem("hype:chat-sound")).toBe("on");
+    expect(h.play).toHaveBeenCalledWith(expect.any(Number), true);
   });
 });

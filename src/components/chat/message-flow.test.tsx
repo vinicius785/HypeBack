@@ -101,3 +101,19 @@ describe("MessageFlow", () => {
     expect(screen.getByText("Novas mensagens")).toBeInTheDocument();
   });
 });
+
+describe("MessageFlow: animação de entrada", () => {
+  it("o histórico não anima; mensagem recebida depois entra animada; a própria confirmada pelo servidor não repete", () => {
+    const base = [line("1", "ana", "2026-11-03T12:00:00Z"), line("2", "me", "2026-11-03T12:01:00Z", { status: "sent" })];
+    const { container, rerender } = render(<MessageFlow lines={base} handlers={{}} />);
+    expect(container.querySelectorAll(".cx-in")).toHaveLength(0);
+    rerender(<MessageFlow lines={[...base, line("3", "ana", "2026-11-03T12:05:00Z")]} handlers={{}} />);
+    expect(container.querySelectorAll(".cx-in")).toHaveLength(1);
+    // Envio local anima ao entrar; quando vira mensagem do servidor (outro id), não anima de novo.
+    const withLocal = [...base, line("p1", "me", "2026-11-03T12:06:00Z", { status: "sending", localId: "p1" })];
+    rerender(<MessageFlow lines={withLocal} handlers={{}} />);
+    expect(container.querySelectorAll(".cx-in.me")).toHaveLength(1);
+    rerender(<MessageFlow lines={[...base, line("srv1", "me", "2026-11-03T12:06:00Z", { status: "sent" })]} handlers={{}} />);
+    expect(container.querySelectorAll(".cx-in.me")).toHaveLength(0);
+  });
+});

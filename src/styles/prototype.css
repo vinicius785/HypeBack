@@ -2738,3 +2738,52 @@
   .pv .cx-av { width: 28px; } .pv .cx-av .iav { width: 28px !important; height: 28px !important; }
 }
 @media (prefers-reduced-motion: reduce) { .pv .cx-more, .pv .tc-in .ch-send .spin { transition: none; animation: none; } }
+
+/* Chat: animações (troca de aba, abrir/fechar conversa, mensagens) e botão de som */
+.pv .ov-h { align-items: center; }
+.pv .ch-snd { width: 38px; height: 38px; margin-left: auto; margin-right: 0; background: var(--bg); color: var(--ink); transition: background-color .2s var(--ease), color .2s var(--ease), transform .15s; }
+.pv .ch-snd:hover { background: #e4e4e4; } .pv .ch-snd[aria-pressed="false"] { color: var(--muted); }
+.pv .ch-snd:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+@keyframes cx-from-right { from { opacity: 0; transform: translateX(22px); } }
+@keyframes cx-from-left { from { opacity: 0; transform: translateX(-22px); } }
+@keyframes cx-rise { from { opacity: 0; transform: translateY(10px); } }
+@keyframes cx-fade { from { opacity: 0; } }
+@keyframes cx-msg-me { from { opacity: 0; transform: translateY(14px) scale(.96); transform-origin: 100% 100%; } }
+@keyframes cx-msg-them { from { opacity: 0; transform: translateY(14px) scale(.96); transform-origin: 0 100%; } }
+@keyframes cx-pop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.25); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes cx-jump-in { from { opacity: 0; transform: translateY(12px) scale(.94); } }
+
+/* Troca de aba: o conteúdo da lista e da conversa desliza do lado para onde a aba está */
+.pv .ovp.ch.swap-to-team .ch-l > :not(.ov-h):not(.tc-tabs), .pv .ovp.ch.swap-to-team .ch-r { animation: cx-from-right .38s var(--ease) both; }
+.pv .ovp.ch.swap-to-creators .ch-l > :not(.ov-h):not(.tc-tabs), .pv .ovp.ch.swap-to-creators .ch-r { animation: cx-from-left .38s var(--ease) both; }
+.pv .ch-l > .tc-tabs button { transition: background-color .25s var(--ease), color .25s var(--ease); }
+.pv .tc-tabs button em { animation: cx-pop .35s var(--ease) both; }
+
+/* Abrir uma conversa: cabeçalho, mensagens e campo entram em sequência */
+.pv .ch-r > .ch-th { animation: cx-fade .3s var(--ease) both; }
+.pv .ch-r > .ch-tb { animation: cx-rise .4s var(--ease) .05s both; }
+.pv .ch-r > .ch-f { animation: cx-rise .4s var(--ease) .1s both; }
+.pv .ch-r > .ov-empty { animation: cx-fade .35s var(--ease) both; }
+.pv .ch-c { animation: cx-rise .35s var(--ease) both; animation-delay: calc(var(--i, 0) * 28ms); transition: background-color .2s var(--ease); }
+.pv .ch-c:active { transform: scale(.985); }
+
+/* Mensagens que chegam ou são enviadas com a conversa aberta */
+.pv .cx.cx-in.me { animation: cx-msg-me .38s var(--ease) both; }
+.pv .cx.cx-in.them { animation: cx-msg-them .38s var(--ease) both; }
+.pv .cx .cx-b { transition: opacity .25s var(--ease), box-shadow .25s var(--ease), background-color .25s var(--ease); }
+.pv .cx-st { animation: cx-pop .35s var(--ease) both; }
+.pv .cx-day, .pv .cx-new { animation: cx-fade .4s var(--ease) both; }
+.pv .tc-jump { animation: cx-jump-in .3s var(--ease) both; }
+.pv .tc-draft { animation: cx-pop .3s var(--ease) both; }
+.pv .ch-send { transition: background-color .2s var(--ease), transform .15s var(--ease), opacity .2s; }
+
+/* No celular a conversa ocupa a tela: entra pela direita e a lista volta pela esquerda */
+@media (max-width: 760px) {
+  .pv .ovp.ch.th .ch-r { animation: cx-from-right .32s var(--ease) both; }
+  .pv .ovp.ch:not(.th) .ch-l { animation: cx-from-left .32s var(--ease) both; }
+  .pv .ovp.ch.swap-to-team:not(.th) .ch-l, .pv .ovp.ch.swap-to-creators:not(.th) .ch-l { animation: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pv .ovp.ch .ch-l > *, .pv .ovp.ch .ch-r, .pv .ovp.ch .ch-r > *, .pv .ch-c, .pv .cx, .pv .cx-st, .pv .cx-day, .pv .cx-new, .pv .tc-jump, .pv .tc-draft, .pv .tc-tabs button em { animation: none !important; }
+}

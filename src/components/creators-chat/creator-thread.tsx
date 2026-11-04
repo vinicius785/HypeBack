@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatComposer } from "@/components/chat/composer";
 import type { ChatLine } from "@/components/chat/flow";
 import { MessageFlow } from "@/components/chat/message-flow";
+import { useIncomingSound } from "@/components/chat/use-incoming-sound";
 import { useSmartScroll } from "@/components/chat/use-smart-scroll";
 import { Av, I } from "@/components/prototype/ui";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -149,6 +150,9 @@ export function CreatorThread({
     }
     return out;
   }, [messages, pending, me, conv.name, conv.avatar]);
+
+  const lastIncoming = [...messages].reverse().find((m) => String(m.sender_id) !== me);
+  useIncomingSound(lastIncoming?.id ?? null, !isLoading);
 
   const scroll = useSmartScroll({
     count: lines.length,

@@ -12,6 +12,8 @@ const MAP: Record<string, keyof typeof icons> = {
   users: "Users",
   user: "User",
   bell: "Bell",
+  volume: "Volume2",
+  mute: "VolumeX",
   cal: "Calendar",
   chev: "ChevronRight",
   eye: "Eye",

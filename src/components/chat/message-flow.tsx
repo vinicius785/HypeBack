@@ -117,19 +117,22 @@ export function MessageBubble({
   first,
   last,
   showSender,
+  fresh = false,
   handlers,
 }: {
   line: ChatLine;
   first: boolean;
   last: boolean;
   showSender: boolean;
+  /** Chegou/foi enviada com a conversa aberta: entra com animação (o histórico ao abrir não anima). */
+  fresh?: boolean;
   handlers: BubbleHandlers;
 }) {
   const failed = line.status === "failed";
   const hasText = line.body.trim() !== "";
   return (
     <div
-      className={`cx ${line.mine ? "me" : "them"}${first ? " cx-first" : ""}${last ? " cx-last" : ""}${line.status === "sending" ? " cx-pend" : ""}${failed ? " cx-fail" : ""}`}
+      className={`cx ${line.mine ? "me" : "them"}${first ? " cx-first" : ""}${last ? " cx-last" : ""}${line.status === "sending" ? " cx-pend" : ""}${failed ? " cx-fail" : ""}${fresh ? " cx-in" : ""}`}
     >
       {!line.mine && (
         <span className="cx-av" aria-hidden={!showSender}>
@@ -147,7 +150,7 @@ export function MessageBubble({
                 {clockTime(line.createdAt)}
               </time>
               {line.mine && line.status === "sending" ? <span className="cx-sd">Enviando...</span> : null}
-              {line.mine && line.status ? <StatusMark status={line.status} /> : null}
+              {line.mine && line.status ? <StatusMark key={line.status} status={line.status} /> : null}
             </span>
           </div>
           {!failed && line.status !== "sending" ? <MessageMenu line={line} /> : null}
@@ -181,6 +184,18 @@ export function MessageFlow({
   handlers: BubbleHandlers;
 }) {
   const items: FlowItem[] = buildFlow(lines, { unreadFromId });
+
+  // Só anima o que chega depois de a conversa abrir: o ponto de corte é a última mensagem presente na primeira carga.
+  const baseline = useRef<number | null>(null);
+  if (baseline.current === null && lines.length > 0) {
+    baseline.current = Math.max(...lines.map((l) => new Date(l.createdAt).getTime()));
+  }
+  const isFresh = (l: ChatLine) =>
+    baseline.current !== null &&
+    new Date(l.createdAt).getTime() > baseline.current &&
+    // Mensagem própria confirmada pelo servidor já apareceu como envio local: não repete a entrada.
+    (!l.mine || l.localId !== undefined);
+
   return (
     <>
       {items.map((it) =>
@@ -199,6 +214,7 @@ export function MessageFlow({
             first={it.first}
             last={it.last}
             showSender={it.showSender}
+            fresh={isFresh(it.line)}
             handlers={handlers}
           />
         ),
