@@ -16,7 +16,10 @@
 .pv .agb-row .btn.ghost { flex: 0 0 auto; background: transparent; color: var(--muted); padding: 0 12px; }
 .pv .agb-row .btn.ghost:hover { background: var(--bg); color: var(--ink); }
 .pv .agb-form { display: flex; flex-direction: column; gap: 16px; }
-.pv .agb-form textarea.ni { resize: vertical; min-height: 84px; font-family: inherit; }
+/* O formulário carrega `.pv` para ter os tokens mesmo fora da página, mas dentro dela cai na regra `.pv .pv` do protótipo
+   (mockup de celular: 270px, sombra, cantos arredondados). Aqui ele ocupa a largura do modal e fica sem moldura. */
+.pv .pv.agb-form { width: 100%; max-width: none; margin: 0; background: transparent; border-radius: 0; box-shadow: none; overflow: visible; height: auto; }
+.pv .agb-form textarea.ni { resize: vertical; min-height: 96px; height: auto; padding: 14px 18px; line-height: 1.5; font-family: inherit; }
 .pv .agb-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
 .pv .agb-actions .btn { height: 44px; min-width: 120px; justify-content: center; }
 .pv .agb-tabs { display: flex; gap: 6px; margin-top: 18px; }
