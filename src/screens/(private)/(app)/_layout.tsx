@@ -31,7 +31,9 @@ function RouteComponent() {
     mainRef.current?.scrollTo({ top: 0 });
   }, [pathname]);
 
-  let title = "Início";
+  // Sem título padrão: cada página nova traz o próprio título. O "Início" que valia para tudo aparecia sobre as telas
+  // que ninguém lembrou de listar (Marcas, Elenco).
+  let title = "";
 
   if (pathname === "/campaigns") {
     title = "Campanhas";
