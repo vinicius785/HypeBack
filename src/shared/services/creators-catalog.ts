@@ -73,6 +73,8 @@ export interface CreatorsCatalogFilters {
   lng?: number;
   /** Raio de busca em km. Range: (0, 500]. Default sugerido: 50. */
   radius_km?: number;
+  /** Agência: só o elenco (criadores que aceitaram entrar). Ignorado pela API em workspace de marca. */
+  roster?: boolean;
   page?: number;
   per_page?: number;
 }
@@ -212,6 +214,7 @@ export async function getCreatorsCatalog(
     url.searchParams.set("engagement_max", String(filters.engagement_max));
   if (filters.order_by) url.searchParams.set("order_by", filters.order_by);
   if (filters.order_dir) url.searchParams.set("order_dir", filters.order_dir);
+  if (filters.roster) url.searchParams.set("roster", "true");
 
   // Filtro geo ("perto de mim") — só envia se os 3 vierem juntos.
   // Backend exige os três ou nenhum (ver docs/api-creators-near-me.md §2.1).

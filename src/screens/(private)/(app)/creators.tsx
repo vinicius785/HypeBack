@@ -1,6 +1,9 @@
 import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { createFileRoute, useSearch, useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
+import { toast } from "sonner";
+
+import "@/styles/agency-roster.css";
 
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -23,6 +26,8 @@ import {
   useRemoveFromInfluencerList,
 } from "@/hooks/use-creators-catalog";
 import { useInfluencerAccounts } from "@/hooks/use-influencer-accounts";
+import { useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
+import { rosterErrorMessage, useInviteToRoster, useRosterStatusMap } from "@/hooks/use-agency-roster";
 import { InviteNetworksModal } from "@/components/influencer-lists/invite-networks-modal";
 import { defaultCatalogOrder } from "@/shared/utils/creators-default-order";
 import { groupCreators, isSocialNetworkType, type CreatorGroup } from "@/shared/utils/group-creators";
@@ -539,6 +544,10 @@ interface CardProps {
   onOpen: () => void;
   onInvite: () => void;
   onSave: () => void;
+  /** Agência: estado do criador no elenco (`invited` | `active`), ou null. */
+  rosterStatus?: "invited" | "active" | null;
+  /** Agência com permissão de convidar: convida o criador para o elenco. Ausente = sem o botão. */
+  onRoster?: () => void;
 }
 
 const NET_LABEL: Record<string, string> = {
@@ -603,7 +612,9 @@ function useAccountRows(group: CreatorGroup): { networks: AccountRow[]; ugc: boo
   }, [data, group.accounts]);
 }
 
-function CreatorCard({ group, k, selected, near, saved, onSelect, onOpen, onInvite, onSave }: CardProps) {
+const ROSTER_LABEL = { active: "No elenco", invited: "Convidado" } as const;
+
+function CreatorCard({ group, k, selected, near, saved, onSelect, onOpen, onInvite, onSave, rosterStatus, onRoster }: CardProps) {
   const names = group.niches.map((n) => n.name).filter((s) => s.trim().length > 0);
   const { networks: rows, ugc } = useAccountRows(group);
   const shown = rows.slice(0, MAX_NETWORK_ROWS);
@@ -624,6 +635,7 @@ function CreatorCard({ group, k, selected, near, saved, onSelect, onOpen, onInvi
           <small>
             {rows.length === 0 ? "Sem redes sociais" : `${rows.length} ${rows.length === 1 ? "rede social" : "redes sociais"}`}
           </small>
+          {rosterStatus && <span className={`crd-rs ${rosterStatus}`}>{ROSTER_LABEL[rosterStatus]}</span>}
         </div>
       </div>
       <div className="crd-n">
@@ -669,12 +681,17 @@ function CreatorCard({ group, k, selected, near, saved, onSelect, onOpen, onInvi
         <button type="button" className={`round crd-sv ${saved ? "on" : ""}`} aria-label="Salvar em lista" onClick={stop(onSave)}>
           <I n="heart" cls="sm" />
         </button>
+        {onRoster && !rosterStatus && (
+          <button type="button" className="round crd-sv" aria-label={`Convidar ${group.user.name} para o elenco`} title="Convidar para o elenco" onClick={stop(onRoster)}>
+            <I n="star" cls="sm" />
+          </button>
+        )}
       </div>
     </article>
   );
 }
 
-function CreatorRow({ group, k, selected, near, saved, onSelect, onOpen, onInvite, onSave }: CardProps) {
+function CreatorRow({ group, k, selected, near, saved, onSelect, onOpen, onInvite, onSave, rosterStatus, onRoster }: CardProps) {
   const { networks: rows, ugc } = useAccountRows(group);
   const names = group.niches.map((n) => n.name).filter((s) => s.trim().length > 0);
   const stop = (fn: () => void) => (e: React.MouseEvent) => {
@@ -693,6 +710,7 @@ function CreatorRow({ group, k, selected, near, saved, onSelect, onOpen, onInvit
           <small>
             {rows.length === 0 ? "Sem redes sociais" : `${rows.length} ${rows.length === 1 ? "rede social" : "redes sociais"}`}
           </small>
+          {rosterStatus && <span className={`crd-rs ${rosterStatus}`}>{ROSTER_LABEL[rosterStatus]}</span>}
         </div>
       </div>
       <span className="crw-n">{[...(ugc ? ["UGC"] : []), ...names].join(" · ")}</span>
@@ -716,6 +734,11 @@ function CreatorRow({ group, k, selected, near, saved, onSelect, onOpen, onInvit
         <button type="button" className={`round crd-sv ${saved ? "on" : ""}`} aria-label="Salvar em lista" onClick={stop(onSave)}>
           <I n="heart" cls="sm" />
         </button>
+        {onRoster && !rosterStatus && (
+          <button type="button" className="round crd-sv" aria-label={`Convidar ${group.user.name} para o elenco`} title="Convidar para o elenco" onClick={stop(onRoster)}>
+            <I n="star" cls="sm" />
+          </button>
+        )}
         <button type="button" className="btn out" onClick={stop(onOpen)}>
           Ver perfil
         </button>
@@ -830,6 +853,13 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [inviteTarget, setInviteTarget] = useState<InviteTarget | null>(null);
   const membershipMap = useInfluencerMembershipMap();
+  // Agência: marca quem está no elenco, convida pelo cartão e filtra "Meu elenco".
+  const isAgency = useIsAgencyWorkspace();
+  const permissions = useWorkspacePermissions();
+  const rosterMap = useRosterStatusMap();
+  const inviteToRoster = useInviteToRoster();
+  const [rosterOnly, setRosterOnly] = useState(false);
+  const canRoster = isAgency && permissions.influencers_invite;
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // "Perto de mim" é um critério de busca: só existe quando o usuário o liga
@@ -878,8 +908,9 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
       ...(nearMeLocation
         ? { lat: nearMeLocation.lat, lng: nearMeLocation.lng, radius_km: radiusKm }
         : {}),
+      ...(isAgency && rosterOnly ? { roster: true } : {}),
     };
-  }, [debouncedQ, filters, nearMeLocation, radiusKm]);
+  }, [debouncedQ, filters, nearMeLocation, radiusKm, isAgency, rosterOnly]);
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useCreatorsCatalog(queryFilters);
@@ -1022,6 +1053,14 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
       onOpen: () => openProfile(group.user.id),
       onInvite: () => setInviteTarget({ userId: group.user.id, name: group.user.name, accounts: group.accounts }),
       onSave: () => setSelectedForList({ userId: group.user.id, name: group.user.name }),
+      rosterStatus: rosterMap.get(group.user.id) ?? null,
+      onRoster: canRoster
+        ? () =>
+            inviteToRoster.mutate(group.user.id, {
+              onSuccess: () => toast.success(`Convite enviado para ${group.user.name}. Ele entra no elenco quando aceitar.`),
+              onError: (e) => toast.error(rosterErrorMessage(e, "Não foi possível convidar para o elenco.")),
+            })
+        : undefined,
     };
     return view === "list" ? <CreatorRow key={group.key} {...props} /> : <CreatorCard key={group.key} {...props} />;
   };
@@ -1058,6 +1097,13 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
             Filtros
             {activeCount > 0 && <em aria-label={`${activeCount} filtros ativos`}>{activeCount}</em>}
           </button>
+
+          {isAgency && (
+            <button type="button" className={`cx-fb ${rosterOnly ? "on" : ""}`} aria-pressed={rosterOnly} onClick={() => setRosterOnly((v) => !v)}>
+              <I n="star" cls="sm" />
+              Meu elenco
+            </button>
+          )}
 
           <div className="cx-ctl">
             <div className={`cfw ${sortOpen ? "open" : ""}`}>
