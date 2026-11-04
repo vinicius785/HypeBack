@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { MediaKitHighlights } from "@/components/influencer-profile/media-kit-highlights";
+import { MediaKitContact, MediaKitIntro, MediaKitRates } from "@/components/influencer-profile/media-kit-extras";
 import { InfluencerProfileView } from "@/components/influencer-profile/influencer-profile-view";
 import { getPublicInfluencerProfile } from "@/shared/services/influencer";
 import hypeappLogo from "@/assets/images/hypeapp-logo.png";
@@ -103,7 +104,18 @@ function PublicInfluencerProfileScreen() {
         </div>
       ) : (
         <main className="flex flex-col gap-11 max-w-[1151px] mx-auto px-6 py-8">
-          <InfluencerProfileView data={data} mode="public" highlights={<MediaKitHighlights data={data} />} />
+          <InfluencerProfileView
+            data={data}
+            mode="public"
+            highlights={
+              <div className="flex flex-col gap-4">
+                <MediaKitHighlights data={data} />
+                <MediaKitIntro kit={data.media_kit} />
+              </div>
+            }
+          />
+          <MediaKitRates kit={data.media_kit} />
+          <MediaKitContact kit={data.media_kit} />
         </main>
       )}
     </div>

@@ -81,6 +81,19 @@ export interface HypeappCampaignItem {
  * Perfil do influenciador no backoffice.
  * `campaign` é preenchido quando o backend quiser breadcrumb de contexto (opcional na rota standalone).
  */
+export interface PublicMediaKitRateGroup {
+  network_id: number;
+  type: string;
+  items: Array<{ key: string; label: string; price_cents: number }>;
+}
+
+export interface PublicMediaKit {
+  headline: string | null;
+  intro: string | null;
+  rates?: PublicMediaKitRateGroup[];
+  contact?: { email: string | null; phone: string | null };
+}
+
 export interface CampaignInfluencerProfileResponse {
   campaign?: {
     id: string;
@@ -135,6 +148,8 @@ export interface CampaignInfluencerProfileResponse {
     } | null;
   };
   metrics_by_network?: Record<string, MetricsByNetwork>;
+  /** Mídia kit do criador (só na página pública): o que ele escolheu mostrar. Tarifas e contato só vêm com o aceite dele. */
+  media_kit?: PublicMediaKit | null;
   total_posts_in_hypeapp?: number;
   campaigns_participated_in_hypeapp?: number;
   trust_index?: number | null;
