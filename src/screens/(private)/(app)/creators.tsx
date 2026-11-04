@@ -849,6 +849,12 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
     else setMapGeoError(res.message);
   };
 
+  const pickMapCity = (c: CityPlace) => {
+    setMapGeoError("");
+    setNearMeLocation({ lat: c.lat, lng: c.lng, label: c.label });
+    setRadiusKm(c.radiusKm);
+  };
+
   const activeKeys = FILTER_KEYS.filter((k) => filters[k] && filters[k] !== "all");
   const nearOn = !!nearMeLocation;
   const activeCount = activeKeys.length + (nearOn ? 1 : 0);
@@ -1022,11 +1028,15 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
                     <I n="map" />
                   </span>
                   <b>Veja os criadores no mapa</b>
-                  <p>Para mostrar quem está perto, usamos a localização aproximada deste navegador. Seus filtros e a busca continuam valendo.</p>
+                  <p>Escolha onde procurar: perto de você (localização aproximada deste navegador) ou outra cidade. Seus filtros e a busca continuam valendo.</p>
                   <button type="button" className="btn" disabled={mapLocating} onClick={enableNearFromMap}>
                     <I n="locate" cls="sm" />
-                    {mapLocating ? "Localizando…" : "Usar minha localização"}
+                    {mapLocating ? "Localizando…" : "Perto de mim"}
                   </button>
+                  <div className="cx-mapcity">
+                    <span>ou outra região</span>
+                    <CityPicker onPick={pickMapCity} />
+                  </div>
                   {mapGeoError && (
                     <small className="cf-err" role="alert">
                       {mapGeoError}

@@ -2274,6 +2274,8 @@
 .pv .cx-map { margin-bottom: 0; }
 .pv .cx-mapem { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 64px 24px; }
 .pv .cx-mapem > span { width: 60px; height: 60px; border-radius: 50%; background: var(--bg); display: grid; place-items: center; margin-bottom: 4px; }
+.pv .cx-mapcity { width: 100%; max-width: 380px; margin-top: 8px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.pv .cx-mapcity > span { color: var(--muted); font-size: 12.5px; text-align: center; }
 .pv .cx-mapem b { font-size: 18px; font-weight: 600; letter-spacing: -.03em; }
 .pv .cx-mapem p { margin: 0 0 8px; max-width: 46ch; color: var(--muted); font-size: 14px; line-height: 1.5; }
 .pv .cx-more { display: flex; justify-content: center; padding: 0 20px 20px; }

@@ -61,6 +61,18 @@ vi.mock("@/components/creators/near-me-map", async () => {
   const React = await import("react");
   return { NearMeMap: () => React.createElement("div", { "data-testid": "near-me-map" }) };
 });
+// Busca de cidade: devolve uma cidade pronta ao digitar (sem rede).
+vi.mock("@/components/creators/city-picker", async () => {
+  const React = await import("react");
+  return {
+    CityPicker: ({ onPick }: { onPick: (c: unknown) => void }) =>
+      React.createElement(
+        "button",
+        { type: "button", onClick: () => onPick({ label: "Ribeirão Preto, São Paulo", name: "Ribeirão Preto", state: "São Paulo", lat: -21.17, lng: -47.81, radiusKm: 25 }) },
+        "Escolher Ribeirão Preto",
+      ),
+  };
+});
 vi.mock("@/components/influencer-profile/profile-drawer", () => ({ InfluencerProfileDrawer: () => null }));
 vi.mock("@/components/influencer-lists/campaign-picker-modal", () => ({ CampaignPickerModal: () => null }));
 vi.mock("@/components/influencer-lists/list-membership-modal", () => ({ ListMembershipModal: () => null }));
@@ -108,7 +120,7 @@ const nearChip = () => screen.getByRole("button", { name: "Remover filtro Perto 
 async function openMapWithLocation() {
   render(<Page />);
   fireEvent.click(mapButton());
-  fireEvent.click(screen.getByRole("button", { name: /Usar minha localização/ }));
+  fireEvent.click(screen.getByRole("button", { name: /Perto de mim/ }));
   await screen.findByTestId("near-me-map");
 }
 
@@ -154,7 +166,7 @@ describe("Criadores · entrar no mapa sem localização", () => {
     render(<Page />);
     fireEvent.click(mapButton());
     expect(screen.getByText("Veja os criadores no mapa")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Usar minha localização/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Perto de mim/ })).toBeInTheDocument();
     expect(mapButton()).toHaveAttribute("aria-pressed", "true");
   });
 });
@@ -207,5 +219,13 @@ describe("Criadores · elenco da agência", () => {
     expect(toggle).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("também oferece escolher outra região, sem passar pelo painel de filtros", async () => {
+    render(<Page />);
+    fireEvent.click(mapButton());
+    fireEvent.click(screen.getByRole("button", { name: "Escolher Ribeirão Preto" }));
+    await screen.findByTestId("near-me-map");
+    expect(screen.getByRole("button", { name: "Remover filtro de cidade" })).toHaveTextContent("Ribeirão Preto · 25 km");
   });
 });
