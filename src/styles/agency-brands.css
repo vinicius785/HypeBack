@@ -1,20 +1,5 @@
 /* Marcas da agência: lista de cartões e formulário. Usa os tokens do protótipo (.pv). */
-.pv .agb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 22px; }
-.pv .agb-card { background: #fff; border-radius: 28px; padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.pv .agb-card[data-archived="true"] { background: var(--bg); }
-.pv .agb-top { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.pv .agb-av { flex: none; width: 48px; height: 48px; border-radius: 16px; background: var(--ink); color: #fff; display: grid; place-items: center; font-size: 16px; font-weight: 600; letter-spacing: -.02em; }
-.pv .agb-card[data-archived="true"] .agb-av { background: #c9c9c9; }
-.pv .agb-top b { display: block; font-size: 16px; letter-spacing: -.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv .agb-top small { color: var(--muted); font-size: 12.5px; }
-.pv .agb-chip { margin-left: auto; flex: none; font-size: 11.5px; font-weight: 600; color: var(--muted); background: var(--bg); border-radius: 99px; padding: 4px 10px; }
-.pv .agb-card[data-archived="true"] .agb-chip { background: #fff; }
-.pv .agb-desc { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.9em; }
-.pv .agb-row { display: flex; gap: 8px; margin-top: auto; }
-.pv .agb-row .btn { flex: 1 1 0; min-width: 0; height: 40px; justify-content: center; font-size: 13px; padding: 0 12px; white-space: nowrap; }
-.pv .agb-row .btn:first-child { flex: 1.7 1 0; }
-.pv .agb-row .btn.ghost { flex: 0 0 auto; background: transparent; color: var(--muted); padding: 0 12px; }
-.pv .agb-row .btn.ghost:hover { background: var(--bg); color: var(--ink); }
+.pv .agb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 16px; margin-top: 6px; }
 .pv .agb-form { display: flex; flex-direction: column; gap: 16px; }
 /* O formulário carrega `.pv` para ter os tokens mesmo fora da página, mas dentro dela cai na regra `.pv .pv` do protótipo
    (mockup de celular: 270px, sombra, cantos arredondados). Aqui ele ocupa a largura do modal e fica sem moldura. */
@@ -22,10 +7,68 @@
 .pv .agb-form textarea.ni { resize: vertical; min-height: 96px; height: auto; padding: 14px 18px; line-height: 1.5; font-family: inherit; }
 .pv .agb-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
 .pv .agb-actions .btn { height: 44px; min-width: 120px; justify-content: center; }
-.pv .agb-tabs { display: flex; gap: 6px; margin-top: 18px; }
-@media (max-width: 560px) { .pv .agb-grid { grid-template-columns: 1fr; } .pv .agb-actions .btn { flex: 1; } }
 
-/* Abas Ativas/Arquivadas: o `.seg` do protótipo depende de um indicador animado medido por script; aqui a aba ativa
-   leva o próprio fundo, sem script. */
-.pv .agb-tabs .seg button.on { background: var(--ink); color: #fff; }
-.pv .agb-tabs .seg button { transition: background .25s, color .25s; }
+
+@media (max-width: 560px) { .pv .agb-actions .btn { flex: 1; } }
+
+/* Indicadores (mesmo desenho da faixa do Início; clicáveis, como em Clientes). */
+.pv .stats .stat.clk { cursor: pointer; border-radius: 18px; transition: background .2s; }
+.pv .stats .stat.clk:hover { background: var(--bg); }
+.pv .stats .stat.clk.on { background: var(--bg); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.pv .stats .stat.clk.zero b { color: var(--muted); }
+.pv .stats .stat.clk:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+@media (max-width: 720px) { .pv .stats:has(.stat.clk) { grid-template-columns: repeat(2, 1fr); row-gap: 10px; } .pv .stats .stat.clk { border-left: 0; padding: 10px 14px; } }
+
+/* Barra: busca, filtros e ordenação (classes cx-* e cfw/cfm vêm do protótipo; aqui só o conteúdo do popover). */
+.pv .bt-bar { margin-top: 18px; margin-bottom: 10px; }
+.pv .bt-bar .bt-sort { gap: 8px; padding: 0 18px; }
+.pv .bt-bar .bt-sort:hover { background: var(--ink); color: #fff; }
+.pv .bt-pop { min-width: 300px; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+.pv .bt-grp { border: 0; margin: 0; padding: 0; min-width: 0; }
+.pv .bt-grp legend { padding: 0 0 8px; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.pv .bt-grp > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.pv .bt-pill { height: 34px; padding: 0 14px; border-radius: 99px; background: var(--bg); font-size: 13px; font-weight: 600; transition: background .2s, color .2s; }
+.pv .bt-pill:hover { background: #e2e2e2; }
+.pv .bt-pill.on { background: var(--ink); color: #fff; }
+.pv .cfm button.bt-clear { justify-content: center; color: var(--muted); font-size: 13px; }
+.pv .cfm button.bt-clear:disabled { opacity: .45; cursor: default; }
+.pv .bt-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; }
+.pv .bt-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 6px 0 14px; border-radius: 99px; background: #fff; font-size: 13px; font-weight: 600; }
+.pv .bt-chip button { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); }
+.pv .bt-chip button:hover { background: var(--bg); color: var(--ink); }
+.pv .bt-clear-all { font-size: 13px; font-weight: 600; color: var(--muted); padding: 4px 8px; border-radius: 99px; }
+.pv .bt-clear-all:hover { color: var(--ink); background: #fff; }
+@media (max-width: 720px) { .pv .bt-bar .bt-sort-l { display: none; } .pv .bt-bar .bt-sort { width: 52px; padding: 0; justify-content: center; } }
+
+/* Cartão de marca (padrão do cartão de Clientes). */
+.pv .bcd { position: relative; background: #fff; border-radius: 28px; padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0;
+  transition: transform .3s var(--ease), box-shadow .3s var(--ease); }
+.pv .bcd:hover { transform: translateY(-2px); box-shadow: 0 22px 36px -26px rgba(5,5,5,.4); }
+.pv .bcd[data-archived="true"] { background: #f8f8f8; }
+.pv .bcd[data-archived="true"] .bcd-nm b, .pv .bcd[data-archived="true"] .av { opacity: .7; }
+.pv .bcd-open { position: absolute; inset: 0; border-radius: 28px; z-index: 0; }
+.pv .bcd-open:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+.pv .bcd-top { position: relative; display: flex; align-items: center; gap: 14px; min-width: 0; pointer-events: none; }
+.pv .bcd-id { min-width: 0; flex: 1; }
+.pv .bcd-nm { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pv .bcd-nm b { font-size: 16px; font-weight: 600; letter-spacing: -.025em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .bcd-id small { display: block; margin-top: 3px; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .bcd-st { flex: none; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px; }
+.pv .bcd-st.active { background: #e3f6e8; color: #17803d; }
+.pv .bcd-st.archived { background: var(--bg); color: var(--muted); }
+.pv .bcd-menu { position: relative; z-index: 2; pointer-events: auto; align-self: flex-start; flex: none; }
+.pv .bcd-dots { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); transition: background .2s, color .2s; }
+.pv .bcd-dots:hover, .pv .bcd-menu.open .bcd-dots { background: var(--bg); color: var(--ink); }
+.pv .bcd-dots:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+.pv .bcd-menu .cfm { min-width: 180px; }
+.pv .bcd-menu .cfm .bcd-mi { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; border-radius: 14px; font-size: 14px; font-weight: 500; }
+.pv .bcd-menu .cfm .bcd-mi:hover { background: var(--bg); }
+.pv .bcd-menu .cfm .bcd-dng { color: var(--danger); }
+.pv .bcd-meta { position: relative; min-height: 33px; display: flex; flex-wrap: wrap; gap: 6px 16px; padding-top: 12px; border-top: 1.5px solid var(--line); color: var(--muted); font-size: 13px; pointer-events: none; }
+.pv .bcd-meta span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.pv .bcd-meta .ico { width: 14px; height: 14px; }
+.pv .bcd-sk { display: block; border-radius: 8px; background: linear-gradient(90deg, var(--bg), #f6f6f6, var(--bg)); background-size: 200% 100%; animation: bcd-sh 1.2s linear infinite; }
+.pv .bcd-sk.round { width: 48px; height: 48px; border-radius: 50%; flex: none; }
+@keyframes bcd-sh { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .pv .bcd, .pv .bcd-sk { transition: none; animation: none; } .pv .bcd:hover { transform: none; } }
+@media (max-width: 720px) { .pv .cfm.bt-pop { left: 12px; right: 12px; width: auto; min-width: 0; } }
