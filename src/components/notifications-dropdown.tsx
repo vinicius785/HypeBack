@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { I } from "@/components/prototype/ui";
 import {
   useNotifications,
@@ -9,8 +10,15 @@ import {
   useUnreadNotificationsCount,
 } from "@/hooks/use-notifications";
 import { useNotificationsSocket } from "@/hooks/use-notifications-socket";
+import { useWorkspaceContext } from "@/contexts/workspace-context";
+import { WORKSPACE_STATE_DEFAULT_MESSAGE } from "@/lib/workspace-state/lifecycle-errors";
 import type { Notification } from "@/shared/services/notifications";
-import { resolveNotificationCampaignDeepLink } from "@/shared/utils/notification-navigation";
+import { openTeamChat } from "@/components/team-chat/open-team-chat";
+import {
+  TEAM_CHAT_NOTIFICATION_TYPE,
+  resolveNotificationCampaignDeepLink,
+  resolveNotificationTeamChat,
+} from "@/shared/utils/notification-navigation";
 
 const CLOSE_MS = 300;
 
@@ -21,6 +29,7 @@ const ICONS: Record<string, string> = {
   content_submitted: "video",
   new_content_submission: "video",
   new_message: "msg",
+  [TEAM_CHAT_NOTIFICATION_TYPE]: "msg",
   influencer_approved: "users",
   shipment_receipt_confirmed: "box",
   campaign_application: "users",
@@ -34,6 +43,7 @@ const ACTIONS: Record<string, string> = {
   content_submitted: "Revisar conteúdo",
   new_content_submission: "Revisar conteúdo",
   new_message: "Abrir chat",
+  [TEAM_CHAT_NOTIFICATION_TYPE]: "Abrir chat",
   influencer_approved: "Ver campanha",
   shipment_receipt_confirmed: "Ver campanha",
   campaign_application: "Ver perfil",
@@ -78,6 +88,7 @@ export function NotificationsDropdown() {
   const { mutate: markAllAsRead, isPending: isMarkingAllAsRead } =
     useMarkAllNotificationsAsRead();
   const unreadCount = useUnreadNotificationsCount();
+  const { workspaces, selectedWorkspace, selectWorkspace } = useWorkspaceContext();
 
   // Tempo real: revalida o sininho ao receber `notification:new` via socket.
   useNotificationsSocket();
@@ -109,6 +120,35 @@ export function NotificationsDropdown() {
   );
 
   const handleNotificationClick = (notification: Notification) => {
+    // Mensagem da equipe: abre a gaveta de chat na conversa, sem sair da tela. Se a conversa é de OUTRO workspace,
+    // troca de workspace (o mesmo `selectWorkspace` do seletor do app) e só então abre; sem como trocar, avisa.
+    const team = resolveNotificationTeamChat(notification);
+    if (team) {
+      if (team.workspaceId && team.workspaceId !== selectedWorkspace?.id) {
+        const target = workspaces.find((w) => w.id === team.workspaceId);
+        if (!target) {
+          toast.error("Esta conversa é de um workspace ao qual você não tem mais acesso.");
+          requestClose();
+          return;
+        }
+        if (target.status === "suspended") {
+          toast.error(WORKSPACE_STATE_DEFAULT_MESSAGE.WORKSPACE_SUSPENDED);
+          requestClose();
+          return;
+        }
+        toast.info(`Abrindo a conversa no workspace ${target.name}.`);
+        // A notificação veio da lista do workspace ATUAL (o servidor filtra a lista e a rota de leitura pelo header) e o
+        // `mutationFn` só roda depois da troca: passa o workspace de origem junto, senão o 404 a deixaria não lida.
+        if (!notification.read_at) markAsRead({ id: notification.id, workspaceId: selectedWorkspace?.id });
+        selectWorkspace(target);
+      } else if (!notification.read_at) {
+        markAsRead(notification.id);
+      }
+      openTeamChat(team);
+      requestClose();
+      return;
+    }
+
     if (!notification.read_at) {
       markAsRead(notification.id);
     }

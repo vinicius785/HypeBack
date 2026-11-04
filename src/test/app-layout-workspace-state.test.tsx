@@ -22,6 +22,9 @@ vi.mock("@/contexts/workspace-context", () => ({
   WorkspaceProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   useWorkspaceContext: () => ({ selectedWorkspace: { id: "w1", name: "Acme", status: ctx.status } }),
 }));
+vi.mock("@/components/team-chat/team-chat-provider", () => ({
+  TeamChatProvider: ({ children }: { children: ReactNode }) => <div data-testid="team-chat-provider">{children}</div>,
+}));
 vi.mock("@/components/workspace-invites/my-invites", () => ({ MyInvitesPanel: () => null }));
 vi.mock("@/components/sidebar", () => ({ Sidebar: () => <aside data-testid="sidebar" /> }));
 vi.mock("@/components/mobile-nav", () => ({ MobileNav: () => <nav data-testid="mobile-nav" /> }));
@@ -54,6 +57,21 @@ describe("(app)/_layout e o estado do workspace", () => {
     expect(within(main(container)).getByTestId("outlet")).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(screen.queryByTestId("bloqueio")).not.toBeInTheDocument();
+  });
+
+  it("o socket do chat da equipe fica acima do topo e das páginas (o botão de chat troca de tela, a conexão não cai)", () => {
+    const { container } = render(createElement(Layout));
+    const provider = screen.getByTestId("team-chat-provider");
+    expect(provider).toContainElement(screen.getByTestId("header"));
+    expect(provider).toContainElement(main(container));
+    expect(provider).toContainElement(screen.getByTestId("mobile-nav"));
+  });
+
+  it("detalhe da campanha (sem Header): o provedor continua montado", () => {
+    ctx.pathname = "/campaigns/abc";
+    const { container } = render(createElement(Layout));
+    expect(screen.queryByTestId("header")).not.toBeInTheDocument();
+    expect(screen.getByTestId("team-chat-provider")).toContainElement(main(container));
   });
 
   it("arquivado: a faixa 'somente consulta' fica entre o topo e a página, que segue funcionando", () => {

@@ -29,6 +29,22 @@ export interface CampaignDeepLinkSearch {
   contentId?: string;
 }
 
+/** Tipo da notificação do chat da equipe (mensagem de alguém do mesmo workspace). */
+export const TEAM_CHAT_NOTIFICATION_TYPE = "team_chat_message";
+
+/**
+ * Notificação do chat da equipe → conversa a abrir na gaveta (aba Equipe), com o workspace dela (`metadata.workspace_id`,
+ * ausente em notificação antiga). `null` quando não é uma notificação do chat da equipe ou não traz a conversa.
+ */
+export function resolveNotificationTeamChat(n: Notification): { conversationId: string; workspaceId?: string } | null {
+  if (n.type !== TEAM_CHAT_NOTIFICATION_TYPE) return null;
+  const id = n.metadata.conversation_id;
+  if (id == null || String(id).trim() === "") return null;
+  const ws = n.metadata.workspace_id;
+  const workspaceId = ws == null || String(ws).trim() === "" ? undefined : String(ws);
+  return { conversationId: String(id), ...(workspaceId ? { workspaceId } : {}) };
+}
+
 function focusFromMetadata(m: Notification["metadata"]): string | undefined {
   if (m.campaign_user_id != null && String(m.campaign_user_id).trim() !== "") {
     return String(m.campaign_user_id);

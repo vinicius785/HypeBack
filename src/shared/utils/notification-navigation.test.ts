@@ -9,6 +9,7 @@ import type { Notification } from "@/shared/services/notifications";
 import {
   decideIncomingCampaignDeepLink,
   resolveNotificationCampaignDeepLink,
+  resolveNotificationTeamChat,
   type IncomingCampaignDeepLink,
 } from "./notification-navigation";
 
@@ -143,5 +144,36 @@ describe("da notificação até a aba aberta", () => {
       }),
     ).toEqual({ type: "apply", tab: "management" });
     expect(incoming.openChat).toBe("9");
+  });
+});
+
+describe("resolveNotificationTeamChat", () => {
+  it("notificação do chat da equipe aponta para a conversa", () => {
+    expect(
+      resolveNotificationTeamChat(
+        notification({ type: "team_chat_message", metadata: { conversation_id: "c-7", workspace_id: "w1", kind: "direct" } }),
+      ),
+    ).toEqual({ conversationId: "c-7", workspaceId: "w1" });
+  });
+
+  it("sem workspace_id (notificação antiga) devolve só a conversa; id numérico vira texto", () => {
+    expect(resolveNotificationTeamChat(notification({ type: "team_chat_message", metadata: { conversation_id: "c-7" } }))).toEqual({
+      conversationId: "c-7",
+    });
+    expect(
+      resolveNotificationTeamChat(
+        notification({ type: "team_chat_message", metadata: { conversation_id: "c-7", workspace_id: 12 as unknown as string } }),
+      ),
+    ).toEqual({ conversationId: "c-7", workspaceId: "12" });
+  });
+
+  it("outros tipos, ou sem conversa, não são do chat da equipe", () => {
+    expect(resolveNotificationTeamChat(notification({ type: "new_message", metadata: { conversation_id: "c-7" } }))).toBeNull();
+    expect(resolveNotificationTeamChat(notification({ type: "team_chat_message", metadata: {} }))).toBeNull();
+    expect(resolveNotificationTeamChat(notification({ type: "team_chat_message", metadata: { conversation_id: " " } }))).toBeNull();
+  });
+
+  it("não vira deep link de campanha", () => {
+    expect(resolveNotificationCampaignDeepLink(notification({ type: "team_chat_message", metadata: { conversation_id: "c-7" } }))).toBeNull();
   });
 });
