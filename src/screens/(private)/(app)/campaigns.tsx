@@ -149,6 +149,7 @@ function RouteComponent() {
         banner: (campaign.banner as string | undefined) || undefined,
         brandId: ((campaign.brand as { id?: string } | null | undefined)?.id ?? "") as string,
         brandName: ((campaign.brand as { name?: string } | null | undefined)?.name ?? undefined) as string | undefined,
+        brandPhoto: ((campaign.brand as { photo?: string | null } | null | undefined)?.photo ?? undefined) as string | undefined,
         updatedAt: new Date(campaign.updated_at || campaign.created_at || 0).getTime(),
         reach: metricsReady ? (o?.metrics.reach ?? 0) : undefined,
         published: metricsReady ? (o?.metrics.publishedContent ?? 0) : undefined,
@@ -522,7 +523,7 @@ function RouteComponent() {
               description={c.brandName ?? c.description}
               status={c.statusValue}
               banner={c.banner}
-              brand={c.brandName ? { name: c.brandName, photo: undefined } : selectedWorkspace}
+              brand={c.brandName ? { name: c.brandName, photo: c.brandPhoto } : selectedWorkspace}
               reach={c.reach}
               published={c.published}
               pending={c.pending}

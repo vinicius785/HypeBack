@@ -12,7 +12,7 @@ export interface CampaignListItem {
   max_influencers: number;
   banner?: string;
   /** Marca da agência dona da campanha; só vem em workspace de agência. */
-  brand?: { id: string; name: string } | null;
+  brand?: { id: string; name: string; photo?: string | null } | null;
   created_at: string;
   updated_at: string;
 }

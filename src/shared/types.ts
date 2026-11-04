@@ -349,7 +349,7 @@ export interface Niche {
 export interface Campaign {
   id: string; // public_id (UUID)
   /** Marca da agência dona da campanha; só vem em workspace de agência. */
-  brand?: { id: string; name: string } | null;
+  brand?: { id: string; name: string; photo?: string | null } | null;
   title: string;
   description: string;
   objective: string;
