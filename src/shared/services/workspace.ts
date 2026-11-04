@@ -58,6 +58,8 @@ function normalizeWorkspaceRow(row: unknown): Workspace | null {
     created_at: o.created_at != null ? String(o.created_at) : undefined,
     updated_at: o.updated_at != null ? String(o.updated_at) : undefined,
     role,
+    // Tipo de conta (marca ou agência): o menu da agência (Marcas, Elenco) depende dele. Ausente = marca.
+    account_type: o.account_type === "agency" ? "agency" : "brand",
     membership_id:
       o.membership_id != null && !Number.isNaN(Number(o.membership_id))
         ? Number(o.membership_id)

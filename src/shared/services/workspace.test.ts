@@ -28,6 +28,22 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("getMyWorkspaces: tipo de conta", () => {
+  const row = (extra: Record<string, unknown> = {}) => ({ id: "w1", name: "Conta", role: "owner", ...extra });
+
+  it("agência chega como agência (o menu Marcas e Elenco depende disso)", async () => {
+    fetchMock.mockResolvedValue(json(200, { data: [row({ account_type: "agency" })] }));
+    const [workspace] = await getMyWorkspaces();
+    expect(workspace.account_type).toBe("agency");
+  });
+
+  it("sem o campo, ou com valor desconhecido, é marca", async () => {
+    fetchMock.mockResolvedValue(json(200, { data: [row(), row({ id: "w2", account_type: "outro" })] }));
+    const list = await getMyWorkspaces();
+    expect(list.map((w) => w.account_type)).toEqual(["brand", "brand"]);
+  });
+});
+
 describe("getMyWorkspaces: estado (status) de cada workspace", () => {
   const row = (id: string, extra: Record<string, unknown> = {}) => ({ id, name: `Marca ${id}`, role: "owner", ...extra });
 

@@ -166,7 +166,7 @@ function WorkspaceEditDialogBody({ workspace, onClose }: Omit<WorkspaceEditDialo
           </select>
           <div className="adm-field-foot" id={`${idPrefix}-account_type-note`}>
             <span>
-              Agência tem marcas, time e (em breve) elenco próprios. Uma agência que já tem marcas não volta a ser conta de
+              Agência tem marcas, time e elenco próprios. Uma agência que já tem marcas não volta a ser conta de
               marca.
             </span>
           </div>
