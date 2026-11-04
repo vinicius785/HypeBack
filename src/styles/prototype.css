@@ -2246,8 +2246,8 @@
 
 /* Criadores: busca centralizada, painel de filtros e visualizações */
 .pv .cx-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; position: relative; z-index: 30; }
-.pv .cx-find { flex: 1 1 320px; min-width: 0; height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 8px 0 20px; border-radius: 999px; background: #fff; border: 2px solid transparent; transition: border-color var(--dur) var(--ease); }
-.pv .cx-find:focus-within { border-color: var(--ink); }
+.pv .cx-find { flex: 1 1 320px; max-width: 640px; min-width: 0; height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 8px 0 20px; border-radius: 999px; background: #fff; border: 2px solid transparent; transition: border-color var(--dur) var(--ease); }
+.pv .cx-find:focus-within { border-color: var(--brand); box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 16%, transparent); }
 .pv .cx-find input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; font: inherit; font-size: 15px; color: var(--ink); }
 .pv .cx-find input::placeholder { color: var(--muted); }
 .pv .cx-find input::-webkit-search-cancel-button { display: none; }
@@ -2274,8 +2274,6 @@
 .pv .cx-map { margin-bottom: 0; }
 .pv .cx-mapem { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 64px 24px; }
 .pv .cx-mapem > span { width: 60px; height: 60px; border-radius: 50%; background: var(--bg); display: grid; place-items: center; margin-bottom: 4px; }
-.pv .cx-mapcity { width: 100%; max-width: 380px; margin-top: 8px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
-.pv .cx-mapcity > span { color: var(--muted); font-size: 12.5px; text-align: center; }
 .pv .cx-mapem b { font-size: 18px; font-weight: 600; letter-spacing: -.03em; }
 .pv .cx-mapem p { margin: 0 0 8px; max-width: 46ch; color: var(--muted); font-size: 14px; line-height: 1.5; }
 .pv .cx-more { display: flex; justify-content: center; padding: 0 20px 20px; }
@@ -2793,4 +2791,84 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .pv .ovp.ch .ch-l > *, .pv .ovp.ch .ch-r, .pv .ovp.ch .ch-r > *, .pv .ch-c, .pv .cx, .pv .cx-st, .pv .cx-day, .pv .cx-new, .pv .tc-jump, .pv .tc-draft, .pv .tc-tabs button em { animation: none !important; }
+}
+
+/* Criadores · mapa de descoberta: estado inicial, controles sobre o mapa e resumo do criador */
+.pv .cx-mapem { padding: 56px 24px 48px; }
+.pv .cx-mapopts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; max-width: 560px; margin-top: 6px; }
+.pv .cx-mapopt { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: 18px; border-radius: 20px; background: var(--bg); transition: background-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
+.pv .cx-mapopt:hover:not(:disabled), .pv .cx-mapopt.on { background: #fff; box-shadow: inset 0 0 0 2px var(--ink); }
+.pv .cx-mapopt:disabled { opacity: .6; cursor: default; }
+.pv .cx-mapopt > i { width: 40px; height: 40px; border-radius: 50%; background: #fff; display: grid; place-items: center; margin-bottom: 8px; font-style: normal; }
+.pv .cx-mapopt:hover:not(:disabled) > i, .pv .cx-mapopt.on > i { background: var(--bg); }
+.pv .cx-mapopt b { font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
+.pv .cx-mapopt small { color: var(--muted); font-size: 13px; line-height: 1.4; }
+.pv .cx-mapopt:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+.pv .cx-mapcity { width: 100%; max-width: 560px; text-align: left; }
+.pv .cx-map .cx-mapem .cx-mapopt svg { width: 20px; height: 20px; }
+
+.pv .near-me-map { position: relative; }
+.pv .nm-top { position: absolute; z-index: 600; top: 14px; left: 14px; right: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; pointer-events: none; }
+.pv .nm-where, .pv .nm-rad { pointer-events: auto; background: #fff; border-radius: 99px; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+.pv .nm-where { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; max-width: min(100%, 340px); }
+.pv .nm-where b { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv .nm-where em { font-style: normal; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.pv .nm-rad { display: inline-flex; padding: 4px; gap: 2px; }
+.pv .nm-rad button { height: 32px; padding: 0 12px; border-radius: 99px; font-size: 13px; font-weight: 600; color: var(--muted); transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease); }
+.pv .nm-rad button:hover { color: var(--ink); }
+.pv .nm-rad button.on { background: var(--ink); color: #fff; }
+.pv .nm-rad button:focus-visible, .pv .nm-ctl button:focus-visible, .pv .nm-here:focus-visible, .pv .nm-pan .btn:focus-visible, .pv .nm-pan-x:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+.pv .nm-loading { position: absolute; z-index: 700; left: 0; right: 0; top: 0; height: 3px; overflow: hidden; background: color-mix(in srgb, var(--brand) 18%, transparent); }
+.pv .nm-loading::after { content: ""; position: absolute; inset: 0; width: 40%; background: var(--brand); animation: nm-slide 1.1s var(--ease) infinite; }
+@keyframes nm-slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+.pv .nm-here { position: absolute; z-index: 600; left: 50%; top: 66px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 99px; background: var(--ink); color: #fff; font-size: 14px; font-weight: 600; box-shadow: 0 8px 24px -8px rgba(5,5,5,.5); }
+.pv .nm-legend { position: absolute; z-index: 500; left: 14px; bottom: 14px; display: inline-flex; padding: 7px 12px; border-radius: 99px; background: rgba(255,255,255,.92); font-size: 12px; color: var(--muted); pointer-events: none; }
+.pv .nm-legend span { display: inline-flex; align-items: center; gap: 8px; }
+.pv .nm-lg-halo { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--brand); background: color-mix(in srgb, var(--brand) 14%, #fff); display: inline-block; }
+.pv .nm-ctl { position: absolute; z-index: 600; left: 14px; bottom: 58px; display: flex; flex-direction: column; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+.pv .nm-ctl button { width: 42px; height: 42px; display: grid; place-items: center; color: var(--ink); }
+.pv .nm-ctl button + button { border-top: 1.5px solid var(--bg); }
+.pv .nm-ctl button:hover { background: var(--bg); }
+
+/* Agrupamento: foto + quantidade; o criador aberto ganha anel e fica maior */
+.near-me-cluster .near-me-avatar__box { inset: 0; transform-origin: 50% 50%; }
+.near-me-cluster .near-me-avatar__ring { top: 4px; box-shadow: 0 0 0 3px var(--color-primary-500), 0 4px 10px rgba(0,0,0,.25); }
+.near-me-cluster__n { position: absolute; right: -4px; top: -2px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px; background: #050505; color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; border: 2px solid #fff; box-sizing: border-box; }
+.near-me-avatar.is-selected .near-me-avatar__ring { box-shadow: 0 0 0 4px var(--color-primary-600), 0 0 0 9px rgba(173,71,255,.25), 0 6px 14px rgba(0,0,0,.3); }
+.near-me-avatar.is-selected .near-me-avatar__nub { border-top-color: var(--color-primary-600); }
+
+/* Resumo do criador: painel à direita no desktop, folha embaixo no celular */
+.pv .nm-pan { position: absolute; z-index: 650; top: 66px; right: 14px; bottom: 70px; width: 320px; max-width: calc(100% - 28px); overflow-y: auto; background: #fff; border-radius: 24px; padding: 20px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 14px 40px -12px rgba(0,0,0,.35); animation: nm-pan-in .28s var(--ease) both; }
+@keyframes nm-pan-in { from { opacity: 0; transform: translateX(16px); } }
+.pv .nm-pan-x { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); }
+.pv .nm-pan-x:hover { background: var(--bg); color: var(--ink); }
+.pv .nm-pan header { display: flex; align-items: center; gap: 14px; padding-right: 30px; }
+.pv .nm-pan header > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pv .nm-pan header b { font-size: 17px; letter-spacing: -.03em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .nm-pan header span { color: var(--muted); font-size: 14px; }
+.pv .nm-pan header small { color: var(--muted); font-size: 12.5px; display: flex; align-items: center; gap: 6px; line-height: 1.35; }
+.pv .nm-pan-rs { align-self: flex-start; }
+.pv .nm-pan-nets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pv .nm-pan-nets li { display: flex; align-items: center; gap: 10px; background: var(--bg); border-radius: 14px; padding: 10px 14px; font-size: 14px; }
+.pv .nm-pan-nets li span { flex: 1; }
+.pv .nm-pan-nets li b { font-weight: 600; }
+.pv .nm-pan-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.pv .nm-pan-tags span { height: 28px; padding: 0 12px; border-radius: 99px; background: var(--bg); font-size: 13px; display: inline-flex; align-items: center; }
+.pv .nm-pan-a { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+.pv .nm-pan-a .btn { height: 44px; justify-content: center; gap: 8px; }
+.pv .nm-pan-a .btn.out { background: var(--bg); }
+.pv .nm-pan-a .btn.out:hover { background: #e4e4e4; }
+.pv .nm-pan-a .btn.out.on { color: var(--brand); }
+
+@media (max-width: 760px) {
+  .pv .cx-mapopts { grid-template-columns: 1fr; }
+  .pv .nm-top { top: 10px; left: 10px; right: 10px; }
+  .pv .nm-rad { overflow-x: auto; max-width: 100%; }
+  .pv .nm-pan { top: auto; left: 10px; right: 10px; bottom: 10px; width: auto; max-width: none; max-height: 62%; border-radius: 24px; animation-name: nm-sheet-in; }
+  .pv .nm-ctl { bottom: auto; top: 112px; left: 10px; }
+  .pv .nm-legend { display: none; }
+}
+@keyframes nm-sheet-in { from { opacity: 0; transform: translateY(24px); } }
+@media (prefers-reduced-motion: reduce) {
+  .pv .nm-loading::after, .pv .nm-pan { animation: none; }
 }

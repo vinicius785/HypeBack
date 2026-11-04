@@ -34,6 +34,7 @@ import {
 import { useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
 import { rosterErrorMessage, useInviteToRoster, useRosterStatusMap } from "@/hooks/use-agency-roster";
 import { CityPicker } from "@/components/creators/city-picker";
+import { MapCreatorPanel } from "@/components/creators/map-creator-panel";
 import type { CityPlace } from "@/lib/city-search";
 import { InviteNetworksModal } from "@/components/influencer-lists/invite-networks-modal";
 import { defaultCatalogOrder } from "@/shared/utils/creators-default-order";
@@ -692,6 +693,9 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
   const [radiusKm, setRadiusKm] = useState<number>(DEFAULT_RADIUS_KM);
   const [mapLocating, setMapLocating] = useState(false);
   const [mapGeoError, setMapGeoError] = useState("");
+  const [mapCityOpen, setMapCityOpen] = useState(false);
+  // Criador aberto no mapa (`user.id`): o resumo aparece sobre o próprio mapa.
+  const [mapSelectedId, setMapSelectedId] = useState<number | null>(null);
 
   useEffect(() => {
     // Remove a posição que versões anteriores deixaram salva no navegador.
@@ -767,6 +771,10 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
     [creators],
   );
   const nearMeLocatedCount = useMemo(() => mapItems.filter((i) => i.approx_location).length, [mapItems]);
+  const mapSelectedGroup = useMemo(
+    () => (mapSelectedId == null ? null : (creators.find((c) => c.user.id === mapSelectedId) ?? null)),
+    [creators, mapSelectedId],
+  );
 
   // O número de criadores só é exato quando todas as páginas já foram carregadas
   // (a API conta contas de rede social, não pessoas).
@@ -812,6 +820,7 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
    */
   function removeNearMe() {
     setNearMeLocation(null);
+    setMapSelectedId(null);
     setView((v) => (v === "map" ? "grid" : v));
   }
 
@@ -849,8 +858,15 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
     else setMapGeoError(res.message);
   };
 
+  /** "Buscar nesta área": o centro da busca passa a ser o que o mapa está mostrando. */
+  const moveMapCenter = (lat: number, lng: number) => {
+    setMapSelectedId(null);
+    setNearMeLocation({ lat, lng, label: "Área escolhida no mapa" });
+  };
+
   const pickMapCity = (c: CityPlace) => {
     setMapGeoError("");
+    setMapSelectedId(null);
     setNearMeLocation({ lat: c.lat, lng: c.lng, label: c.label });
     setRadiusKm(c.radiusKm);
   };
@@ -910,7 +926,7 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
             <I n="search" cls="sm" />
             <input
               type="search"
-              placeholder="Buscar criador por nome, @ ou palavra-chave"
+              placeholder="Buscar criador por nome ou @"
               aria-label="Buscar criador"
               value={filters.q}
               autoComplete="off"
@@ -1027,16 +1043,29 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
                   <span>
                     <I n="map" />
                   </span>
-                  <b>Veja os criadores no mapa</b>
-                  <p>Escolha onde procurar: perto de você (localização aproximada deste navegador) ou outra cidade. Seus filtros e a busca continuam valendo.</p>
-                  <button type="button" className="btn" disabled={mapLocating} onClick={enableNearFromMap}>
-                    <I n="locate" cls="sm" />
-                    {mapLocating ? "Localizando…" : "Perto de mim"}
-                  </button>
-                  <div className="cx-mapcity">
-                    <span>ou outra região</span>
-                    <CityPicker onPick={pickMapCity} />
+                  <b>Descubra criadores por região</b>
+                  <p>Veja no mapa quem está perto de você ou numa cidade que você escolher. Seus filtros e a busca continuam valendo.</p>
+                  <div className="cx-mapopts">
+                    <button type="button" className="cx-mapopt" disabled={mapLocating} onClick={enableNearFromMap}>
+                      <i>
+                        <I n="locate" />
+                      </i>
+                      <b>{mapLocating ? "Localizando…" : "Usar minha localização"}</b>
+                      <small>Mostra quem está perto deste navegador</small>
+                    </button>
+                    <button type="button" className={`cx-mapopt${mapCityOpen ? " on" : ""}`} aria-expanded={mapCityOpen} onClick={() => setMapCityOpen((v) => !v)}>
+                      <i>
+                        <I n="search" />
+                      </i>
+                      <b>Buscar outra cidade ou região</b>
+                      <small>Digite o nome da cidade</small>
+                    </button>
                   </div>
+                  {mapCityOpen && (
+                    <div className="cx-mapcity">
+                      <CityPicker onPick={pickMapCity} />
+                    </div>
+                  )}
                   {mapGeoError && (
                     <small className="cf-err" role="alert">
                       {mapGeoError}
@@ -1050,8 +1079,36 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
                       <NearMeMap
                         origin={{ lat: nearMeLocation.lat, lng: nearMeLocation.lng, radiusKm, label: nearMeLocation.label }}
                         items={mapItems}
-                        onViewProfile={openProfile}
-                        heightClass="h-[min(560px,62vh)]"
+                        selectedId={mapSelectedGroup ? mapSelectedGroup.user.id : null}
+                        onSelect={setMapSelectedId}
+                        radiusOptions={RADIUS_OPTIONS}
+                        onRadiusChange={setRadiusKm}
+                        onMoveCenter={moveMapCenter}
+                        loading={isLoading || isFetchingNextPage || hasNextPage}
+                        heightClass="h-[min(620px,70vh)]"
+                        detail={
+                          mapSelectedGroup && (
+                            <MapCreatorPanel
+                              group={mapSelectedGroup}
+                              near
+                              saved={(membershipMap.get(mapSelectedGroup.user.id) ?? []).length > 0}
+                              onClose={() => setMapSelectedId(null)}
+                              onOpen={() => openProfile(mapSelectedGroup.user.id)}
+                              onSave={() => setSelectedForList({ userId: mapSelectedGroup.user.id, name: mapSelectedGroup.user.name })}
+                              rosterStatus={rosterMap.get(mapSelectedGroup.user.id) ?? null}
+                              rosterBusy={inviteToRoster.isPending && inviteToRoster.variables === mapSelectedGroup.user.id}
+                              onRoster={
+                                canRoster
+                                  ? () =>
+                                      inviteToRoster.mutate(mapSelectedGroup.user.id, {
+                                        onSuccess: () => toast.success(`Convite enviado para ${mapSelectedGroup.user.name}. Ele entra no elenco quando aceitar.`),
+                                        onError: (e) => toast.error(rosterErrorMessage(e, "Não foi possível convidar para o elenco.")),
+                                      })
+                                  : undefined
+                              }
+                            />
+                          )
+                        }
                       />
                     </Suspense>
                   ) : isLoading ? (
@@ -1060,6 +1117,13 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
                     <div className="ov-empty">
                       <b>Nenhum criador com localização neste raio</b>
                       <small>Aumente o raio para ver mais</small>
+                      <div className="n4tm crmap-r" role="group" aria-label="Raio de busca">
+                        {RADIUS_OPTIONS.map((v) => (
+                          <button key={v} type="button" aria-pressed={radiusKm === v} className={radiusKm === v ? "on" : ""} onClick={() => setRadiusKm(v)}>
+                            {v} km
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                   <div className="crmap-b">
@@ -1067,16 +1131,7 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
                       <b>
                         {isLoading ? "Buscando criadores…" : `${nearMeLocatedCount} ${nearMeLocatedCount === 1 ? "criador no mapa" : "criadores no mapa"}${hasNextPage ? " · carregando o restante…" : ""}`}
                       </b>
-                      <small>
-                        Raio de busca a partir da sua localização
-                      </small>
-                    </div>
-                    <div className="n4tm crmap-r" role="group" aria-label="Raio de busca">
-                      {RADIUS_OPTIONS.map((v) => (
-                        <button key={v} type="button" aria-pressed={radiusKm === v} className={radiusKm === v ? "on" : ""} onClick={() => setRadiusKm(v)}>
-                          {v} km
-                        </button>
-                      ))}
+                      <small>Arraste o mapa para explorar e toque numa foto para ver o resumo do criador</small>
                     </div>
                   </div>
                 </>

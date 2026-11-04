@@ -120,13 +120,13 @@ const nearChip = () => screen.getByRole("button", { name: "Remover filtro Perto 
 async function openMapWithLocation() {
   render(<Page />);
   fireEvent.click(mapButton());
-  fireEvent.click(screen.getByRole("button", { name: /Perto de mim/ }));
+  fireEvent.click(screen.getByRole("button", { name: /Usar minha localização/ }));
   await screen.findByTestId("near-me-map");
 }
 
 function expectBackToCards() {
   expect(screen.queryByTestId("near-me-map")).toBeNull();
-  expect(screen.queryByText("Veja os criadores no mapa")).toBeNull();
+  expect(screen.queryByText("Descubra criadores por região")).toBeNull();
   expect(cardsButton()).toHaveAttribute("aria-pressed", "true");
   expect(screen.queryByRole("button", { name: "Remover filtro Perto de mim" })).toBeNull();
 }
@@ -165,8 +165,8 @@ describe("Criadores · entrar no mapa sem localização", () => {
   it("continua oferecendo usar a localização (é o caminho de entrada do mapa)", () => {
     render(<Page />);
     fireEvent.click(mapButton());
-    expect(screen.getByText("Veja os criadores no mapa")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Perto de mim/ })).toBeInTheDocument();
+    expect(screen.getByText("Descubra criadores por região")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Usar minha localização/ })).toBeInTheDocument();
     expect(mapButton()).toHaveAttribute("aria-pressed", "true");
   });
 });
@@ -224,6 +224,7 @@ describe("Criadores · elenco da agência", () => {
   it("também oferece escolher outra região, sem passar pelo painel de filtros", async () => {
     render(<Page />);
     fireEvent.click(mapButton());
+    fireEvent.click(screen.getByRole("button", { name: /Buscar outra cidade ou região/ }));
     fireEvent.click(screen.getByRole("button", { name: "Escolher Ribeirão Preto" }));
     await screen.findByTestId("near-me-map");
     expect(screen.getByRole("button", { name: "Remover filtro de cidade" })).toHaveTextContent("Ribeirão Preto · 25 km");

@@ -1,24 +1,21 @@
 import "leaflet/dist/leaflet.css";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import L from "leaflet";
 import {
   Circle,
   MapContainer,
   Marker,
-  Popup,
   TileLayer,
   useMap,
   useMapEvents,
 } from "react-leaflet";
 
 import { spreadAvatars } from "@/components/creators/avatar-layout";
-import { Icon } from "@/components/ui/icon";
+import { clusterPoints } from "@/components/creators/cluster-points";
+import { I } from "@/components/prototype/ui";
 import { getUploadUrl } from "@/lib/utils/api";
 import type { CatalogItem } from "@/shared/services/creators-catalog";
-
-/** Texto de "de você" nos cartões do mapa: vira o nome da cidade quando a origem é uma cidade. */
-const OriginNameContext = createContext<string>("você");
 
 export interface NearMeOrigin {
   lat: number;
@@ -31,8 +28,19 @@ export interface NearMeOrigin {
 interface NearMeMapProps {
   origin: NearMeOrigin;
   items: CatalogItem[];
-  /** Navega para o perfil do criador (recebe `user.id`). */
-  onViewProfile: (userId: number) => void;
+  /** Criador selecionado (`user.id`): ganha destaque e some dos agrupamentos. */
+  selectedId: number | null;
+  /** Clique num marcador (`user.id`) ou no fundo do mapa (`null`). */
+  onSelect: (userId: number | null) => void;
+  /** Opções de raio (km) e o tratamento da troca: controle sobre o próprio mapa. */
+  radiusOptions: number[];
+  onRadiusChange: (km: number) => void;
+  /** Move o centro da busca para o ponto que o mapa está mostrando. */
+  onMoveCenter: (lat: number, lng: number) => void;
+  /** Resultados sendo atualizados: barra de progresso sobre o mapa. */
+  loading?: boolean;
+  /** Detalhes do criador selecionado (painel lateral no desktop, folha embaixo no celular). */
+  detail?: ReactNode;
   /** Classe de altura do mapa (padrão: compacta). */
   heightClass?: string;
 }
@@ -90,7 +98,7 @@ function resolvePhoto(item: CatalogItem): string | undefined {
   return getUploadUrl(item.user.photo ?? item.social_network.photo ?? undefined);
 }
 
-function avatarIcon(item: CatalogItem, size: number): L.DivIcon {
+function avatarIcon(item: CatalogItem, size: number, selected = false): L.DivIcon {
   const photo = resolvePhoto(item);
   const initial = (item.user.name || "?").trim().charAt(0).toUpperCase();
   // As iniciais ficam como base; a foto cobre via overlay `background-image`.
@@ -100,7 +108,7 @@ function avatarIcon(item: CatalogItem, size: number): L.DivIcon {
     ? `<span class="near-me-avatar__photo" style="background-image:url('${escapeHtml(photo)}')"></span>`
     : "";
   return L.divIcon({
-    className: "near-me-avatar",
+    className: `near-me-avatar${selected ? " is-selected" : ""}`,
     // `--sz` é o diâmetro da foto; anel, bico e iniciais escalam a partir dele (index.css).
     html: `<span class="near-me-avatar__box" style="--sz:${size}px"><span class="near-me-avatar__ring"><span class="near-me-avatar__initials">${escapeHtml(initial)}</span>${photoLayer}</span><span class="near-me-avatar__nub"></span></span>`,
     iconSize: [size, size + 8],
@@ -109,17 +117,38 @@ function avatarIcon(item: CatalogItem, size: number): L.DivIcon {
   });
 }
 
+/** Agrupamento: foto de um dos criadores com a quantidade no canto. */
+function clusterIcon(lead: CatalogItem, count: number, size: number): L.DivIcon {
+  const photo = resolvePhoto(lead);
+  const initial = (lead.user.name || "?").trim().charAt(0).toUpperCase();
+  const photoLayer = photo
+    ? `<span class="near-me-avatar__photo" style="background-image:url('${escapeHtml(photo)}')"></span>`
+    : "";
+  const box = size + 8;
+  return L.divIcon({
+    className: "near-me-avatar near-me-cluster",
+    html: `<span class="near-me-avatar__box" style="--sz:${size}px"><span class="near-me-avatar__ring"><span class="near-me-avatar__initials">${escapeHtml(initial)}</span>${photoLayer}</span><span class="near-me-cluster__n">${count > 99 ? "99+" : count}</span></span>`,
+    iconSize: [box, box],
+    iconAnchor: [box / 2, box / 2],
+  });
+}
+
+/** A partir deste zoom ninguém é agrupado: as fotos só se espalham (dois criadores na mesma célula de ~1 km nunca se separam). */
+const CLUSTER_MAX_ZOOM = 13;
+
 /**
- * Uma foto por criador. Onde as fotos se sobreporiam no zoom atual (inclusive
- * criadores na mesma célula de ~1 km, que chegam com coordenadas idênticas) elas
- * se espalham ao redor do ponto, sem se cobrir; aproximar o mapa as devolve ao lugar.
+ * Uma foto por criador. Em zoom aberto, fotos que se tocariam viram um agrupamento com a
+ * quantidade; aproximar desfaz os grupos aos poucos. Daí em diante (e para quem está
+ * selecionado) vale o espalhamento: cada foto no seu lugar, sem se cobrir.
  */
 function CreatorMarkers({
   items,
-  onViewProfile,
+  selectedId,
+  onSelect,
 }: {
   items: LocatedItem[];
-  onViewProfile: (userId: number) => void;
+  selectedId: number | null;
+  onSelect: (userId: number | null) => void;
 }) {
   const map = useMap();
   const [zoom, setZoom] = useState(() => map.getZoom());
@@ -129,35 +158,90 @@ function CreatorMarkers({
 
   const markers = useMemo(() => {
     const size = avatarSize(zoom);
+    const project = (item: LocatedItem) => map.project([item.approx_location.lat, item.approx_location.lng], zoom);
+    const byId = new Map(items.map((i) => [i.social_network.id, i]));
+    const clusterOn = zoom < CLUSTER_MAX_ZOOM;
+
+    // Quem está selecionado nunca some dentro de um grupo.
+    const pool = items.filter((i) => !clusterOn || i.user.id !== selectedId);
+    const groups = clusterOn
+      ? clusterPoints(
+          pool.map((item) => {
+            const pt = project(item);
+            return { id: item.social_network.id, x: pt.x, y: pt.y };
+          }),
+          size + 6,
+        )
+      : [];
+
+    const singles: LocatedItem[] = clusterOn ? items.filter((i) => i.user.id === selectedId) : items;
+    const clusters: Array<{ key: string; position: L.LatLng; lead: LocatedItem; members: LocatedItem[] }> = [];
+    for (const g of groups) {
+      const members = g.ids.map((id) => byId.get(id as number)!).filter(Boolean);
+      if (members.length === 1) singles.push(members[0]);
+      else clusters.push({ key: `c-${members.map((m) => m.social_network.id).join("-")}`, position: map.unproject([g.x, g.y], zoom), lead: members[0], members });
+    }
+
     const spread = spreadAvatars(
-      items.map((item) => {
-        const pt = map.project([item.approx_location.lat, item.approx_location.lng], zoom);
+      singles.map((item) => {
+        const pt = project(item);
         return { id: item.social_network.id, x: pt.x, y: pt.y };
       }),
       size + 1, // anéis encostando (sem vão): empilha mais fotos na mesma área
     );
-    return items.map((item, i) => ({
-      item,
-      position: map.unproject([spread[i].x, spread[i].y], zoom),
-      icon: avatarIcon(item, size),
-    }));
-  }, [items, map, zoom]);
+    return {
+      clusters: clusters.map((c) => ({ ...c, icon: clusterIcon(c.lead, c.members.length, size + 6) })),
+      singles: singles.map((item, i) => {
+        const selected = item.user.id === selectedId;
+        return {
+          item,
+          selected,
+          position: map.unproject([spread[i].x, spread[i].y], zoom),
+          icon: avatarIcon(item, selected ? size + 6 : size, selected),
+        };
+      }),
+    };
+  }, [items, map, zoom, selectedId]);
 
   return (
     <>
-      {markers.map(({ item, position, icon }) => (
-        <Marker key={item.social_network.id} position={position} icon={icon}>
-          <Popup>
-            <NearMeCreatorPopup item={item} onViewProfile={onViewProfile} />
-          </Popup>
-        </Marker>
+      {markers.clusters.map(({ key, position, icon, members }) => (
+        <Marker
+          key={key}
+          position={position}
+          icon={icon}
+          keyboard
+          title={`${members.length} criadores aqui: aproxime para ver cada um`}
+          eventHandlers={{
+            click: () => {
+              const bounds = L.latLngBounds(members.map((m) => [m.approx_location.lat, m.approx_location.lng] as [number, number]));
+              // Mesma célula (coordenadas iguais): não há como separar, então só aproxima.
+              if (!bounds.isValid() || bounds.getSouthWest().equals(bounds.getNorthEast())) {
+                map.setView(bounds.getCenter(), Math.min(CLUSTER_MAX_ZOOM, map.getZoom() + 2));
+              } else {
+                map.fitBounds(bounds, { padding: [60, 60], maxZoom: CLUSTER_MAX_ZOOM });
+              }
+            },
+          }}
+        />
+      ))}
+      {markers.singles.map(({ item, position, icon, selected }) => (
+        <Marker
+          key={item.social_network.id}
+          position={position}
+          icon={icon}
+          zIndexOffset={selected ? 5000 : 0}
+          keyboard
+          title={item.user.name}
+          eventHandlers={{ click: () => onSelect(item.user.id) }}
+        />
       ))}
     </>
   );
 }
 
 /** Ajusta o viewport para enquadrar o raio de busca sempre que origem/raio mudam. */
-function FitToRadius({ origin }: { origin: NearMeOrigin }) {
+function FitToRadius({ origin, nonce }: { origin: NearMeOrigin; nonce: number }) {
   const map = useMap();
   useEffect(() => {
     const center = L.latLng(origin.lat, origin.lng);
@@ -165,9 +249,60 @@ function FitToRadius({ origin }: { origin: NearMeOrigin }) {
     const bounds = center.toBounds(origin.radiusKm * 2 * 1000);
     // O marcador sobe ~40px acima do ponto: dá a folga em cima (e tira de baixo, onde só a ponta chega),
     // sem mudar o total (56px) que decide o zoom do enquadramento.
-    map.fitBounds(bounds, { paddingTopLeft: [28, 44], paddingBottomRight: [28, 12] });
-  }, [map, origin.lat, origin.lng, origin.radiusKm]);
+    map.fitBounds(bounds, { paddingTopLeft: [28, 64], paddingBottomRight: [28, 12] });
+  }, [map, origin.lat, origin.lng, origin.radiusKm, nonce]);
   return null;
+}
+
+/** Clique no fundo do mapa fecha o criador aberto. */
+function BackgroundClick({ onClear }: { onClear: () => void }) {
+  useMapEvents({ click: onClear });
+  return null;
+}
+
+/**
+ * Avisa quando o mapa foi arrastado para longe do centro da busca: a pessoa pode
+ * buscar "nesta área" sem abrir o painel de filtros.
+ */
+function DriftWatcher({ origin, onDrift }: { origin: NearMeOrigin; onDrift: (c: { lat: number; lng: number } | null) => void }) {
+  const map = useMap();
+  const check = () => {
+    const o = map.latLngToContainerPoint([origin.lat, origin.lng]);
+    const c = map.getSize().divideBy(2);
+    if (o.distanceTo(c) > 110) {
+      const ll = map.getCenter();
+      onDrift({ lat: ll.lat, lng: ll.lng });
+    } else onDrift(null);
+  };
+  useMapEvents({ moveend: check });
+  // Origem nova (busca refeita): zera o aviso.
+  useEffect(() => onDrift(null), [origin.lat, origin.lng]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
+
+/** Zoom e "voltar ao centro", agrupados no canto (no lugar do controle padrão do Leaflet). */
+function MapControls({ onRecenter }: { onRecenter: () => void }) {
+  const map = useMap();
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (ref.current) {
+      L.DomEvent.disableClickPropagation(ref.current);
+      L.DomEvent.disableScrollPropagation(ref.current);
+    }
+  }, []);
+  return (
+    <div className="nm-ctl" ref={ref}>
+      <button type="button" aria-label="Aproximar" onClick={() => map.zoomIn()}>
+        <I n="plus" cls="sm" />
+      </button>
+      <button type="button" aria-label="Afastar" onClick={() => map.zoomOut()}>
+        <I n="minus" cls="sm" />
+      </button>
+      <button type="button" aria-label="Voltar ao centro da busca" title="Voltar ao centro da busca" onClick={onRecenter}>
+        <I n="locate" cls="sm" />
+      </button>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -175,14 +310,25 @@ function FitToRadius({ origin }: { origin: NearMeOrigin }) {
 // ---------------------------------------------------------------------------
 
 /**
- * Mapa "Perto de mim" do catálogo de criadores.
+ * Mapa de exploração do catálogo de criadores.
  *
  * Tiles OSM dessaturados (filtro CSS) para os pins na cor da marca saltarem.
- * Plota a origem (admin) + um raio de busca + cada criador com `approx_location`.
- * Como a posição é privacy-snapped (~`precision_km`), cada criador ganha um halo
- * geográfico que comunica honestamente a área aproximada — sem fingir precisão.
+ * Plota a origem + o raio de busca + cada criador com `approx_location`. Como a posição é
+ * privacy-snapped (~`precision_km`), cada criador ganha um halo geográfico que comunica
+ * honestamente a área aproximada — sem fingir precisão.
  */
-export function NearMeMap({ origin, items, onViewProfile, heightClass = "h-80 sm:h-72" }: NearMeMapProps) {
+export function NearMeMap({
+  origin,
+  items,
+  selectedId,
+  onSelect,
+  radiusOptions,
+  onRadiusChange,
+  onMoveCenter,
+  loading = false,
+  detail,
+  heightClass = "h-80 sm:h-72",
+}: NearMeMapProps) {
   const located = useMemo(
     () => items.filter((i): i is LocatedItem => !!i.approx_location),
     [items],
@@ -197,22 +343,27 @@ export function NearMeMap({ origin, items, onViewProfile, heightClass = "h-80 sm
     [],
   );
 
-  const center: [number, number] = [origin.lat, origin.lng];
+  const [drift, setDrift] = useState<{ lat: number; lng: number } | null>(null);
+  const [recenter, setRecenter] = useState(0);
 
+  const center: [number, number] = [origin.lat, origin.lng];
   const cityName = origin.label?.split(",")[0];
 
   return (
-    <OriginNameContext.Provider value={cityName ?? "você"}>
     <div className="near-me-map relative overflow-hidden">
       <MapContainer
         center={center}
         zoom={12}
         scrollWheelZoom={false}
+        zoomControl={false}
         attributionControl={false}
         className={`${heightClass} w-full`}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <FitToRadius origin={origin} />
+        <FitToRadius origin={origin} nonce={recenter} />
+        <BackgroundClick onClear={() => onSelect(null)} />
+        <DriftWatcher origin={origin} onDrift={setDrift} />
+        <MapControls onRecenter={() => setRecenter((n) => n + 1)} />
 
         {/* Raio de busca */}
         <Circle
@@ -233,6 +384,7 @@ export function NearMeMap({ origin, items, onViewProfile, heightClass = "h-80 sm
             key={`halo-${item.social_network.id}`}
             center={[item.approx_location.lat, item.approx_location.lng]}
             radius={item.approx_location.precision_km * 1000}
+            interactive={false}
             pathOptions={{
               stroke: false,
               fillColor: colors.primary,
@@ -241,95 +393,44 @@ export function NearMeMap({ origin, items, onViewProfile, heightClass = "h-80 sm
           />
         ))}
 
-        {/* Origem (você) */}
-        <Marker position={center} icon={originIcon()} zIndexOffset={1000}>
-          <Popup>
-            <div className="flex items-center gap-2 py-0.5">
-              <Icon name="LocateFixed" size={16} color="var(--color-primary-600)" />
-              <span className="text-sm font-medium text-neutral-900">{cityName ? `Centro de ${cityName}` : "Você está aqui"}</span>
-            </div>
-          </Popup>
-        </Marker>
+        {/* Centro da busca */}
+        <Marker position={center} icon={originIcon()} zIndexOffset={1000} interactive={false} />
 
-        {/* Criadores: uma foto por pessoa; onde se sobrepõem, espalham-se ao redor do ponto */}
-        <CreatorMarkers items={located} onViewProfile={onViewProfile} />
+        <CreatorMarkers items={located} selectedId={selectedId} onSelect={onSelect} />
       </MapContainer>
 
-      {/* Legenda flutuante */}
-      <div className="pointer-events-none absolute bottom-3 left-3 z-[500] flex flex-col gap-1.5 rounded-xl bg-white/90 px-3 py-2 text-xs text-neutral-600 shadow-sm backdrop-blur">
-        <span className="flex items-center gap-2">
-          <span className="inline-block size-2.5 rounded-full bg-primary-600 ring-2 ring-primary-200" />
-          {cityName ?? "Você"}
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="inline-block size-2.5 rounded-full border border-primary-300 bg-primary-100" />
-          Área aproximada (~1 km)
-        </span>
-      </div>
-    </div>
-    </OriginNameContext.Provider>
-  );
-}
+      {loading && <div className="nm-loading" role="status" aria-label="Atualizando resultados" />}
 
-// ---------------------------------------------------------------------------
-// Popup do criador
-// ---------------------------------------------------------------------------
-
-function NearMeCreatorPopup({
-  item,
-  onViewProfile,
-}: {
-  item: CatalogItem;
-  onViewProfile: (userId: number) => void;
-}) {
-  const photo = resolvePhoto(item);
-  const initial = (item.user.name || "?").trim().charAt(0).toUpperCase();
-  const distance = item.distance_km;
-  const originName = useContext(OriginNameContext);
-  // Se a foto 404 (arquivo ausente no backend), cai para as iniciais.
-  const [photoFailed, setPhotoFailed] = useState(false);
-
-  return (
-    <div className="flex w-52 flex-col gap-3 py-1">
-      <div className="flex items-center gap-3">
-        {photo && !photoFailed ? (
-          <img
-            src={photo}
-            alt={item.user.name}
-            onError={() => setPhotoFailed(true)}
-            className="size-11 rounded-full object-cover ring-2 ring-primary-100"
-          />
-        ) : (
-          <span className="flex size-11 items-center justify-center rounded-full bg-primary-100 text-base font-semibold text-primary-700 ring-2 ring-primary-100">
-            {initial}
-          </span>
-        )}
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-neutral-950">{item.user.name}</p>
-          <p className="truncate text-xs text-neutral-500">@{item.social_network.username}</p>
+      {/* Onde e quão longe: a região e o raio ficam sempre à vista */}
+      <div className="nm-top">
+        <div className="nm-where" title={origin.label ?? "Sua localização"}>
+          <I n="locate" cls="sm" />
+          <b>{cityName ?? origin.label ?? "Perto de você"}</b>
+          {loading && <em>Atualizando…</em>}
+        </div>
+        <div className="nm-rad" role="group" aria-label="Raio de busca">
+          {radiusOptions.map((v) => (
+            <button key={v} type="button" aria-pressed={origin.radiusKm === v} className={origin.radiusKm === v ? "on" : ""} onClick={() => onRadiusChange(v)}>
+              {v} km
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 text-xs text-neutral-600">
-        <Icon name="Navigation" size={13} color="var(--color-primary-600)" />
-        {distance != null ? (
-          <span>
-            a <span className="font-medium text-neutral-900">{distance.toFixed(1)} km</span> de {originName} ·
-            local aproximado
-          </span>
-        ) : (
-          <span>Localização aproximada</span>
-        )}
+      {drift && (
+        <button type="button" className="nm-here" onClick={() => onMoveCenter(drift.lat, drift.lng)}>
+          <I n="search" cls="sm" />
+          Buscar nesta área
+        </button>
+      )}
+
+      <div className="nm-legend" aria-hidden="true">
+        <span>
+          <i className="nm-lg-halo" /> Área aproximada (~1 km)
+        </span>
       </div>
 
-      <button
-        type="button"
-        className="btn"
-        style={{ height: 38, width: "100%", justifyContent: "center", fontSize: 13 }}
-        onClick={() => onViewProfile(item.user.id)}
-      >
-        Ver perfil
-      </button>
+      {detail}
     </div>
   );
 }
