@@ -89,7 +89,7 @@ describe("aba Criadores: lista", () => {
     h.notifications = {
       data: [
         note(),
-        note({ id: "n2", title: "Ana Lima", boldText: "Ana Lima", message: "Combinado!", read_at: "2026-11-01T10:00:00Z", metadata: { campaign_id: "camp-2", influencer_id: 902, campaign_title: "Verão 2027" } }),
+        note({ id: "n2", title: "Ana Lima", boldText: "Ana Lima", message: "Combinado!", created_at: "2026-10-01T10:00:00Z", read_at: "2026-11-01T10:00:00Z", metadata: { campaign_id: "camp-2", influencer_id: 902, campaign_title: "Verão 2027" } }),
       ],
       isLoading: false,
     };
