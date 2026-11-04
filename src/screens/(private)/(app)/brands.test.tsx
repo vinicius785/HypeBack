@@ -193,6 +193,16 @@ describe("página Marcas", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
+  it("tudo arquivado: o padrão (ativas) vazio leva às arquivadas ou a uma marca nova", async () => {
+    h.brands = [mk("b3", "Velha", "archived", 0)];
+    const user = userEvent.setup();
+    render(<Page />);
+    expect(screen.getByText("Nenhuma marca ativa")).toBeInTheDocument();
+    expect(screen.getByText(/Há 1 marca arquivada/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ver arquivadas" }));
+    expect(screen.getByText("Velha")).toBeInTheDocument();
+  });
+
   it("carregando: esqueleto no lugar dos cartões", () => {
     h.loading = true;
     render(<Page />);
