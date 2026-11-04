@@ -57,14 +57,18 @@ export function UpdateAvailable() {
     [],
   );
 
-  const update = () => {
+  const update = async () => {
     if (phase === "updating") return;
-    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    setPhase("updating");
+    // `navigator.onLine` mente (VPN, Arc, rede com proxy): a conexão é testada de verdade, buscando o arquivo de versão.
+    // Só um erro de rede conta como "sem conexão"; qualquer resposta do servidor basta para recarregar.
+    try {
+      await fetch(`${assetUrl("version.json")}?t=${Date.now()}`, { cache: "no-store" });
+    } catch {
       setErrorText("Sem conexão com a internet. Conecte-se e tente de novo.");
       setPhase("error");
       return;
     }
-    setPhase("updating");
     // A atualização é uma recarga da página: se ela acontecer, este timer morre junto.
     reloadTimer.current = setTimeout(() => {
       setErrorText("Não foi possível recarregar a página. Tente de novo.");
@@ -99,7 +103,7 @@ export function UpdateAvailable() {
           </small>
         </div>
         <div className="upd-a">
-          <button type="button" className="upd-go" onClick={update} disabled={updating} aria-busy={updating}>
+          <button type="button" className="upd-go" onClick={() => void update()} disabled={updating} aria-busy={updating}>
             {updating && <I n="refresh" cls="sm spin" />}
             {updating ? "Atualizando…" : failed ? "Tentar de novo" : "Atualizar"}
           </button>

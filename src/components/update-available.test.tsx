@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { UpdateAvailable } from "./update-available";
@@ -47,7 +47,7 @@ describe("UpdateAvailable", () => {
     const button = screen.getByRole("button", { name: "Atualizar" });
     fireEvent.click(button);
     fireEvent.click(button);
-    expect(reload).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
     const updating = screen.getByRole("button", { name: "Atualizando…" });
     expect(updating).toBeDisabled();
     expect(updating).toHaveAttribute("aria-busy", "true");
@@ -58,20 +58,29 @@ describe("UpdateAvailable", () => {
     vi.useFakeTimers();
     fireEvent.click(screen.getByRole("button", { name: "Atualizar" }));
     await act(async () => {
-      vi.advanceTimersByTime(10_000);
+      await vi.advanceTimersByTimeAsync(10_000);
     });
+    expect(reload).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("alert")).toHaveTextContent("Não foi possível recarregar a página");
     expect(screen.getByText("Nova versão disponível")).toBeInTheDocument();
+    vi.useRealTimers();
     fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
-    expect(reload).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(2));
   });
 
-  it("não tenta recarregar sem conexão", async () => {
+  it("não depende de navigator.onLine: com ele falso mas a rede funcionando, recarrega", async () => {
     await renderWithNewVersion();
     vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
     fireEvent.click(screen.getByRole("button", { name: "Atualizar" }));
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+  });
+
+  it("não recarrega quando a rede realmente falha", async () => {
+    await renderWithNewVersion();
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
+    fireEvent.click(screen.getByRole("button", { name: "Atualizar" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Sem conexão");
     expect(reload).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent("Sem conexão");
   });
 
   it("dispensar não atualiza", async () => {
