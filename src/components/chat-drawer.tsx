@@ -272,7 +272,11 @@ export function ChatDrawerButton() {
         onClick={openFromButton}
       >
         <I n="msg" />
-        {totalUnread > 0 && <i className="dot" />}
+        {totalUnread > 0 && (
+          <i className="cb" aria-hidden="true">
+            {totalUnread > 99 ? "99+" : totalUnread}
+          </i>
+        )}
       </button>
       {open && createPortal(drawer, document.body)}
     </>

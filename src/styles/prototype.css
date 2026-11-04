@@ -59,6 +59,7 @@
 .pv .round { width: 46px; height: 46px; border-radius: 50%; background: #fff; display: grid; place-items: center; position: relative; transition: transform .15s; }
 .pv .round:active, .pv .btn:active { transform: scale(.96); }
 .pv .round .dot { position: absolute; top: 11px; right: 12px; width: 10px; height: 10px; border-radius: 50%; background: var(--brand); border: 2px solid #fff; box-sizing: border-box; }
+.pv .round .cb { position: absolute; top: 4px; right: 3px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--brand); color: #fff; border: 2px solid #fff; box-sizing: border-box; font-size: 11px; font-weight: 700; line-height: 16px; font-style: normal; text-align: center; font-variant-numeric: tabular-nums; }
 .pv .av { border-radius: 50%; background: var(--brand); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 14px; width: 46px; height: 46px; flex: none; }
 .pv .brand { border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px; flex: none; }
 

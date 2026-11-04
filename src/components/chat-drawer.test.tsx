@@ -121,7 +121,9 @@ beforeEach(() => {
 describe("ChatDrawerButton", () => {
   it("o contador do botão soma Criadores e Equipe", async () => {
     renderButton();
-    expect(await screen.findByRole("button", { name: "Chat, 5 não lidas" })).toBeInTheDocument();
+    const btn = await screen.findByRole("button", { name: "Chat, 5 não lidas" });
+    expect(btn).toBeInTheDocument();
+    expect(btn.querySelector(".cb")?.textContent).toBe("5");
   });
 
   it("sem nada pendente o botão fica sem aviso", async () => {
@@ -129,7 +131,9 @@ describe("ChatDrawerButton", () => {
     h.unread.mockResolvedValue({ total: 0, by_conversation: {} });
     renderButton();
     await waitFor(() => expect(h.unread).toHaveBeenCalled());
-    expect(screen.getByRole("button", { name: "Chat" })).toBeInTheDocument();
+    const btn = screen.getByRole("button", { name: "Chat" });
+    expect(btn).toBeInTheDocument();
+    expect(btn.querySelector(".cb")).toBeNull();
   });
 
   it("a gaveta tem as abas Criadores e Equipe, cada uma com a sua contagem; abre em Criadores", async () => {
