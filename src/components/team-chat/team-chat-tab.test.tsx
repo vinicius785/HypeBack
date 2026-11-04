@@ -332,9 +332,9 @@ describe("Visto", () => {
     await openConversation(/Ana Souza/);
     await screen.findByText("minha 12");
     expect(screen.getAllByText("Visto")).toHaveLength(1);
-    const own12 = screen.getByText("minha 12").closest(".cm-w") as HTMLElement;
+    const own12 = screen.getByText("minha 12").closest(".cx-col") as HTMLElement;
     expect(within(own12).getByText("Visto")).toBeInTheDocument();
-    const own10 = screen.getByText("minha 10").closest(".cm-w") as HTMLElement;
+    const own10 = screen.getByText("minha 10").closest(".cx-col") as HTMLElement;
     expect(within(own10).queryByText("Visto")).not.toBeInTheDocument();
   });
 

@@ -37,6 +37,10 @@ export function ConversationView({ conversation, chat, me, onBack }: Conversatio
   const messages = useMemo(() => orderedMessages(query.data), [query.data]);
   const [pending, setPending] = useState<PendingMessage[]>([]);
   const [showJump, setShowJump] = useState(false);
+  // Onde começam as não lidas quando a conversa abriu: recebe o divisor "Novas mensagens" (fixo enquanto está aberta).
+  const [unreadFromId, setUnreadFromId] = useState<string | null>(null);
+  const unreadInitRef = useRef(false);
+  const initialScrollRef = useRef(false);
   // Anúncio do leitor de tela (`aria-live`): desligado enquanto o histórico entra (primeira carga e páginas anteriores),
   // ligado só para as mensagens que chegam depois.
   const [announce, setAnnounce] = useState(false);
@@ -73,6 +77,16 @@ export function ConversationView({ conversation, chat, me, onBack }: Conversatio
     markRead(conversation.id, newest.id);
   }, [newest, unread, visible, blocked, me, conversation.id, markRead]);
 
+  useEffect(() => {
+    if (unreadInitRef.current || query.isLoading || messages.length === 0) return;
+    unreadInitRef.current = true;
+    const n = conversation.unread;
+    if (n <= 0) return;
+    const others = messages.filter((m) => m.sender_id !== me);
+    setUnreadFromId(others[others.length - n]?.id ?? others[0]?.id ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query.isLoading, messages.length]);
+
   // Rolagem: abre na última mensagem; mensagem nova só puxa para baixo se a pessoa já estava lá embaixo.
   const lastId = newest?.id ?? null;
   const firstId = messages.length > 0 ? messages[0].id : null;
@@ -85,6 +99,14 @@ export function ConversationView({ conversation, chat, me, onBack }: Conversatio
       keepOffsetRef.current = null;
       return;
     }
+    const divider = !initialScrollRef.current ? el.querySelector<HTMLElement>("[data-new-divider]") : null;
+    if (divider && el.scrollHeight > el.clientHeight) {
+      // Abriu com não lidas: começa no divisor "Novas mensagens", sem puxar para o fim.
+      initialScrollRef.current = true;
+      el.scrollTop = Math.max(0, divider.offsetTop - 56);
+      stickRef.current = false;
+      return;
+    }
     if (stickRef.current) {
       el.scrollTop = el.scrollHeight;
       setShowJump(false);
@@ -92,7 +114,7 @@ export function ConversationView({ conversation, chat, me, onBack }: Conversatio
       setShowJump(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastId, firstId, pending.length]);
+  }, [lastId, firstId, pending.length, unreadFromId]);
 
   // A página anterior terminou de carregar (ou falhou): o ajuste de rolagem pendente não vale mais. Efeito passivo roda
   // depois do layout que o consome, então só limpa o que sobrou.
@@ -268,7 +290,7 @@ export function ConversationView({ conversation, chat, me, onBack }: Conversatio
             <small>{isChannel ? "Escreva a primeira mensagem para a equipe." : "Envie a primeira mensagem abaixo."}</small>
           </div>
         ) : (
-          <MessageList conversation={conversation} messages={messages} pending={visiblePending} me={me} onRetry={retry} onDiscard={discard} onMediaLoad={onMediaLoad} />
+          <MessageList conversation={conversation} messages={messages} pending={visiblePending} me={me} onRetry={retry} onDiscard={discard} onMediaLoad={onMediaLoad} unreadFromId={unreadFromId} />
         )}
       </div>
       {showJump && (

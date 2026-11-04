@@ -19,6 +19,7 @@ const MAP: Record<string, keyof typeof icons> = {
   share: "Share2",
   star: "Star",
   check: "Check",
+  checks: "CheckCheck",
   search: "Search",
   funnel: "Funnel",
   video: "Video",
