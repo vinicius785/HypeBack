@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -35,7 +36,7 @@ vi.mock("@/styles/agency-brands.css", () => ({}));
 
 import { Route } from "./brands";
 
-const Page = (Route as unknown as { component: () => JSX.Element }).component;
+const Page = (Route as unknown as { component: () => ReactElement }).component;
 
 const mk = (id: string, name: string, status: "active" | "archived", n = 0) => ({
   id,

@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { clsx } from "clsx";
 
-import { createFileRoute, Outlet, useLocation, Link } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useLocation, useSearch, Link } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -16,10 +16,6 @@ import { getUploadUrl } from "@/lib/utils/api";
 import { getCampaignStatusValue } from "@/shared/utils/campaign-status";
 
 export const Route = createFileRoute("/(private)/(app)/campaigns")({
-  // `?brand=<id da marca>` abre a lista já filtrada (vem da página Marcas).
-  validateSearch: (search: Record<string, unknown>): { brand?: string } => ({
-    brand: typeof search.brand === "string" && search.brand ? search.brand : undefined,
-  }),
   component: RouteComponent,
 });
 
@@ -78,7 +74,10 @@ function RouteComponent() {
   const [sortOpen, setSortOpen] = useState(false);
   const isAgency = useIsAgencyWorkspace();
   const { data: agencyBrands = [] } = useAgencyBrands();
-  const { brand: brandFromUrl } = Route.useSearch();
+  // `?brand=<id da marca>` abre a lista já filtrada (vem da página Marcas). Lido sem `validateSearch` na rota: declarar o
+  // esquema aqui estreitaria o tipo de `search` das rotas filhas (`tab`, `openChat`) e quebraria o `tsc -b` do build.
+  const rawSearch = useSearch({ strict: false }) as { brand?: unknown };
+  const brandFromUrl = typeof rawSearch.brand === "string" && rawSearch.brand ? rawSearch.brand : undefined;
   const [brandFilter, setBrandFilter] = useState(brandFromUrl ?? "");
   useEffect(() => setBrandFilter(brandFromUrl ?? ""), [brandFromUrl]);
   const sortRef = useRef<HTMLDivElement>(null);

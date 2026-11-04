@@ -54,7 +54,7 @@ function BrandCard({
       </div>
       <p className="agb-desc">{brand.description || "Sem descrição."}</p>
       <div className="agb-row">
-        <Link to="/campaigns" search={{ brand: brand.id }} className="btn out">
+        <Link to="/campaigns" search={{ brand: brand.id } as never} className="btn out">
           Ver campanhas
         </Link>
         {canWrite ? (
