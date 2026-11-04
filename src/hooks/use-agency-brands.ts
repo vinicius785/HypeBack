@@ -6,6 +6,7 @@ import {
   createAgencyBrand,
   getAgencyBrands,
   setAgencyBrandStatus,
+  uploadAgencyBrandPhoto,
   updateAgencyBrand,
   type AgencyBrandInput,
   type AgencyBrandStatus,
@@ -55,6 +56,14 @@ export function useSetAgencyBrandStatus() {
   return useMutation({
     mutationFn: ({ brandId, status }: { brandId: string; status: AgencyBrandStatus }) =>
       setAgencyBrandStatus(brandId, status),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUploadAgencyBrandPhoto() {
+  const invalidate = useInvalidateBrands();
+  return useMutation({
+    mutationFn: ({ brandId, file }: { brandId: string; file: File }) => uploadAgencyBrandPhoto(brandId, file),
     onSuccess: invalidate,
   });
 }

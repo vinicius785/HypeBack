@@ -12,7 +12,7 @@ import {
 } from "./brand-list";
 
 const mk = (id: string, name: string, status: "active" | "archived", n: number, created = "2026-11-01T00:00:00Z", description: string | null = null): AgencyBrand => ({
-  id, name, photo: null, description, status, campaigns_count: n, created_at: created,
+  id, name, photo: null, description, niche_id: null, legal_name: null, tax_id: null, postal_code: null, street: null, street_number: null, unit: null, neighborhood: null, city: null, state: null, status, campaigns_count: n, created_at: created,
 });
 
 const brands = [

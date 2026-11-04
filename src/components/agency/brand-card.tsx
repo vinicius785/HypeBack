@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 
 import { Av, I } from "@/components/prototype/ui";
+import { getUploadUrl } from "@/lib/utils/api";
 import type { AgencyBrand } from "@/shared/services/agency-brands";
 
 const campaignsLabel = (n: number) =>
@@ -86,7 +87,7 @@ export function BrandCard({
         aria-label={`Ver campanhas de ${brand.name}`}
       />
       <div className="bcd-top">
-        <Av name={brand.name} src={brand.photo ?? undefined} size={48} />
+        <Av name={brand.name} src={getUploadUrl(brand.photo)} size={48} />
         <div className="bcd-id">
           <div className="bcd-nm">
             <b title={brand.name}>{brand.name}</b>

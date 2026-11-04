@@ -83,3 +83,30 @@
 .pv .bt-bar button:focus-visible, .pv .bcd-dots:focus-visible, .pv .bt-chip button:focus-visible, .pv .bt-clear-all:focus-visible { box-shadow: 0 0 0 2px rgba(5,5,5,.14); }
 .pv .bcd-open:focus-visible { box-shadow: 0 0 0 2px rgba(5,5,5,.14); }
 .pv .bt-bar .cx-fb.on:focus-visible { box-shadow: none; }
+
+/* Formulário completo da marca (identidade, empresa, endereço). */
+.pv .agb-sec { display: flex; flex-direction: column; gap: 14px; }
+.pv .agb-sec + .agb-sec { padding-top: 18px; border-top: 1.5px solid var(--line); }
+.pv .agb-h { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.pv .agb-opt { font-style: normal; font-weight: 500; text-transform: none; letter-spacing: 0; color: #a3a3a3; font-size: 12px; }
+.pv .agb-id { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 20px; align-items: start; }
+.pv .agb-logo { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.pv .agb-lv { width: 104px; height: 104px; border-radius: 28px; background: var(--bg); display: grid; place-items: center; overflow: hidden; font-size: 38px; font-weight: 600; color: var(--muted); }
+.pv .agb-lv img { width: 100%; height: 100%; object-fit: cover; }
+.pv .agb-la { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.pv .agb-la .btn { height: 38px; font-size: 13px; padding: 0 14px; }
+.pv .agb-lr { font-size: 12.5px; font-weight: 600; color: var(--muted); padding: 2px 8px; border-radius: 99px; }
+.pv .agb-lr:hover { color: var(--danger); }
+.pv .agb-lh { color: var(--muted); font-size: 12px; line-height: 1.35; }
+.pv .agb-lh.bad { color: var(--danger); font-weight: 600; }
+.pv .agb-nm { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.pv .agb-r2 { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; }
+.pv .agb-r3 { display: grid; grid-template-columns: 140px minmax(0, 1fr) 110px; gap: 14px; }
+.pv .agb-r4 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 92px; gap: 14px; }
+.pv .agb-form select.ni { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 22px) 50%, calc(100% - 16px) 50%; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; padding-right: 38px; }
+.pv .agb-form .nwrap .ni { padding-right: 18px; }
+@media (max-width: 640px) {
+  .pv .agb-id { grid-template-columns: 1fr; }
+  .pv .agb-r2, .pv .agb-r3 { grid-template-columns: 1fr; }
+  .pv .agb-r4 { grid-template-columns: 1fr 1fr; }
+}
