@@ -41,3 +41,13 @@
 .pv .rst-row .btn.out:hover { background: var(--ink); color: #fff; }
 .pv .rst-row .btn.out.dng { background: var(--bg); color: var(--danger); }
 .pv .rst-row .btn.out.dng:hover { background: var(--danger); color: #fff; }
+
+/* Rodapé do cartão de criador: os botões principais não quebram o texto e, com a ação de elenco (agência), as ações
+   secundárias passam para uma segunda linha com nome, em vez de estourar a largura do cartão. */
+.pv .crd-a .btn { white-space: nowrap; min-width: 0; padding-left: 12px; padding-right: 12px; }
+.pv .crd-a .crd-sl { display: none; }
+.pv .crd-a.x2 { flex-wrap: wrap; row-gap: 8px; }
+.pv .crd-a.x2 .btn { flex: 1 1 0; }
+.pv .crd-a.x2 .crd-sv { flex: 1 1 calc(50% - 4px); width: auto; height: 38px; border-radius: 99px; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.pv .crd-a.x2 .crd-sl { display: inline; }
+.pv .crd-a.x2 .crd-sv.on { color: var(--brand); }

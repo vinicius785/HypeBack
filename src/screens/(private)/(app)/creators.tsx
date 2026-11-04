@@ -671,7 +671,7 @@ function CreatorCard({ group, k, selected, near, saved, onSelect, onOpen, onInvi
         {hidden > 0 && <li className="crd-nm">+{hidden} {hidden === 1 ? "rede" : "redes"} no perfil</li>}
       </ul>
       ) : null}
-      <div className="crd-a">
+      <div className={`crd-a${onRoster && !rosterStatus ? " x2" : ""}`}>
         <button type="button" className="btn out" onClick={stop(onOpen)}>
           Ver perfil
         </button>
@@ -680,10 +680,12 @@ function CreatorCard({ group, k, selected, near, saved, onSelect, onOpen, onInvi
         </button>
         <button type="button" className={`round crd-sv ${saved ? "on" : ""}`} aria-label="Salvar em lista" onClick={stop(onSave)}>
           <I n="heart" cls="sm" />
+          <span className="crd-sl">{saved ? "Salvo" : "Salvar"}</span>
         </button>
         {onRoster && !rosterStatus && (
           <button type="button" className="round crd-sv" aria-label={`Convidar ${group.user.name} para o elenco`} title="Convidar para o elenco" onClick={stop(onRoster)}>
             <I n="star" cls="sm" />
+            <span className="crd-sl">Elenco</span>
           </button>
         )}
       </div>
