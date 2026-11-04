@@ -1,0 +1,172 @@
+/*
+ * Central de mensagens (gaveta de chat): lista de conversas, cabeçalho e estados, para as abas Criadores e Equipe.
+ * Só tokens do protótipo (--bg, --ink, --muted, --brand, --line). O preto fica para a ação principal (aba ativa, enviar):
+ * o balão enviado é roxo claro e o recebido, cinza neutro.
+ */
+
+/* ───────────── gaveta ───────────── */
+.pv .ovp.mc { width: min(1040px, calc(100vw - 24px)); flex-direction: row; }
+.pv .mc-list { width: 360px; flex: none; display: flex; flex-direction: column; min-height: 0; background: #fff; border-right: 1.5px solid var(--line); }
+.pv .mc-thread { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; background: #fff; }
+.pv .mc-x { position: absolute; top: 14px; right: 14px; z-index: 4; background: var(--bg); }
+
+/* ───────────── coluna da lista: título, categorias, busca, filtros ───────────── */
+.pv .mc-head { padding: 22px 20px 12px; flex: none; }
+.pv .mc-head h2 { margin: 0; font-size: 22px; line-height: 1.1; letter-spacing: -.04em; font-weight: 600; }
+.pv .mc-head small { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; }
+.pv .mc-cats { display: flex; gap: 2px; margin: 0 20px 12px; padding: 4px; background: var(--bg); border-radius: 99px; flex: none; }
+.pv .mc-cats button { flex: 1; height: 38px; border-radius: 99px; font-size: 13.5px; font-weight: 600; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background .25s, color .25s; }
+.pv .mc-cats button:hover:not(.on) { color: var(--ink); }
+.pv .mc-cats button.on { background: var(--ink); color: #fff; }
+.pv .mc-cats em { font-style: normal; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; background: #fff; color: var(--ink); font-size: 11.5px; font-weight: 700; display: inline-grid; place-items: center; }
+.pv .mc-cats button.on em { background: var(--brand); color: #fff; }
+.pv .mc-cats button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.pv .mc-search { display: flex; align-items: center; gap: 10px; margin: 0 20px 10px; height: 42px; padding: 0 16px; background: var(--bg); border-radius: 99px; color: var(--muted); flex: none; transition: box-shadow .2s; }
+.pv .mc-search:focus-within { box-shadow: inset 0 0 0 2px var(--brand); }
+.pv .mc-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); }
+.pv .mc-search input::placeholder { color: var(--muted); }
+.pv .mc-search button { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: var(--muted); flex: none; }
+.pv .mc-search button:hover { color: var(--ink); }
+
+.pv .mc-filters { display: flex; align-items: center; gap: 6px; padding: 0 20px 10px; flex: none; }
+.pv .mc-chip { height: 32px; padding: 0 12px; border-radius: 99px; font-size: 13px; font-weight: 600; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; transition: background .2s, color .2s; }
+.pv .mc-chip:hover:not(.on) { background: var(--bg); color: var(--ink); }
+.pv .mc-chip.on { background: var(--bg); color: var(--ink); }
+.pv .mc-chip i { font-style: normal; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--brand); color: #fff; font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; }
+.pv .mc-chip:focus-visible, .pv .mc-new:focus-visible, .pv .mc-row:focus-visible, .pv .mc-back:focus-visible, .pv .mc-person:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pv .mc-filters .mc-new { margin-left: auto; height: 34px; padding: 0 14px; font-size: 13px; }
+.pv .mc-filters .mc-new[aria-pressed="true"] { background: var(--brand); }
+
+/* ───────────── lista ───────────── */
+.pv .mc-items { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; padding: 2px 12px 16px; }
+.pv .mc-ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.pv .mc-sec { margin: 0; padding: 12px 12px 4px; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.pv .mc-row { width: 100%; display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: 18px; text-align: left; transition: background .2s; }
+.pv .mc-row:hover { background: #f6f6f6; }
+.pv .mc-row.on { background: var(--bg); }
+.pv .mc-row:disabled { opacity: .55; cursor: default; }
+.pv .mc-row .iav { flex: none; }
+.pv .mc-ch { flex: none; width: 44px; height: 44px; border-radius: 16px; background: var(--brand); color: #fff; display: grid; place-items: center; }
+.pv .mc-rb { flex: 1; min-width: 0; }
+.pv .mc-rh { display: flex; align-items: baseline; gap: 8px; }
+.pv .mc-rh b { flex: 1; min-width: 0; font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv .mc-rh em { flex: none; font-style: normal; font-size: 12px; color: var(--muted); }
+.pv .mc-row.un .mc-rh b { font-weight: 700; }
+.pv .mc-row.un .mc-rh em { color: var(--brand); font-weight: 600; }
+.pv .mc-rp { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.pv .mc-rp span { flex: 1; min-width: 0; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv .mc-row.un .mc-rp span { color: var(--ink); font-weight: 500; }
+.pv .mc-badge { flex: none; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; background: var(--brand); color: #fff; font-style: normal; font-size: 11.5px; font-weight: 700; display: inline-grid; place-items: center; }
+.pv .mc-tag { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; margin-top: 6px; padding: 2px 9px 2px 7px; border-radius: 99px; background: var(--bg); font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv .mc-tag::before { content: ""; width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--brand); }
+.pv .mc-row.on .mc-tag { background: #fff; }
+.pv .mc-kind { flex: none; align-self: center; padding: 1px 7px; border-radius: 99px; background: #f3e5ff; color: var(--brand); font-size: 10.5px; font-weight: 700; letter-spacing: .02em; }
+
+.pv .mc-sk { display: flex; gap: 12px; padding: 12px; }
+.pv .mc-sk i { display: block; background: var(--bg); border-radius: 99px; animation: pv-mcsk 1.4s ease-in-out infinite; }
+.pv .mc-sk i:first-child { width: 44px; height: 44px; flex: none; }
+.pv .mc-sk div { flex: 1; display: flex; flex-direction: column; gap: 9px; padding-top: 5px; }
+.pv .mc-sk div i:first-child { width: 46%; height: 12px; }
+.pv .mc-sk div i:last-child { width: 80%; height: 11px; }
+@keyframes pv-mcsk { 50% { opacity: .45; } }
+
+.pv .mc-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px; padding: 40px 24px; flex: 1; }
+.pv .mc-state > span { width: 52px; height: 52px; border-radius: 50%; background: var(--bg); display: grid; place-items: center; margin-bottom: 6px; }
+.pv .mc-state b { font-size: 16px; letter-spacing: -.02em; }
+.pv .mc-state small { color: var(--muted); font-size: 13.5px; line-height: 1.45; max-width: 34ch; }
+.pv .mc-state .btn { margin-top: 10px; height: 40px; }
+.pv .mc-state.fill { padding: 0 32px; }
+
+/* ───────────── cabeçalho da conversa ───────────── */
+.pv .mc-th { flex: none; display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 14px 66px 14px 20px; background: #fff; border-bottom: 1.5px solid var(--line); }
+.pv .mc-th .iav, .pv .mc-th .mc-ch { flex: none; }
+.pv .mc-th .mc-ch { width: 42px; height: 42px; }
+.pv .mc-ti { flex: 1; min-width: 0; }
+.pv .mc-ti b { display: block; font-size: 16px; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv .mc-ti small { display: flex; align-items: center; gap: 6px; margin-top: 1px; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv .mc-ti small .mc-off { color: var(--muted); }
+.pv .mc-th .btn { flex: none; height: 40px; }
+.pv .mc-back { display: none; flex: none; height: 40px; padding: 0 14px 0 10px; border-radius: 99px; background: var(--bg); font-size: 13.5px; font-weight: 600; align-items: center; gap: 4px; }
+
+/* ───────────── nova conversa ───────────── */
+.pv .mc-nc { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-top: 14px; }
+.pv .mc-nc .mc-search { margin-left: 20px; margin-right: 20px; }
+.pv .mc-nc .tc-block { margin: 0 20px 10px; }
+.pv .mc-nc .mc-items { padding: 2px 14px 16px; }
+.pv .mc-person { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 18px; text-align: left; transition: background .2s; }
+.pv .mc-person:hover:not(:disabled) { background: var(--bg); }
+.pv .mc-person:disabled { opacity: .55; cursor: default; }
+.pv .mc-person .iav { flex: none; }
+.pv .mc-person > div { flex: 1; min-width: 0; }
+.pv .mc-person b { display: block; font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv .mc-person small { display: block; color: var(--muted); font-size: 12.5px; }
+.pv .mc-person .mc-kind { background: var(--bg); color: var(--ink); }
+.pv .mc-person[aria-busy="true"] .mc-kind { background: #f3e5ff; color: var(--brand); }
+
+/* ───────────── tablet ───────────── */
+@media (max-width: 1100px) and (min-width: 761px) {
+  .pv .mc-list { width: 300px; }
+}
+
+/* ───────────── celular: uma tela por vez; as duas ficam montadas para guardar rolagem, busca e filtro ───────────── */
+@media (max-width: 760px) {
+  .pv .ovp.mc { top: 0; right: 0; bottom: 0; left: 0; width: 100vw; max-width: 100vw; height: 100vh; height: 100dvh; border-radius: 0; display: block; }
+  .pv .mc-list, .pv .mc-thread { position: absolute; inset: 0; width: auto; border-right: 0; }
+  .pv .mc-thread { visibility: hidden; pointer-events: none; }
+  .pv .ovp.mc.th .mc-list { visibility: hidden; pointer-events: none; }
+  .pv .ovp.mc.th .mc-thread { visibility: visible; pointer-events: auto; }
+  .pv .mc-back { display: inline-flex; }
+  .pv .mc-th { padding: 10px 62px 10px 12px; min-height: 64px; }
+  .pv .mc-th .btn { display: none; }
+  .pv .mc-head { padding: 18px 16px 10px; }
+  .pv .mc-cats, .pv .mc-search { margin-left: 16px; margin-right: 16px; }
+  .pv .mc-filters { padding: 0 16px 10px; }
+  .pv .mc-items { padding: 2px 8px calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .pv .mc-nc .mc-search { margin-left: 16px; margin-right: 16px; }
+  .pv .mc-nc .tc-block { margin: 0 16px 10px; }
+  .pv .mc-x { top: 12px; right: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pv .mc-sk i { animation: none; }
+}
+
+/* ───────────── balões: leves (recebida em cinza neutro, enviada em roxo claro), sem preto pesado ───────────── */
+.pv .mc-thread .cx-b { background: var(--bg); box-shadow: none; }
+.pv .mc-thread .cx.me .cx-b { background: #ecd9ff; color: var(--ink); }
+.pv .mc-thread .cx.me .cx-m { color: rgba(5,5,5,.55); }
+.pv .mc-thread .cx.me .cx-st.read { color: var(--brand); }
+.pv .mc-thread .cx.cx-fail .cx-b { background: #fff; }
+.pv .mc-thread .cx-tb, .pv .mc-thread .tc-tb { background: #fff; }
+.pv .mc-thread .cx-day span { background: var(--bg); box-shadow: none; }
+.pv .mc-thread .cx-col { max-width: min(560px, 74%); }
+@media (max-width: 760px) { .pv .mc-thread .cx-col { max-width: 88%; } }
+
+/* o campo de mensagem e o histórico são do chat (`ch-f` / `ch-tb`): dentro da conversa, o campo nunca encolhe e o histórico rola */
+.pv .mc-thread > .ch-f { flex: none; }
+.pv .mc-thread > .ch-tb { flex: 1; min-height: 0; }
+
+/* ───────────── cabeçalho com o botão de som (do chat) ───────────── */
+.pv .mc-head { display: flex; align-items: center; gap: 12px; }
+.pv .mc-head > div { flex: 1; min-width: 0; }
+.pv .mc-head .ch-snd { flex: none; margin-left: 0; }
+@media (max-width: 760px) { .pv .mc-head { padding-right: 64px; } }
+
+/* ───────────── animações do chat (troca de aba, abrir conversa, linhas), nas classes desta central ───────────── */
+.pv .ovp.mc.swap-to-team .mc-list > :not(.mc-head):not(.mc-cats), .pv .ovp.mc.swap-to-team .mc-thread { animation: cx-from-right .38s var(--ease) both; }
+.pv .ovp.mc.swap-to-creators .mc-list > :not(.mc-head):not(.mc-cats), .pv .ovp.mc.swap-to-creators .mc-thread { animation: cx-from-left .38s var(--ease) both; }
+.pv .mc-cats button em { animation: cx-pop .35s var(--ease) both; }
+.pv .mc-thread > .mc-th { animation: cx-fade .3s var(--ease) both; }
+.pv .mc-thread > .ch-tb { animation: cx-rise .4s var(--ease) .05s both; }
+.pv .mc-thread > .ch-f { animation: cx-rise .4s var(--ease) .1s both; }
+.pv .mc-thread > .mc-state { animation: cx-fade .35s var(--ease) both; }
+.pv .mc-row { animation: cx-rise .35s var(--ease) both; animation-delay: calc(var(--i, 0) * 28ms); }
+.pv .mc-row:active { transform: scale(.985); }
+@media (max-width: 760px) {
+  .pv .ovp.mc.th .mc-thread { animation: cx-from-right .32s var(--ease) both; }
+  .pv .ovp.mc:not(.th) .mc-list { animation: cx-from-left .32s var(--ease) both; }
+  .pv .ovp.mc.swap-to-team:not(.th) .mc-list, .pv .ovp.mc.swap-to-creators:not(.th) .mc-list { animation: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pv .ovp.mc .mc-list > *, .pv .ovp.mc .mc-thread, .pv .ovp.mc .mc-thread > *, .pv .mc-row, .pv .mc-cats button em { animation: none !important; }
+}

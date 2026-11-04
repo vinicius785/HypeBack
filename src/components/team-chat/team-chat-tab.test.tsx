@@ -127,11 +127,11 @@ describe("lista de conversas", () => {
     const user = userEvent.setup();
     renderTab();
     await screen.findByRole("list", { name: "Conversas da equipe" });
-    await user.click(screen.getByRole("button", { name: "Não lidas" }));
+    await user.click(screen.getByRole("button", { name: /^Não lidas/ }));
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "Todas" }));
     await user.type(screen.getByRole("textbox", { name: "Buscar conversa" }), "zzz");
-    expect(screen.getByText("Nada encontrado")).toBeInTheDocument();
+    expect(screen.getByText("Nenhuma conversa encontrada")).toBeInTheDocument();
   });
 
   it("carregando e erro (com tentar de novo)", async () => {
@@ -380,7 +380,7 @@ describe("nova conversa e pedidos de abertura", () => {
     h.openDirect.mockResolvedValue(direct({ id: "c-9", title: "Beto Lima", peer: { user_id: 3, name: "Beto Lima", avatar: null }, unread: 0, last_message: null }));
     const user = userEvent.setup();
     renderTab();
-    await user.click(await screen.findByRole("button", { name: /Nova conversa/ }));
+    await user.click((await screen.findAllByRole("button", { name: /Nova conversa/ }))[0]);
     const people = await screen.findByRole("list", { name: "Pessoas do workspace" });
     expect(within(people).getByText("Observador")).toBeInTheDocument();
     await user.click(within(people).getByRole("button", { name: /Beto Lima/ }));
@@ -404,7 +404,7 @@ describe("nova conversa e pedidos de abertura", () => {
   it("conversa pedida que não existe volta para a lista", async () => {
     renderTab(makeChat(), { request: { conversationId: "nao-existe" } });
     await screen.findByRole("list", { name: "Conversas da equipe" });
-    await waitFor(() => expect(screen.getByText("Selecione uma conversa")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Nenhuma conversa selecionada")).toBeInTheDocument());
     expect(screen.queryByRole("log")).not.toBeInTheDocument();
   });
 });
@@ -545,7 +545,7 @@ describe("pedido de outro workspace (clique no sino)", () => {
     const { rerender } = renderTab(makeChat(), { request });
     await screen.findByRole("list", { name: "Conversas da equipe" });
     expect(screen.queryByRole("log")).not.toBeInTheDocument();
-    expect(screen.getByText("Selecione uma conversa")).toBeInTheDocument();
+    expect(screen.getByText("Nenhuma conversa selecionada")).toBeInTheDocument();
 
     // Troca de workspace concluída: agora a conversa abre (a lista do novo workspace é a que a procura).
     h.ws.id = "ws-2";
@@ -577,5 +577,125 @@ describe("handshake recusado", () => {
     renderTab(makeChat({ isConnected: false }));
     await openConversation(/Ana Souza/);
     expect(await screen.findByText(/reconectando/)).toBeInTheDocument();
+  });
+});
+
+describe("central: lista, filtros e estados", () => {
+  it("'Não lidas' mostra quantas conversas têm mensagem nova, e a lista marca o remetente da prévia", async () => {
+    renderTab();
+    await screen.findByRole("list", { name: "Conversas da equipe" });
+    expect(screen.getByRole("button", { name: /^Não lidas/ })).toHaveTextContent("1");
+    const items = within(screen.getByRole("list", { name: "Conversas da equipe" })).getAllByRole("listitem");
+    // Seções só aparecem quando há canal E conversas diretas; o canal leva o selo e a prévia traz quem falou.
+    expect(screen.getByText("Canal")).toBeInTheDocument();
+    expect(screen.getByText("Conversas diretas")).toBeInTheDocument();
+    expect(items.some((li) => li.textContent?.includes("Canal geral"))).toBe(true);
+    expect(items.some((li) => li.textContent?.includes("Beto: Bom dia, time"))).toBe(true);
+  });
+
+  it("sem conversas não lidas: diz que está em dia e oferece 'Ver todas as conversas'", async () => {
+    h.conversations.mockResolvedValue([channel, direct({ unread: 0 })]);
+    const user = userEvent.setup();
+    renderTab();
+    await user.click(await screen.findByRole("button", { name: /^Não lidas/ }));
+    expect(screen.getByText("Nenhuma conversa não lida")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ver todas as conversas" }));
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+  });
+
+  it("busca sem resultado cita o termo e 'Limpar busca' devolve a lista", async () => {
+    const user = userEvent.setup();
+    renderTab();
+    await screen.findByRole("list", { name: "Conversas da equipe" });
+    await user.type(screen.getByRole("textbox", { name: "Buscar conversa" }), "zzz");
+    expect(screen.getByText(/Nada com “zzz”/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Limpar busca" }));
+    expect(await screen.findByRole("list", { name: "Conversas da equipe" })).toBeInTheDocument();
+  });
+
+  it("nenhuma conversa ainda: explica e oferece 'Nova conversa'", async () => {
+    h.conversations.mockResolvedValue([]);
+    renderTab();
+    expect(await screen.findByText("Nenhuma conversa ainda")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Nova conversa/ }).length).toBeGreaterThan(1);
+  });
+
+  it("carregando mostra esqueleto (o leitor de tela ouve a frase)", () => {
+    h.conversations.mockReturnValue(new Promise(() => undefined));
+    renderTab();
+    expect(screen.getByRole("status")).toHaveTextContent("Carregando conversas...");
+  });
+
+  it("a conversa aberta mostra o tipo da conversa no cabeçalho", async () => {
+    renderTab();
+    await openConversation(/Ana Souza/);
+    expect(await screen.findByText(/Conversa direta/)).toBeInTheDocument();
+  });
+});
+
+describe("central: nova conversa", () => {
+  it("a lista continua à vista; quem já tem conversa vem marcado; cancelar volta sem perder o contexto", async () => {
+    const user = userEvent.setup();
+    renderTab();
+    await screen.findByRole("list", { name: "Conversas da equipe" });
+    await user.click(screen.getAllByRole("button", { name: /Nova conversa/ })[0]);
+    const people = await screen.findByRole("list", { name: "Pessoas do workspace" });
+    // A lista de conversas não some enquanto se escolhe a pessoa.
+    expect(screen.getByRole("list", { name: "Conversas da equipe" })).toBeInTheDocument();
+    const ana = within(people).getByRole("button", { name: /Ana Souza/ });
+    expect(ana).toHaveTextContent("Conversa existente");
+    expect(within(people).getByRole("button", { name: /Beto Lima/ })).not.toHaveTextContent("Conversa existente");
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("list", { name: "Pessoas do workspace" })).not.toBeInTheDocument();
+    expect(screen.getByText("Nenhuma conversa selecionada")).toBeInTheDocument();
+  });
+
+  it("busca por função e sem resultado orienta o próximo passo", async () => {
+    const user = userEvent.setup();
+    renderTab();
+    await user.click((await screen.findAllByRole("button", { name: /Nova conversa/ }))[0]);
+    const search = await screen.findByRole("textbox", { name: "Buscar pessoa" });
+    await user.type(search, "observador");
+    const people = screen.getByRole("list", { name: "Pessoas do workspace" });
+    expect(within(people).getAllByRole("button")).toHaveLength(1);
+    await user.clear(search);
+    await user.type(search, "zzz");
+    expect(screen.getByText("Nenhuma pessoa encontrada")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Limpar busca" }));
+    expect(within(screen.getByRole("list", { name: "Pessoas do workspace" })).getAllByRole("button").length).toBeGreaterThan(1);
+  });
+
+  it("workspace sem mais ninguém: oferece 'Convidar pessoas'", async () => {
+    h.members.mockResolvedValue([]);
+    const onInvite = vi.fn();
+    const user = userEvent.setup();
+    renderTab(makeChat(), { onInvite });
+    await user.click((await screen.findAllByRole("button", { name: /Nova conversa/ }))[0]);
+    await user.click(await screen.findByRole("button", { name: "Convidar pessoas" }));
+    expect(onInvite).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("central: celular", () => {
+  it("em tela de toque o campo NÃO recebe foco ao abrir a conversa (o teclado não empurra o botão de voltar)", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ matches: true, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() })) as unknown as typeof window.matchMedia;
+    try {
+      renderTab();
+      await openConversation(/Ana Souza/);
+      expect(await screen.findByRole("textbox", { name: "Mensagem" })).not.toHaveFocus();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  it("o botão de voltar mostra o texto 'Conversas' e leva de volta à lista", async () => {
+    const { onThreadChange } = renderTab();
+    const user = await openConversation(/Ana Souza/);
+    await screen.findByRole("log");
+    await user.click(screen.getByRole("button", { name: "Voltar às conversas" }));
+    expect(screen.queryByRole("log")).not.toBeInTheDocument();
+    expect(onThreadChange).toHaveBeenLastCalledWith(false);
+    expect(screen.getByRole("list", { name: "Conversas da equipe" })).toBeInTheDocument();
   });
 });

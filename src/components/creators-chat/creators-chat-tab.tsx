@@ -2,7 +2,9 @@ import { useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueries } from "@tanstack/react-query";
 
-import { Av, I } from "@/components/prototype/ui";
+import { ConversationRow } from "@/components/message-center/conversation-row";
+import { FilterRow, ListSearch, ListSkeleton, StateBlock, type ListFilter } from "@/components/message-center/list-parts";
+import { Av } from "@/components/prototype/ui";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useWorkspaceQueryKey, withWorkspaceKey } from "@/hooks/use-workspace-query-key";
 import { getCampaignUsers } from "@/shared/services/campaign-users";
@@ -31,9 +33,9 @@ interface CreatorsChatTabProps {
 export function CreatorsChatTab({ top, request, extra, onExtraChange, onThreadChange, onRequestClose }: CreatorsChatTabProps) {
   const [sel, setSel] = useState<string | null>(null);
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<"all" | "un">("all");
+  const [filter, setFilter] = useState<ListFilter>("all");
   const navigate = useNavigate();
-  const { data: notifications = [] } = useNotifications();
+  const { data: notifications = [], isLoading: loadingNotifications } = useNotifications();
 
   // Pedido de abertura (botão "Chat" de um criador na campanha): entra na lista mesmo sem notificação.
   useLayoutEffect(() => {
@@ -107,75 +109,81 @@ export function CreatorsChatTab({ top, request, extra, onExtraChange, onThreadCh
   };
 
   const emptyAll = convs.length === 0;
+  const unreadCount = convs.filter((c) => c.unread > 0).length;
+  const goCampaigns = () => {
+    navigate({ to: "/campaigns" });
+    onRequestClose();
+  };
+
+  let body;
+  if (loadingNotifications && emptyAll) {
+    body = <ListSkeleton label="Carregando conversas..." />;
+  } else if (emptyAll) {
+    body = (
+      <StateBlock
+        icon="msg"
+        title="Nenhuma conversa com criadores ainda"
+        text="As conversas começam em Gerenciamento da campanha, ao abrir o chat de um criador."
+        action={{ label: "Ir para as campanhas", icon: "mega", onClick: goCampaigns }}
+      />
+    );
+  } else if (list.length === 0) {
+    body =
+      filter === "un" && !needle ? (
+        <StateBlock
+          icon="check"
+          title="Nenhuma conversa não lida"
+          text="Você está em dia com os criadores."
+          action={{ label: "Ver todas as conversas", onClick: () => setFilter("all") }}
+        />
+      ) : (
+        <StateBlock
+          icon="search"
+          title="Nenhuma conversa encontrada"
+          text={needle ? `Nada com “${q.trim()}”. Tente outro nome ou campanha.` : "Tente outro filtro."}
+          action={{ label: needle ? "Limpar busca" : "Ver todas as conversas", onClick: () => (needle ? setQ("") : setFilter("all")) }}
+        />
+      );
+  } else {
+    body = (
+      <ul className="mc-ul" role="list" aria-label="Conversas com criadores">
+        {list.map((c, i) => (
+          <li key={c.id}>
+            <ConversationRow
+              index={i}
+              selected={sel === c.id}
+              unread={c.unread}
+              avatar={<Av name={c.name} src={c.avatar} size={44} />}
+              title={c.name}
+              time={fmtTime(c.at)}
+              preview={c.preview}
+              tag={c.campaign || undefined}
+              onSelect={() => setSel(c.id)}
+            />
+          </li>
+        ))}
+      </ul>
+    );
+  }
 
   return (
     <>
-      <div className="ch-l">
+      <div className="mc-list">
         {top}
-        <label className="find ch-s">
-          <I n="search" cls="sm" />
-          <input placeholder="Buscar conversa" aria-label="Buscar conversa" value={q} onChange={(e) => setQ(e.target.value)} autoComplete="off" />
-        </label>
-        <div className="gtabs ch-f2">
-          {([["all", "Todas"], ["un", "Não lidas"]] as const).map(([k, l]) => (
-            <button key={k} type="button" className={filter === k ? "on" : ""} onClick={() => setFilter(k)}>
-              {l}
-            </button>
-          ))}
-        </div>
-        <div className="ch-ls">
-          {emptyAll ? (
-            <div className="ov-empty">
-              <span><I n="msg" /></span>
-              <b>Nenhuma conversa recente</b>
-              <small>As conversas começam em Gerenciamento da campanha, ao abrir o chat de um criador.</small>
-            </div>
-          ) : list.length === 0 ? (
-            <div className="ov-empty">
-              <span><I n="search" /></span>
-              <b>Nada encontrado</b>
-              <small>Tente outro nome ou filtro.</small>
-            </div>
-          ) : (
-            list.map((c, i) => (
-              <button
-                key={c.id}
-                style={{ ["--i" as string]: Math.min(i, 8) }}
-                type="button"
-                className={`ch-c${sel === c.id ? " on" : ""}${c.unread ? " un" : ""}`}
-                onClick={() => setSel(c.id)}
-              >
-                <Av name={c.name} src={c.avatar} size={44} />
-                <div>
-                  <div className="ch-nr">
-                    <b>{c.name}</b>
-                    {c.campaign && (
-                      <span className="ch-tg" style={{ ["--c" as string]: "#9e2cfa" }}>
-                        <i />
-                        {c.campaign}
-                      </span>
-                    )}
-                  </div>
-                  <small>{c.preview}</small>
-                </div>
-                <span className="ch-m">
-                  <em>{fmtTime(c.at)}</em>
-                  {c.unread > 0 && <i>{c.unread}</i>}
-                </span>
-              </button>
-            ))
-          )}
-        </div>
+        <ListSearch value={q} onChange={setQ} placeholder="Buscar criador ou campanha" />
+        <FilterRow filter={filter} onFilter={setFilter} unread={unreadCount} />
+        <div className="mc-items">{body}</div>
       </div>
-      <div className="ch-r">
+      <div className="mc-thread">
         {current ? (
           <CreatorThread key={current.id} conv={current} onBack={() => setSel(null)} onOpenCampaign={() => openCampaign(current)} />
         ) : (
-          <div className="ov-empty big">
-            <span><I n="msg" /></span>
-            <b>Selecione uma conversa</b>
-            <small>Converse com os criadores das suas campanhas.</small>
-          </div>
+          <StateBlock
+            fill
+            icon="msg"
+            title="Nenhuma conversa selecionada"
+            text="Escolha uma conversa na lista para falar com o criador. Para começar uma nova, abra o chat dele em Gerenciamento da campanha."
+          />
         )}
       </div>
     </>

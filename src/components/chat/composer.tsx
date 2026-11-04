@@ -9,6 +9,8 @@ import {
 } from "@/shared/services/team-chat";
 import { formatFileSize, isImageMime } from "@/components/team-chat/format";
 
+import { canAutoFocus } from "./focus";
+
 interface DraftAttachment {
   id: string;
   name: string;
@@ -68,9 +70,10 @@ export function ChatComposer({
   draftsRef.current = drafts;
   const disabled = blockedReason !== null;
 
-  // Foco no campo ao abrir a conversa.
+  // Foco no campo ao abrir a conversa, só em tela grande com mouse: no celular abriria o teclado na hora e empurraria o
+  // cabeçalho (e o botão de voltar) para fora da tela.
   useEffect(() => {
-    inputRef.current?.focus();
+    if (canAutoFocus()) inputRef.current?.focus();
   }, [conversationId]);
 
   // Sair da conversa solta as miniaturas locais.

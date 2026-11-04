@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
+import { ThreadHeader } from "@/components/message-center/thread-header";
 import { Av, I } from "@/components/prototype/ui";
+import { useWorkspaceContext } from "@/contexts/workspace-context";
 import { orderedMessages, useTeamChatMessages } from "@/hooks/use-team-chat-queries";
 import type { TeamChatController } from "@/hooks/use-team-chat";
 import { generateIdempotencyKey } from "@/shared/utils/idempotency-key";
@@ -220,6 +222,7 @@ export function ConversationView({ conversation, chat, me, onBack }: Conversatio
   const discard = (localId: string) => setPending((cur) => cur.filter((p) => p.localId !== localId));
 
   const isChannel = conversation.kind === "channel";
+  const workspaceName = useWorkspaceContext().selectedWorkspace?.name;
   const peer = conversation.peer;
   const loading = query.isLoading;
 
@@ -237,25 +240,27 @@ export function ConversationView({ conversation, chat, me, onBack }: Conversatio
 
   return (
     <>
-      <div className="ch-th">
-        <button type="button" className="round ch-bk" onClick={onBack} aria-label="Voltar às conversas">
-          <I n="back" cls="sm" />
-        </button>
-        {isChannel ? (
-          <span className="ch-g tc-ch" style={{ width: 46, height: 46 }} aria-hidden="true">
-            <I n="users" />
-          </span>
-        ) : (
-          <Av name={peer?.name ?? conversation.title} src={peer?.avatar ?? undefined} size={46} />
-        )}
-        <div>
-          <b>{isChannel ? "Equipe" : (peer?.name ?? conversation.title)}</b>
-          <small>
-            {isChannel ? "Canal geral · todos do workspace" : "Conversa direta"}
-            {!chat.isConnected && !chat.blocked && <span className="tc-off"> · reconectando...</span>}
-          </small>
-        </div>
-      </div>
+      <ThreadHeader
+        onBack={onBack}
+        avatar={
+          isChannel ? (
+            <span className="mc-ch" aria-hidden="true">
+              <I n="users" />
+            </span>
+          ) : (
+            <Av name={peer?.name ?? conversation.title} src={peer?.avatar ?? undefined} size={42} />
+          )
+        }
+        title={isChannel ? "Equipe" : (peer?.name ?? conversation.title)}
+        subtitle={
+          <>
+            {isChannel ? "Canal geral" : "Conversa direta"}
+            {" · "}
+            {workspaceName ?? (isChannel ? "todos do workspace" : "mesmo workspace")}
+            {!chat.isConnected && !chat.blocked && <span className="mc-off"> · reconectando...</span>}
+          </>
+        }
+      />
       <div
         className="ch-tb tc-tb"
         ref={bodyRef}

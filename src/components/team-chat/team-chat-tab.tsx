@@ -1,6 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
+import { StateBlock } from "@/components/message-center/list-parts";
 import { I } from "@/components/prototype/ui";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useWorkspaceQueryKey } from "@/hooks/use-workspace-query-key";
@@ -12,7 +13,7 @@ import {
 } from "@/hooks/use-team-chat-queries";
 import { isTeamChatRefusalCode, isTeamChatUnavailable, type TeamChatMember } from "@/shared/services/team-chat";
 
-import { ConversationList } from "./conversation-list";
+import { ConversationList, type ConversationListStatus } from "./conversation-list";
 import { ConversationView } from "./conversation-view";
 import { NewConversation } from "./new-conversation";
 import type { OpenTeamChatRequest } from "./open-team-chat";
@@ -25,12 +26,14 @@ interface TeamChatTabProps {
   chat: TeamChatController;
   /** Avisa a gaveta quando há conversa (ou "nova conversa") aberta: no celular ela ocupa a tela. */
   onThreadChange: (open: boolean) => void;
+  /** Leva a quem pode convidar para onde se convida gente ao workspace. */
+  onInvite?: () => void;
 }
 
 type View = { kind: "none" } | { kind: "new" } | { kind: "conversation"; id: string };
 
 /** Aba Equipe da gaveta: conversas entre as pessoas do mesmo workspace (canal geral + 1 a 1). */
-export function TeamChatTab({ top, request, chat, onThreadChange }: TeamChatTabProps) {
+export function TeamChatTab({ top, request, chat, onThreadChange, onInvite }: TeamChatTabProps) {
   const { user } = useCurrentUser();
   const me = user?.id != null ? Number(user.id) : null;
   const workspaceId = useWorkspaceQueryKey();
@@ -110,59 +113,42 @@ export function TeamChatTab({ top, request, chat, onThreadChange }: TeamChatTabP
     }
   };
 
-  const left = unavailable ? (
-    <div className="ch-ls">
-      <div className="ov-empty big">
-        <span>
-          <I n="clock" />
-        </span>
-        <b>Disponível em breve</b>
-        <small>O chat da equipe ainda está sendo liberado. As conversas com criadores seguem na aba Criadores.</small>
-      </div>
-    </div>
-  ) : conversations.isLoading ? (
-    <div className="ch-ls">
-      <div className="ov-empty" role="status">
-        <small>Carregando conversas...</small>
-      </div>
-    </div>
-  ) : conversations.isError ? (
-    <div className="ch-ls">
-      <div className="ov-empty" role="alert">
-        <span>
-          <I n="alert" />
-        </span>
-        <b>Não foi possível carregar as conversas</b>
-        <button type="button" className="btn out" onClick={() => void conversations.refetch()}>
-          <I n="refresh" cls="sm" />
-          Tentar de novo
-        </button>
-      </div>
-    </div>
-  ) : (
-    <ConversationList
-      conversations={list ?? []}
-      selectedId={current?.id ?? null}
-      me={me}
-      onSelect={(id) => setView({ kind: "conversation", id })}
-      onNew={() => setView({ kind: "new" })}
-      newDisabled={chat.blocked !== null}
-    />
+  const status: ConversationListStatus = unavailable
+    ? "unavailable"
+    : conversations.isLoading
+      ? "loading"
+      : conversations.isError
+        ? "error"
+        : "ready";
+  // Quem já tem conversa 1 a 1 comigo aparece marcado na "Nova conversa".
+  const existingUserIds = useMemo(
+    () => new Set((list ?? []).flatMap((c) => (c.kind === "direct" && c.peer ? [c.peer.user_id] : []))),
+    [list],
   );
 
   return (
     <>
-      <div className="ch-l">
+      <div className="mc-list">
         {top}
         {chat.blocked && isTeamChatRefusalCode(chat.blocked.code) && (
-          <p className="tc-block" role="alert" style={{ margin: "0 16px 10px" }}>
+          <p className="tc-block" role="alert" style={{ margin: "0 20px 10px" }}>
             <I n="lock" cls="sm" />
             {chat.blocked.message}
           </p>
         )}
-        {left}
+        <ConversationList
+          conversations={list ?? []}
+          selectedId={current?.id ?? null}
+          me={me}
+          status={status}
+          onRetry={() => void conversations.refetch()}
+          onSelect={(id) => setView({ kind: "conversation", id })}
+          onNew={() => setView({ kind: "new" })}
+          newOpen={view.kind === "new"}
+          newDisabled={chat.blocked !== null}
+        />
       </div>
-      <div className="ch-r">
+      <div className="mc-thread">
         {view.kind === "new" && !unavailable ? (
           <NewConversation
             members={members.data}
@@ -170,24 +156,24 @@ export function TeamChatTab({ top, request, chat, onThreadChange }: TeamChatTabP
             isError={members.isError}
             onRetry={() => void members.refetch()}
             openingUserId={opening}
+            existingUserIds={existingUserIds}
             blockedReason={chat.blocked?.message ?? null}
             onPick={pick}
             onBack={() => setView({ kind: "none" })}
+            onInvite={onInvite}
           />
         ) : current ? (
           <ConversationView key={current.id} conversation={current} chat={chat} me={me} onBack={() => setView({ kind: "none" })} />
+        ) : unavailable ? (
+          <StateBlock fill icon="msg" title="Chat da equipe em breve" text="Quando estiver liberado, você conversa aqui com as pessoas do seu workspace." />
         ) : (
-          <div className="ov-empty big">
-            <span>
-              <I n="msg" />
-            </span>
-            <b>{unavailable ? "Chat da equipe em breve" : "Selecione uma conversa"}</b>
-            <small>
-              {unavailable
-                ? "Quando estiver liberado, você conversa aqui com as pessoas do seu workspace."
-                : "Converse com as pessoas do seu workspace, no canal da equipe ou em particular."}
-            </small>
-          </div>
+          <StateBlock
+            fill
+            icon="msg"
+            title="Nenhuma conversa selecionada"
+            text="Escolha uma conversa na lista, no canal da equipe ou em particular, ou comece uma nova."
+            action={chat.blocked !== null ? undefined : { label: "Nova conversa", icon: "plus", onClick: () => setView({ kind: "new" }) }}
+          />
         )}
       </div>
     </>

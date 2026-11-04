@@ -5,6 +5,7 @@ import type { ChatLine } from "@/components/chat/flow";
 import { MessageFlow } from "@/components/chat/message-flow";
 import { useIncomingSound } from "@/components/chat/use-incoming-sound";
 import { useSmartScroll } from "@/components/chat/use-smart-scroll";
+import { ThreadHeader } from "@/components/message-center/thread-header";
 import { Av, I } from "@/components/prototype/ui";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useInfluencerMessages, useSendMessage } from "@/hooks/use-campaign-chat";
@@ -164,21 +165,24 @@ export function CreatorThread({
 
   return (
     <>
-      <div className="ch-th">
-        <button type="button" className="round ch-bk" onClick={onBack} aria-label="Voltar às conversas">
-          <I n="back" cls="sm" />
-        </button>
-        <Av name={conv.name} src={conv.avatar} size={46} />
-        <div>
-          <b>{conv.name}</b>
-          <small>{conv.campaign || "Conversa da campanha"}</small>
-        </div>
-        <span className="gap" />
-        <button type="button" className="btn out" onClick={onOpenCampaign}>
-          <I n="mega" cls="sm" />
-          Abrir campanha
-        </button>
-      </div>
+      <ThreadHeader
+        onBack={onBack}
+        avatar={<Av name={conv.name} src={conv.avatar} size={42} />}
+        title={conv.name}
+        subtitle={
+          <>
+            Criador
+            {" · "}
+            {conv.campaign || "Conversa da campanha"}
+          </>
+        }
+        actions={
+          <button type="button" className="btn out" onClick={onOpenCampaign}>
+            <I n="mega" cls="sm" />
+            Abrir campanha
+          </button>
+        }
+      />
       <div
         className="ch-tb cx-tb"
         ref={scroll.ref}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
 
 import { CreatorsChatTab } from "@/components/creators-chat/creators-chat-tab";
@@ -16,6 +17,8 @@ import { TeamChatTab } from "@/components/team-chat/team-chat-tab";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useTeamChat } from "@/hooks/use-team-chat";
 import { useTeamChatEnabled, useTeamChatUnread } from "@/hooks/use-team-chat-queries";
+
+import "@/styles/message-center.css";
 import { useWorkspaceQueryKey } from "@/hooks/use-workspace-query-key";
 
 export { openChatDrawer, type OpenChatRequest } from "@/components/creators-chat/creators-conversations";
@@ -49,6 +52,7 @@ export function ChatDrawerButton() {
   // Conversa aberta pelo botão "Chat" de um criador: fica na lista mesmo sem notificação (como antes das abas).
   const [creatorsExtra, setCreatorsExtra] = useState<CreatorConversation | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navigate = useNavigate();
 
   const notificationsQuery = useNotifications();
   const notifications = notificationsQuery.data ?? [];
@@ -88,6 +92,12 @@ export function ChatDrawerButton() {
       setTeamRequest(null);
     }, CLOSE_MS);
   }, []);
+
+  // "Convidar pessoas" (workspace sem mais ninguém): fecha a gaveta e leva às configurações do workspace.
+  const goInvite = useCallback(() => {
+    void navigate({ to: "/workspace/settings" });
+    requestClose();
+  }, [navigate, requestClose]);
 
   useEffect(() => {
     const onOpenCreator = (e: Event) => {
@@ -165,7 +175,7 @@ export function ChatDrawerButton() {
 
   const top = (
     <>
-      <div className="ov-h">
+      <div className="mc-head">
         <div>
           <h2>Mensagens</h2>
           <small>{totalUnread ? `${totalUnread} não lida${totalUnread > 1 ? "s" : ""}` : "Tudo em dia"}</small>
@@ -185,7 +195,7 @@ export function ChatDrawerButton() {
           <I n={soundOn ? "volume" : "mute"} cls="sm" />
         </button>
       </div>
-      <div className="gtabs tc-tabs" role="tablist" aria-label="Tipo de conversa">
+      <div className="mc-cats" role="tablist" aria-label="Tipo de conversa">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -212,7 +222,7 @@ export function ChatDrawerButton() {
   const drawer = (
     <div className="pv">
       <div className={`ovb on${cls}`} onClick={requestClose} />
-      <aside className={`ovp ch on${threadOpen ? " th" : ""}${swap ? ` swap-${swap}` : ""}${cls}`} role="dialog" aria-label="Mensagens">
+      <aside className={`ovp mc on${threadOpen ? " th" : ""}${swap ? ` swap-${swap}` : ""}${cls}`} role="dialog" aria-label="Mensagens">
         {/* `display: contents`: o painel nomeia a aba para o leitor de tela sem virar uma caixa do layout (as colunas
             da lista e da conversa seguem como filhas diretas do flex da gaveta). */}
         <div key={tab} role="tabpanel" id={`chat-panel-${tab}`} aria-labelledby={`chat-tab-${tab}`} style={{ display: "contents" }}>
@@ -226,7 +236,7 @@ export function ChatDrawerButton() {
               onRequestClose={requestClose}
             />
           ) : (
-            <TeamChatTab top={top} request={teamRequest} chat={chat} onThreadChange={setThreadOpen} />
+            <TeamChatTab top={top} request={teamRequest} chat={chat} onThreadChange={setThreadOpen} onInvite={goInvite} />
           )}
         </div>
         <button type="button" className="round ch-x" onClick={requestClose} aria-label="Fechar">

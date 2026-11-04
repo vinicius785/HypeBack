@@ -1,102 +1,141 @@
 import { useState } from "react";
 
+import { ConversationRow } from "@/components/message-center/conversation-row";
+import { FilterRow, ListSearch, ListSkeleton, StateBlock, type ListFilter } from "@/components/message-center/list-parts";
 import { Av, I } from "@/components/prototype/ui";
 import type { TeamChatConversation } from "@/shared/services/team-chat";
 import { fmtTime } from "@/shared/utils/chat-time";
 
 import { conversationPreview } from "./format";
 
+export type ConversationListStatus = "ready" | "loading" | "error" | "unavailable";
+
 interface ConversationListProps {
   conversations: TeamChatConversation[];
   selectedId: string | null;
   me: number | null;
+  status: ConversationListStatus;
+  onRetry: () => void;
   onSelect: (id: string) => void;
   onNew: () => void;
+  /** "Nova conversa" está aberta na área da conversa. */
+  newOpen?: boolean;
   /** Sem permissão de escrita (workspace arquivado etc.): "Nova conversa" fica desabilitada. */
   newDisabled?: boolean;
 }
 
-/** Lista da aba Equipe: canal fixado no topo, depois as conversas 1 a 1; busca e filtro de não lidas. */
-export function ConversationList({ conversations, selectedId, me, onSelect, onNew, newDisabled }: ConversationListProps) {
+/**
+ * Lista da aba Equipe: busca, filtros (Todas / Não lidas) e "Nova conversa" sempre à vista; o canal vem primeiro, as
+ * conversas 1 a 1 depois. Cada situação sem conversa (nenhuma, nada achado, nenhuma não lida) diz o que fazer.
+ */
+export function ConversationList({ conversations, selectedId, me, status, onRetry, onSelect, onNew, newOpen, newDisabled }: ConversationListProps) {
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<"all" | "un">("all");
+  const [filter, setFilter] = useState<ListFilter>("all");
+
+  if (status === "unavailable") {
+    return (
+      <StateBlock
+        icon="clock"
+        title="Disponível em breve"
+        text="O chat da equipe ainda está sendo liberado. As conversas com criadores seguem na aba Criadores."
+      />
+    );
+  }
 
   const needle = q.trim().toLowerCase();
-  const list = conversations.filter(
-    (c) => (filter === "all" || c.unread > 0) && (!needle || c.title.toLowerCase().includes(needle)),
-  );
+  const unreadCount = conversations.filter((c) => c.unread > 0).length;
+  const list = conversations.filter((c) => (filter === "all" || c.unread > 0) && (!needle || c.title.toLowerCase().includes(needle)));
+  const channels = list.filter((c) => c.kind === "channel");
+  const directs = list.filter((c) => c.kind !== "channel");
+
+  const row = (c: TeamChatConversation, i: number) => {
+    const channel = c.kind === "channel";
+    return (
+      <li key={c.id}>
+        <ConversationRow
+          index={i}
+          selected={selectedId === c.id}
+          unread={c.unread}
+          channel={channel}
+          avatar={channel ? undefined : <Av name={c.peer?.name ?? c.title} src={c.peer?.avatar ?? undefined} size={44} />}
+          title={c.title}
+          kind={channel ? "Canal geral" : undefined}
+          time={c.last_message ? fmtTime(c.last_message.created_at) : undefined}
+          preview={conversationPreview(c, me)}
+          onSelect={() => onSelect(c.id)}
+        />
+      </li>
+    );
+  };
+
+  let body;
+  if (status === "loading") {
+    body = <ListSkeleton label="Carregando conversas..." />;
+  } else if (status === "error") {
+    body = (
+      <StateBlock
+        role="alert"
+        icon="alert"
+        title="Não foi possível carregar as conversas"
+        text="Confira a conexão e tente de novo."
+        action={{ label: "Tentar de novo", icon: "refresh", onClick: onRetry }}
+      />
+    );
+  } else if (conversations.length === 0) {
+    body = (
+      <StateBlock
+        icon="msg"
+        title="Nenhuma conversa ainda"
+        text="Comece uma conversa com alguém do seu workspace."
+        action={newDisabled ? undefined : { label: "Nova conversa", icon: "plus", onClick: onNew }}
+      />
+    );
+  } else if (list.length === 0) {
+    body =
+      filter === "un" && !needle ? (
+        <StateBlock
+          icon="check"
+          title="Nenhuma conversa não lida"
+          text="Você está em dia com a equipe."
+          action={{ label: "Ver todas as conversas", onClick: () => setFilter("all") }}
+        />
+      ) : (
+        <StateBlock
+          icon="search"
+          title="Nenhuma conversa encontrada"
+          text={needle ? `Nada com “${q.trim()}”. Tente outro nome.` : "Tente outro filtro."}
+          action={{ label: needle ? "Limpar busca" : "Ver todas as conversas", onClick: () => (needle ? setQ("") : setFilter("all")) }}
+        />
+      );
+  } else {
+    body = (
+      <ul className="mc-ul" role="list" aria-label="Conversas da equipe">
+        {channels.length > 0 && directs.length > 0 && (
+          <li role="presentation" className="mc-sec">
+            Canal
+          </li>
+        )}
+        {channels.map((c, i) => row(c, i))}
+        {channels.length > 0 && directs.length > 0 && (
+          <li role="presentation" className="mc-sec">
+            Conversas diretas
+          </li>
+        )}
+        {directs.map((c, i) => row(c, channels.length + i))}
+      </ul>
+    );
+  }
 
   return (
     <>
-      <label className="find ch-s">
-        <I n="search" cls="sm" />
-        <input placeholder="Buscar conversa" aria-label="Buscar conversa" value={q} onChange={(e) => setQ(e.target.value)} autoComplete="off" />
-      </label>
-      <div className="tc-row">
-        <div className="gtabs ch-f2">
-          {([["all", "Todas"], ["un", "Não lidas"]] as const).map(([k, l]) => (
-            <button key={k} type="button" className={filter === k ? "on" : ""} aria-pressed={filter === k} onClick={() => setFilter(k)}>
-              {l}
-            </button>
-          ))}
-        </div>
-        <button type="button" className="btn out tc-new" onClick={onNew} disabled={newDisabled}>
+      <ListSearch value={q} onChange={setQ} placeholder="Buscar conversa ou pessoa" />
+      <FilterRow filter={filter} onFilter={setFilter} unread={unreadCount}>
+        <button type="button" className="btn mc-new" onClick={onNew} disabled={newDisabled} aria-pressed={newOpen || undefined}>
           <I n="plus" cls="sm" />
           Nova conversa
         </button>
-      </div>
-      <div className="ch-ls">
-        {list.length === 0 ? (
-          <div className="ov-empty">
-            <span>
-              <I n="search" />
-            </span>
-            <b>Nada encontrado</b>
-            <small>Tente outro nome ou filtro.</small>
-          </div>
-        ) : (
-          <ul className="tc-ls" role="list" aria-label="Conversas da equipe">
-            {list.map((c, i) => {
-              const channel = c.kind === "channel";
-              return (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    className={`ch-c${selectedId === c.id ? " on" : ""}${c.unread ? " un" : ""}`}
-                    style={{ ["--i" as string]: Math.min(i, 8) }}
-                    aria-current={selectedId === c.id ? "true" : undefined}
-                    onClick={() => onSelect(c.id)}
-                  >
-                    {channel ? (
-                      <span className="ch-g tc-ch" style={{ width: 44, height: 44 }} aria-hidden="true">
-                        <I n="users" />
-                      </span>
-                    ) : (
-                      <Av name={c.peer?.name ?? c.title} src={c.peer?.avatar ?? undefined} size={44} />
-                    )}
-                    <div>
-                      <div className="ch-nr">
-                        <b>{c.title}</b>
-                        {channel && (
-                          <span className="ch-tg" style={{ ["--c" as string]: "#9e2cfa" }}>
-                            <i />
-                            Canal geral
-                          </span>
-                        )}
-                      </div>
-                      <small>{conversationPreview(c, me)}</small>
-                    </div>
-                    <span className="ch-m">
-                      {c.last_message && <em>{fmtTime(c.last_message.created_at)}</em>}
-                      {c.unread > 0 && <i aria-label={`${c.unread} ${c.unread > 1 ? "não lidas" : "não lida"}`}>{c.unread}</i>}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+      </FilterRow>
+      <div className="mc-items">{body}</div>
     </>
   );
 }
