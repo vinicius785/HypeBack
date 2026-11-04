@@ -109,6 +109,8 @@ export interface InfluencerProfileViewProps {
   onMetricsPostsChange?: (n: number) => void;
   /** Presente (modo private) → renderiza "Ver avaliação" nos cards de campanha. */
   onEvaluate?: (campaignId: string, campaignName: string) => void;
+  /** Faixa de destaque exibida logo depois da apresentação (mídia kit público). */
+  highlights?: ReactNode;
   /** Barra superior (`.top`) renderizada dentro do escopo `.pv`, acima do perfil. */
   top?: ReactNode;
   /** Rodapé de ações (`.pf-f`): botões `.btn` do protótipo. */
@@ -132,6 +134,7 @@ export function InfluencerProfileView({
   metricsPosts = 10,
   onMetricsPostsChange,
   onEvaluate,
+  highlights,
   top,
   footer,
   variant = "page",
@@ -404,6 +407,8 @@ export function InfluencerProfileView({
         <p className="pf-bio" style={{ whiteSpace: "pre-wrap" }}>
           {influencer.bio || (activeSN as { bio?: string | null } | null | undefined)?.bio || "Nenhuma descrição informada."}
         </p>
+
+        {highlights}
 
         {!isExternal ? (
           <section className="pf-s">

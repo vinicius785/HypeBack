@@ -1,9 +1,11 @@
+import { useEffect } from "react";
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { MediaKitHighlights } from "@/components/influencer-profile/media-kit-highlights";
 import { InfluencerProfileView } from "@/components/influencer-profile/influencer-profile-view";
 import { getPublicInfluencerProfile } from "@/shared/services/influencer";
 import hypeappLogo from "@/assets/images/hypeapp-logo.png";
@@ -29,6 +31,17 @@ function PublicInfluencerProfileScreen() {
       (err as { status?: number })?.status === 404 ? false : failureCount < 2,
   });
 
+  // A aba (e o nome do PDF salvo pelo navegador) leva o nome do criador.
+  const creatorName = data?.influencer?.name;
+  useEffect(() => {
+    if (!creatorName) return;
+    const previous = document.title;
+    document.title = `${creatorName} · Mídia kit`;
+    return () => {
+      document.title = previous;
+    };
+  }, [creatorName]);
+
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -39,22 +52,34 @@ function PublicInfluencerProfileScreen() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-neutral-100">
+    <div className="min-h-screen w-full bg-neutral-100 print:bg-white">
       {/* Topo público — logo + copiar link */}
-      <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/90 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/90 backdrop-blur print:static print:border-0">
         <div className="max-w-[1151px] mx-auto px-6 h-16 flex items-center justify-between gap-4">
           <img src={hypeappLogo} alt="HypeApp" className="h-7 w-auto" />
           {data && (
-            <Button
-              variant="outline"
-              className="h-10 rounded-full font-semibold border-neutral-200 min-w-max"
-              onClick={handleCopyLink}
-            >
-              <span className="flex items-center gap-2">
-                <Icon name="Link" size={16} color="#404040" />
-                Copiar link
-              </span>
-            </Button>
+            <div className="flex items-center gap-2 print:hidden">
+              <Button
+                variant="outline"
+                className="h-10 rounded-full font-semibold border-neutral-200 min-w-max"
+                onClick={() => window.print()}
+              >
+                <span className="flex items-center gap-2">
+                  <Icon name="Download" size={16} color="#404040" />
+                  Salvar em PDF
+                </span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-10 rounded-full font-semibold border-neutral-200 min-w-max"
+                onClick={handleCopyLink}
+              >
+                <span className="flex items-center gap-2">
+                  <Icon name="Link" size={16} color="#404040" />
+                  Copiar link
+                </span>
+              </Button>
+            </div>
           )}
         </div>
       </header>
@@ -78,7 +103,7 @@ function PublicInfluencerProfileScreen() {
         </div>
       ) : (
         <main className="flex flex-col gap-11 max-w-[1151px] mx-auto px-6 py-8">
-          <InfluencerProfileView data={data} mode="public" />
+          <InfluencerProfileView data={data} mode="public" highlights={<MediaKitHighlights data={data} />} />
         </main>
       )}
     </div>
