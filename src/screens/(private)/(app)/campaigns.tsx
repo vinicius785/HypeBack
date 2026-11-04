@@ -16,10 +16,21 @@ import { getUploadUrl } from "@/lib/utils/api";
 import { getCampaignStatusValue } from "@/shared/utils/campaign-status";
 
 export const Route = createFileRoute("/(private)/(app)/campaigns")({
-  // `?brand=<id da marca>` abre a lista já filtrada (vem da página Marcas).
-  validateSearch: (search: Record<string, unknown>): { brand?: string } => ({
-    brand: typeof search.brand === "string" && search.brand ? search.brand : undefined,
-  }),
+  // `?brand=<id da marca>` abre a lista já filtrada (vem da página Marcas). `tab`, `openChat`, `focusCampaignUser` e
+  // `contentId` são os links de notificação/atalho do detalhe da campanha (rota filha): passam intactos, senão o
+  // roteador os descartaria ao navegar.
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { brand?: string; tab?: string; openChat?: string; focusCampaignUser?: string; contentId?: string } => {
+    const text = (v: unknown) => (typeof v === "string" && v ? v : typeof v === "number" ? String(v) : undefined);
+    return {
+      brand: text(search.brand),
+      tab: text(search.tab),
+      openChat: text(search.openChat),
+      focusCampaignUser: text(search.focusCampaignUser),
+      contentId: text(search.contentId),
+    };
+  },
   component: RouteComponent,
 });
 
