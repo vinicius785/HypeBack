@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { CAMPAIGN_DRAFT_KEY } from "@/lib/campaign-draft";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { StepCampaign } from "@/components/campaign-wizard/step-campaign";
 import { StepCreators } from "@/components/campaign-wizard/step-creators";
@@ -66,7 +67,7 @@ const initialFormData: CampaignFormData = {
 };
 
 /** Chave do rascunho de criação no localStorage (escopo deste navegador). */
-const DRAFT_KEY = "hypeapp-campaign-draft-new";
+const DRAFT_KEY = CAMPAIGN_DRAFT_KEY;
 
 interface CampaignDraft {
   data: CampaignFormData;
@@ -421,12 +422,17 @@ function CreateCampaignPage() {
       };
       localStorage.setItem(
         DRAFT_KEY,
-        JSON.stringify({ savedAt: new Date().toISOString(), step: 4, data: rest })
+        JSON.stringify({
+          savedAt: new Date().toISOString(),
+          workspaceId: selectedWorkspace?.id ?? null,
+          step: 4,
+          data: rest,
+        })
       );
       setHasDraft(true);
       toast.success("Rascunho salvo", {
         description:
-          "Os dados foram guardados neste navegador. Conclua e envie a campanha quando quiser.",
+          "Ele aparece na aba Rascunhos das campanhas, neste navegador. Conclua e envie quando quiser.",
         duration: 6000,
       });
     } catch {

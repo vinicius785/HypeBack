@@ -13,6 +13,8 @@ import { useAgencyBrands, useIsAgencyWorkspace } from "@/hooks/use-agency-brands
 import { useWorkspaceOverview } from "@/hooks/use-workspace-overview";
 import { useWorkspaceContext, useWorkspacePermissions } from "@/contexts/workspace-context";
 import { getUploadUrl } from "@/lib/utils/api";
+import { discardCampaignDraft, readCampaignDraftSummary } from "@/lib/campaign-draft";
+import { LocalDraftCard } from "@/components/local-draft-card";
 import { getCampaignStatusValue } from "@/shared/utils/campaign-status";
 
 export const Route = createFileRoute("/(private)/(app)/campaigns")({
@@ -93,6 +95,7 @@ function RouteComponent() {
   const [brandFilter, setBrandFilter] = useState(brandFromUrl ?? "");
   useEffect(() => setBrandFilter(brandFromUrl ?? ""), [brandFromUrl]);
   const sortRef = useRef<HTMLDivElement>(null);
+  const [draftVersion, setDraftVersion] = useState(0);
 
   useEffect(() => {
     if (!sortOpen) return;
@@ -157,14 +160,22 @@ function RouteComponent() {
     });
   }, [campaignsData, perCampaign, metricsReady]);
 
+  // Rascunho do assistente "Nova campanha": só existe neste navegador, então entra à parte das campanhas da API.
+  // Relê ao navegar (voltar do assistente) e ao descartar.
+  const localDraft = useMemo(
+    () => readCampaignDraftSummary(selectedWorkspace?.id),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedWorkspace?.id, location.pathname, draftVersion],
+  );
+
   const counts = useMemo(
     () => ({
       all: campaigns.length,
       active: campaigns.filter((c) => FILTERS.active(c.statusValue)).length,
-      draft: campaigns.filter((c) => FILTERS.draft(c.statusValue)).length,
+      draft: campaigns.filter((c) => FILTERS.draft(c.statusValue)).length + (localDraft ? 1 : 0),
       finished: campaigns.filter((c) => FILTERS.finished(c.statusValue)).length,
     }),
-    [campaigns],
+    [campaigns, localDraft],
   );
 
   const filteredCampaigns = useMemo(() => {
@@ -318,6 +329,12 @@ function RouteComponent() {
     );
   }
 
+  const showLocalDraft =
+    !!localDraft &&
+    !brandFilter &&
+    (filterStatus === "draft" || filterStatus === "all") &&
+    (!searchTerm.trim() || normalize(localDraft.title || "campanha sem título").includes(normalize(searchTerm.trim())));
+
   const emptyMessage = searchTerm.trim()
     ? {
         title: `Nada encontrado para “${searchTerm.trim()}”`,
@@ -463,7 +480,21 @@ function RouteComponent() {
         </div>
       </div>
 
-      {filteredCampaigns.length === 0 ? (
+      {showLocalDraft && localDraft ? (
+        <div className="pv">
+          <div className="cgrid">
+            <LocalDraftCard
+              draft={localDraft}
+              onDiscard={() => {
+                discardCampaignDraft();
+                setDraftVersion((v) => v + 1);
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {filteredCampaigns.length === 0 && showLocalDraft ? null : filteredCampaigns.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-[32px] bg-white px-5 py-[70px] text-center">
           <span className="mb-1.5 grid size-[68px] place-items-center rounded-3xl bg-canvas">
             <Icon name={searchTerm.trim() ? "Search" : "Megaphone"} color="#7e7e7e" size={26} />
