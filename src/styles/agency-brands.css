@@ -110,3 +110,7 @@
   .pv .agb-r2, .pv .agb-r3 { grid-template-columns: 1fr; }
   .pv .agb-r4 { grid-template-columns: 1fr 1fr; }
 }
+
+/* O menu de três pontos fica dentro do cartão; o cartão seguinte (que vem depois no HTML) pintava por cima dele.
+   Com o menu aberto, o cartão sobe acima dos vizinhos. */
+.pv .bcd.menu-open { z-index: 30; }

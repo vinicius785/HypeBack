@@ -79,7 +79,7 @@ export function BrandCard({
   };
 
   return (
-    <article className="bcd" data-archived={archived}>
+    <article className={`bcd${menuOpen ? " menu-open" : ""}`} data-archived={archived}>
       <Link
         to="/campaigns"
         search={{ brand: brand.id }}

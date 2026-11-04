@@ -143,6 +143,18 @@ describe("página Marcas", () => {
     expect(within(card).getByRole("menuitem", { name: /Ver campanhas/ })).toHaveAttribute("data-brand", "b1");
   });
 
+  it("com o menu aberto o cartão sobe acima dos vizinhos (o menu não fica por baixo do cartão seguinte)", async () => {
+    const user = userEvent.setup();
+    render(<Page />);
+    const card = cardOf("Acme");
+    expect(card).not.toHaveClass("menu-open");
+    await user.click(within(card).getByRole("button", { name: "Mais ações para Acme" }));
+    expect(card).toHaveClass("menu-open");
+    expect(cardOf("Beta Moda")).not.toHaveClass("menu-open");
+    await user.keyboard("{Escape}");
+    expect(card).not.toHaveClass("menu-open");
+  });
+
   it("arquivar pelo menu chama a API com o novo estado; reativar volta para active", async () => {
     const user = userEvent.setup();
     render(<Page />);
