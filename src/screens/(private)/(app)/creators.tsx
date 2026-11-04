@@ -25,17 +25,18 @@ import {
   useAddToInfluencerList,
   useRemoveFromInfluencerList,
 } from "@/hooks/use-creators-catalog";
-import { useInfluencerAccounts } from "@/hooks/use-influencer-accounts";
 import { useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
 import { rosterErrorMessage, useInviteToRoster, useRosterStatusMap } from "@/hooks/use-agency-roster";
 import { InviteNetworksModal } from "@/components/influencer-lists/invite-networks-modal";
 import { defaultCatalogOrder } from "@/shared/utils/creators-default-order";
-import { groupCreators, isSocialNetworkType, type CreatorGroup } from "@/shared/utils/group-creators";
+import { groupCreators, type CreatorGroup } from "@/shared/utils/group-creators";
+import { CreatorCard, CreatorCardSkeleton, ROSTER_LABEL, type CreatorCardProps } from "@/components/creators/creator-card";
+import { NET_ICON, groupPhoto, netLabel, useAccountRows } from "@/components/creators/creator-accounts";
+import { engagementLabel, fmtDistance, followersLabel } from "@/components/creators/creator-metrics";
 import type {
   CatalogItem,
   CatalogOrderBy,
   CatalogOrderDir,
-  CatalogSocialNetwork,
 } from "@/shared/services/creators-catalog";
 import type { Niche } from "@/shared/types";
 
@@ -154,12 +155,6 @@ const SORT_OPTIONS: Opt[] = [
   ["recent_desc", "Mais recentes"],
 ];
 
-const NET_ICON: Record<string, string> = {
-  instagram: "instagram",
-  tiktok: "tiktok",
-  youtube: "youtube",
-};
-
 /** Quebra o valor combinado de ordenação em campo + direção para a API. */
 function parseOrder(order: string): {
   order_by?: CatalogOrderBy;
@@ -173,22 +168,6 @@ function parseOrder(order: string): {
     order_dir: order.slice(idx + 1) as CatalogOrderDir,
   };
 }
-
-function fmtFollowers(n: number): string {
-  const trim = (v: number) => v.toFixed(1).replace(/\.0$/, "").replace(".", ",");
-  if (n >= 1_000_000) return `${trim(n / 1_000_000)} mi`;
-  if (n >= 1_000) return `${n >= 100_000 ? Math.round(n / 1_000) : trim(n / 1_000)} mil`;
-  return String(n);
-}
-
-function fmtEngagement(n: number | null): string {
-  return n == null ? "—" : `${n.toFixed(1).replace(".", ",")}%`;
-}
-
-function fmtDistance(km: number): string {
-  return `${km >= 10 ? Math.round(km) : km.toFixed(1).replace(".", ",")} km`;
-}
-
 
 // ---------------------------------------------------------------------------
 // "Perto de mim" — geolocalização do admin via Geolocation API
@@ -534,164 +513,7 @@ function FiltersDrawer({
 // Cards / linhas
 // ---------------------------------------------------------------------------
 
-interface CardProps {
-  group: CreatorGroup;
-  k: number;
-  selected: boolean;
-  near: boolean;
-  saved: boolean;
-  onSelect: () => void;
-  onOpen: () => void;
-  onInvite: () => void;
-  onSave: () => void;
-  /** Agência: estado do criador no elenco (`invited` | `active`), ou null. */
-  rosterStatus?: "invited" | "active" | null;
-  /** Agência com permissão de convidar: convida o criador para o elenco. Ausente = sem o botão. */
-  onRoster?: () => void;
-}
-
-const NET_LABEL: Record<string, string> = {
-  instagram: "Instagram",
-  tiktok: "TikTok",
-  youtube: "YouTube",
-  ugc: "UGC",
-};
-
-const netLabel = (sn: CatalogSocialNetwork) => NET_LABEL[sn.type] ?? (sn.name || sn.type || "Rede");
-
-/** Foto do criador: a do usuário, ou a da primeira conta de rede que tiver uma. */
-const groupPhoto = (g: CreatorGroup) =>
-  g.user.photo ?? g.accounts.find((a) => a.social_network.photo)?.social_network.photo ?? undefined;
-
-const MAX_NETWORK_ROWS = 3;
-
-interface AccountRow {
-  id: string;
-  type: string;
-  label: string;
-  username: string;
-  members: number;
-  engagement: number | null;
-}
-
-/**
- * Contas do criador para o cartão. Começa com as que o catálogo já trouxe e,
- * assim que a lista completa chega (endpoint de perfis, com cache), passa a
- * mostrar todas — a paginação do catálogo é por conta, não por pessoa.
- */
-function useAccountRows(group: CreatorGroup): { networks: AccountRow[]; ugc: boolean } {
-  const { data } = useInfluencerAccounts(group.user.id);
-  return useMemo(() => {
-    let rows: AccountRow[];
-    if (data && data.length > 0) {
-      rows = [...data]
-        .sort((a, b) => b.members - a.members)
-        .map((p) => {
-          const fromCatalog = group.accounts.find((a) => String(a.social_network.id) === p.id)?.social_network;
-          return {
-            id: p.id,
-            type: p.type.toLowerCase(),
-            label: NET_LABEL[p.type.toLowerCase()] ?? (p.type_label || p.type),
-            username: p.username,
-            members: p.members || fromCatalog?.members || 0,
-            engagement: p.engagement_percent ?? fromCatalog?.engagement_percent ?? null,
-          };
-        });
-    } else {
-      rows = group.accounts.map(({ social_network: sn }) => ({
-        id: String(sn.id),
-        type: sn.type,
-        label: netLabel(sn),
-        username: sn.username,
-        members: sn.members,
-        engagement: sn.engagement_percent,
-      }));
-    }
-    // UGC é tipo de conteúdo: vira uma etiqueta, não uma linha de rede social.
-    return { networks: rows.filter((r) => isSocialNetworkType(r.type)), ugc: rows.some((r) => !isSocialNetworkType(r.type)) };
-  }, [data, group.accounts]);
-}
-
-const ROSTER_LABEL = { active: "No elenco", invited: "Convidado" } as const;
-
-function CreatorCard({ group, k, selected, near, saved, onSelect, onOpen, onInvite, onSave, rosterStatus, onRoster }: CardProps) {
-  const names = group.niches.map((n) => n.name).filter((s) => s.trim().length > 0);
-  const { networks: rows, ugc } = useAccountRows(group);
-  const shown = rows.slice(0, MAX_NETWORK_ROWS);
-  const hidden = rows.length - shown.length;
-  const stop = (fn: () => void) => (e: React.MouseEvent) => {
-    e.stopPropagation();
-    fn();
-  };
-  return (
-    <article className={`crd ${selected ? "sel" : ""}`} style={{ "--k": Math.min(k, 14) } as React.CSSProperties} onClick={onOpen}>
-      <button type="button" className={`crd-ck ${selected ? "on" : ""}`} aria-label={`Selecionar ${group.user.name}`} aria-pressed={selected} onClick={stop(onSelect)}>
-        <I n="check" cls="sm" />
-      </button>
-      <div className="crd-h">
-        <Av name={group.user.name} src={groupPhoto(group)} size={60} />
-        <div>
-          <b>{group.user.name}</b>
-          <small>
-            {rows.length === 0 ? "Sem redes sociais" : `${rows.length} ${rows.length === 1 ? "rede social" : "redes sociais"}`}
-          </small>
-          {rosterStatus && <span className={`crd-rs ${rosterStatus}`}>{ROSTER_LABEL[rosterStatus]}</span>}
-        </div>
-      </div>
-      <div className="crd-n">
-        {ugc && <span className="crd-ugc">UGC</span>}
-        {names.slice(0, 2).map((n) => (
-          <span key={n}>{n}</span>
-        ))}
-        {names.length > 2 && <span>+{names.length - 2}</span>}
-        {near && group.distance_km != null && (
-          <span className="crd-d">
-            <I n="flag" cls="sm" />
-            {fmtDistance(group.distance_km)}
-          </span>
-        )}
-      </div>
-      {rows.length > 0 ? (
-      <ul className="crd-nw" aria-label="Redes sociais do criador">
-        {shown.map((a) => (
-          <li key={a.id}>
-            <span className="crd-ni" title={a.label}>
-              <I n={NET_ICON[a.type] ?? "video"} cls="sm" />
-            </span>
-            <span className="crd-nu">
-              <b>{a.label}</b>
-              <small>@{a.username}</small>
-            </span>
-            <span className="crd-nv">
-              <b>{fmtFollowers(a.members)}</b>
-              <small>{fmtEngagement(a.engagement)} eng.</small>
-            </span>
-          </li>
-        ))}
-        {hidden > 0 && <li className="crd-nm">+{hidden} {hidden === 1 ? "rede" : "redes"} no perfil</li>}
-      </ul>
-      ) : null}
-      <div className={`crd-a${onRoster && !rosterStatus ? " x2" : ""}`}>
-        <button type="button" className="btn out" onClick={stop(onOpen)}>
-          Ver perfil
-        </button>
-        <button type="button" className="btn" onClick={stop(onInvite)}>
-          Convidar
-        </button>
-        <button type="button" className={`round crd-sv ${saved ? "on" : ""}`} aria-label="Salvar em lista" onClick={stop(onSave)}>
-          <I n="heart" cls="sm" />
-          <span className="crd-sl">{saved ? "Salvo" : "Salvar"}</span>
-        </button>
-        {onRoster && !rosterStatus && (
-          <button type="button" className="round crd-sv" aria-label={`Convidar ${group.user.name} para o elenco`} title="Convidar para o elenco" onClick={stop(onRoster)}>
-            <I n="star" cls="sm" />
-            <span className="crd-sl">Elenco</span>
-          </button>
-        )}
-      </div>
-    </article>
-  );
-}
+type CardProps = CreatorCardProps;
 
 function CreatorRow({ group, k, selected, near, saved, onSelect, onOpen, onInvite, onSave, rosterStatus, onRoster }: CardProps) {
   const { networks: rows, ugc } = useAccountRows(group);
@@ -718,9 +540,9 @@ function CreatorRow({ group, k, selected, near, saved, onSelect, onOpen, onInvit
       <span className="crw-n">{[...(ugc ? ["UGC"] : []), ...names].join(" · ")}</span>
       <span className="crw-nets">
         {rows.map((a) => (
-          <span key={a.id} title={`${a.label} · @${a.username} · ${fmtEngagement(a.engagement)} de engajamento`}>
+          <span key={a.id} title={[a.label, `@${a.username}`, engagementLabel(a.members, a.engagement) ? `${engagementLabel(a.members, a.engagement)} de engajamento` : ""].filter(Boolean).join(" · ")}>
             <I n={NET_ICON[a.type] ?? "video"} cls="sm" />
-            <b>{fmtFollowers(a.members)}</b>
+            <b>{followersLabel(a.members) ?? "—"}</b>
           </span>
         ))}
       </span>
@@ -748,23 +570,6 @@ function CreatorRow({ group, k, selected, near, saved, onSelect, onOpen, onInvit
           Convidar
         </button>
       </span>
-    </div>
-  );
-}
-
-function CardSkeleton({ k }: { k: number }) {
-  return (
-    <div className="crd" style={{ "--k": k, cursor: "default" } as React.CSSProperties}>
-      <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-        <Skeleton className="size-[60px] rounded-full" />
-        <div style={{ flex: 1 }}>
-          <Skeleton className="h-5 w-3/4" />
-          <Skeleton className="mt-2 h-4 w-1/2" />
-        </div>
-      </div>
-      <Skeleton className="h-7 w-2/3 rounded-full" />
-      <Skeleton className="h-16 w-full rounded-2xl" />
-      <Skeleton className="h-11 w-full rounded-full" />
     </div>
   );
 }
@@ -1056,6 +861,7 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
       onInvite: () => setInviteTarget({ userId: group.user.id, name: group.user.name, accounts: group.accounts }),
       onSave: () => setSelectedForList({ userId: group.user.id, name: group.user.name }),
       rosterStatus: rosterMap.get(group.user.id) ?? null,
+      rosterBusy: inviteToRoster.isPending && inviteToRoster.variables === group.user.id,
       onRoster: canRoster
         ? () =>
             inviteToRoster.mutate(group.user.id, {
@@ -1247,7 +1053,7 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
           ) : isLoading ? (
             <div className="crg">
               {Array.from({ length: 8 }).map((_, i) => (
-                <CardSkeleton key={i} k={i} />
+                <CreatorCardSkeleton key={i} k={i} />
               ))}
             </div>
           ) : creators.length === 0 ? (

@@ -1,0 +1,76 @@
+/* Cartão do catálogo de criadores. Só tokens do protótipo (.pv): fundo branco, raio 28, tinta e roxo da marca. */
+.pv .crg { display: grid; gap: 20px; align-items: stretch;
+  /* Mínimo de 300px e no máximo 5 colunas, mesmo em monitor largo (sem 7 cartões espremidos). */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, max(300px, calc((100% - 80px) / 5))), 1fr)); }
+
+.pv .ccd { position: relative; background: #fff; border-radius: 28px; padding: 20px; display: flex; flex-direction: column; gap: 16px; min-width: 0; cursor: pointer;
+  transition: transform .3s var(--ease), box-shadow .3s var(--ease); animation: pv-ccrise .55s var(--ease) both; animation-delay: calc(var(--k) * 35ms); }
+.pv .ccd:hover { transform: translateY(-2px); box-shadow: 0 22px 36px -26px rgba(5,5,5,.4); }
+.pv .ccd.sel { box-shadow: 0 0 0 2px var(--ink); }
+.pv .ccd.in-roster { box-shadow: 0 0 0 1.5px rgba(158,44,250,.35); }
+.pv .ccd.in-roster.sel { box-shadow: 0 0 0 2px var(--ink); }
+.pv .ccd:focus-within { outline: none; }
+
+/* Identificação */
+.pv .ccd-top { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.pv .ccd-av { position: relative; flex: none; }
+.pv .ccd-id { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.pv .ccd-id b { font-size: 16px; font-weight: 600; letter-spacing: -.025em; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pv .ccd-h { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .ccd-h.mute { color: #a3a3a3; }
+.pv .ccd-nets { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.pv .ccd-nets .ico { width: 14px; height: 14px; }
+
+.pv .ccd-fav { flex: none; align-self: flex-start; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); color: var(--ink);
+  transition: background .25s, color .25s, transform .2s; }
+.pv .ccd-fav:hover { transform: scale(1.08); }
+.pv .ccd-fav:active { transform: scale(.94); }
+.pv .ccd-fav.on { background: var(--brand); color: #fff; }
+.pv .ccd-fav.on .ico { fill: #fff; }
+
+.pv .ccd-ck { position: absolute; left: -4px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 1.5px #d4d4d4; display: grid; place-items: center;
+  color: transparent; opacity: 0; transition: opacity .2s, background .2s, color .2s; z-index: 2; }
+.pv .ccd:hover .ccd-ck, .pv .ccd-ck:focus-visible, .pv .ccd-ck.on { opacity: 1; }
+.pv .ccd-ck.on { background: var(--ink); color: #fff; box-shadow: none; }
+.pv .ccd-ck .ico { width: 12px; height: 12px; stroke-width: 3; }
+
+/* Categorias (até duas) e selos */
+.pv .ccd-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.pv .ccd-tags span { display: inline-flex; align-items: center; gap: 5px; background: var(--bg); border-radius: 99px; padding: 5px 11px; font-size: 12px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .ccd-tags .ugc { background: var(--ink); color: #fff; }
+.pv .ccd-tags .more { color: var(--muted); }
+.pv .ccd-tags .ccd-d, .pv .ccd-tags .ccd-rs.active { background: #f3e5ff; color: var(--brand); }
+.pv .ccd-tags .ccd-rs.invited { background: var(--bg); color: var(--muted); }
+.pv .ccd-tags .ico { width: 12px; height: 12px; }
+.pv .ccd-tags .ccd-rs.active .ico { fill: var(--brand); }
+
+/* Métricas por rede */
+.pv .ccd-m { background: var(--bg); border-radius: 20px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; min-height: 104px; }
+.pv .ccd-m ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.pv .ccd-m li { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.pv .ccd-ni { width: 30px; height: 30px; border-radius: 50%; background: #fff; display: grid; place-items: center; }
+.pv .ccd-nu { min-width: 0; }
+.pv .ccd-nu b { display: block; font-size: 13.5px; font-weight: 600; letter-spacing: -.01em; }
+.pv .ccd-nu small { display: block; color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .ccd-nv { text-align: right; white-space: nowrap; }
+.pv .ccd-nv b { display: block; font-size: 17px; font-weight: 600; letter-spacing: -.03em; line-height: 1.15; }
+.pv .ccd-nv b.mute { color: #a3a3a3; }
+.pv .ccd-nv small { display: block; color: var(--muted); font-size: 12px; }
+.pv .ccd-more { align-self: center; font-size: 12.5px; font-weight: 600; color: var(--muted); padding: 2px 10px; border-radius: 99px; transition: background .2s, color .2s; }
+.pv .ccd-more:hover { background: #fff; color: var(--ink); }
+.pv .ccd-m.empty { flex-direction: row; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: 13px; text-align: center; }
+.pv .ccd-m.empty .ico { width: 16px; height: 16px; flex: none; }
+
+/* Ações: ver perfil é a principal; salvar fica no topo; elenco é contextual (só agência) */
+.pv .ccd-a { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
+.pv .ccd-a .btn { flex: 1 1 0; min-width: 0; height: 44px; justify-content: center; white-space: nowrap; padding: 0 14px; }
+.pv .ccd-roster { flex: 1 1 100%; height: 38px; border-radius: 99px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink);
+  background: transparent; box-shadow: inset 0 0 0 1.5px var(--bg); transition: background .2s, color .2s, box-shadow .2s; }
+.pv .ccd-roster:hover:not(:disabled) { background: #f3e5ff; color: var(--brand); box-shadow: none; }
+.pv .ccd-roster:disabled { opacity: .6; cursor: progress; }
+.pv .ccd-roster .ico { width: 14px; height: 14px; }
+
+.pv .ccd button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+@media (max-width: 560px) { .pv .crg { grid-template-columns: 1fr; gap: 14px; } .pv .ccd { padding: 18px; } }
+@media (prefers-reduced-motion: reduce) { .pv .ccd { animation: none; transition: none; } .pv .ccd:hover { transform: none; } }

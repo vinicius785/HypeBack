@@ -174,7 +174,7 @@ describe("Criadores · elenco da agência", () => {
     render(<Page />);
     expect(screen.getByRole("button", { name: "Meu elenco" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByText("No elenco")).toBeInTheDocument();
-    expect(screen.getByText("Convidado")).toBeInTheDocument();
+    expect(screen.getByText("Convite enviado")).toBeInTheDocument();
     // Só quem ainda não tem vínculo ganha o botão de convidar.
     expect(screen.queryByRole("button", { name: "Convidar Criador 1 para o elenco" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Convidar Criador 2 para o elenco" })).toBeNull();
