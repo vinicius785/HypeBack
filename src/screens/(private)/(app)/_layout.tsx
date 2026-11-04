@@ -6,6 +6,7 @@ import { MyInvitesPanel } from "@/components/workspace-invites/my-invites";
 import { Sidebar } from "@/components/sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 import { Header } from "@/components/header";
+import { TeamChatProvider } from "@/components/team-chat/team-chat-provider";
 import {
   WorkspaceStateContent,
   WorkspaceStateTop,
@@ -74,23 +75,27 @@ function RouteComponent() {
 
   return (
     <WorkspaceProvider>
-      <div className="grid h-screen grid-cols-[252px_1fr] gap-4 bg-canvas p-4 max-[1100px]:grid-cols-[84px_1fr] max-[900px]:grid-cols-1 max-[900px]:gap-0 max-[900px]:p-0">
-        <Sidebar />
+      {/* Socket do chat da equipe acima das páginas: o botão de chat do topo troca de tela (Header x detalhe da campanha)
+          e a conexão não pode cair junto. */}
+      <TeamChatProvider>
+        <div className="grid h-screen grid-cols-[252px_1fr] gap-4 bg-canvas p-4 max-[1100px]:grid-cols-[84px_1fr] max-[900px]:grid-cols-1 max-[900px]:gap-0 max-[900px]:p-0">
+          <Sidebar />
 
-        <div className="flex min-w-0 flex-col overflow-hidden">
-          {/* Estado do workspace: suspenso troca o conteúdo pela tela de bloqueio (e tira o topo, que chama a
-              API do workspace); arquivado ganha a faixa "somente consulta". Ver components/workspace-state. */}
-          <WorkspaceStateTop>{!detailOwnsTop && <Header title={title} />}</WorkspaceStateTop>
+          <div className="flex min-w-0 flex-col overflow-hidden">
+            {/* Estado do workspace: suspenso troca o conteúdo pela tela de bloqueio (e tira o topo, que chama a
+                API do workspace); arquivado ganha a faixa "somente consulta". Ver components/workspace-state. */}
+            <WorkspaceStateTop>{!detailOwnsTop && <Header title={title} />}</WorkspaceStateTop>
 
-          <main ref={mainRef} className="w-full flex-1 overflow-y-auto px-2 pb-10 pt-4 max-[900px]:px-5 max-[900px]:pb-32">
-            <InvitesBanner />
-            <WorkspaceStateContent>
-              <Outlet />
-            </WorkspaceStateContent>
-          </main>
+            <main ref={mainRef} className="w-full flex-1 overflow-y-auto px-2 pb-10 pt-4 max-[900px]:px-5 max-[900px]:pb-32">
+              <InvitesBanner />
+              <WorkspaceStateContent>
+                <Outlet />
+              </WorkspaceStateContent>
+            </main>
+          </div>
         </div>
-      </div>
-      <MobileNav />
+        <MobileNav />
+      </TeamChatProvider>
     </WorkspaceProvider>
   );
 }

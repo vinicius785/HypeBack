@@ -27,6 +27,13 @@ export interface Notification {
     campaign_user_id?: number;
     /** Aba da campanha a abrir (ex.: `curation`, `applications`, `management`). */
     target_tab?: string;
+    /** `team_chat_message` (chat da equipe): conversa, workspace, tipo, remetente e prévia da última mensagem. */
+    conversation_id?: string;
+    workspace_id?: string;
+    kind?: "channel" | "direct";
+    sender_id?: number;
+    sender_name?: string;
+    preview?: string;
   };
 }
 
@@ -70,11 +77,12 @@ export async function getNotifications(): Promise<Notification[]> {
 }
 
 /**
- * Marca uma notificação como lida
+ * Marca uma notificação como lida. A rota filtra pelo workspace do header: `workspaceId` explícito é para quando o
+ * workspace selecionado vai mudar na sequência (sino de outro workspace) e a notificação é do workspace de origem.
  */
-export async function markNotificationAsRead(notificationId: string): Promise<void> {
+export async function markNotificationAsRead(notificationId: string, workspaceIdOverride?: string): Promise<void> {
   const token = getAuthToken();
-  const workspaceId = getWorkspaceId();
+  const workspaceId = workspaceIdOverride ?? getWorkspaceId();
   
   if (!token) {
     throw new Error("Token de autenticação não encontrado");

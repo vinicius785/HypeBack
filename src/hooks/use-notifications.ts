@@ -32,7 +32,12 @@ export function useMarkNotificationAsRead() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: markNotificationAsRead,
+    // `workspaceId`: workspace dono da notificação, capturado por quem chama antes de trocar de workspace (o
+    // `mutationFn` só roda depois, e leria o workspace novo do localStorage).
+    mutationFn: (variables: string | { id: string; workspaceId?: string }) =>
+      typeof variables === "string"
+        ? markNotificationAsRead(variables)
+        : markNotificationAsRead(variables.id, variables.workspaceId),
     onSuccess: () => {
       // Invalidar queries de notificações para atualizar a lista
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
