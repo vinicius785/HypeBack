@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { NoWorkspaceState } from "@/components/onboarding/no-workspace-state";
 import { I } from "@/components/prototype/ui";
 import { CampaignTile, type CampaignBrand } from "@/components/campaign-card";
+import { campaignBrand } from "@/lib/campaign-brand";
 
 export const Route = createFileRoute("/(private)/(app)/")({
   component: RouteComponent,
@@ -793,7 +794,7 @@ function CampaignsCarousel({
           ) : (
             <>
               {rows.map((row, i) => (
-                <CampaignTile key={row.campaign.id} row={row} i={i} metricsReady={metricsReady} banner={banners.get(row.campaign.id)} brand={brand} />
+                <CampaignTile key={row.campaign.id} row={row} i={i} metricsReady={metricsReady} banner={banners.get(row.campaign.id)} brand={campaignBrand(row.campaign, brand)} />
               ))}
               {canCreate && (
                 <button
