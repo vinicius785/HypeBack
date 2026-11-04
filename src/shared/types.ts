@@ -325,6 +325,8 @@ export interface Workspace {
   permissions?: WorkspacePermissions;
   /** `active` quando o servidor não manda o campo (versões antigas da API). */
   status: WorkspaceStatus;
+  /** Tipo de conta: `brand` (padrão) ou `agency`. Ausente em API antiga = `brand`. */
+  account_type?: "brand" | "agency";
 }
 
 /** Membro do workspace — `GET /backoffice/workspaces/:id/members`. */
@@ -346,6 +348,8 @@ export interface Niche {
 }
 export interface Campaign {
   id: string; // public_id (UUID)
+  /** Marca da agência dona da campanha; só vem em workspace de agência. */
+  brand?: { id: string; name: string } | null;
   title: string;
   description: string;
   objective: string;
@@ -484,6 +488,10 @@ export interface CampaignPhase {
 }
 
 export interface CampaignFormData {
+  /** Marca da agência (id público). Só existe em workspace de agência. */
+  brandId?: string;
+  /** Workspace de agência: a marca é obrigatória. Definido pela tela, não pela pessoa. */
+  brandRequired?: boolean;
   title: string;
   description: string;
   mainNiche: string;

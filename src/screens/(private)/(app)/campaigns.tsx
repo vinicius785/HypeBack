@@ -9,12 +9,17 @@ import { CampaignCard, CampaignRow } from "@/components/campaign-card";
 import { Icon } from "@/components/ui/icon";
 import { Avatar } from "@/components/ui/avatar";
 import { useCampaigns } from "@/hooks/use-campaigns";
+import { useAgencyBrands, useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
 import { useWorkspaceOverview } from "@/hooks/use-workspace-overview";
 import { useWorkspaceContext, useWorkspacePermissions } from "@/contexts/workspace-context";
 import { getUploadUrl } from "@/lib/utils/api";
 import { getCampaignStatusValue } from "@/shared/utils/campaign-status";
 
 export const Route = createFileRoute("/(private)/(app)/campaigns")({
+  // `?brand=<id da marca>` abre a lista já filtrada (vem da página Marcas).
+  validateSearch: (search: Record<string, unknown>): { brand?: string } => ({
+    brand: typeof search.brand === "string" && search.brand ? search.brand : undefined,
+  }),
   component: RouteComponent,
 });
 
@@ -71,6 +76,11 @@ function RouteComponent() {
   const [sort, setSort] = useState<SortKey>("recent");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [sortOpen, setSortOpen] = useState(false);
+  const isAgency = useIsAgencyWorkspace();
+  const { data: agencyBrands = [] } = useAgencyBrands();
+  const { brand: brandFromUrl } = Route.useSearch();
+  const [brandFilter, setBrandFilter] = useState(brandFromUrl ?? "");
+  useEffect(() => setBrandFilter(brandFromUrl ?? ""), [brandFromUrl]);
   const sortRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -123,6 +133,8 @@ function RouteComponent() {
         // Status normalizado: filtra rascunhos de forma confiável (#5).
         statusValue: getCampaignStatusValue(campaign.status) ?? "",
         banner: (campaign.banner as string | undefined) || undefined,
+        brandId: ((campaign.brand as { id?: string } | null | undefined)?.id ?? "") as string,
+        brandName: ((campaign.brand as { name?: string } | null | undefined)?.name ?? undefined) as string | undefined,
         updatedAt: new Date(campaign.updated_at || campaign.created_at || 0).getTime(),
         reach: metricsReady ? (o?.metrics.reach ?? 0) : undefined,
         published: metricsReady ? (o?.metrics.publishedContent ?? 0) : undefined,
@@ -149,6 +161,7 @@ function RouteComponent() {
     const list = campaigns.filter(
       (c) =>
         FILTERS[filterStatus](c.statusValue) &&
+        (!brandFilter || c.brandId === brandFilter) &&
         (!q || normalize(c.title).includes(q)),
     );
     if (sort === "pending") {
@@ -159,7 +172,7 @@ function RouteComponent() {
       list.sort((a, b) => b.updatedAt - a.updatedAt);
     }
     return list;
-  }, [campaigns, searchTerm, filterStatus, sort]);
+  }, [campaigns, searchTerm, filterStatus, sort, brandFilter]);
 
   if (location.pathname !== "/campaigns") {
     return <Outlet />;
@@ -355,6 +368,22 @@ function RouteComponent() {
           })}
         </div>
 
+        {isAgency && agencyBrands.length > 0 ? (
+          <select
+            aria-label="Filtrar por marca"
+            value={brandFilter}
+            onChange={(e) => setBrandFilter(e.target.value)}
+            className="h-[52px] max-w-[220px] rounded-full bg-white px-[18px] text-[14.5px] font-semibold text-neutral-950 outline-none ring-2 ring-transparent focus:ring-primary-600"
+          >
+            <option value="">Todas as marcas</option>
+            {agencyBrands.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.status === "archived" ? `${b.name} (arquivada)` : b.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
+
         <label className="flex h-[52px] min-w-[150px] max-w-[320px] flex-1 items-center gap-2.5 rounded-full bg-white px-[18px] text-neutral-500 ring-2 ring-transparent focus-within:ring-primary-600">
           <Icon name="Search" color="currentColor" size={16} />
           <input
@@ -452,10 +481,10 @@ function RouteComponent() {
               key={c.id}
               id={c.id}
               title={c.title}
-              description={c.description}
+              description={c.brandName ?? c.description}
               status={c.statusValue}
               banner={c.banner}
-              brand={selectedWorkspace}
+              brand={c.brandName ? { name: c.brandName, photo: undefined } : selectedWorkspace}
               reach={c.reach}
               published={c.published}
               pending={c.pending}
@@ -471,7 +500,7 @@ function RouteComponent() {
               key={c.id}
               id={c.id}
               title={c.title}
-              description={c.description}
+              description={c.brandName ?? c.description}
               status={c.statusValue}
               banner={c.banner}
               reach={c.reach}

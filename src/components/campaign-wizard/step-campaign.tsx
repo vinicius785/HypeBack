@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 
 import { I } from "@/components/prototype/ui";
+import { useAgencyBrands } from "@/hooks/use-agency-brands";
 
-import { Field, FieldError, ListBox } from "./fields";
+import { Dropdown, Field, FieldError, ListBox } from "./fields";
 import type { WizardStepProps } from "./types";
 
 const TITLE_MAX = 60;
@@ -55,6 +56,19 @@ export function StepCampaign({ formData, updateFormData, fieldErrors, tried }: W
 
   const bad = (key: string, empty: boolean) => fieldErrors.has(key) || (tried && empty);
   const titleBad = bad("title", !title.trim());
+  const brandBad = bad("brandId", !formData.brandId);
+  // Só em workspace de agência (`brandRequired`); só marcas ativas entram na escolha.
+  const { data: allBrands = [], isLoading: brandsLoading } = useAgencyBrands({ enabled: !!formData.brandRequired });
+  const brandOptions = allBrands.filter((b) => b.status === "active").map((b) => ({ value: b.id, label: b.name }));
+  const brandKey = brandOptions.map((o) => o.value).join(",");
+  // Rascunho de outro workspace pode trazer uma marca que não existe aqui: limpa. Com uma só marca ativa, já escolhe.
+  useEffect(() => {
+    if (!formData.brandRequired || brandsLoading) return;
+    const current = formData.brandId ?? "";
+    const values = brandKey ? brandKey.split(",") : [];
+    if (current && !values.includes(current)) updateFormData("brandId", "");
+    else if (!current && values.length === 1) updateFormData("brandId", values[0]);
+  }, [formData.brandRequired, formData.brandId, brandsLoading, brandKey, updateFormData]);
   const descBad = bad("description", !desc.trim());
   const todoBad = bad("whatToDo", todo.length === 0);
   const notsBad = bad("whatNotToDo", nots.length === 0);
@@ -226,6 +240,23 @@ export function StepCampaign({ formData, updateFormData, fieldErrors, tried }: W
         </div>
 
         <div className="n1f">
+          {formData.brandRequired ? (
+            <div id="wz-brandId">
+              <Field
+                label="Marca"
+                err={brandBad}
+                hint={!brandsLoading && brandOptions.length === 0 ? "Crie uma marca em Marcas antes de criar a campanha." : undefined}
+              >
+                <Dropdown
+                  value={formData.brandId ?? ""}
+                  options={brandOptions}
+                  onChange={(v) => updateFormData("brandId", v)}
+                  placeholder={brandsLoading ? "Carregando marcas…" : "Escolha a marca da campanha"}
+                />
+              </Field>
+              <FieldError show={brandBad}>Escolha a marca da campanha</FieldError>
+            </div>
+          ) : null}
           <div id="wz-title">
             <Field label="Título da campanha" err={titleBad}>
               <div className="nwrap">

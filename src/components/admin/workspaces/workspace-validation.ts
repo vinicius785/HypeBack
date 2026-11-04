@@ -21,6 +21,7 @@ export const WORKSPACE_EDIT_FIELDS = [
   "neighborhood",
   "city",
   "state",
+  "account_type",
 ] as const;
 
 export type WorkspaceEditField = (typeof WORKSPACE_EDIT_FIELDS)[number];
@@ -55,6 +56,7 @@ export function editValuesFromDetail(detail: AdminWorkspaceDetail): WorkspaceEdi
     neighborhood: detail.address.neighborhood ?? "",
     city: detail.address.city ?? "",
     state: detail.address.state ?? "",
+    account_type: detail.account_type ?? "brand",
   };
 }
 
@@ -94,6 +96,7 @@ export function validateEditValues(values: WorkspaceEditValues, original: Worksp
     else if (field === "tax_id" && value !== "" && !isValidCnpj(value)) errors.tax_id = "CNPJ inválido: os dígitos verificadores não conferem.";
     else if (field === "postal_code" && value !== "" && value.length !== 8) errors.postal_code = "CEP inválido: informe os 8 dígitos.";
     else if (field === "state" && value !== "" && !/^[A-Z]{2}$/.test(value)) errors.state = "UF inválida: informe 2 letras (ex.: SP).";
+    else if (field === "account_type" && value !== "brand" && value !== "agency") errors.account_type = "Escolha marca ou agência.";
   }
   return errors;
 }
@@ -103,7 +106,7 @@ export function buildUpdateFields(values: WorkspaceEditValues, original: Workspa
   const fields: Record<string, string | null> = {};
   for (const field of changedEditFields(values, original)) {
     const value = normalizeEditValue(field, values[field]);
-    fields[field] = value === "" && field !== "name" ? null : value;
+    fields[field] = value === "" && field !== "name" && field !== "account_type" ? null : value;
   }
   return fields as WorkspaceUpdateFields;
 }

@@ -11,6 +11,8 @@ export interface CampaignListItem {
   status: string;
   max_influencers: number;
   banner?: string;
+  /** Marca da agência dona da campanha; só vem em workspace de agência. */
+  brand?: { id: string; name: string } | null;
   created_at: string;
   updated_at: string;
 }
@@ -41,6 +43,8 @@ export interface CampaignDetail extends Campaign {
 }
 
 export interface CreateCampaignData {
+  /** Marca da agência (id público): obrigatória em workspace de agência, recusada nos demais. */
+  brand_id?: string;
   title: string;
   description: string;
   objective: string;

@@ -110,9 +110,14 @@ function CreateCampaignPage() {
 
   const [currentStep, setCurrentStep] = useState(Math.min(4, Math.max(1, initialDraft?.step ?? 1)));
   const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
-  const [formData, setFormData] = useState<CampaignFormData>(
-    initialDraft?.data ?? initialFormData,
-  );
+  const { selectedWorkspace } = useWorkspaceContext();
+  const isAgencyWorkspace = selectedWorkspace?.account_type === "agency";
+  // `brandRequired` é da tela (workspace de agência), nunca vem do rascunho salvo: um rascunho de antes de o
+  // workspace virar agência não pode esconder o campo.
+  const [formData, setFormData] = useState<CampaignFormData>(() => ({
+    ...(initialDraft?.data ?? initialFormData),
+    brandRequired: isAgencyWorkspace,
+  }));
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
   // Controla a visibilidade do "Descartar rascunho": só faz sentido quando há
   // um rascunho (restaurado na montagem ou salvo durante esta sessão).
@@ -134,7 +139,6 @@ function CreateCampaignPage() {
   const isSwap = formData.paymentType === "swap";
   const [tried, setTried] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
-  const { selectedWorkspace } = useWorkspaceContext();
 
   // Identidade estável e obrigatória: vários steps declaram `updateFormData` no array
   // de dependências de useEffect. Sem useCallback a função é recriada a cada render,
@@ -233,6 +237,7 @@ function CreateCampaignPage() {
         : [];
 
     const payload: CreateCampaignData = {
+      ...(formData.brandRequired && formData.brandId ? { brand_id: formData.brandId } : {}),
       title: formData.title,
       description: formData.description,
       objective: formData.generalObjective || "awareness",
@@ -435,7 +440,7 @@ function CreateCampaignPage() {
     } catch {
       // localStorage indisponível — sem efeito colateral.
     }
-    setFormData(initialFormData);
+    setFormData({ ...initialFormData, brandRequired: isAgencyWorkspace });
     setFieldErrors(new Set());
     setCurrentStep(1);
     setHasDraft(false);

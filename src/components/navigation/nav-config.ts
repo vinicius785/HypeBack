@@ -25,6 +25,8 @@ export interface NavItem {
   permission?: NavPermission;
   /** Só aparece para a equipe da plataforma (admin, suporte ou somente leitura); o backend segue sendo a barreira real (403). */
   platformStaffOnly?: boolean;
+  /** Só aparece quando o workspace selecionado é de agência (`account_type = agency`); o backend responde 403 nos demais. */
+  agencyOnly?: boolean;
   /** Atalho fixo da barra inferior do celular; o resto fica na gaveta "Mais". */
   pinned?: boolean;
   /** Mostra o número de campanhas ativas do workspace como selo. */
@@ -51,6 +53,7 @@ export const WORKSPACE_NAV: readonly NavSection[] = [
     id: "campanhas",
     label: "Gestão de campanhas",
     items: [
+      { id: "brands", label: "Marcas", icon: "box", href: "/brands", permission: "campaigns_read", agencyOnly: true },
       { id: "campaigns", label: "Campanhas", icon: "mega", href: "/campaigns", permission: "campaigns_read", pinned: true, badge: "activeCampaigns" },
       { id: "creators", label: "Criadores", icon: "users", href: "/creators", permission: "catalog_read", pinned: true },
       { id: "lives", label: "Lives", icon: "video", href: "/lives", permission: "community_lives_read" },

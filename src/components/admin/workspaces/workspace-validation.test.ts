@@ -116,3 +116,20 @@ describe("isValidEmail", () => {
     expect(isValidEmail("")).toBe(false);
   });
 });
+
+describe("account_type (tipo de conta)", () => {
+  it("o padrão é 'brand' (também quando a API antiga não manda o campo)", () => {
+    expect(editValuesFromDetail(makeDetail()).account_type).toBe("brand");
+    expect(editValuesFromDetail(makeDetail("active", { account_type: "agency" })).account_type).toBe("agency");
+  });
+
+  it("sem mudança, o tipo não vai no PATCH; mudando, vai sozinho e sem virar null", () => {
+    expect(buildUpdateFields({ ...original }, original)).toEqual({});
+    expect(buildUpdateFields({ ...original, account_type: "agency" }, original)).toEqual({ account_type: "agency" });
+  });
+
+  it("valor fora de brand/agency é recusado no formulário", () => {
+    expect(validateEditValues({ ...original, account_type: "xyz" }, original).account_type).toBeDefined();
+    expect(validateEditValues({ ...original, account_type: "agency" }, original).account_type).toBeUndefined();
+  });
+});

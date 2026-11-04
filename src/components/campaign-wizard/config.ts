@@ -20,6 +20,8 @@ export const asList = (v: string | string[] | undefined): string[] =>
 /** Itens obrigatórios que faltam, por etapa (mesmas regras do envio da campanha). */
 export function wizardMissing(d: CampaignFormData): WizardMissing[] {
   const m: WizardMissing[] = [];
+  // Agência: a marca é obrigatória (o assistente marca `brandRequired`; em workspace de marca o campo nem existe).
+  if (d.brandRequired && !d.brandId?.trim()) m.push({ step: 1, field: "brandId", label: "Marca" });
   if (!d.title?.trim()) m.push({ step: 1, field: "title", label: "Título da campanha" });
   if (!d.description?.trim()) m.push({ step: 1, field: "description", label: "Descrição da campanha" });
   if (!asList(d.whatToDo).length) m.push({ step: 1, field: "whatToDo", label: "O que fazer" });

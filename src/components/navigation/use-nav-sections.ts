@@ -19,6 +19,7 @@ export function useNavSections(scope: NavScope = "workspace") {
   const { pathname } = useLocation();
   const { selectedWorkspace } = useWorkspaceContext();
   const showPlatformStaff = isPlatformStaff(user);
+  const isAgency = selectedWorkspace?.account_type === "agency";
 
   // O número de campanhas ativas é do workspace: no Admin nem se busca (nem com o workspace suspenso, que
   // recusa toda chamada).
@@ -45,6 +46,7 @@ export function useNavSections(scope: NavScope = "workspace") {
       items: section.items
         .filter((item) => {
           if (item.platformStaffOnly && !showPlatformStaff) return false;
+          if (item.agencyOnly && !isAgency) return false;
           if (item.permission && !permissions[item.permission]) return false;
           return true;
         })

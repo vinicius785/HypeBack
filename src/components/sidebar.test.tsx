@@ -16,6 +16,7 @@ const ctx = vi.hoisted(() => ({
   campaigns: [] as Array<{ status: string }>,
   edges: { before: false, after: false },
   permissions: { campaigns_read: true, catalog_read: true, community_lives_read: true, financial_read: true } as Record<string, boolean>,
+  accountType: "brand" as string,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -27,7 +28,7 @@ vi.mock("@/contexts/auth-context", () => ({ useAuth: () => ({ user: ctx.user, se
 vi.mock("@/contexts/workspace-context", () => {
   const ws = { id: "w1", name: "Acme", role: "owner", photo: null };
   return {
-    useWorkspaceContext: () => ({ workspaces: [ws, { id: "w2", name: "Beta", role: "member", photo: null }], selectedWorkspace: ws, selectWorkspace: ctx.selectWorkspace }),
+    useWorkspaceContext: () => ({ workspaces: [ws, { id: "w2", name: "Beta", role: "member", photo: null }], selectedWorkspace: { ...ws, account_type: ctx.accountType }, selectWorkspace: ctx.selectWorkspace }),
     useWorkspacePermissions: () => ctx.permissions,
   };
 });
@@ -54,6 +55,7 @@ beforeEach(() => {
   ctx.campaigns = [];
   ctx.edges = { before: false, after: false };
   ctx.permissions = { campaigns_read: true, catalog_read: true, community_lives_read: true, financial_read: true };
+  ctx.accountType = "brand";
 });
 
 afterEach(() => {
@@ -113,6 +115,7 @@ describe("WORKSPACE_NAV (clientes)", () => {
       [
         "Gestão de campanhas",
         [
+          ["Marcas", "/brands"],
           ["Campanhas", "/campaigns"],
           ["Criadores", "/creators"],
           ["Lives", "/lives"],
@@ -123,6 +126,8 @@ describe("WORKSPACE_NAV (clientes)", () => {
     ]);
     const backoffice = WORKSPACE_NAV.flatMap((g) => g.items).find((i) => i.label === "Backoffice");
     expect(backoffice?.platformStaffOnly).toBe(true);
+    // Marcas só existe para agência: nos demais workspaces o item nem aparece.
+    expect(WORKSPACE_NAV.flatMap((g) => g.items).find((i) => i.label === "Marcas")?.agencyOnly).toBe(true);
   });
 
   it("cada permissão de leitura continua no mesmo item de antes", () => {
@@ -171,6 +176,22 @@ describe("Sidebar (escopo do workspace, como no app)", () => {
       expect(items.getByRole("group", { name: group })).toBeInTheDocument();
     }
     expect(within(items.getByRole("group", { name: "Gestão de campanhas" })).getAllByRole("button")).toHaveLength(3);
+    expect(items.queryByRole("button", { name: "Marcas" })).not.toBeInTheDocument();
+  });
+
+  it("workspace de agência ganha o item Marcas, junto das campanhas", () => {
+    ctx.accountType = "agency";
+    render(<Sidebar />);
+    const group = within(within(nav()).getByRole("group", { name: "Gestão de campanhas" }));
+    expect(group.getByRole("button", { name: "Marcas" })).toBeInTheDocument();
+    expect(group.getAllByRole("button")).toHaveLength(4);
+  });
+
+  it("sem permissão de campanhas, agência também não vê Marcas", () => {
+    ctx.accountType = "agency";
+    ctx.permissions = { ...ctx.permissions, campaigns_read: false };
+    render(<Sidebar />);
+    expect(within(nav()).queryByRole("button", { name: "Marcas" })).not.toBeInTheDocument();
   });
 
   it("a equipe Hype vê só o Backoffice (uma porta), não a estrutura inteira do Admin", async () => {

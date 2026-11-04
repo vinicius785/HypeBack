@@ -19,6 +19,7 @@ import { Route as publicResetPasswordRouteImport } from './screens/(public)/rese
 import { Route as publicSignInRouteImport } from './screens/(public)/sign-in'
 import { Route as publicSignUpRouteImport } from './screens/(public)/sign-up'
 import { Route as privateappIndexRouteImport } from './screens/(private)/(app)/index'
+import { Route as privateappBrandsRouteImport } from './screens/(private)/(app)/brands'
 import { Route as privateappCampaignsRouteImport } from './screens/(private)/(app)/campaigns'
 import { Route as privateappCreatorsRouteImport } from './screens/(private)/(app)/creators'
 import { Route as privateappFinancialRouteImport } from './screens/(private)/(app)/financial'
@@ -102,6 +103,11 @@ const publicSignUpRoute = publicSignUpRouteImport.update({
 const privateappIndexRoute = privateappIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => privateappLayoutRoute,
+} as any)
+const privateappBrandsRoute = privateappBrandsRouteImport.update({
+  id: '/brands',
+  path: '/brands',
   getParentRoute: () => privateappLayoutRoute,
 } as any)
 const privateappCampaignsRoute = privateappCampaignsRouteImport.update({
@@ -325,6 +331,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof publicResetPasswordRoute
   '/sign-in': typeof publicSignInRoute
   '/sign-up': typeof publicSignUpRoute
+  '/brands': typeof privateappBrandsRoute
   '/campaigns': typeof privateappCampaignsRouteWithChildren
   '/creators': typeof privateappCreatorsRoute
   '/financial': typeof privateappFinancialRoute
@@ -370,6 +377,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof publicResetPasswordRoute
   '/sign-in': typeof publicSignInRoute
   '/sign-up': typeof publicSignUpRoute
+  '/brands': typeof privateappBrandsRoute
   '/campaigns': typeof privateappCampaignsRouteWithChildren
   '/creators': typeof privateappCreatorsRoute
   '/financial': typeof privateappFinancialRoute
@@ -418,6 +426,7 @@ export interface FileRoutesById {
   '/(public)/reset-password': typeof publicResetPasswordRoute
   '/(public)/sign-in': typeof publicSignInRoute
   '/(public)/sign-up': typeof publicSignUpRoute
+  '/(private)/(app)/brands': typeof privateappBrandsRoute
   '/(private)/(app)/campaigns': typeof privateappCampaignsRouteWithChildren
   '/(private)/(app)/creators': typeof privateappCreatorsRoute
   '/(private)/(app)/financial': typeof privateappFinancialRoute
@@ -466,6 +475,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/brands'
     | '/campaigns'
     | '/creators'
     | '/financial'
@@ -511,6 +521,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/brands'
     | '/campaigns'
     | '/creators'
     | '/financial'
@@ -558,6 +569,7 @@ export interface FileRouteTypes {
     | '/(public)/reset-password'
     | '/(public)/sign-in'
     | '/(public)/sign-up'
+    | '/(private)/(app)/brands'
     | '/(private)/(app)/campaigns'
     | '/(private)/(app)/creators'
     | '/(private)/(app)/financial'
@@ -674,6 +686,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof privateappIndexRouteImport
+      parentRoute: typeof privateappLayoutRoute
+    }
+    '/(private)/(app)/brands': {
+      id: '/(private)/(app)/brands'
+      path: '/brands'
+      fullPath: '/brands'
+      preLoaderRoute: typeof privateappBrandsRouteImport
       parentRoute: typeof privateappLayoutRoute
     }
     '/(private)/(app)/campaigns': {
@@ -1091,6 +1110,7 @@ const privateappLivesRouteWithChildren = privateappLivesRoute._addFileChildren(
 )
 
 interface privateappLayoutRouteChildren {
+  privateappBrandsRoute: typeof privateappBrandsRoute
   privateappCampaignsRoute: typeof privateappCampaignsRouteWithChildren
   privateappCreatorsRoute: typeof privateappCreatorsRoute
   privateappFinancialRoute: typeof privateappFinancialRoute
@@ -1102,6 +1122,7 @@ interface privateappLayoutRouteChildren {
 }
 
 const privateappLayoutRouteChildren: privateappLayoutRouteChildren = {
+  privateappBrandsRoute: privateappBrandsRoute,
   privateappCampaignsRoute: privateappCampaignsRouteWithChildren,
   privateappCreatorsRoute: privateappCreatorsRoute,
   privateappFinancialRoute: privateappFinancialRoute,

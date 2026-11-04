@@ -151,6 +151,26 @@ function WorkspaceEditDialogBody({ workspace, onClose }: Omit<WorkspaceEditDialo
     >
       <div className="adm-workspaces-form">
         {MAIN_FIELDS.map(renderField)}
+        <div className="adm-field adm-workspaces-form-field" data-span={6}>
+          <label htmlFor={`${idPrefix}-account_type`}>Tipo de conta</label>
+          <select
+            id={`${idPrefix}-account_type`}
+            className="adm-input"
+            value={values.account_type}
+            disabled={mutation.isPending}
+            aria-describedby={`${idPrefix}-account_type-note`}
+            onChange={(event) => setValues((current) => ({ ...current, account_type: event.target.value }))}
+          >
+            <option value="brand">Marca (cliente)</option>
+            <option value="agency">Agência</option>
+          </select>
+          <div className="adm-field-foot" id={`${idPrefix}-account_type-note`}>
+            <span>
+              Agência tem marcas, time e (em breve) elenco próprios. Uma agência que já tem marcas não volta a ser conta de
+              marca.
+            </span>
+          </div>
+        </div>
         <h3 className="adm-workspaces-form-title">Endereço</h3>
         {ADDRESS_FIELDS.map(renderField)}
       </div>

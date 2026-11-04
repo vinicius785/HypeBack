@@ -293,6 +293,8 @@ export interface AdminWorkspaceDetail {
   description: string | null;
   niche: { id: number; name: string } | null;
   kind: AdminWorkspaceKind;
+  /** Tipo de conta escolhido pelo Admin. Ausente em API antiga = `brand`. Outro conceito que o `kind` (derivado do dono). */
+  account_type?: "brand" | "agency";
   legal_name: string | null;
   tax_id: string | null;
   address: AdminWorkspaceAddress;
@@ -351,6 +353,8 @@ export interface AdminWorkspaceUpdateBody {
   neighborhood?: string | null;
   city?: string | null;
   state?: string | null;
+  /** Tipo de conta: `brand` (padrão) ou `agency`. Agência que já tem marcas não volta a `brand` (409). */
+  account_type?: "brand" | "agency";
 }
 
 export interface AdminReasonBody {
