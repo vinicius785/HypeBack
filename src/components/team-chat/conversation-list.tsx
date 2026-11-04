@@ -132,7 +132,7 @@ export function ConversationList({ conversations, selectedId, me, status, onRetr
       <FilterRow filter={filter} onFilter={setFilter} unread={unreadCount}>
         <button type="button" className="btn mc-new" onClick={onNew} disabled={newDisabled} aria-pressed={newOpen || undefined}>
           <I n="plus" cls="sm" />
-          Nova conversa
+          <span className="mc-new-t">Nova conversa</span>
         </button>
       </FilterRow>
       <div className="mc-items">{body}</div>

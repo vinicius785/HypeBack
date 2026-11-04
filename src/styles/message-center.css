@@ -29,13 +29,18 @@
 .pv .mc-search button { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: var(--muted); flex: none; }
 .pv .mc-search button:hover { color: var(--ink); }
 
-.pv .mc-filters { display: flex; align-items: center; gap: 6px; padding: 0 20px 10px; flex: none; }
-.pv .mc-chip { height: 32px; padding: 0 12px; border-radius: 99px; font-size: 13px; font-weight: 600; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; transition: background .2s, color .2s; }
+.pv .mc-filters { display: flex; align-items: center; gap: 8px; padding: 2px 20px 14px; flex: none; container-type: inline-size; }
+.pv .mc-chip { flex: none; white-space: nowrap; height: 32px; padding: 0 12px; border-radius: 99px; font-size: 13px; font-weight: 600; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; transition: background .2s, color .2s; }
 .pv .mc-chip:hover:not(.on) { background: var(--bg); color: var(--ink); }
 .pv .mc-chip.on { background: var(--bg); color: var(--ink); }
 .pv .mc-chip i { font-style: normal; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--brand); color: #fff; font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; }
 .pv .mc-chip:focus-visible, .pv .mc-new:focus-visible, .pv .mc-row:focus-visible, .pv .mc-back:focus-visible, .pv .mc-person:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-.pv .mc-filters .mc-new { margin-left: auto; height: 34px; padding: 0 14px; font-size: 13px; }
+.pv .mc-filters .mc-new { margin-left: auto; flex: none; white-space: nowrap; height: 34px; padding: 0 14px; font-size: 13px; gap: 6px; }
+/* Coluna estreita (gaveta): o botão vira só o "+", para os filtros respirarem; o nome continua no leitor de tela. */
+@container (max-width: 330px) {
+  .pv .mc-filters .mc-new { width: 34px; padding: 0; justify-content: center; }
+  .pv .mc-filters .mc-new .mc-new-t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
 .pv .mc-filters .mc-new[aria-pressed="true"] { background: var(--brand); }
 
 /* ───────────── lista ───────────── */
