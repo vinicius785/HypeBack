@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueries } from "@tanstack/react-query";
 
+import { ChatColumns, type ChatSlots } from "@/components/message-center/chat-columns";
 import { ConversationRow } from "@/components/message-center/conversation-row";
 import { FilterRow, ListSearch, ListSkeleton, StateBlock, type ListFilter } from "@/components/message-center/list-parts";
 import { Av } from "@/components/prototype/ui";
@@ -24,13 +25,15 @@ interface CreatorsChatTabProps {
   /** Avisa a gaveta quando há conversa aberta (no celular a conversa ocupa a tela). */
   onThreadChange: (open: boolean) => void;
   onRequestClose: () => void;
+  /** Dentro da gaveta: onde projetar a lista e a conversa (o título e as abas ficam fixos, sem remontar). */
+  slots?: ChatSlots;
 }
 
 /**
  * Aba Criadores da gaveta (protótipo `chHTML`): lista derivada das notificações `new_message`; mensagens e envio
  * reais por `useInfluencerMessages`/`useSendMessage` dentro da conversa.
  */
-export function CreatorsChatTab({ top, request, extra, onExtraChange, onThreadChange, onRequestClose }: CreatorsChatTabProps) {
+export function CreatorsChatTab({ top, request, extra, onExtraChange, onThreadChange, onRequestClose, slots }: CreatorsChatTabProps) {
   const [sel, setSel] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<ListFilter>("all");
@@ -167,14 +170,18 @@ export function CreatorsChatTab({ top, request, extra, onExtraChange, onThreadCh
   }
 
   return (
-    <>
-      <div className="mc-list">
-        {top}
-        <ListSearch value={q} onChange={setQ} placeholder="Buscar criador ou campanha" />
-        <FilterRow filter={filter} onFilter={setFilter} unread={unreadCount} />
-        <div className="mc-items">{body}</div>
-      </div>
-      <div className="mc-thread">
+    <ChatColumns
+      top={top}
+      slots={slots}
+      list={
+        <>
+          <ListSearch value={q} onChange={setQ} placeholder="Buscar criador ou campanha" />
+          <FilterRow filter={filter} onFilter={setFilter} unread={unreadCount} />
+          <div className="mc-items">{body}</div>
+        </>
+      }
+      thread={
+        <>
         {current ? (
           <CreatorThread key={current.id} conv={current} onBack={() => setSel(null)} onOpenCampaign={() => openCampaign(current)} />
         ) : (
@@ -185,7 +192,8 @@ export function CreatorsChatTab({ top, request, extra, onExtraChange, onThreadCh
             text="Escolha uma conversa na lista para falar com o criador. Para começar uma nova, abra o chat dele em Gerenciamento da campanha."
           />
         )}
-      </div>
-    </>
+        </>
+      }
+    />
   );
 }

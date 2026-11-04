@@ -152,21 +152,26 @@
 .pv .mc-head .ch-snd { flex: none; margin-left: 0; }
 @media (max-width: 760px) { .pv .mc-head { padding-right: 64px; } }
 
-/* ───────────── animações do chat (troca de aba, abrir conversa, linhas), nas classes desta central ───────────── */
-.pv .ovp.mc.swap-to-team .mc-list > :not(.mc-head):not(.mc-cats), .pv .ovp.mc.swap-to-team .mc-thread { animation: cx-from-right .38s var(--ease) both; }
-.pv .ovp.mc.swap-to-creators .mc-list > :not(.mc-head):not(.mc-cats), .pv .ovp.mc.swap-to-creators .mc-thread { animation: cx-from-left .38s var(--ease) both; }
-.pv .mc-cats button em { animation: cx-pop .35s var(--ease) both; }
-.pv .mc-thread > .mc-th { animation: cx-fade .3s var(--ease) both; }
-.pv .mc-thread > .ch-tb { animation: cx-rise .4s var(--ease) .05s both; }
-.pv .mc-thread > .ch-f { animation: cx-rise .4s var(--ease) .1s both; }
-.pv .mc-thread > .mc-state { animation: cx-fade .35s var(--ease) both; }
+/* ───────────── animações: só o que muda anima; o resto fica parado ───────────── */
+.pv .mc-lslot { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+@keyframes mc-title-in { from { opacity: 0; transform: translateY(5px); } }
+
+/* Trocar de aba: só as linhas da lista deslizam (para o lado da aba). Título, abas, busca, filtros e a conversa não piscam. */
 .pv .mc-row { animation: cx-rise .35s var(--ease) both; animation-delay: calc(var(--i, 0) * 28ms); }
+.pv .ovp.mc.swap-to-team .mc-row { animation: cx-from-right .3s var(--ease) both; animation-delay: calc(var(--i, 0) * 24ms); }
+.pv .ovp.mc.swap-to-creators .mc-row { animation: cx-from-left .3s var(--ease) both; animation-delay: calc(var(--i, 0) * 24ms); }
 .pv .mc-row:active { transform: scale(.985); }
+
+/* Trocar de conversa: só o nome entra. A lista, o cabeçalho, o histórico e o campo de envio ficam parados. */
+.pv .mc-th .mc-ti { animation: mc-title-in .28s var(--ease) both; }
+.pv .mc-thread .cx-day, .pv .mc-thread .cx-new, .pv .mc-thread .cx-st, .pv .mc-thread .tc-draft, .pv .mc-thread .tc-jump { animation: none; }
+/* O anel de foco do campo aparece de uma vez ao abrir a conversa (antes fazia um fade a cada troca). */
+.pv .mc-thread .tc-in { transition: none; }
+
+/* No celular a conversa ocupa a tela: ela entra pela direita (a lista não se mexe). */
 @media (max-width: 760px) {
   .pv .ovp.mc.th .mc-thread { animation: cx-from-right .32s var(--ease) both; }
-  .pv .ovp.mc:not(.th) .mc-list { animation: cx-from-left .32s var(--ease) both; }
-  .pv .ovp.mc.swap-to-team:not(.th) .mc-list, .pv .ovp.mc.swap-to-creators:not(.th) .mc-list { animation: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pv .ovp.mc .mc-list > *, .pv .ovp.mc .mc-thread, .pv .ovp.mc .mc-thread > *, .pv .mc-row, .pv .mc-cats button em { animation: none !important; }
+  .pv .mc-row, .pv .mc-th .mc-ti, .pv .ovp.mc.th .mc-thread { animation: none !important; }
 }

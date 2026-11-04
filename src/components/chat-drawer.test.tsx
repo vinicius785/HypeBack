@@ -251,6 +251,76 @@ describe("abas acessíveis (tablist / tabpanel)", () => {
   });
 });
 
+describe("trocar de aba ou de conversa não pisca o que não muda", () => {
+  const nodes = () => ({
+    drawer: document.querySelector("aside.ovp"),
+    list: document.querySelector(".mc-list"),
+    thread: document.querySelector(".mc-thread"),
+    head: document.querySelector(".mc-head"),
+    cats: document.querySelector(".mc-cats"),
+    title: document.querySelector(".mc-head h2"),
+    creatorsTab: screen.getByRole("tab", { name: /Criadores/ }),
+    teamTab: screen.getByRole("tab", { name: /Equipe/ }),
+  });
+
+  it("de Criadores para Equipe e de volta: o título, as abas e as colunas são os MESMOS elementos (só o conteúdo da lista muda)", async () => {
+    const user = userEvent.setup();
+    renderButton();
+    await user.click(await screen.findByRole("button", { name: /^Chat/ }));
+    await screen.findByRole("list", { name: "Conversas com criadores" });
+    const before = nodes();
+    expect(before.head && before.cats && before.list && before.thread).toBeTruthy();
+
+    await user.click(before.teamTab);
+    await screen.findByRole("list", { name: "Conversas da equipe" });
+    const team = nodes();
+    for (const key of Object.keys(before) as Array<keyof typeof before>) expect(team[key], `${key} foi remontado`).toBe(before[key]);
+    // O conteúdo da aba anterior saiu e o da nova entrou nas mesmas colunas.
+    expect(screen.queryByRole("list", { name: "Conversas com criadores" })).not.toBeInTheDocument();
+    expect(before.list).toContainElement(screen.getByRole("list", { name: "Conversas da equipe" }));
+
+    await user.click(team.creatorsTab);
+    await screen.findByRole("list", { name: "Conversas com criadores" });
+    const back = nodes();
+    for (const key of Object.keys(before) as Array<keyof typeof before>) expect(back[key], `${key} foi remontado na volta`).toBe(before[key]);
+  });
+
+  it("na troca de aba só as linhas da lista levam a direção da animação, e ela sai logo depois", async () => {
+    const user = userEvent.setup();
+    renderButton();
+    await user.click(await screen.findByRole("button", { name: /^Chat/ }));
+    const drawer = document.querySelector("aside.ovp") as HTMLElement;
+    expect(drawer).not.toHaveClass("swap-to-team");
+    await user.click(await screen.findByRole("tab", { name: /Equipe/ }));
+    expect(drawer).toHaveClass("swap-to-team");
+    await waitFor(() => expect(drawer).not.toHaveClass("swap-to-team"), { timeout: 2000 });
+  });
+
+  it("de uma conversa para outra: a busca e a lista continuam os mesmos elementos; só o nome do cabeçalho muda", async () => {
+    h.conversations.mockResolvedValue([
+      conversationFixture,
+      { ...conversationFixture, id: "c-2", title: "Beto Lima", peer: { user_id: 3, name: "Beto Lima", avatar: null }, unread: 0 },
+    ]);
+    const user = userEvent.setup();
+    renderButton();
+    await user.click(await screen.findByRole("button", { name: /^Chat/ }));
+    await user.click(await screen.findByRole("tab", { name: /Equipe/ }));
+    await user.click(await screen.findByRole("button", { name: /Ana Souza/ }));
+    await screen.findByRole("log");
+    const search = screen.getByRole("textbox", { name: "Buscar conversa" });
+    const list = screen.getByRole("list", { name: "Conversas da equipe" });
+    const cats = document.querySelector(".mc-cats");
+    const titleBefore = document.querySelector(".mc-th .mc-ti");
+    expect(titleBefore).toHaveTextContent("Ana Souza");
+
+    await user.click(screen.getByRole("button", { name: /Beto Lima/ }));
+    await waitFor(() => expect(document.querySelector(".mc-th .mc-ti")).toHaveTextContent("Beto Lima"));
+    expect(screen.getByRole("textbox", { name: "Buscar conversa" })).toBe(search);
+    expect(screen.getByRole("list", { name: "Conversas da equipe" })).toBe(list);
+    expect(document.querySelector(".mc-cats")).toBe(cats);
+  });
+});
+
 describe("socket da equipe no provedor do layout", () => {
   function Toggle() {
     const [shown, setShown] = useState(true);

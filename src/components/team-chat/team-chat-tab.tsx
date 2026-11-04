@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
+import { ChatColumns, type ChatSlots } from "@/components/message-center/chat-columns";
 import { StateBlock } from "@/components/message-center/list-parts";
 import { I } from "@/components/prototype/ui";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -28,12 +29,14 @@ interface TeamChatTabProps {
   onThreadChange: (open: boolean) => void;
   /** Leva a quem pode convidar para onde se convida gente ao workspace. */
   onInvite?: () => void;
+  /** Dentro da gaveta: onde projetar a lista e a conversa (o título e as abas ficam fixos, sem remontar). */
+  slots?: ChatSlots;
 }
 
 type View = { kind: "none" } | { kind: "new" } | { kind: "conversation"; id: string };
 
 /** Aba Equipe da gaveta: conversas entre as pessoas do mesmo workspace (canal geral + 1 a 1). */
-export function TeamChatTab({ top, request, chat, onThreadChange, onInvite }: TeamChatTabProps) {
+export function TeamChatTab({ top, request, chat, onThreadChange, onInvite, slots }: TeamChatTabProps) {
   const { user } = useCurrentUser();
   const me = user?.id != null ? Number(user.id) : null;
   const workspaceId = useWorkspaceQueryKey();
@@ -127,9 +130,11 @@ export function TeamChatTab({ top, request, chat, onThreadChange, onInvite }: Te
   );
 
   return (
-    <>
-      <div className="mc-list">
-        {top}
+    <ChatColumns
+      top={top}
+      slots={slots}
+      list={
+        <>
         {chat.blocked && isTeamChatRefusalCode(chat.blocked.code) && (
           <p className="tc-block" role="alert" style={{ margin: "0 20px 10px" }}>
             <I n="lock" cls="sm" />
@@ -147,8 +152,10 @@ export function TeamChatTab({ top, request, chat, onThreadChange, onInvite }: Te
           newOpen={view.kind === "new"}
           newDisabled={chat.blocked !== null}
         />
-      </div>
-      <div className="mc-thread">
+        </>
+      }
+      thread={
+        <>
         {view.kind === "new" && !unavailable ? (
           <NewConversation
             members={members.data}
@@ -175,7 +182,8 @@ export function TeamChatTab({ top, request, chat, onThreadChange, onInvite }: Te
             action={chat.blocked !== null ? undefined : { label: "Nova conversa", icon: "plus", onClick: () => setView({ kind: "new" }) }}
           />
         )}
-      </div>
-    </>
+        </>
+      }
+    />
   );
 }

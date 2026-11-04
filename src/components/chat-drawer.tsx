@@ -53,6 +53,10 @@ export function ChatDrawerButton() {
   const [creatorsExtra, setCreatorsExtra] = useState<CreatorConversation | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
+  // Pontos fixos da gaveta onde a aba ativa projeta a lista e a conversa: trocar de aba não remonta o resto.
+  const [listSlot, setListSlot] = useState<HTMLDivElement | null>(null);
+  const [threadSlot, setThreadSlot] = useState<HTMLDivElement | null>(null);
+  const slots = { list: listSlot, thread: threadSlot };
 
   const notificationsQuery = useNotifications();
   const notifications = notificationsQuery.data ?? [];
@@ -79,6 +83,13 @@ export function ChatDrawerButton() {
     if (base && base.ws === workspaceId && totalUnread > base.total) playMessageSound();
     unreadBase.current = { ws: workspaceId, total: totalUnread };
   }, [totalUnread, unreadReady, workspaceId]);
+
+  // A direção da troca de aba só vale enquanto as linhas da lista deslizam; depois sai (linhas novas por filtro não deslizam).
+  useEffect(() => {
+    if (!swap) return;
+    const t = setTimeout(() => setSwap(""), 700);
+    return () => clearTimeout(t);
+  }, [swap]);
 
   const requestClose = useCallback(() => {
     if (timer.current) return;
@@ -225,10 +236,16 @@ export function ChatDrawerButton() {
       <aside className={`ovp mc on${threadOpen ? " th" : ""}${swap ? ` swap-${swap}` : ""}${cls}`} role="dialog" aria-label="Mensagens">
         {/* `display: contents`: o painel nomeia a aba para o leitor de tela sem virar uma caixa do layout (as colunas
             da lista e da conversa seguem como filhas diretas do flex da gaveta). */}
-        <div key={tab} role="tabpanel" id={`chat-panel-${tab}`} aria-labelledby={`chat-tab-${tab}`} style={{ display: "contents" }}>
+        <div role="tabpanel" id={`chat-panel-${tab}`} aria-labelledby={`chat-tab-${tab}`} style={{ display: "contents" }}>
+          <div className="mc-list">
+            {top}
+            <div className="mc-lslot" ref={setListSlot} />
+          </div>
+          <div className="mc-thread" ref={setThreadSlot} />
           {tab === "creators" ? (
             <CreatorsChatTab
               top={top}
+              slots={slots}
               request={creatorsRequest}
               extra={creatorsExtra}
               onExtraChange={setCreatorsExtra}
@@ -236,7 +253,7 @@ export function ChatDrawerButton() {
               onRequestClose={requestClose}
             />
           ) : (
-            <TeamChatTab top={top} request={teamRequest} chat={chat} onThreadChange={setThreadOpen} onInvite={goInvite} />
+            <TeamChatTab top={top} slots={slots} request={teamRequest} chat={chat} onThreadChange={setThreadOpen} onInvite={goInvite} />
           )}
         </div>
         <button type="button" className="round ch-x" onClick={requestClose} aria-label="Fechar">
