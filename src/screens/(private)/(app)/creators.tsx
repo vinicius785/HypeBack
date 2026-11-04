@@ -33,6 +33,8 @@ import {
 } from "@/hooks/use-creators-catalog";
 import { useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
 import { rosterErrorMessage, useInviteToRoster, useRosterStatusMap } from "@/hooks/use-agency-roster";
+import { CityPicker } from "@/components/creators/city-picker";
+import type { CityPlace } from "@/lib/city-search";
 import { InviteNetworksModal } from "@/components/influencer-lists/invite-networks-modal";
 import { defaultCatalogOrder } from "@/shared/utils/creators-default-order";
 import { groupCreators, type CreatorGroup } from "@/shared/utils/group-creators";
@@ -189,6 +191,8 @@ const LEGACY_NEAR_ME_KEY = "hypeapp:near-me-location:v1";
 interface NearMeLocation {
   lat: number;
   lng: number;
+  /** Cidade escolhida na busca ("Ribeirão Preto, São Paulo"); sem ela, é a localização deste navegador. */
+  label?: string;
 }
 
 type GeoResult = { ok: true; loc: NearMeLocation } | { ok: false; message: string };
@@ -374,6 +378,11 @@ function FiltersDrawer({
     else setGeoError(res.message);
   };
 
+  const pickCity = (c: CityPlace) => {
+    setGeoError("");
+    setDraft((d) => ({ ...d, near: { lat: c.lat, lng: c.lng, label: c.label }, radius: c.radiusKm }));
+  };
+
   const clear = () => {
     setGeoError("");
     setDraft({ net: "all", niche: "", uf: "", gen: "", fol: "", eng: "", near: null, radius: DEFAULT_RADIUS_KM });
@@ -447,7 +456,7 @@ function FiltersDrawer({
                 <>
                   <div className="cf-nh">
                     <span>
-                      <I n="locate" cls="sm" /> Perto de você
+                      <I n="locate" cls="sm" /> {draft.near.label ? draft.near.label : "Perto de você"}
                     </span>
                     <button type="button" className="lnk" onClick={() => set("near", null)}>
                       Remover
@@ -463,6 +472,8 @@ function FiltersDrawer({
                 </>
               ) : (
                 <>
+                  <CityPicker onPick={pickCity} />
+                  <small>Mostra quem está na cidade agora, pela localização do celular, mesmo que você esteja longe.</small>
                   <button type="button" className="btn out" disabled={locating} onClick={useMyLocation}>
                     <I n="locate" cls="sm" />
                     {locating ? "Localizando…" : "Buscar perto de mim"}
@@ -848,7 +859,7 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
   // Sem contagem de resultados: o catálogo pagina por conta de rede social, então
   // qualquer número seria de contas ou de criadores parcialmente carregados.
   const contextLine = [
-    nearOn ? `Num raio de ${radiusKm} km da sua localização` : "",
+    nearOn ? `Num raio de ${radiusKm} km ${nearMeLocation?.label ? `de ${nearMeLocation.label}` : "da sua localização"}` : "",
     activeKeys.length > 0 ? `${activeKeys.length} ${activeKeys.length === 1 ? "filtro aplicado" : "filtros aplicados"}` : "",
     searching ? `Busca por “${debouncedQ}”` : "",
   ]
@@ -980,8 +991,13 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
               );
             })}
             {nearOn && (
-              <button type="button" className="crx" aria-label="Remover filtro Perto de mim" onClick={removeNearMe}>
-                Perto de mim · {radiusKm} km
+              <button
+                type="button"
+                className="crx"
+                aria-label={`Remover filtro ${nearMeLocation?.label ? "de cidade" : "Perto de mim"}`}
+                onClick={removeNearMe}
+              >
+                {nearMeLocation?.label ? nearMeLocation.label.split(",")[0] : "Perto de mim"} · {radiusKm} km
                 <I n="x" cls="sm" />
               </button>
             )}
@@ -1022,7 +1038,7 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
                   {nearMeLocatedCount > 0 ? (
                     <Suspense fallback={<div style={{ height: 420, background: "var(--bg)" }} />}>
                       <NearMeMap
-                        origin={{ lat: nearMeLocation.lat, lng: nearMeLocation.lng, radiusKm }}
+                        origin={{ lat: nearMeLocation.lat, lng: nearMeLocation.lng, radiusKm, label: nearMeLocation.label }}
                         items={mapItems}
                         onViewProfile={openProfile}
                         heightClass="h-[min(560px,62vh)]"

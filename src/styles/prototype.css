@@ -2298,6 +2298,13 @@
 .pv .cf-near small { color: var(--muted); font-size: 14px; line-height: 1.4; }
 .pv .cf-near .btn { align-self: flex-start; height: 46px; }
 .pv .cf-near .btn.out { background: #fff; }
+.pv .cf-city { display: flex; flex-direction: column; gap: 8px; }
+.pv .cf-ci { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 16px; border-radius: 16px; border: 2px solid var(--hair); background: #fff; color: var(--muted); transition: border-color var(--dur) var(--ease); }
+.pv .cf-ci:focus-within { border-color: var(--ink); }
+.pv .cf-ci input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 15px; color: var(--ink); }
+.pv .cf-cl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.pv .cf-cl button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 14px; border: 0; border-radius: 14px; background: #fff; font: inherit; font-size: 14.5px; font-weight: 600; color: var(--ink); text-align: left; cursor: pointer; transition: background var(--dur) var(--ease); }
+.pv .cf-cl button:hover, .pv .cf-cl button:focus-visible { background: var(--hair); outline: none; }
 .pv .cf-nh { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14.5px; font-weight: 600; }
 .pv .cf-nh span { display: inline-flex; align-items: center; gap: 8px; }
 .pv .cf-nh .lnk { color: var(--brand); font-size: 14px; }

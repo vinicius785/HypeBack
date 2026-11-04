@@ -1,6 +1,6 @@
 import "leaflet/dist/leaflet.css";
 
-import { useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import L from "leaflet";
 import {
   Circle,
@@ -17,10 +17,15 @@ import { Icon } from "@/components/ui/icon";
 import { getUploadUrl } from "@/lib/utils/api";
 import type { CatalogItem } from "@/shared/services/creators-catalog";
 
+/** Texto de "de você" nos cartões do mapa: vira o nome da cidade quando a origem é uma cidade. */
+const OriginNameContext = createContext<string>("você");
+
 export interface NearMeOrigin {
   lat: number;
   lng: number;
   radiusKm: number;
+  /** Cidade de origem ("Ribeirão Preto, São Paulo"); ausente = a localização de quem está buscando. */
+  label?: string;
 }
 
 interface NearMeMapProps {
@@ -194,7 +199,10 @@ export function NearMeMap({ origin, items, onViewProfile, heightClass = "h-80 sm
 
   const center: [number, number] = [origin.lat, origin.lng];
 
+  const cityName = origin.label?.split(",")[0];
+
   return (
+    <OriginNameContext.Provider value={cityName ?? "você"}>
     <div className="near-me-map relative overflow-hidden">
       <MapContainer
         center={center}
@@ -238,7 +246,7 @@ export function NearMeMap({ origin, items, onViewProfile, heightClass = "h-80 sm
           <Popup>
             <div className="flex items-center gap-2 py-0.5">
               <Icon name="LocateFixed" size={16} color="var(--color-primary-600)" />
-              <span className="text-sm font-medium text-neutral-900">Você está aqui</span>
+              <span className="text-sm font-medium text-neutral-900">{cityName ? `Centro de ${cityName}` : "Você está aqui"}</span>
             </div>
           </Popup>
         </Marker>
@@ -251,7 +259,7 @@ export function NearMeMap({ origin, items, onViewProfile, heightClass = "h-80 sm
       <div className="pointer-events-none absolute bottom-3 left-3 z-[500] flex flex-col gap-1.5 rounded-xl bg-white/90 px-3 py-2 text-xs text-neutral-600 shadow-sm backdrop-blur">
         <span className="flex items-center gap-2">
           <span className="inline-block size-2.5 rounded-full bg-primary-600 ring-2 ring-primary-200" />
-          Você
+          {cityName ?? "Você"}
         </span>
         <span className="flex items-center gap-2">
           <span className="inline-block size-2.5 rounded-full border border-primary-300 bg-primary-100" />
@@ -259,6 +267,7 @@ export function NearMeMap({ origin, items, onViewProfile, heightClass = "h-80 sm
         </span>
       </div>
     </div>
+    </OriginNameContext.Provider>
   );
 }
 
@@ -276,6 +285,7 @@ function NearMeCreatorPopup({
   const photo = resolvePhoto(item);
   const initial = (item.user.name || "?").trim().charAt(0).toUpperCase();
   const distance = item.distance_km;
+  const originName = useContext(OriginNameContext);
   // Se a foto 404 (arquivo ausente no backend), cai para as iniciais.
   const [photoFailed, setPhotoFailed] = useState(false);
 
@@ -304,7 +314,7 @@ function NearMeCreatorPopup({
         <Icon name="Navigation" size={13} color="var(--color-primary-600)" />
         {distance != null ? (
           <span>
-            a <span className="font-medium text-neutral-900">{distance.toFixed(1)} km</span> de você ·
+            a <span className="font-medium text-neutral-900">{distance.toFixed(1)} km</span> de {originName} ·
             local aproximado
           </span>
         ) : (
