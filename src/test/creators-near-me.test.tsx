@@ -5,6 +5,8 @@ import { Route } from "@/screens/(private)/(app)/creators";
 import type { CatalogItem } from "@/shared/services/creators-catalog";
 
 const catalog = vi.hoisted(() => ({ items: [] as CatalogItem[], cached: null as unknown }));
+// Elenco da agência (marca = sem elenco): o catálogo de marca nunca mostra nada disso.
+const agency = vi.hoisted(() => ({ is: false, roster: new Map<number, "invited" | "active">(), canInvite: true, invite: vi.fn(), toast: { success: vi.fn(), error: vi.fn() } }));
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: unknown) => ({ options }),
@@ -13,8 +15,16 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("@/contexts/workspace-context", () => ({
   useWorkspaceContext: () => ({ selectedWorkspace: { id: "w1", name: "Marca" } }),
-  useWorkspacePermissions: () => ({ catalog_read: true, catalog_write: false }),
+  useWorkspacePermissions: () => ({ catalog_read: true, catalog_write: false, influencers_invite: agency.canInvite }),
 }));
+vi.mock("sonner", () => ({ toast: agency.toast }));
+vi.mock("@/hooks/use-agency-brands", () => ({ useIsAgencyWorkspace: () => agency.is }));
+vi.mock("@/hooks/use-agency-roster", () => ({
+  useRosterStatusMap: () => agency.roster,
+  useInviteToRoster: () => ({ mutate: agency.invite, isPending: false }),
+  rosterErrorMessage: (_e: unknown, fallback: string) => fallback,
+}));
+vi.mock("@/styles/agency-roster.css", () => ({}));
 vi.mock("@/hooks/use-niches", () => ({ useNiches: () => ({ data: [] }) }));
 vi.mock("@/hooks/use-influencer-lists", () => ({
   useInfluencerLists: () => ({ data: [], isLoading: false }),
@@ -67,6 +77,12 @@ const creator = (id: number): CatalogItem => ({
 });
 
 beforeEach(() => {
+  agency.is = false;
+  agency.roster = new Map();
+  agency.canInvite = true;
+  agency.invite.mockReset();
+  agency.toast.success.mockReset();
+  agency.toast.error.mockReset();
   catalog.items = [creator(1), creator(2)];
   vi.stubGlobal(
     "IntersectionObserver",
@@ -140,5 +156,56 @@ describe("Criadores · entrar no mapa sem localização", () => {
     expect(screen.getByText("Veja os criadores no mapa")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Usar minha localização/ })).toBeInTheDocument();
     expect(mapButton()).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+describe("Criadores · elenco da agência", () => {
+  it("workspace de marca: nada de elenco (sem 'Meu elenco', sem selo, sem botão)", () => {
+    render(<Page />);
+    expect(screen.queryByRole("button", { name: "Meu elenco" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /para o elenco/ })).toBeNull();
+    expect(screen.queryByText("No elenco")).toBeNull();
+  });
+
+  it("agência: 'Meu elenco' aparece, os cartões marcam quem está no elenco ou foi convidado e convidar usa o id do criador", () => {
+    agency.is = true;
+    agency.roster = new Map([[1, "active"], [2, "invited"]]);
+    catalog.items = [creator(1), creator(2), creator(3)];
+    render(<Page />);
+    expect(screen.getByRole("button", { name: "Meu elenco" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByText("No elenco")).toBeInTheDocument();
+    expect(screen.getByText("Convidado")).toBeInTheDocument();
+    // Só quem ainda não tem vínculo ganha o botão de convidar.
+    expect(screen.queryByRole("button", { name: "Convidar Criador 1 para o elenco" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Convidar Criador 2 para o elenco" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Convidar Criador 3 para o elenco" }));
+    expect(agency.invite).toHaveBeenCalledWith(3, expect.any(Object));
+  });
+
+  it("convite aceito pela API avisa que o criador entra quando aceitar", () => {
+    agency.is = true;
+    agency.invite.mockImplementation((_id: number, opts: { onSuccess: () => void }) => opts.onSuccess());
+    render(<Page />);
+    fireEvent.click(screen.getByRole("button", { name: "Convidar Criador 1 para o elenco" }));
+    expect(agency.toast.success).toHaveBeenCalledWith(expect.stringContaining("entra no elenco quando aceitar"));
+  });
+
+  it("sem permissão de convidar, a agência vê o selo mas não o botão", () => {
+    agency.is = true;
+    agency.canInvite = false;
+    agency.roster = new Map([[1, "active"]]);
+    render(<Page />);
+    expect(screen.getByText("No elenco")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /para o elenco/ })).toBeNull();
+  });
+
+  it("'Meu elenco' liga e desliga", () => {
+    agency.is = true;
+    render(<Page />);
+    const toggle = screen.getByRole("button", { name: "Meu elenco" });
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
   });
 });

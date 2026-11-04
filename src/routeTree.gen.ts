@@ -24,6 +24,7 @@ import { Route as privateappCampaignsRouteImport } from './screens/(private)/(ap
 import { Route as privateappCreatorsRouteImport } from './screens/(private)/(app)/creators'
 import { Route as privateappFinancialRouteImport } from './screens/(private)/(app)/financial'
 import { Route as privateappLivesRouteImport } from './screens/(private)/(app)/lives'
+import { Route as privateappRosterRouteImport } from './screens/(private)/(app)/roster'
 import { Route as privateappSettingsRouteImport } from './screens/(private)/(app)/settings'
 import { Route as privateOnboardingIndexRouteImport } from './screens/(private)/onboarding/index'
 import { Route as privateOnboardingCreateWorkspaceRouteImport } from './screens/(private)/onboarding/create-workspace'
@@ -128,6 +129,11 @@ const privateappFinancialRoute = privateappFinancialRouteImport.update({
 const privateappLivesRoute = privateappLivesRouteImport.update({
   id: '/lives',
   path: '/lives',
+  getParentRoute: () => privateappLayoutRoute,
+} as any)
+const privateappRosterRoute = privateappRosterRouteImport.update({
+  id: '/roster',
+  path: '/roster',
   getParentRoute: () => privateappLayoutRoute,
 } as any)
 const privateappSettingsRoute = privateappSettingsRouteImport.update({
@@ -336,6 +342,7 @@ export interface FileRoutesByFullPath {
   '/creators': typeof privateappCreatorsRoute
   '/financial': typeof privateappFinancialRoute
   '/lives': typeof privateappLivesRouteWithChildren
+  '/roster': typeof privateappRosterRoute
   '/settings': typeof privateappSettingsRoute
   '/onboarding/create-workspace': typeof privateOnboardingCreateWorkspaceRoute
   '/onboarding/verify-phone': typeof privateOnboardingVerifyPhoneRoute
@@ -382,6 +389,7 @@ export interface FileRoutesByTo {
   '/creators': typeof privateappCreatorsRoute
   '/financial': typeof privateappFinancialRoute
   '/lives': typeof privateappLivesRouteWithChildren
+  '/roster': typeof privateappRosterRoute
   '/settings': typeof privateappSettingsRoute
   '/onboarding/create-workspace': typeof privateOnboardingCreateWorkspaceRoute
   '/onboarding/verify-phone': typeof privateOnboardingVerifyPhoneRoute
@@ -431,6 +439,7 @@ export interface FileRoutesById {
   '/(private)/(app)/creators': typeof privateappCreatorsRoute
   '/(private)/(app)/financial': typeof privateappFinancialRoute
   '/(private)/(app)/lives': typeof privateappLivesRouteWithChildren
+  '/(private)/(app)/roster': typeof privateappRosterRoute
   '/(private)/(app)/settings': typeof privateappSettingsRoute
   '/(private)/onboarding/create-workspace': typeof privateOnboardingCreateWorkspaceRoute
   '/(private)/onboarding/verify-phone': typeof privateOnboardingVerifyPhoneRoute
@@ -480,6 +489,7 @@ export interface FileRouteTypes {
     | '/creators'
     | '/financial'
     | '/lives'
+    | '/roster'
     | '/settings'
     | '/onboarding/create-workspace'
     | '/onboarding/verify-phone'
@@ -526,6 +536,7 @@ export interface FileRouteTypes {
     | '/creators'
     | '/financial'
     | '/lives'
+    | '/roster'
     | '/settings'
     | '/onboarding/create-workspace'
     | '/onboarding/verify-phone'
@@ -574,6 +585,7 @@ export interface FileRouteTypes {
     | '/(private)/(app)/creators'
     | '/(private)/(app)/financial'
     | '/(private)/(app)/lives'
+    | '/(private)/(app)/roster'
     | '/(private)/(app)/settings'
     | '/(private)/onboarding/create-workspace'
     | '/(private)/onboarding/verify-phone'
@@ -721,6 +733,13 @@ declare module '@tanstack/react-router' {
       path: '/lives'
       fullPath: '/lives'
       preLoaderRoute: typeof privateappLivesRouteImport
+      parentRoute: typeof privateappLayoutRoute
+    }
+    '/(private)/(app)/roster': {
+      id: '/(private)/(app)/roster'
+      path: '/roster'
+      fullPath: '/roster'
+      preLoaderRoute: typeof privateappRosterRouteImport
       parentRoute: typeof privateappLayoutRoute
     }
     '/(private)/(app)/settings': {
@@ -1115,6 +1134,7 @@ interface privateappLayoutRouteChildren {
   privateappCreatorsRoute: typeof privateappCreatorsRoute
   privateappFinancialRoute: typeof privateappFinancialRoute
   privateappLivesRoute: typeof privateappLivesRouteWithChildren
+  privateappRosterRoute: typeof privateappRosterRoute
   privateappSettingsRoute: typeof privateappSettingsRoute
   privateappIndexRoute: typeof privateappIndexRoute
   privateappInfluencerInfluencerIdRoute: typeof privateappInfluencerInfluencerIdRoute
@@ -1127,6 +1147,7 @@ const privateappLayoutRouteChildren: privateappLayoutRouteChildren = {
   privateappCreatorsRoute: privateappCreatorsRoute,
   privateappFinancialRoute: privateappFinancialRoute,
   privateappLivesRoute: privateappLivesRouteWithChildren,
+  privateappRosterRoute: privateappRosterRoute,
   privateappSettingsRoute: privateappSettingsRoute,
   privateappIndexRoute: privateappIndexRoute,
   privateappInfluencerInfluencerIdRoute: privateappInfluencerInfluencerIdRoute,

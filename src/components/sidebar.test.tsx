@@ -118,6 +118,7 @@ describe("WORKSPACE_NAV (clientes)", () => {
           ["Marcas", "/brands"],
           ["Campanhas", "/campaigns"],
           ["Criadores", "/creators"],
+          ["Elenco", "/roster"],
           ["Lives", "/lives"],
         ],
       ],
@@ -128,6 +129,7 @@ describe("WORKSPACE_NAV (clientes)", () => {
     expect(backoffice?.platformStaffOnly).toBe(true);
     // Marcas só existe para agência: nos demais workspaces o item nem aparece.
     expect(WORKSPACE_NAV.flatMap((g) => g.items).find((i) => i.label === "Marcas")?.agencyOnly).toBe(true);
+    expect(WORKSPACE_NAV.flatMap((g) => g.items).find((i) => i.label === "Elenco")?.agencyOnly).toBe(true);
   });
 
   it("cada permissão de leitura continua no mesmo item de antes", () => {
@@ -177,14 +179,16 @@ describe("Sidebar (escopo do workspace, como no app)", () => {
     }
     expect(within(items.getByRole("group", { name: "Gestão de campanhas" })).getAllByRole("button")).toHaveLength(3);
     expect(items.queryByRole("button", { name: "Marcas" })).not.toBeInTheDocument();
+    expect(items.queryByRole("button", { name: "Elenco" })).not.toBeInTheDocument();
   });
 
-  it("workspace de agência ganha o item Marcas, junto das campanhas", () => {
+  it("workspace de agência ganha os itens Marcas e Elenco, junto das campanhas", () => {
     ctx.accountType = "agency";
     render(<Sidebar />);
     const group = within(within(nav()).getByRole("group", { name: "Gestão de campanhas" }));
     expect(group.getByRole("button", { name: "Marcas" })).toBeInTheDocument();
-    expect(group.getAllByRole("button")).toHaveLength(4);
+    expect(group.getByRole("button", { name: "Elenco" })).toBeInTheDocument();
+    expect(group.getAllByRole("button")).toHaveLength(5);
   });
 
   it("sem permissão de campanhas, agência também não vê Marcas", () => {
