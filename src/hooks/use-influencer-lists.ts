@@ -3,6 +3,7 @@ import { useQuery, useQueries, useMutation, useQueryClient } from "@tanstack/rea
 import {
   getInfluencerLists,
   getInfluencerList,
+  getInfluencerListReach,
   bulkAddInfluencersToCampaign,
   type InfluencerList,
   type BulkAddInfluencersRequest,
@@ -57,6 +58,17 @@ export function useInfluencerList(listId: string | null) {
     queryKey: withWorkspaceKey(["influencer-list", listId], workspaceId),
     queryFn: () => getInfluencerList(listId!),
     enabled: !!listId && !!workspaceId,
+  });
+}
+
+/** `memberCount` entra na chave: ao adicionar/remover criador, o alcance é recalculado. */
+export function useInfluencerListReach(listId: string | null, memberCount: number) {
+  const workspaceId = useWorkspaceQueryKey();
+  return useQuery({
+    queryKey: withWorkspaceKey(["influencer-list-reach", listId, memberCount], workspaceId),
+    queryFn: () => getInfluencerListReach(listId!),
+    enabled: !!listId && !!workspaceId && memberCount > 0,
+    staleTime: 60_000,
   });
 }
 

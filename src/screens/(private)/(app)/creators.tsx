@@ -16,7 +16,13 @@ import { ListMembershipModal } from "@/components/influencer-lists/list-membersh
 import { InfluencerProfileDrawer } from "@/components/influencer-profile/profile-drawer";
 import { useWorkspaceContext, useWorkspacePermissions } from "@/contexts/workspace-context";
 import { useNiches } from "@/hooks/use-niches";
-import { useInfluencerLists, useInfluencerList, useInfluencerMembershipMap } from "@/hooks/use-influencer-lists";
+import {
+  useInfluencerLists,
+  useInfluencerList,
+  useInfluencerListReach,
+  useInfluencerMembershipMap,
+} from "@/hooks/use-influencer-lists";
+import { ListReachSummary } from "@/components/influencer-lists/list-reach-summary";
 import {
   useCreatorsCatalog,
   useCreateInfluencerList,
@@ -1198,6 +1204,7 @@ function ListDetailModal({ listId, listName, onClose }: ListDetailModalProps) {
   const navigate = useNavigate();
 
   const influencers = data?.influencers ?? [];
+  const reach = useInfluencerListReach(listId, influencers.length);
 
   async function handleRemove(userId: number) {
     await removeMutation.mutateAsync({ listId, userId });
@@ -1222,6 +1229,7 @@ function ListDetailModal({ listId, listName, onClose }: ListDetailModalProps) {
           </div>
         ) : (
           <div className="flex flex-col gap-2">
+            <ListReachSummary data={reach.data} isLoading={reach.isLoading} isError={reach.isError} />
             <p className="text-sm text-neutral-500 mb-1">
               {influencers.length} {influencers.length === 1 ? "criador" : "criadores"}
             </p>

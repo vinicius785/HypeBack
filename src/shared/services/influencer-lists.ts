@@ -152,6 +152,50 @@ export async function getInfluencerList(
   return response.data;
 }
 
+export type ReachNetworkKey = "instagram" | "tiktok" | "youtube";
+
+export interface InfluencerListReach {
+  creators_total: number;
+  creators_with_network: number;
+  creators_with_reach: number;
+  followers_total: number;
+  estimated_reach_total: number;
+  by_network: Array<{
+    network: ReachNetworkKey;
+    creators: number;
+    followers: number;
+    estimated_reach: number;
+    creators_with_reach: number;
+  }>;
+}
+
+/** Seguidores e alcance estimado (uma publicação por criador) dos membros da lista. */
+export async function getInfluencerListReach(listId: string): Promise<InfluencerListReach> {
+  const workspaceId = getWorkspaceId();
+  if (!workspaceId) throw new Error("Workspace ID é obrigatório");
+
+  const request = await fetch(getApiUrl(`/influencer-lists/${listId}/reach`), {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "Client-Type": "backoffice",
+      Authorization: `Bearer ${getAuthToken()}`,
+      "Workspace-Id": workspaceId,
+    },
+  });
+  if (!request.ok) {
+    let errorData;
+    try {
+      errorData = await request.json();
+    } catch {
+      errorData = { message: "Não foi possível calcular o alcance da lista" };
+    }
+    throw errorData;
+  }
+  const response = await request.json();
+  return response.data;
+}
+
 /**
  * Adiciona múltiplos influenciadores à campanha (por IDs ou lista)
  */
