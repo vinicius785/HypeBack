@@ -16,14 +16,13 @@ const data = {
 };
 
 describe("ListIndicators", () => {
-  it("mostra alcance, seguidores, criadores, redes e quem ficou de fora", () => {
+  it("mostra alcance, seguidores, criadores, alcance por rede e quem ficou de fora", () => {
     render(<ListIndicators data={data} creators={3} />);
     expect(screen.getByText("Alcance estimado")).toBeTruthy();
     expect(screen.getByText("25,0% dos seguidores")).toBeTruthy();
-    expect(screen.getByText("Redes representadas").nextElementSibling?.textContent).toBe("2");
     expect(screen.getByText("Criadores").nextElementSibling?.textContent).toBe("3");
     expect(screen.getByText(/1 criador está sem alcance medido/)).toBeTruthy();
-    expect(screen.getByText("Instagram", { selector: "b" })).toBeTruthy();
+    expect(screen.getByText("Instagram", { selector: "b" }).nextElementSibling?.textContent).toMatch(/^4\smil de alcance$/);
   });
 
   it("avisa quando não foi possível calcular e permite tentar de novo", () => {

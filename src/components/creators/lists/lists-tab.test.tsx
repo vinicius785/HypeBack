@@ -98,7 +98,7 @@ describe("Minhas listas", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Abrir lista" })[0]);
     const dlg = screen.getByRole("dialog", { name: "Lista Moda verão" });
     expect(within(dlg).getByText("Alcance estimado")).toBeTruthy();
-    expect(within(dlg).getByText("Redes representadas").nextElementSibling?.textContent).toBe("1");
+    expect(within(dlg).getByRole("heading", { name: /Criadores/ })).toBeTruthy();
     expect(within(dlg).getByText("@user3")).toBeTruthy();
     expect(within(dlg).getAllByText("Instagram").length).toBeGreaterThan(0);
   });

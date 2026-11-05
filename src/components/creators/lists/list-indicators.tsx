@@ -26,8 +26,8 @@ export function ListIndicators({ data, creators, isLoading, isError, onRetry }: 
   if (isLoading) {
     return (
       <div className="lst-kpis" aria-busy="true">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-[76px] w-full rounded-2xl" />
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-[64px] w-full rounded-2xl" />
         ))}
       </div>
     );
@@ -65,21 +65,14 @@ export function ListIndicators({ data, creators, isLoading, isError, onRetry }: 
           <b>{creators}</b>
           <span>{data.creators_with_network} com rede social</span>
         </div>
-        <div className="lst-kpi">
-          <small>Redes representadas</small>
-          <b>{data.by_network.length}</b>
-          <span>{data.by_network.map((n) => NETWORK_LABEL[n.network]).join(", ") || "—"}</span>
-        </div>
       </div>
 
       {data.by_network.length > 0 && (
         <ul className="lst-nets" aria-label="Alcance por rede">
           {data.by_network.map((n) => (
-            <li key={n.network}>
+            <li key={n.network} title={`${n.creators} ${n.creators === 1 ? "criador" : "criadores"} · ${fmtCompact(n.followers)} seguidores`}>
               <b>{NETWORK_LABEL[n.network]}</b>
-              <span>
-                {n.creators} {n.creators === 1 ? "criador" : "criadores"} · {fmtCompact(n.estimated_reach)} de alcance · {fmtCompact(n.followers)} seguidores
-              </span>
+              <span>{fmtCompact(n.estimated_reach)} de alcance</span>
             </li>
           ))}
         </ul>

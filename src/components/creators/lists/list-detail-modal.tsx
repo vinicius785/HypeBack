@@ -75,7 +75,6 @@ export function ListDetailModal({ list, canWrite, onClose, onEdit }: Props) {
         <section className="ovd on lmd" role="dialog" aria-label={`Lista ${list.name}`}>
           <header className="lst-h">
             <div className="lst-ht">
-              <small>Minhas listas</small>
               <h2 title={list.name}>{list.name}</h2>
               {list.description ? <p>{list.description}</p> : null}
               <span className="lst-meta">
@@ -100,12 +99,12 @@ export function ListDetailModal({ list, canWrite, onClose, onEdit }: Props) {
             {detail.isLoading ? (
               <div className="lst-load" aria-busy="true">
                 <div className="lst-kpis">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-[76px] w-full rounded-2xl" />
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-[64px] w-full rounded-2xl" />
                   ))}
                 </div>
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-14 w-full rounded-2xl" />
+                  <Skeleton key={i} className="h-14 w-full rounded-xl" />
                 ))}
               </div>
             ) : detail.isError ? (
@@ -131,43 +130,46 @@ export function ListDetailModal({ list, canWrite, onClose, onEdit }: Props) {
                   />
                 )}
 
-                {(showTools || canWrite) && (
+                <div className="lst-sh">
+                  <h3>
+                    Criadores
+                    <em>{total}</em>
+                  </h3>
+                  {canWrite && (
+                    <button type="button" className={`btn out${adding ? " on" : ""}`} aria-expanded={adding} onClick={() => setAdding((v) => !v)}>
+                      <I n={adding ? "x" : "plus"} cls="sm" />
+                      {adding ? "Fechar" : "Adicionar criadores"}
+                    </button>
+                  )}
+                </div>
+
+                {showTools && (
                   <div className="lst-tools">
-                    {showTools && (
-                      <>
-                        <label className="lst-q">
-                          <I n="search" cls="sm" />
-                          <input
-                            type="search"
-                            aria-label="Buscar na lista"
-                            placeholder="Buscar por nome ou @"
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                          />
-                          {query && (
-                            <button type="button" aria-label="Limpar busca" onClick={() => setQuery("")}>
-                              <I n="x" cls="sm" />
-                            </button>
-                          )}
-                        </label>
-                        <label className="lst-s">
-                          <span className="sr-only">Ordenar por</span>
-                          <select value={sort} onChange={(e) => setSort(e.target.value as MemberSort)}>
-                            {MEMBER_SORTS.map(([v, l]) => (
-                              <option key={v} value={v}>
-                                {l}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      </>
-                    )}
-                    {canWrite && (
-                      <button type="button" className={`btn${adding ? " out on" : ""}`} aria-expanded={adding} onClick={() => setAdding((v) => !v)}>
-                        <I n={adding ? "x" : "plus"} cls="sm" />
-                        {adding ? "Fechar" : "Adicionar criadores"}
-                      </button>
-                    )}
+                    <label className="lst-q">
+                      <I n="search" cls="sm" />
+                      <input
+                        type="search"
+                        aria-label="Buscar na lista"
+                        placeholder="Buscar por nome ou @"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                      />
+                      {query && (
+                        <button type="button" aria-label="Limpar busca" onClick={() => setQuery("")}>
+                          <I n="x" cls="sm" />
+                        </button>
+                      )}
+                    </label>
+                    <label className="lst-s">
+                      <span className="sr-only">Ordenar por</span>
+                      <select value={sort} onChange={(e) => setSort(e.target.value as MemberSort)}>
+                        {MEMBER_SORTS.map(([v, l]) => (
+                          <option key={v} value={v}>
+                            {l}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
                 )}
 
@@ -216,11 +218,11 @@ export function ListDetailModal({ list, canWrite, onClose, onEdit }: Props) {
                               <span className="mute">{m.email || "Sem redes sociais"}</span>
                             )}
                           </div>
-                          <span className="lst-net">
+                          <span className="lst-net" title={primary ? (NET_LABEL[primary.type.toLowerCase()] ?? primary.type_label ?? primary.type) : undefined}>
                             {primary ? (
                               <>
                                 <I n={NET_ICON[primary.type.toLowerCase()] ?? "video"} cls="sm" />
-                                {NET_LABEL[primary.type.toLowerCase()] ?? primary.type_label ?? primary.type}
+                                <span className="sr-only">{NET_LABEL[primary.type.toLowerCase()] ?? primary.type_label ?? primary.type}</span>
                                 {st && st.networks.length > 1 ? <em>+{st.networks.length - 1}</em> : null}
                               </>
                             ) : null}
@@ -228,7 +230,8 @@ export function ListDetailModal({ list, canWrite, onClose, onEdit }: Props) {
                           <span className="lst-fol" title="Seguidores somados nas redes sociais">
                             {st && st.followers > 0 ? (
                               <>
-                                <b>{fmtCompact(st.followers)}</b> seguidores
+                                <b>{fmtCompact(st.followers)}</b>
+                                <small>seguidores</small>
                               </>
                             ) : (
                               <span className="mute">—</span>
