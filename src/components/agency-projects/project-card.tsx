@@ -121,6 +121,98 @@ export function ProjectCard({ project, can, actions, closed = false, onOpen, onE
   );
 }
 
+/**
+ * Linha da visão em lista: mesma informação do cartão (capa, nome, responsável, status e saúde, progresso das tarefas,
+ * entrega) em colunas alinhadas, para comparar muitos projetos de relance. A linha inteira abre o projeto.
+ */
+export function ProjectRow({ project, can, actions, closed = false, onOpen, onEdit }: ProjectCardProps) {
+  const { stats } = project;
+  const who = responsibleLine(project);
+  const percent = progressPercent(stats);
+  const summary = taskSummary(stats);
+  const menu = buildProjectMenu({ project, can, actions, onOpen, onEdit });
+
+  return (
+    <div className="apj-row" data-closed={closed} role="listitem">
+      <Link
+        to="/projects/$projectId"
+        params={{ projectId: project.id }}
+        className="apj-open"
+        aria-label={`Abrir projeto ${project.name} (${PROJECT_STATUS_LABEL[project.status]}${who ? `, responsável ${who.name}` : ""})`}
+      />
+      <div className="apj-rc apj-rn">
+        <ProjectCover project={project} size={40} />
+        <div className="apj-id">
+          <b title={project.name}>{project.name}</b>
+          <small>{project.description?.trim() || taskSummaryText(stats)}</small>
+        </div>
+      </div>
+      <div className="apj-rc apj-rw">
+        {project.responsible ? (
+          <>
+            <Av name={project.responsible.name} src={project.responsible.avatar ?? undefined} size={24} />
+            <span className="apj-who-n">{who?.name}</span>
+            {who && who.extra > 0 ? (
+              <span className="apj-who-x" title={who.extraNames} aria-label={`mais ${who.extra} ${who.extra === 1 ? "participante" : "participantes"}: ${who.extraNames}`}>
+                +{who.extra}
+              </span>
+            ) : null}
+          </>
+        ) : (
+          <span className="apj-who-n">Sem responsável</span>
+        )}
+      </div>
+      <div className="apj-rc apj-rb">
+        <ToneBadge tone={PROJECT_STATUS_TONE[project.status]}>{PROJECT_STATUS_LABEL[project.status]}</ToneBadge>
+        {project.health && project.health !== "saudavel" ? (
+          <ToneBadge tone={PROJECT_HEALTH_TONE[project.health]}>{PROJECT_HEALTH_LABEL[project.health]}</ToneBadge>
+        ) : null}
+      </div>
+      <div className="apj-rc apj-rp">
+        <div
+          className="apj-bar"
+          role={percent === null ? undefined : "progressbar"}
+          aria-hidden={percent === null ? true : undefined}
+          aria-label={percent === null ? undefined : `Progresso: ${taskSummaryText(stats)}`}
+          aria-valuemin={percent === null ? undefined : 0}
+          aria-valuemax={percent === null ? undefined : 100}
+          aria-valuenow={percent ?? undefined}
+        >
+          <i style={{ width: `${percent ?? 0}%` }} />
+        </div>
+        <span className="apj-rt">
+          {summary.progress}
+          {summary.overdue ? (
+            <>
+              {" · "}
+              <em className="apj-late">{summary.overdue}</em>
+            </>
+          ) : null}
+        </span>
+        <span className="apj-rt apj-rdm">{deliveryLabel(stats)}</span>
+      </div>
+      <div className="apj-rc apj-rd">{deliveryLabel(stats)}</div>
+      <div className="apj-menu apj-rm">
+        <AdminActionMenu items={menu} iconOnly variant="ghost" ariaLabel={`Mais ações para ${project.name}`} />
+      </div>
+    </div>
+  );
+}
+
+/** Cabeçalho das colunas da visão em lista (decorativo: cada linha já se descreve sozinha). */
+export function ProjectListHead() {
+  return (
+    <div className="apj-lh" aria-hidden="true">
+      <span>Projeto</span>
+      <span>Responsável</span>
+      <span>Status</span>
+      <span>Tarefas</span>
+      <span>Entrega</span>
+      <span />
+    </div>
+  );
+}
+
 /** Esqueleto com a mesma estrutura do cartão. */
 export function ProjectCardSkeleton() {
   return (

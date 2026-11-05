@@ -244,3 +244,42 @@ export function FilterChips({ chips, onClear, label = "Filtros aplicados" }: { c
     </div>
   );
 }
+
+interface PageEmptyStateProps {
+  /** Ícone discreto à esquerda (nome do ícone do protótipo). */
+  icon: string;
+  title: string;
+  description?: ReactNode;
+  /** Ação principal (botão preto) e secundária (botão cinza), à direita no desktop e em largura total no celular. */
+  action?: ReactNode;
+  secondary?: ReactNode;
+  /** "alert" para erros (anunciado por leitor de tela). */
+  role?: "alert" | "status";
+  /** Conteúdo extra entre a descrição e as ações (ex.: o que o recurso oferece). */
+  children?: ReactNode;
+}
+
+/**
+ * Estado vazio, de erro ou de "nada encontrado" das páginas: uma faixa branca compacta logo abaixo do cabeçalho
+ * (ícone, título, descrição e ação), em vez de um texto centralizado ocupando a tela. Mesma composição em todas as páginas.
+ */
+export function PageEmptyState({ icon, title, description, action, secondary, role, children }: PageEmptyStateProps) {
+  return (
+    <div className="pg-state" role={role}>
+      <span className="pg-si" aria-hidden="true">
+        <I n={icon} />
+      </span>
+      <div className="pg-sb">
+        <b>{title}</b>
+        {description ? <p>{description}</p> : null}
+        {children}
+      </div>
+      {action || secondary ? (
+        <div className="pg-sa">
+          {secondary}
+          {action}
+        </div>
+      ) : null}
+    </div>
+  );
+}

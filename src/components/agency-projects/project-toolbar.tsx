@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { FilterButton, FilterChips, PageControls, PageToolbar, SearchInput, SortControl } from "@/components/page/page-kit";
+import { FilterButton, FilterChips, PageControls, PageToolbar, SearchInput, SortControl, ViewSwitcher, type ViewOption } from "@/components/page/page-kit";
 
 import {
   PROJECT_HEALTH_FILTER_LABEL,
@@ -35,7 +35,16 @@ export function useDismiss(open: boolean, onClose: () => void) {
   return ref;
 }
 
+export type ProjectView = "grid" | "list";
+
+const VIEW_OPTIONS: ViewOption<ProjectView>[] = [
+  { id: "grid", icon: "grid", label: "Ver em cartões" },
+  { id: "list", icon: "list", label: "Ver em lista" },
+];
+
 interface ProjectToolbarProps {
+  view?: ProjectView;
+  onView?: (v: ProjectView) => void;
   query: string;
   onQuery: (v: string) => void;
   filters: ProjectFilters;
@@ -48,7 +57,7 @@ interface ProjectToolbarProps {
  * Busca, Filtros (popover com contador: Status, Saúde, Responsável) e Ordenar na barra do kit de páginas, com os
  * filtros ativos como chips que se removem um a um.
  */
-export function ProjectToolbar({ query, onQuery, filters, onFilters, responsibles }: ProjectToolbarProps) {
+export function ProjectToolbar({ query, onQuery, filters, onFilters, responsibles, view, onView }: ProjectToolbarProps) {
   const [open, setOpen] = useState(false);
   const ref = useDismiss(open, () => setOpen(false));
   const activeCount = countActiveProjectFilters(filters);
@@ -121,6 +130,7 @@ export function ProjectToolbar({ query, onQuery, filters, onFilters, responsible
         </div>
 
         <SortControl options={PROJECT_SORT_OPTIONS} value={filters.sort} onChange={(sort) => onFilters({ ...filters, sort })} />
+        {view && onView ? <ViewSwitcher options={VIEW_OPTIONS} value={view} onChange={onView} /> : null}
       </PageToolbar>
 
       <FilterChips chips={chips} onClear={reset} />

@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { ChevronDown } from "lucide-react";
 
-import { PageContainer, PageHeader } from "@/components/page/page-kit";
+import { PageContainer, PageEmptyState, PageHeader } from "@/components/page/page-kit";
 import { I } from "@/components/prototype/ui";
-import { ProjectCard, ProjectCardSkeleton } from "@/components/agency-projects/project-card";
+import { ProjectCard, ProjectCardSkeleton, ProjectListHead, ProjectRow } from "@/components/agency-projects/project-card";
 import { ProjectForm } from "@/components/agency-projects/project-form";
 import {
   clearProjectFilters,
@@ -18,7 +18,7 @@ import {
   searchToProjectFilters,
   type ProjectFilters,
 } from "@/components/agency-projects/project-ui";
-import { ProjectToolbar } from "@/components/agency-projects/project-toolbar";
+import { ProjectToolbar, type ProjectView } from "@/components/agency-projects/project-toolbar";
 import { useProjectActions } from "@/components/agency-projects/use-project-actions";
 import { useProjectPermissions } from "@/components/agency-projects/use-project-permissions";
 import { useAgencyProjects } from "@/hooks/use-agency-projects";
@@ -51,6 +51,7 @@ function ProjectsPage() {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Project | "new" | null>(null);
   const [showClosed, setShowClosed] = useState(false);
+  const [view, setView] = useState<ProjectView>("grid");
 
   const goToProject = (projectId: string) => void navigate({ to: "/projects/$projectId", params: { projectId } });
   const actions = useProjectActions({ onDuplicated: (copy) => goToProject(copy.id) });
@@ -67,27 +68,27 @@ function ProjectsPage() {
     </div>
   );
 
+  const header = (actions?: React.ReactNode) => <PageHeader title="Projetos" subtitle="Organize tarefas e entregas do time." actions={actions} />;
+
   if (!isAgency) {
     return wrap(
-      <div className="ov-empty big">
-        <span>
-          <I n="lock" />
-        </span>
-        <b>Projetos são exclusivos de agências</b>
-        <small>Este workspace não é de agência. Fale com a equipe Hype para ativar o acesso de agência.</small>
-      </div>,
+      <>
+        {header()}
+        <PageEmptyState
+          icon="lock"
+          title="Projetos são exclusivos de agências"
+          description="Este workspace não é de agência. Fale com a equipe Hype para ativar o acesso de agência."
+        />
+      </>,
     );
   }
 
   if (!can.canRead) {
     return wrap(
-      <div className="ov-empty big">
-        <span>
-          <I n="lock" />
-        </span>
-        <b>Você não tem acesso a Projetos</b>
-        <small>Peça a quem administra o workspace a permissão para ver campanhas.</small>
-      </div>,
+      <>
+        {header()}
+        <PageEmptyState icon="lock" title="Você não tem acesso a Projetos" description="Peça a quem administra o workspace a permissão para ver campanhas." />
+      </>,
     );
   }
 
@@ -112,6 +113,22 @@ function ProjectsPage() {
       <ProjectCard key={p.id} project={p} can={can} actions={actions} closed={isClosed} onOpen={() => goToProject(p.id)} onEdit={() => setEditing(p)} />
     ));
 
+  const items = (list: Project[], isClosed: boolean, label: string) =>
+    view === "list" ? (
+      <div className="apj-list fade">
+        <ProjectListHead />
+        <div role="list" aria-label={label}>
+          {list.map((p) => (
+            <ProjectRow key={p.id} project={p} can={can} actions={actions} closed={isClosed} onOpen={() => goToProject(p.id)} onEdit={() => setEditing(p)} />
+          ))}
+        </div>
+      </div>
+    ) : (
+      <div className="apj-grid fade" role="list" aria-label={label}>
+        {cards(list, isClosed)}
+      </div>
+    );
+
   let body: React.ReactNode;
   if (isLoading) {
     body = (
@@ -123,66 +140,81 @@ function ProjectsPage() {
     );
   } else if (unavailable) {
     body = (
-      <div className="ov-empty big">
-        <span>
-          <I n="clock" />
-        </span>
-        <b>Projetos ainda não está disponível</b>
-        <small>Esta função chega ao seu workspace em breve. Nada foi perdido: volte aqui mais tarde.</small>
-      </div>
+      <PageEmptyState
+        icon="clock"
+        title="Projetos ainda não está disponível"
+        description="Esta função chega ao seu workspace em breve. Nada foi perdido: volte aqui mais tarde."
+      />
     );
   } else if (error) {
     body = (
-      <div className="ov-empty big" role="alert">
-        <span>
-          <I n="x" />
-        </span>
-        <b>Erro ao carregar os projetos</b>
-        <small>{error instanceof Error ? error.message : "Tente novamente."}</small>
-        <button type="button" className="btn out" disabled={isFetching} onClick={() => void refetch()}>
-          Tentar de novo
-        </button>
-      </div>
+      <PageEmptyState
+        role="alert"
+        icon="alert"
+        title="Erro ao carregar os projetos"
+        description={error instanceof Error ? error.message : "Tente novamente."}
+        action={
+          <button type="button" className="btn out" disabled={isFetching} onClick={() => void refetch()}>
+            Tentar de novo
+          </button>
+        }
+      />
     );
   } else if (!hasAny) {
     body = (
-      <div className="ov-empty big">
-        <span>
-          <I n="list" />
-        </span>
-        <b>Nenhum projeto ainda</b>
-        <small>Crie o primeiro projeto para organizar tarefas e entregas do time.</small>
-        {newButton}
-      </div>
+      <PageEmptyState
+        icon="list"
+        title="Seu primeiro projeto começa aqui"
+        description={
+          can.canCreate
+            ? "Projetos reúnem as tarefas, os prazos e os arquivos de uma entrega do time num só lugar."
+            : "Projetos reúnem as tarefas, os prazos e os arquivos de uma entrega do time. Peça a quem administra o workspace para criar o primeiro."
+        }
+        action={newButton ?? undefined}
+      >
+        <ul className="pg-hints" aria-label="O que um projeto reúne">
+          <li>
+            <I n="check" cls="sm" />
+            Quadro de tarefas por etapa
+          </li>
+          <li>
+            <I n="check" cls="sm" />
+            Responsáveis e prazos
+          </li>
+          <li>
+            <I n="check" cls="sm" />
+            Arquivos e links
+          </li>
+        </ul>
+      </PageEmptyState>
     );
   } else if (main.length === 0 && closed.length === 0) {
     body = (
-      <div className="ov-empty big">
-        <span>
-          <I n="search" />
-        </span>
-        <b>Nenhum projeto encontrado</b>
-        <small>Ajuste a busca ou os filtros para ver outros projetos.</small>
-        {criteria ? (
-          <button type="button" className="btn out" onClick={clearAll}>
-            Limpar filtros
-          </button>
-        ) : null}
-      </div>
+      <PageEmptyState
+        icon="search"
+        title="Nenhum projeto encontrado"
+        description="Ajuste a busca ou os filtros para ver outros projetos."
+        action={
+          criteria ? (
+            <button type="button" className="btn out" onClick={clearAll}>
+              Limpar filtros
+            </button>
+          ) : undefined
+        }
+      />
     );
   } else {
     body = (
       <>
         {main.length > 0 ? (
-          <div className="apj-grid fade" role="list" aria-label="Projetos">
-            {cards(main)}
-          </div>
+          items(main, false, "Projetos")
         ) : (
-          <div className="ov-empty">
-            <b>Nenhum projeto em andamento</b>
-            <small>Todos os projetos{criteria ? " encontrados" : ""} estão encerrados. Veja-os abaixo ou crie um novo.</small>
-            {newButton}
-          </div>
+          <PageEmptyState
+            icon="check"
+            title="Nenhum projeto em andamento"
+            description={`Todos os projetos${criteria ? " encontrados" : ""} estão encerrados. Veja-os abaixo ou crie um novo.`}
+            action={newButton ?? undefined}
+          />
         )}
 
         {closed.length > 0 ? (
@@ -192,9 +224,7 @@ function ProjectsPage() {
               <ChevronDown className={`ico sm${showClosed ? " rot" : ""}`} aria-hidden />
             </button>
             {showClosed ? (
-              <div id="apj-closed-list" className="apj-grid fade" role="list" aria-label="Projetos encerrados">
-                {cards(closed, true)}
-              </div>
+              <div id="apj-closed-list">{items(closed, true, "Projetos encerrados")}</div>
             ) : null}
           </div>
         ) : null}
@@ -204,7 +234,8 @@ function ProjectsPage() {
 
   return wrap(
     <>
-      <PageHeader title="Projetos" subtitle="Organize tarefas e entregas do time." actions={newButton ?? undefined} />
+      {/* Sem projetos, a ação principal é a do próprio estado vazio: um botão só. */}
+      {header(hasAny || unavailable || error ? (newButton ?? undefined) : undefined)}
 
       {hasAny && !unavailable && !error ? (
         <div className="fade">
@@ -228,7 +259,7 @@ function ProjectsPage() {
       ) : null}
 
       {hasAny && !unavailable && !error ? (
-        <ProjectToolbar query={query} onQuery={setQuery} filters={filters} onFilters={setFilters} responsibles={responsibles} />
+        <ProjectToolbar query={query} onQuery={setQuery} filters={filters} onFilters={setFilters} responsibles={responsibles} view={view} onView={setView} />
       ) : null}
 
       {body}

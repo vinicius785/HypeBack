@@ -102,3 +102,23 @@
 /* Painéis de aba que ficam montados e só se alternam por `hidden`: o espaço entre os blocos é o mesmo da página. */
 .pgk .pg-panel { display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0; }
 .pgk .pg-panel[hidden] { display: none; }
+
+/* Estado vazio / erro / sem resultado: faixa compacta (ícone, texto, ação), sem ocupar a altura da tela. */
+.pgk .pg-state { display: flex; align-items: center; gap: var(--sp-5); background: #fff; border-radius: 28px; padding: var(--sp-6); min-width: 0; }
+.pgk .pg-si { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--pg-bg); color: var(--pg-muted); display: grid; place-items: center; }
+.pgk .pg-sb { flex: 1; min-width: 0; }
+.pgk .pg-sb b { display: block; font-size: 17px; line-height: 24px; font-weight: 600; letter-spacing: -.02em; color: var(--pg-ink); }
+.pgk .pg-sb p { margin: var(--sp-1) 0 0; font-size: 14px; line-height: 21px; color: var(--pg-muted); max-width: 64ch; }
+.pgk .pg-hints { list-style: none; margin: var(--sp-3) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); font-size: 13px; font-weight: 500; color: var(--pg-ink); }
+.pgk .pg-hints li { display: inline-flex; align-items: center; gap: 6px; }
+.pgk .pg-hints svg { color: var(--pg-brand); }
+.pgk .pg-sa { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
+.pgk .pg-sa .btn { height: var(--pg-ctl); }
+.pgk .pg-sa .btn.out { background: var(--pg-bg); }
+.pgk .pg-sa .btn.out:hover { background: var(--pg-ink); color: #fff; }
+@media (max-width: 760px) {
+  .pgk .pg-state { flex-wrap: wrap; align-items: flex-start; padding: var(--sp-5); gap: var(--sp-4); }
+  .pgk .pg-sb { flex-basis: calc(100% - 64px); }
+  .pgk .pg-sa { width: 100%; }
+  .pgk .pg-sa .btn { flex: 1; justify-content: center; }
+}

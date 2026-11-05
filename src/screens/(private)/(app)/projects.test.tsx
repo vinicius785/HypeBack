@@ -238,7 +238,7 @@ describe("lista", () => {
     render(<Page />);
     expect(screen.getByLabelText("Carregando projetos")).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByRole("group", { name: "Resumo de projetos" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Nenhum projeto ainda")).not.toBeInTheDocument();
+    expect(screen.queryByText("Seu primeiro projeto começa aqui")).not.toBeInTheDocument();
   });
 
   it("erro: mensagem e 'Tentar de novo'", async () => {
@@ -263,10 +263,11 @@ describe("lista", () => {
     h.projects = [];
     const user = userEvent.setup();
     render(<Page />);
-    expect(screen.getByText("Nenhum projeto ainda")).toBeInTheDocument();
+    expect(screen.getByText("Seu primeiro projeto começa aqui")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "O que um projeto reúne" })).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Resumo de projetos" })).not.toBeInTheDocument();
     expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
-    const empty = screen.getByText("Nenhum projeto ainda").closest(".ov-empty") as HTMLElement;
+    const empty = screen.getByText("Seu primeiro projeto começa aqui").closest(".pg-state") as HTMLElement;
     await user.click(within(empty).getByRole("button", { name: "Novo projeto" }));
     expect(screen.getByRole("dialog", { name: "Formulário de projeto" })).toHaveTextContent("Novo projeto");
   });
@@ -278,6 +279,22 @@ describe("lista", () => {
     expect(screen.getByText("Nenhum projeto em andamento")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Ver projetos encerrados \(1\)/ }));
     expect(screen.getByText("Campanha 2025")).toBeInTheDocument();
+  });
+});
+
+describe("visão em lista", () => {
+  it("alterna entre cartões e lista com os mesmos projetos e abre o projeto pela linha", async () => {
+    h.projects = [mk("p1", "Black Friday"), mk("p2", "Rebranding")];
+    const user = userEvent.setup();
+    render(<Page />);
+    expect(screen.getByRole("button", { name: "Ver em cartões" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("list", { name: "Projetos" }).querySelector(".apj-card")).not.toBeNull();
+    await user.click(screen.getByRole("button", { name: "Ver em lista" }));
+    const list = screen.getByRole("list", { name: "Projetos" });
+    expect(list.querySelectorAll(".apj-row")).toHaveLength(2);
+    expect(list.querySelector(".apj-card")).toBeNull();
+    expect(within(list).getByText("Black Friday")).toBeInTheDocument();
+    expect(within(list).getAllByRole("link", { name: /^Abrir projeto/ })).toHaveLength(2);
   });
 });
 
