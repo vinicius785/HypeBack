@@ -26,6 +26,7 @@ export function AttachmentsSection({ attachments, canWrite, onUpload, onRemove }
   const [uploading, setUploading] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
+  const [over, setOver] = useState(false);
   const { confirm, dialog } = useProjectConfirm();
   const count = attachments?.length ?? 0;
   const atLimit = count >= AGENCY_PROJECT_LIMITS.taskAttachments;
@@ -99,11 +100,28 @@ export function AttachmentsSection({ attachments, canWrite, onUpload, onRemove }
             ))}
           </ul>
           {canWrite ? (
-            <div className="apj-tm-add">
-              <button type="button" className="btn out" disabled={!!uploading || atLimit} onClick={() => fileRef.current?.click()}>
-                <I n="paperclip" cls="sm" />
-                {uploading ? "Enviando…" : "Anexar arquivo"}
-              </button>
+            <div
+              className="apj-dz"
+              data-over={over || undefined}
+              onDragOver={(e) => {
+                if (atLimit || uploading) return;
+                e.preventDefault();
+                setOver(true);
+              }}
+              onDragLeave={() => setOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setOver(false);
+                if (!atLimit && !uploading) void pick(e.dataTransfer.files);
+              }}
+            >
+              <I n="paperclip" cls="sm" />
+              <span>
+                Arraste arquivos ou{" "}
+                <button type="button" className="apj-link" disabled={!!uploading || atLimit} onClick={() => fileRef.current?.click()}>
+                  {uploading ? "Enviando…" : "Anexar arquivo"}
+                </button>
+              </span>
               <input
                 ref={fileRef}
                 type="file"

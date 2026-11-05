@@ -156,19 +156,20 @@ describe("estados", () => {
     expect(screen.queryByRole("button", { name: "Tentar de novo" })).not.toBeInTheDocument();
   });
 
-  it("sem tarefas: estado vazio com 'Nova tarefa' que abre a criação", async () => {
+  it("sem tarefas: o quadro continua aparecendo e 'Nova tarefa' abre a criação", async () => {
     h.tasks = [];
     const user = userEvent.setup();
     render(<ProjectTasksBoard project={project} can={can()} />);
-    expect(screen.getByText("Nenhuma tarefa ainda")).toBeInTheDocument();
+    expect(screen.queryByText("Nenhuma tarefa ainda")).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Coluna do quadro" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Nova tarefa" }));
     expect(screen.getByRole("dialog")).toHaveAttribute("data-task", "new");
   });
 
-  it("sem tarefas e só leitura: avisa sem botão de criar", () => {
+  it("sem tarefas e só leitura: o quadro aparece sem botão de criar", () => {
     h.tasks = [];
     render(<ProjectTasksBoard project={project} can={can({ canWrite: false })} />);
-    expect(screen.getByText("Este projeto ainda não tem tarefas.")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Coluna do quadro" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Nova tarefa" })).not.toBeInTheDocument();
   });
 });

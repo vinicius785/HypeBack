@@ -3,7 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageContainer } from "@/components/page/page-kit";
 import { I } from "@/components/prototype/ui";
 import { ProjectTasksBoard } from "@/components/agency-projects/board";
-import { ProjectDocumentsSection } from "@/components/agency-projects/documents";
 import { ProjectDetailHeader } from "@/components/agency-projects/project-detail-header";
 import { useProjectPermissions } from "@/components/agency-projects/use-project-permissions";
 import { useAgencyProject } from "@/hooks/use-agency-projects";
@@ -115,13 +114,6 @@ function ProjectDetailPage() {
           Tarefas
         </h2>
         <ProjectTasksBoard project={project} can={can} />
-      </section>
-
-      <section id="secao-arquivos" className="apj-sec" aria-labelledby="apj-arquivos-h">
-        <h2 id="apj-arquivos-h" className="apj-sec-h">
-          Arquivos e links
-        </h2>
-        <ProjectDocumentsSection project={project} can={can} />
       </section>
     </>,
   );

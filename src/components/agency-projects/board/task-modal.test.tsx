@@ -104,6 +104,9 @@ function renderCreate(props: Partial<React.ComponentProps<typeof TaskModal>> = {
   return render(<TaskModal project={project} can={permissions} taskId={null} tasks={board()} onOpenTask={onOpenTask} onClose={onClose} {...props} />);
 }
 
+const openActivity = async () => {
+  await userEvent.setup().click(screen.getByRole("button", { name: /^Atividade/ }));
+};
 const section = (name: string) => within(screen.getByRole("region", { name }));
 
 beforeEach(() => {
@@ -153,7 +156,7 @@ describe("edição: campos", () => {
     expect(screen.getByLabelText("Status")).toHaveValue("em_ajustes");
     expect(screen.getByText("Salvando…")).toBeInTheDocument();
     await act(async () => d.resolve(task("t1")));
-    expect(await screen.findByText("Salvo")).toBeInTheDocument();
+    expect(await screen.findByText("Salvo ✓")).toBeInTheDocument();
   });
 
   it("prioridade grava", async () => {
@@ -348,6 +351,7 @@ describe("edição: comentários", () => {
   it("mais antigo primeiro, comenta pelo botão e por Ctrl+Enter, e limpa o campo", async () => {
     const user = userEvent.setup();
     renderEdit();
+    await openActivity();
     const comments = section("Comentários");
     expect(comments.getAllByRole("listitem").map((li) => li.textContent)).toEqual([
       expect.stringContaining("Primeiro comentário"),
@@ -366,6 +370,7 @@ describe("edição: comentários", () => {
     h.addComment.mockRejectedValueOnce(new Error("Sem conexão"));
     const user = userEvent.setup();
     renderEdit();
+    await openActivity();
     const comments = section("Comentários");
     await user.click(comments.getByRole("button", { name: "Comentar" }));
     expect(comments.getByText("Escreva o comentário")).toBeInTheDocument();
@@ -379,6 +384,7 @@ describe("edição: comentários", () => {
   it("só o autor apaga o próprio comentário (sem exclusão); com campaigns_delete apaga qualquer um", async () => {
     const user = userEvent.setup();
     const { unmount } = renderEdit();
+    await openActivity();
     expect(screen.getByRole("button", { name: "Excluir comentário de Ana Souza" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Excluir comentário de Bruno Lima" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Excluir comentário de Ana Souza" }));
@@ -386,6 +392,7 @@ describe("edição: comentários", () => {
     await waitFor(() => expect(h.removeComment).toHaveBeenCalledWith({ taskId: "t1", commentId: "c1" }));
     unmount();
     renderEdit({}, can({ canDelete: true }));
+    await openActivity();
     expect(screen.getByRole("button", { name: "Excluir comentário de Bruno Lima" })).toBeInTheDocument();
   });
 });
@@ -445,8 +452,9 @@ describe("edição: anexos", () => {
 });
 
 describe("edição: atividade", () => {
-  it("rótulos em português, com o complemento da mudança, do mais novo para o mais antigo", () => {
+  it("rótulos em português, com o complemento da mudança, do mais novo para o mais antigo", async () => {
     renderEdit();
+    await openActivity();
     const items = section("Atividade").getAllByRole("listitem");
     expect(items[0]).toHaveTextContent("Bruno Lima mudou o status (de Aberto para Em andamento)");
     expect(items[1]).toHaveTextContent("Ana Souza criou a tarefa");
@@ -458,6 +466,7 @@ describe("edição: atividade", () => {
     });
     const user = userEvent.setup();
     renderEdit();
+    await openActivity();
     expect(section("Atividade").getAllByRole("listitem")).toHaveLength(6);
     await user.click(section("Atividade").getByRole("button", { name: "Ver tudo (9)" }));
     expect(section("Atividade").getAllByRole("listitem")).toHaveLength(9);
@@ -499,7 +508,8 @@ describe("edição: diálogo", () => {
   it("excluir tarefa: confirma, apaga, avisa e fecha", async () => {
     const user = userEvent.setup();
     renderEdit();
-    await user.click(screen.getByRole("button", { name: "Excluir tarefa" }));
+    await user.click(screen.getByRole("button", { name: "Mais opções da tarefa" }));
+    await user.click(screen.getByRole("menuitem", { name: "Excluir tarefa" }));
     const confirm = screen.getByRole("alertdialog", { name: "Excluir tarefa?" });
     expect(confirm).toHaveTextContent("subtarefas, os comentários e os anexos");
     await user.click(within(confirm).getByRole("button", { name: "Excluir tarefa" }));
@@ -508,12 +518,14 @@ describe("edição: diálogo", () => {
     expect(h.toast.success).toHaveBeenCalledWith("Tarefa excluída");
   });
 
-  it("enquanto o detalhe carrega usa a tarefa do quadro e mostra esqueleto nos blocos", () => {
+  it("enquanto o detalhe carrega usa a tarefa do quadro e mostra esqueleto nos blocos", async () => {
     h.detail = undefined;
     h.detailLoading = true;
     renderEdit();
     expect(screen.getByLabelText("Título")).toHaveValue("Roteiro");
     expect(screen.getByLabelText("Carregando subtarefas")).toBeInTheDocument();
+    expect(screen.getByLabelText("Carregando anexos")).toBeInTheDocument();
+    await openActivity();
     expect(screen.getByLabelText("Carregando comentários")).toBeInTheDocument();
   });
 

@@ -13,6 +13,7 @@ const h = vi.hoisted(() => ({
   loading: false,
   error: null as unknown,
   tasks: undefined as unknown,
+  documents: undefined as unknown,
   refetch: vi.fn(),
   navigate: vi.fn(),
   setStatus: vi.fn(),
@@ -36,6 +37,7 @@ vi.mock("@/hooks/use-agency-brands", () => ({ useIsAgencyWorkspace: () => h.isAg
 vi.mock("@/hooks/use-agency-projects", () => ({
   useAgencyProject: () => ({ data: h.project, isLoading: h.loading, error: h.error, refetch: h.refetch, isFetching: false }),
   useProjectTasks: () => ({ data: h.tasks }),
+  useProjectDocuments: () => ({ data: h.documents }),
   useSetAgencyProjectStatus: () => ({ mutate: h.setStatus, isPending: false }),
   useDuplicateAgencyProject: () => ({ mutate: h.duplicate, isPending: false }),
   useDeleteAgencyProject: () => ({ mutateAsync: h.deleteAsync, isPending: false }),
@@ -310,15 +312,20 @@ describe("ações e permissões", () => {
 });
 
 describe("seções do detalhe", () => {
-  it("Tarefas e Arquivos e links têm título, âncora e recebem o projeto e as permissões", () => {
+  it("Tarefas tem título e âncora; os arquivos ficam em Recursos > Documentos (sem seção empilhada)", async () => {
+    h.documents = [{ id: "d1" }, { id: "d2" }];
+    const user = userEvent.setup();
     render(<Page />);
     const tasks = screen.getByRole("heading", { level: 2, name: "Tarefas" }).closest("section") as HTMLElement;
     expect(tasks).toHaveAttribute("id", "secao-tarefas");
     expect(within(tasks).getByTestId("tasks-board")).toHaveAttribute("data-project", "p1");
     expect(within(tasks).getByTestId("tasks-board")).toHaveAttribute("data-can-write", "true");
-    const docs = screen.getByRole("heading", { level: 2, name: "Arquivos e links" }).closest("section") as HTMLElement;
-    expect(docs).toHaveAttribute("id", "secao-arquivos");
-    expect(within(docs).getByTestId("documents-section")).toHaveAttribute("data-project", "p1");
+    expect(screen.queryByRole("heading", { name: "Arquivos e links" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("documents-section")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Recursos do projeto" }));
+    await user.click(screen.getByRole("menuitem", { name: "Documentos (2)" }));
+    const dialog = screen.getByRole("dialog", { name: "Documentos" });
+    expect(within(dialog).getByTestId("documents-section")).toHaveAttribute("data-project", "p1");
   });
 
   it("sem permissão de edição o quadro recebe canWrite falso", () => {

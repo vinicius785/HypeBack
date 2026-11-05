@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { AdminDialog } from "@/components/admin/platform/admin-dialog";
 import { useCreateProjectTask } from "@/hooks/use-agency-projects";
 import { agencyProjectErrorMessage } from "@/shared/services/agency-projects";
 
 import { useProjectConfirm } from "../project-confirm";
 import { deriveTaskTags } from "../project-ui";
+import { TaskDialogShell } from "./task-dialog";
 import { TaskFields } from "./task-fields";
 import { draftToInput, emptyDraft, isDraftDirty, validateDueDate, validateTaskDescription, validateTaskTitle, type TaskDraft } from "./task-logic";
 import type { TaskModalProps } from "./task-modal";
@@ -61,11 +61,9 @@ export function TaskCreator({ project, can, defaultStatus, tasks, onClose }: Tas
 
   return (
     <>
-      <AdminDialog
-        open
-        title="Nova tarefa"
-        description={`Em ${project.name}.`}
-        size="lg"
+      <TaskDialogShell
+        label="Nova tarefa"
+        crumbs={[project.name, "Tarefas", "Nova tarefa"]}
         busy={busy}
         dirty={dirty}
         onClose={() => void requestClose()}
@@ -102,6 +100,7 @@ export function TaskCreator({ project, can, defaultStatus, tasks, onClose }: Tas
             descriptionError={descriptionError}
             dueError={dueError}
             autoFocusTitle
+            kindLabel="Tarefa"
           />
           {error ? (
             <div className="apj-err" role="alert">
@@ -109,7 +108,7 @@ export function TaskCreator({ project, can, defaultStatus, tasks, onClose }: Tas
             </div>
           ) : null}
         </form>
-      </AdminDialog>
+      </TaskDialogShell>
       {dialog}
     </>
   );

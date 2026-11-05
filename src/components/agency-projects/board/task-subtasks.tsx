@@ -4,7 +4,7 @@ import { I } from "@/components/prototype/ui";
 import { agencyProjectErrorMessage, AGENCY_PROJECT_LIMITS, type Task } from "@/shared/services/agency-projects";
 
 import { useProjectConfirm } from "../project-confirm";
-import { TASK_STATUS_LABEL } from "../project-ui";
+import { TASK_PRIORITY_LABEL, TASK_STATUS_LABEL, formatDate, taskDueLabel } from "../project-ui";
 import { SectionSkeleton, TaskSection } from "./task-section";
 import { validateTaskTitle } from "./task-logic";
 
@@ -78,11 +78,22 @@ export function SubtasksSection({ subtasks, canWrite, onAdd, onToggle, onRemove,
             </div>
           ) : null}
           {total === 0 ? <p className="apj-tm-none">Nenhuma subtarefa.</p> : null}
-          <ul className="apj-tm-list" role="list">
+          {total > 0 ? (
+            <div className="apj-st-head" aria-hidden="true">
+              <span />
+              <span>Nome</span>
+              <span>Responsável</span>
+              <span>Prioridade</span>
+              <span>Prazo</span>
+              <span />
+            </div>
+          ) : null}
+          <ul className="apj-st-list" role="list">
             {subtasks.map((s) => {
               const isDone = s.status === "concluido";
+              const due = s.due_date ? taskDueLabel({ status: s.status, due_date: s.due_date }) : null;
               return (
-                <li key={s.id} className="apj-tm-row" data-done={isDone || undefined}>
+                <li key={s.id} className="apj-st-row" data-done={isDone || undefined}>
                   <label className="apj-tm-check">
                     <input
                       type="checkbox"
@@ -92,27 +103,30 @@ export function SubtasksSection({ subtasks, canWrite, onAdd, onToggle, onRemove,
                       onChange={() => void run(s.id, () => onToggle(s, !isDone), "Não foi possível atualizar a subtarefa.")}
                     />
                   </label>
-                  <button type="button" className="apj-tm-rowt" onClick={() => onOpen(s.id)}>
+                  <button type="button" className="apj-tm-rowt" title={TASK_STATUS_LABEL[s.status]} onClick={() => onOpen(s.id)}>
                     {s.title}
                   </button>
-                  {!isDone ? <small>{TASK_STATUS_LABEL[s.status]}</small> : null}
+                  <span className="apj-st-c apj-st-who">{s.assignees.length > 0 ? s.assignees.map((a) => a.name.split(" ")[0]).join(", ") : "—"}</span>
+                  <span className="apj-st-c">{TASK_PRIORITY_LABEL[s.priority]}</span>
+                  <span className={`apj-st-c${due?.overdue ? " apj-is-late" : ""}`}>{s.due_date ? formatDate(s.due_date) : "—"}</span>
                   {canWrite ? (
                     <button type="button" className="apj-tm-x" aria-label={`Remover subtarefa ${s.title}`} disabled={working === s.id} onClick={() => void remove(s)}>
                       <I n="trash" cls="sm" />
                     </button>
-                  ) : null}
+                  ) : (
+                    <span />
+                  )}
                 </li>
               );
             })}
           </ul>
           {canWrite ? (
-            <form className="apj-tm-add" onSubmit={(e) => void submit(e)} noValidate>
+            <form className="apj-st-add" onSubmit={(e) => void submit(e)} noValidate>
               <input
-                className="ni"
                 aria-label="Nova subtarefa"
                 aria-invalid={fieldError ? true : undefined}
                 maxLength={AGENCY_PROJECT_LIMITS.taskTitle}
-                placeholder="Adicionar subtarefa"
+                placeholder="+ Adicionar subtarefa"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);

@@ -115,6 +115,10 @@ const renderPage = () => {
     </QueryClientProvider>,
   );
 };
+const openDocuments = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole("button", { name: "Recursos do projeto" }));
+  await user.click(await screen.findByRole("menuitem", { name: /^Documentos/ }));
+};
 const column = (label: string) => screen.getByRole("region", { name: label });
 const cardTitles = (label: string) => within(column(label)).queryAllByRole("listitem").map((li) => li.querySelector(".apj-tk-open")?.textContent);
 
@@ -150,13 +154,12 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("detalhe com dados reais dos hooks", () => {
-  it("monta cabeçalho, quadro (tarefas nas colunas dos status) e arquivos e links", async () => {
+  it("monta cabeçalho e quadro (tarefas nas colunas dos status)", async () => {
     renderPage();
     expect(await screen.findByRole("heading", { level: 1, name: "Lançamento Verão" })).toBeInTheDocument();
     expect(await screen.findByRole("region", { name: "Quadro de tarefas" })).toBeInTheDocument();
     await waitFor(() => expect(cardTitles("Aberto")).toEqual(["Roteiro"]));
     expect(cardTitles("Em andamento")).toEqual(["Briefing"]);
-    expect(await screen.findByRole("link", { name: /Briefing da campanha/ })).toBeInTheDocument();
     // O resumo "Próxima entrega" do cabeçalho usa a mesma consulta das tarefas do quadro.
     expect(within(screen.getByRole("region", { name: "Resumo do projeto" })).getByText("Roteiro")).toBeInTheDocument();
   });
@@ -195,6 +198,7 @@ describe("detalhe com dados reais dos hooks", () => {
     await waitFor(() => expect(h.api.updateTask).toHaveBeenCalledWith("p1", "t1", { priority: "urgente" }));
     await waitFor(() => expect(within(column("Aberto")).getByText("Urgente")).toBeInTheDocument());
 
+    await user.click(within(dialog).getByRole("button", { name: /^Atividade/ }));
     await user.type(await within(dialog).findByLabelText("Novo comentário"), "Aprovado pelo cliente");
     await user.click(within(dialog).getByRole("button", { name: "Comentar" }));
     await waitFor(() => expect(h.api.createComment).toHaveBeenCalledWith("p1", "t1", "Aprovado pelo cliente"));
@@ -203,6 +207,7 @@ describe("detalhe com dados reais dos hooks", () => {
   it("arquivos e links: adicionar um link e vê-lo na lista depois do recarregamento", async () => {
     const user = userEvent.setup();
     renderPage();
+    await openDocuments(user);
     await screen.findByRole("link", { name: /Briefing da campanha/ });
     await user.click(screen.getByRole("button", { name: "Adicionar link" }));
     const form = within(screen.getByRole("dialog", { name: "Adicionar link" }));
@@ -220,6 +225,7 @@ describe("detalhe com dados reais dos hooks", () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByRole("button", { name: "Roteiro" });
+    await openDocuments(user);
     await screen.findByRole("link", { name: /Briefing da campanha/ });
     expect(screen.queryByRole("button", { name: "Nova tarefa" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Adicionar link" })).not.toBeInTheDocument();
@@ -227,15 +233,18 @@ describe("detalhe com dados reais dos hooks", () => {
     await user.click(screen.getByRole("button", { name: "Roteiro" }));
     const dialog = await screen.findByRole("dialog", { name: "Tarefa" });
     expect(within(dialog).getByText("Você pode ver esta tarefa, mas não editá-la.")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: /^Atividade/ }));
     expect(within(dialog).queryByLabelText("Novo comentário")).not.toBeInTheDocument();
     expect(h.api.updateTask).not.toHaveBeenCalled();
   });
 
   it("tarefas indisponíveis (API antiga) não derrubam o resto da página: o cabeçalho e os arquivos seguem", async () => {
     h.api.listTasks.mockRejectedValue(new AgencyProjectsUnavailableError());
+    const user = userEvent.setup();
     renderPage();
     expect(await screen.findByRole("heading", { level: 1, name: "Lançamento Verão" })).toBeInTheDocument();
     expect(await screen.findByText("Tarefas ainda não estão disponíveis")).toBeInTheDocument();
+    await openDocuments(user);
     expect(await screen.findByRole("link", { name: /Briefing da campanha/ })).toBeInTheDocument();
     await act(async () => undefined);
   });

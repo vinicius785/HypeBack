@@ -4,9 +4,11 @@ import { Pencil } from "lucide-react";
 
 import { AdminActionMenu } from "@/components/admin/platform/admin-action-menu";
 import { I } from "@/components/prototype/ui";
-import { useProjectTasks } from "@/hooks/use-agency-projects";
+import { AdminDialog } from "@/components/admin/platform/admin-dialog";
+import { useProjectDocuments, useProjectTasks } from "@/hooks/use-agency-projects";
 import type { Project } from "@/shared/services/agency-projects";
 
+import { ProjectDocumentsSection } from "./documents";
 import { ProjectCover } from "./project-card";
 import { ProjectForm } from "./project-form";
 import {
@@ -35,12 +37,15 @@ export function ProjectDetailHeader({ project, can }: { project: Project; can: P
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [docsOpen, setDocsOpen] = useState(false);
   const actions = useProjectActions({
     onDuplicated: (copy) => void navigate({ to: "/projects/$projectId", params: { projectId: copy.id } }),
     onDeleted: () => void navigate({ to: "/projects" }),
   });
   // Mesma consulta do quadro de tarefas (o cache é um só): só dá o título da próxima entrega.
   const { data: tasks } = useProjectTasks(project.id);
+  const { data: documents } = useProjectDocuments(project.id);
+  const resources = [{ id: "documents", label: `Documentos${documents ? ` (${documents.length})` : ""}`, icon: "file", onSelect: () => setDocsOpen(true) }];
 
   const { stats } = project;
   const percent = progressPercent(stats);
@@ -88,6 +93,7 @@ export function ProjectDetailHeader({ project, can }: { project: Project; can: P
         </div>
 
         <div className="apj-dh-act">
+          <AdminActionMenu items={resources} label="Recursos" variant="ghost" ariaLabel="Recursos do projeto" />
           {can.canWrite ? (
             <button type="button" className="btn out" onClick={() => setEditing(true)}>
               <Pencil className="ico sm" aria-hidden />
@@ -128,6 +134,11 @@ export function ProjectDetailHeader({ project, can }: { project: Project; can: P
         </div>
       </section>
 
+      {docsOpen ? (
+        <AdminDialog open title="Documentos" description="Links e materiais de referência do projeto." size="lg" onClose={() => setDocsOpen(false)}>
+          <ProjectDocumentsSection project={project} can={can} />
+        </AdminDialog>
+      ) : null}
       {editing ? <ProjectForm project={project} onClose={() => setEditing(false)} /> : null}
       {actions.dialog}
     </>

@@ -1,9 +1,9 @@
 import { useId, useMemo, useState } from "react";
 
-import { Av } from "@/components/prototype/ui";
+import { Av, I } from "@/components/prototype/ui";
 import { AGENCY_PROJECT_LIMITS } from "@/shared/services/agency-projects";
 
-import { FieldLabel, type FieldFeedback } from "./field-label";
+import { type FieldFeedback } from "./field-label";
 import { canAddAssignee, toggleAssignee, setPrimaryAssignee, type AssigneeValue } from "./task-logic";
 import type { PersonOption } from "./use-workspace-people";
 
@@ -26,7 +26,7 @@ const SEARCH_FROM = 8;
  * Responsáveis (vários, um principal): resumo em chips e, para quem edita, uma lista de membros do workspace com caixa de
  * marcar e, em cada marcado, a escolha do principal. Um id que não está mais na equipe continua aparecendo para poder sair.
  */
-export function AssigneesField({ value, people, current, loading, failed, readOnly, feedback, onChange }: AssigneesFieldProps) {
+export function AssigneesField({ value, people, current, loading, failed, readOnly, onChange }: AssigneesFieldProps) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const labelId = useId();
@@ -44,29 +44,39 @@ export function AssigneesField({ value, people, current, loading, failed, readOn
   const shown = needle ? options.filter((o) => o.name.toLocaleLowerCase("pt-BR").includes(needle)) : options;
   const selected = value.ids.map((id) => nameOf(id)).filter((p): p is PersonOption => !!p);
 
-  return (
-    <div className="nf apj-tm-wide" role="group" aria-labelledby={labelId}>
-      <FieldLabel id={labelId} feedback={feedback}>
-        Responsáveis
-      </FieldLabel>
-      <div className="apj-tm-people">
-        {selected.length === 0 ? <span className="apj-tm-none">Ninguém atribuído</span> : null}
-        {selected.map((p) => (
-          <span key={p.id} className="apj-tm-person">
-            <Av name={p.name} src={p.avatar ?? undefined} size={22} />
-            {p.name}
-            {value.primary === p.id && selected.length > 1 ? <em>Principal</em> : null}
-          </span>
-        ))}
-        {!readOnly ? (
-          <button type="button" className="apj-link" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-            {open ? "Fechar lista" : "Editar responsáveis"}
-          </button>
-        ) : null}
-      </div>
+  const summary = selected.length === 0 ? "Responsável" : selected.length === 1 ? selected[0].name : `${selected[0].name} +${selected.length - 1}`;
 
+  return (
+    <div className="apj-prop" role="group" aria-labelledby={labelId}>
+      <span id={labelId} className="sr-only">
+        Responsáveis
+      </span>
+      {readOnly ? (
+        <span className="apj-chip" data-empty={selected.length === 0 || undefined}>
+          {selected.length === 0 ? "Ninguém atribuído" : selected.map((p) => p.name).join(", ")}
+        </span>
+      ) : (
+        <button type="button" className="apj-chip" data-empty={selected.length === 0 || undefined} aria-label="Editar responsáveis" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+          {selected.length > 0 ? (
+            <span className="apj-chip-avs">
+              {selected.slice(0, 3).map((p) => (
+                <Av key={p.id} name={p.name} src={p.avatar ?? undefined} size={18} />
+              ))}
+            </span>
+          ) : (
+            <I n="plus" cls="sm" />
+          )}
+          <span>{summary}</span>
+        </button>
+      )}
+      {selected.length > 1 ? (
+        <span className="sr-only">
+          {selected.map((p) => p.name).join(", ")}
+          {value.primary ? `. Principal: ${nameOf(value.primary)?.name ?? ""}` : ""}
+        </span>
+      ) : null}
       {open && !readOnly ? (
-        <fieldset className="apj-tm-pick">
+        <fieldset className="apj-tm-pick apj-pop">
           <legend className="sr-only">Quem é responsável</legend>
           {failed ? <small className="nfh">Não foi possível carregar os membros do workspace. Só você e quem já é responsável aparecem aqui.</small> : null}
           {loading && options.length === 0 ? <small className="nfh">Carregando membros…</small> : null}

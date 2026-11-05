@@ -28,6 +28,7 @@ import { deriveTaskTags } from "../project-ui";
 import type { ProjectPermissions } from "../use-project-permissions";
 import { AttachmentsSection } from "./task-attachments";
 import { TaskCreator } from "./task-creator";
+import { TaskDialogShell } from "./task-dialog";
 import { TaskFields, type FieldFeedback, type FieldKey } from "./task-fields";
 import { SubtasksSection } from "./task-subtasks";
 import { ActivitySection, CommentsSection } from "./task-comments";
@@ -294,7 +295,20 @@ function TaskEditorBody({
   };
 
   const parentTitle = task.parent_task_id ? tasks.find((t) => t.id === task.parent_task_id)?.title : undefined;
-  const description = task.parent_task_id ? (
+  const [activityOpen, setActivityOpen] = useState(false);
+  const feedbackStates = Object.values(feedback);
+  const failed = feedbackStates.find((f) => f?.state === "error");
+  const status = failed ? (
+    <span className="error">Não foi possível salvar</span>
+  ) : feedbackStates.some((f) => f?.state === "saving") || textPending ? (
+    <span role="status">{textPending && !feedbackStates.some((f) => f?.state === "saving") ? "Alterações pendentes" : "Salvando…"}</span>
+  ) : (
+    <span className="saved" role="status">
+      Salvo ✓
+    </span>
+  );
+
+  const kindLabel = task.parent_task_id ? (
     <>
       Subtarefa de{" "}
       <button type="button" className="apj-link" onClick={() => onOpenTask(task.parent_task_id as string)}>
@@ -302,30 +316,46 @@ function TaskEditorBody({
       </button>
     </>
   ) : (
-    `Em ${project.name}.`
+    "Tarefa"
   );
+
+  const crumbs = [
+    project.name,
+    "Tarefas",
+    ...(task.parent_task_id ? [parentTitle ?? "Tarefa-mãe"] : []),
+    values.title.trim() || "Sem título",
+  ];
 
   return (
     <>
-      <AdminDialog
-        open
-        title={task.parent_task_id ? "Subtarefa" : "Tarefa"}
-        description={description}
-        size="lg"
+      <TaskDialogShell
+        label={task.parent_task_id ? "Subtarefa" : "Tarefa"}
+        crumbs={crumbs}
+        status={status}
         busy={busy}
         dirty={textPending}
         onClose={() => void handleClose()}
-        footer={
-          <>
-            {can.canWrite ? (
-              <button type="button" className="btn out apj-tm-del" disabled={busy} onClick={() => void confirmDelete()}>
-                Excluir tarefa
-              </button>
-            ) : null}
-            <button type="button" className="btn" disabled={busy} onClick={() => void handleClose()}>
-              Fechar
-            </button>
-          </>
+        menu={can.canWrite ? [{ id: "delete", label: "Excluir tarefa", icon: "trash", tone: "danger", disabled: busy, onSelect: () => void confirmDelete() }] : undefined}
+        activity={
+          detailProblem
+            ? undefined
+            : {
+                count: (detail?.comments.length ?? 0) + (detail?.events.length ?? 0) || undefined,
+                open: activityOpen,
+                onToggle: () => setActivityOpen((v) => !v),
+                panel: (
+                  <>
+                    <CommentsSection
+                      comments={detail?.comments}
+                      canWrite={can.canWrite}
+                      canRemove={(comment) => canRemoveComment(comment, user?.id, can)}
+                      onAdd={(body) => addComment.mutateAsync({ taskId: task.id, body })}
+                      onRemove={(comment) => removeComment.mutateAsync({ taskId: task.id, commentId: comment.id })}
+                    />
+                    <ActivitySection events={detail?.events} />
+                  </>
+                ),
+              }
         }
       >
         <div className="apj-tm">
@@ -343,6 +373,7 @@ function TaskEditorBody({
             titleError={textErrors.title}
             descriptionError={textErrors.description}
             feedback={feedback}
+            kindLabel={kindLabel}
           />
 
           {detailProblem ? (
@@ -364,49 +395,22 @@ function TaskEditorBody({
               subtasks={detail?.subtasks}
               canWrite={can.canWrite}
               onAdd={(title) => createSubtask.mutateAsync({ title, parent_task_id: task.id })}
-              onToggle={(subtask, done) =>
-                update.mutateAsync({
-                  taskId: subtask.id,
-                  input: { status: done ? "concluido" : "aberto" },
-                })
-              }
+              onToggle={(subtask, done) => update.mutateAsync({ taskId: subtask.id, input: { status: done ? "concluido" : "aberto" } })}
               onRemove={(subtask) => removeTask.mutateAsync(subtask.id)}
               onOpen={onOpenTask}
             />
           ) : null}
 
           {detailProblem ? null : (
-            <>
-              <AttachmentsSection
-                attachments={detail?.attachments}
-                canWrite={can.canWrite}
-                onUpload={(file) => upload.mutateAsync({ taskId: task.id, file })}
-                onRemove={(attachment) =>
-                  removeAttachment.mutateAsync({
-                    taskId: task.id,
-                    attachmentId: attachment.id,
-                  })
-                }
-              />
-
-              <CommentsSection
-                comments={detail?.comments}
-                canWrite={can.canWrite}
-                canRemove={(comment) => canRemoveComment(comment, user?.id, can)}
-                onAdd={(body) => addComment.mutateAsync({ taskId: task.id, body })}
-                onRemove={(comment) =>
-                  removeComment.mutateAsync({
-                    taskId: task.id,
-                    commentId: comment.id,
-                  })
-                }
-              />
-
-              <ActivitySection events={detail?.events} />
-            </>
+            <AttachmentsSection
+              attachments={detail?.attachments}
+              canWrite={can.canWrite}
+              onUpload={(file) => upload.mutateAsync({ taskId: task.id, file })}
+              onRemove={(attachment) => removeAttachment.mutateAsync({ taskId: task.id, attachmentId: attachment.id })}
+            />
           )}
         </div>
-      </AdminDialog>
+      </TaskDialogShell>
       {dialog}
     </>
   );

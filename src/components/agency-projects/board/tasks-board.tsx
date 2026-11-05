@@ -192,27 +192,6 @@ function Board({ project, can }: ProjectTasksBoardProps) {
     />
   ) : null;
 
-  if (all.length === 0) {
-    return (
-      <>
-        <div className="ov-empty">
-          <span>
-            <I n="list" />
-          </span>
-          <b>Nenhuma tarefa ainda</b>
-          <small>{can.canWrite ? "Crie a primeira tarefa para organizar as entregas deste projeto." : "Este projeto ainda não tem tarefas."}</small>
-          {can.canWrite ? (
-            <button type="button" className="btn" onClick={() => setModal({ mode: "new", status: "aberto" })}>
-              <I n="plus" cls="sm" />
-              Nova tarefa
-            </button>
-          ) : null}
-        </div>
-        {modalNode}
-      </>
-    );
-  }
-
   const activeTask = activeId ? all.find((t) => t.id === activeId) : undefined;
 
   return (
