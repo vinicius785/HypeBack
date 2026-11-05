@@ -66,12 +66,11 @@ export function TeamTab({
   const q = norm(query);
   const rows = q ? sorted.filter((m) => norm(`${m.name} ${m.email}`).includes(q)) : sorted;
   return (
-    <div className="stg-team">
+    <div className="st-card stg-team">
       <SettingsSection
         id="stg-tm"
-        wide
         title="Membros"
-        description={`${members.length} ${members.length === 1 ? "pessoa com acesso" : "pessoas com acesso"} a ${workspaceName}.`}
+        description={`${members.length} ${members.length === 1 ? "pessoa" : "pessoas"} com acesso a ${workspaceName}.`}
         action={
           canInvite ? (
             <button type="button" className="btn" onClick={onInvite}>
@@ -203,7 +202,7 @@ export function TeamTab({
       </SettingsSection>
 
       {pendingInvites.length > 0 && (
-        <SettingsSection id="stg-pi" wide title="Convites aguardando resposta" description="A pessoa entra na equipe quando aceitar o convite.">
+        <SettingsSection id="stg-pi" title="Convites aguardando resposta" description="Entram na equipe quando aceitarem.">
           <div className="stg-tbl">
             <ul className="stg-rows" aria-label="Convites pendentes">
               {pendingInvites.map((invite) => (

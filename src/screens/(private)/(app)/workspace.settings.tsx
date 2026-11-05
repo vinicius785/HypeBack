@@ -336,7 +336,8 @@ function WorkspaceSettingsScreen() {
 
           {showAdv && (
             <div className="st-panel" hidden={active !== "adv"}>
-              <SettingsSection id="st-type" title="Tipo de workspace" description="Define como o workspace opera no HypeApp: como marca ou como agência.">
+              <div className="st-card">
+              <SettingsSection id="st-type" title="Tipo de workspace" description="Marca ou agência.">
                 <AccountTypeCard
                   workspaceId={ws.id}
                   current={ws.account_type === "agency" ? "agency" : "brand"}
@@ -348,15 +349,16 @@ function WorkspaceSettingsScreen() {
                 />
               </SettingsSection>
               {isOwner && (
-                <SettingsSection id="st-co" title="Dados da empresa" description="Usados em contratos e notas dos pagamentos. Visível apenas para o proprietário.">
+                <SettingsSection id="st-co" title="Dados da empresa" description="Usados em contratos e notas. Só o proprietário vê.">
                   <CompanyTab workspace={ws} saving={updateCompanyMutation.isPending} onSave={(v) => updateCompanyMutation.mutate(v)} />
                 </SettingsSection>
               )}
               {canDeleteWs && (
-                <SettingsSection id="st-del" title="Excluir workspace" description="Remove o workspace para você e para toda a equipe.">
+                <SettingsSection id="st-del" title="Excluir workspace" description="Ações que afetam toda a equipe.">
                   <DangerTab name={ws.name} onDelete={() => setDeleteOpen(true)} />
                 </SettingsSection>
               )}
+              </div>
             </div>
           )}
         </div>

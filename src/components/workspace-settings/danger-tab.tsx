@@ -8,14 +8,11 @@ import "@/styles/settings.css";
 export function DangerTab({ name, onDelete }: { name: string; onDelete: () => void }) {
   return (
     <div className="st-danger">
-      <div>
-        <p>Ações que afetam toda a equipe.</p>
-        <ul>
-          <li>{name} deixa de aparecer para a equipe, com as campanhas, os contratos e o financeiro.</li>
-          <li>Nada é apagado dos nossos registros: só o suporte pode restaurar.</li>
-          <li>Para confirmar, você digita o nome do workspace.</li>
-        </ul>
-      </div>
+      <ul>
+        <li>{name} deixa de aparecer para a equipe, com as campanhas, os contratos e o financeiro.</li>
+        <li>Nada é apagado dos nossos registros: só o suporte pode restaurar.</li>
+        <li>Para confirmar, você digita o nome do workspace.</li>
+      </ul>
       <button type="button" className="btn dng st-del" onClick={onDelete}>
         <I n="trash" cls="sm" />
         Excluir workspace

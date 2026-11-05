@@ -100,7 +100,8 @@ export function BrandTab({
 
   return (
     <form className="st-form" onSubmit={handleSubmit(onSave)} noValidate>
-      <SettingsSection id="st-id" title="Identidade da marca" description="O logo, o nome e a descrição aparecem para os criadores nas campanhas e convites.">
+      <div className="st-card">
+      <SettingsSection id="st-id" title="Identidade" description="Como os criadores veem a marca.">
         <div className="st-id">
           <div className="st-logo">
             <div className="st-logo-i">
@@ -154,12 +155,13 @@ export function BrandTab({
       </SettingsSection>
 
       {niches.length > 0 && (
-        <SettingsSection id="st-nc" title="Nicho de atuação" description="O nicho principal ajuda a encontrar criadores e campanhas parecidas.">
-          <Field label="Nicho principal" htmlFor="wkniche" hint={canEdit ? "Escolha um nicho; dá para trocar ou remover quando quiser." : undefined}>
+        <SettingsSection id="st-nc" title="Nicho de atuação" description="Ajuda a encontrar criadores e campanhas parecidas.">
+          <Field label="Nicho principal" htmlFor="wkniche">
             <NichePicker niches={niches} value={niche} disabled={!canEdit} onChange={(id) => setValue("niche_id", id, { shouldDirty: true })} />
           </Field>
         </SettingsSection>
       )}
+      </div>
 
       {!canEdit && <p className="st-note">Somente administradores podem editar nome, descrição e nicho.</p>}
 

@@ -8,8 +8,6 @@ interface SectionProps {
   description?: ReactNode;
   /** Ação principal da seção (ex.: "Adicionar membro"): fica sob a descrição, na coluna do título. */
   action?: ReactNode;
-  /** Conteúdo que precisa de largura (listas): o título vai para cima e o conteúdo ocupa a linha toda. */
-  wide?: boolean;
   children: ReactNode;
 }
 
@@ -18,9 +16,9 @@ interface SectionProps {
  * controlada. Todas as abas (Marca, Equipe, Avançado) montam suas seções assim, sem cartão em volta: o cartão só
  * existe onde há função (lista de membros, prévia).
  */
-export function SettingsSection({ id, title, description, action, wide, children }: SectionProps) {
+export function SettingsSection({ id, title, description, action, children }: SectionProps) {
   return (
-    <section className={`st-sec${wide ? " wide" : ""}`} aria-labelledby={id}>
+    <section className="st-sec" aria-labelledby={id}>
       <header>
         <div className="st-ht">
           <h3 id={id}>{title}</h3>
