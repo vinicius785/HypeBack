@@ -3,41 +3,102 @@
 .pv .crd-rs.invited { background: var(--bg); color: var(--muted); }
 .pv .crw-i .crd-rs { margin-top: 3px; }
 
-.pv .rst-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; margin-top: 20px; }
-.pv .rst-card { background: #fff; border-radius: 28px; padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.pv .rst-top { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.pv .rst-top .iav { flex: none; }
-.pv .rst-id { flex: 1; min-width: 0; }
-.pv .rst-id b { display: block; font-size: 16px; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pv .rst-id small { color: var(--muted); font-size: 12.5px; }
-.pv .rst-chip { flex: none; padding: 4px 10px; border-radius: 99px; background: var(--bg); color: var(--muted); font-size: 11.5px; font-weight: 600; }
-.pv .rst-chip.on { background: #f3e5ff; color: var(--brand); }
-.pv .rst-nets { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.pv .rst-nets li { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 99px; background: var(--bg); font-size: 12.5px; font-weight: 600; }
-.pv .rst-nets li small { color: var(--muted); font-weight: 500; }
-.pv .rst-empty-nets { color: var(--muted); font-size: 13px; margin: 0; }
-.pv .rst-ex { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 18px; background: var(--bg); }
-.pv .rst-ex > span { flex: 1; min-width: 0; }
-.pv .rst-ex b { display: block; font-size: 13.5px; }
-.pv .rst-ex small { color: var(--muted); font-size: 12px; line-height: 1.35; }
+/* Página Elenco: barra (abas + busca/filtro/ordem), lista compacta em uma superfície branca e estado vazio horizontal. */
+.pv .rst-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; margin-top: 18px; }
+/* O `.seg` do protótipo depende de um indicador animado medido por script; aqui a aba ativa leva o próprio fundo. */
+.pv .rst-tabs button { transition: background .25s, color .25s; }
+.pv .rst-tabs button.on { background: var(--ink); color: #fff; }
+.pv .rst-tools { display: flex; align-items: center; gap: 8px; flex: 1 1 360px; justify-content: flex-end; min-width: 0; }
+.pv .rst-q { flex: 1 1 220px; max-width: 340px; min-width: 0; height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 16px; border-radius: 999px; background: #fff; border: 2px solid transparent; transition: border-color .2s var(--ease); }
+.pv .rst-q:focus-within { border-color: var(--brand); }
+.pv .rst-q input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; font: inherit; font-size: 14px; }
+.pv .rst-q input::-webkit-search-cancel-button { display: none; }
+.pv .rst-q button { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); }
+.pv .rst-q button:hover { background: var(--bg); color: var(--ink); }
+.pv .rst-s select { height: 48px; border-radius: 999px; border: 0; background: #fff; padding: 0 36px 0 16px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+.pv .rst-list { margin-top: 14px; background: #fff; border-radius: 28px; padding: 6px 10px 10px; }
+.pv .rst-list > ul { list-style: none; margin: 0; padding: 0; }
+.pv .rst-note { margin: 0; padding: 12px 10px 4px; color: var(--muted); font-size: 13px; }
+.pv .rst-hd, .pv .rst-row { display: grid; grid-template-columns: 44px minmax(0, 1.4fr) minmax(0, 1.1fr) 88px 112px minmax(0, 1.2fr) 40px; align-items: center; column-gap: 16px; }
+.pv .rst-hd { padding: 12px 10px 8px; color: var(--muted); font-size: 11.5px; font-weight: 600; letter-spacing: .01em; }
+.pv .rst-hd span:first-child { grid-column: 1 / 3; }
+.pv .rst-hd .r { text-align: right; }
+.pv .rst-hd span:nth-child(5) { grid-column: 6; }
+.pv .rst-row { padding: 10px; min-height: 64px; border-top: 1px solid var(--line); border-radius: 14px; transition: background-color .2s var(--ease); }
+.pv .rst-row:first-child { border-top-color: transparent; }
+.pv .rst-row:hover { background: #fafafa; }
+.pv .rst-av { display: flex; } .pv .rst-av .iav { flex: none; }
+.pv .rst-id { min-width: 0; display: flex; flex-direction: column; }
+.pv .rst-id b { font-size: 15px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv .rst-id small { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv .rst-id .rst-dm { display: none; }
+.pv .rst-nt { min-width: 0; }
+.pv .rst-nt ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.pv .rst-nt li { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; }
+.pv .rst-nt li small { color: var(--ink); font-size: 12.5px; font-weight: 600; }
+.pv .rst-no { color: var(--muted); font-size: 12.5px; }
+.pv .rst-fl { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; text-align: right; }
+.pv .rst-fl b { font-size: 14.5px; font-weight: 600; }
+.pv .rst-fl .rst-nil { color: var(--muted); font-weight: 500; }
+.pv .rst-fl small { color: var(--muted); font-size: 11.5px; }
+.pv .rst-dt { color: var(--muted); font-size: 13px; white-space: nowrap; }
+.pv .rst-ex { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pv .rst-ex > span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pv .rst-ex b { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv .rst-ex small { color: var(--muted); font-size: 11.5px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv .rst-pend { display: inline-flex; padding: 4px 10px; border-radius: 99px; background: var(--bg); color: var(--muted); font-size: 12px; font-weight: 600; }
 .pv .rst-sw { flex: none; position: relative; width: 44px; height: 26px; border-radius: 99px; background: #cfcfcf; transition: background .2s; }
 .pv .rst-sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .2s var(--ease); box-shadow: 0 1px 3px rgba(5,5,5,.25); }
 .pv .rst-sw[aria-checked="true"] { background: var(--ink); }
 .pv .rst-sw[aria-checked="true"]::after { transform: translateX(18px); }
 .pv .rst-sw:disabled { opacity: .5; cursor: default; }
-.pv .rst-sw:focus-visible, .pv .rst-act:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-.pv .rst-row { display: flex; gap: 8px; margin-top: auto; }
-.pv .rst-row .btn { flex: 1 1 0; min-width: 0; height: 40px; justify-content: center; font-size: 13px; white-space: nowrap; }
-.pv .rst-row .btn.dng { color: var(--danger); }
-.pv .rst-confirm { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.4; }
-@media (max-width: 560px) { .pv .rst-grid { grid-template-columns: 1fr; } }
+.pv .rst-sw:focus-visible, .pv .rst-ib:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pv .rst-ac { display: flex; justify-content: flex-end; }
+.pv .rst-ib { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); transition: background-color .2s var(--ease), color .2s var(--ease); }
+.pv .rst-ib:hover:not(:disabled) { background: rgba(220,38,38,.08); color: var(--danger); }
+.pv .rst-ib:disabled { opacity: .5; cursor: default; }
 
-/* Abas No elenco / Convites: o `.seg` do protótipo depende de um indicador animado medido por script; aqui a aba ativa
-   leva o próprio fundo, sem script. */
-.pv .rst-tabs .seg button.on { background: var(--ink); color: #fff; }
-.pv .rst-tabs .seg button { transition: background .25s, color .25s; }
-/* Ações do cartão: secundária em cinza, e "remover" só com o texto em vermelho (cheio só ao passar o mouse). */
-.pv .rst-row .btn.out { background: var(--bg); }
-.pv .rst-row .btn.out:hover { background: var(--ink); color: #fff; }
-.pv .rst-row .btn.out.dng { background: var(--bg); color: var(--danger); }
-.pv .rst-row .btn.out.dng:hover { background: var(--danger); color: #fff; }
+/* Confirmação de remover: a linha vira um aviso com as duas ações. */
+.pv .rst-row.cf { grid-template-columns: 44px minmax(0, 1fr); background: #fff; box-shadow: inset 0 0 0 1.5px rgba(220,38,38,.3); border-top-color: transparent; }
+.pv .rst-cf { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
+.pv .rst-cf p { margin: 0; font-size: 13.5px; font-weight: 600; line-height: 1.4; flex: 1 1 260px; }
+.pv .rst-cfb { display: flex; gap: 8px; }
+.pv .rst-cfb .btn { height: 38px; padding: 0 16px; font-size: 13px; white-space: nowrap; }
+.pv .rst-cfb .btn.out { background: var(--bg); }
+.pv .rst-cfb .btn.out:hover { background: var(--ink); color: #fff; }
+.pv .rst-cfb .btn.out.dng { color: var(--danger); }
+.pv .rst-cfb .btn.out.dng:hover { background: var(--danger); color: #fff; }
+
+/* Carregando, erro e vazio: uma faixa compacta logo abaixo das abas, sem ocupar a altura da tela. */
+.pv .rst-sk { display: flex; align-items: center; gap: 16px; padding: 12px 10px; }
+.pv .rst-state { margin-top: 14px; background: #fff; border-radius: 28px; padding: 22px 24px; display: flex; align-items: center; gap: 18px; }
+.pv .rst-si { flex: none; width: 44px; height: 44px; border-radius: 50%; background: var(--bg); color: var(--muted); display: grid; place-items: center; }
+.pv .rst-state > div { flex: 1; min-width: 0; }
+.pv .rst-state b { display: block; font-size: 16px; font-weight: 600; letter-spacing: -.02em; }
+.pv .rst-state p { margin: 4px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; max-width: 60ch; }
+.pv .rst-state .btn { flex: none; height: 44px; }
+.pv .rst-state .btn.out { background: var(--bg); }
+
+@media (max-width: 1180px) {
+  .pv .rst-hd, .pv .rst-row { grid-template-columns: 44px minmax(0, 1.4fr) minmax(0, 1.1fr) 88px minmax(0, 1.2fr) 40px; }
+  .pv .rst-hd span:nth-child(4), .pv .rst-dt { display: none; }
+  .pv .rst-hd span:nth-child(5) { grid-column: 5; }
+  .pv .rst-id .rst-dm { display: block; }
+  .pv .rst-ex b { white-space: normal; line-height: 1.25; }
+  .pv .rst-ex small { display: none; }
+}
+@media (max-width: 760px) {
+  .pv .rst-tools { flex-basis: 100%; justify-content: flex-start; flex-wrap: wrap; }
+  .pv .rst-q { max-width: none; flex-basis: 100%; }
+  .pv .rst-s { flex: 1 1 0; min-width: 0; } .pv .rst-s select { width: 100%; }
+  .pv .rst-hd { display: none; }
+  .pv .rst-list { padding: 4px 6px 8px; border-radius: 24px; }
+  .pv .rst-row { grid-template-columns: 44px minmax(0, 1fr) auto 36px; grid-template-areas: "av id fl ac" ". nt nt nt" ". ex ex ex"; row-gap: 8px; column-gap: 12px; padding: 12px 8px; }
+  .pv .rst-av { grid-area: av; } .pv .rst-id { grid-area: id; } .pv .rst-fl { grid-area: fl; } .pv .rst-ac { grid-area: ac; }
+  .pv .rst-nt { grid-area: nt; } .pv .rst-ex { grid-area: ex; }
+  .pv .rst-row .rst-ex > span small { white-space: normal; }
+  .pv .rst-state { flex-wrap: wrap; padding: 18px; gap: 14px; }
+  .pv .rst-state > div { flex-basis: calc(100% - 62px); }
+  .pv .rst-state .btn { width: 100%; justify-content: center; }
+}

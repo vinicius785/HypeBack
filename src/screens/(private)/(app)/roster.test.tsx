@@ -71,7 +71,7 @@ describe("página Elenco", () => {
     expect(screen.getByText("Aberto a outros workspaces")).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: /^Convites/ }));
     expect(screen.getByText("Caio Lima")).toBeInTheDocument();
-    expect(screen.getByText("Ele entra no elenco quando aceitar o convite pelo app.")).toBeInTheDocument();
+    expect(screen.getByText("Eles entram no elenco quando aceitarem o convite pelo app.")).toBeInTheDocument();
   });
 
   it("alternar a exclusividade chama a API com o valor contrário", async () => {
@@ -86,7 +86,7 @@ describe("página Elenco", () => {
   it("remover pede confirmação antes de chamar a API; 'Voltar' desiste", async () => {
     const user = userEvent.setup();
     render(<Page />);
-    const card = screen.getByText("Bia Alves").closest("article") as HTMLElement;
+    const card = screen.getByText("Bia Alves").closest("li") as HTMLElement;
     await user.click(within(card).getByRole("button", { name: "Remover do elenco" }));
     expect(h.remove).not.toHaveBeenCalled();
     expect(within(card).getByRole("alert")).toHaveTextContent("Tirar Bia Alves do elenco?");
@@ -101,7 +101,7 @@ describe("página Elenco", () => {
     const user = userEvent.setup();
     render(<Page />);
     await user.click(screen.getByRole("tab", { name: /^Convites/ }));
-    const card = screen.getByText("Caio Lima").closest("article") as HTMLElement;
+    const card = screen.getByText("Caio Lima").closest("li") as HTMLElement;
     await user.click(within(card).getByRole("button", { name: "Cancelar convite" }));
     expect(within(card).getByRole("alert")).toHaveTextContent("Cancelar o convite para Caio Lima?");
     await user.click(within(card).getByRole("button", { name: "Cancelar convite" }));
@@ -116,11 +116,48 @@ describe("página Elenco", () => {
     expect(screen.getByText("Bia Alves")).toBeInTheDocument();
   });
 
+  it("as abas mostram os contadores", () => {
+    render(<Page />);
+    expect(screen.getByRole("tab", { name: "No elenco 2" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Convites 1" })).toBeInTheDocument();
+  });
+
+  it("cada linha traz @usuário, seguidores e a data de entrada no elenco", () => {
+    h.members = [member("m1", "Bia Alves", "active", { responded_at: "2026-10-20T12:00:00Z" })];
+    render(<Page />);
+    const row = screen.getByText("Bia Alves").closest("li") as HTMLElement;
+    expect(within(row).getByText("@bia")).toBeInTheDocument();
+    expect(within(row).getByText("15 mil")).toBeInTheDocument();
+    expect(within(row).getAllByText("Desde 20/10/2026").length).toBeGreaterThan(0);
+  });
+
+  it("busca por nome ou @, filtra por rede e ordena", async () => {
+    const user = userEvent.setup();
+    h.members = [
+      member("m1", "Bia Alves", "active", { creator: { id: 1, name: "Bia Alves", photo: null, username: "bia", followers_total: 1000, networks: [{ type: "instagram", username: "bia", members: 1000 }] } }),
+      member("m2", "Caio Lima", "active", { creator: { id: 2, name: "Caio Lima", photo: null, username: "caiol", followers_total: 9000, networks: [{ type: "tiktok", username: "caiol", members: 9000 }] } }),
+    ];
+    render(<Page />);
+    const names = () => Array.from(screen.getByRole("list", { name: "Criadores no elenco" }).querySelectorAll(":scope > li")).map((li) => li.querySelector(".rst-id b")?.textContent);
+    await user.selectOptions(screen.getByLabelText("Ordenar por"), "followers");
+    expect(names()).toEqual(["Caio Lima", "Bia Alves"]);
+    await user.selectOptions(screen.getByLabelText("Filtrar por rede social"), "instagram");
+    expect(names()).toEqual(["Bia Alves"]);
+    await user.selectOptions(screen.getByLabelText("Filtrar por rede social"), "all");
+    await user.type(screen.getByLabelText("Buscar no elenco"), "@caiol");
+    expect(names()).toEqual(["Caio Lima"]);
+    await user.clear(screen.getByLabelText("Buscar no elenco"));
+    await user.type(screen.getByLabelText("Buscar no elenco"), "zzz");
+    expect(screen.getByText("Nenhum criador encontrado")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    expect(names()).toHaveLength(2);
+  });
+
   it("elenco vazio orienta e leva ao catálogo", async () => {
     h.members = [];
     const user = userEvent.setup();
     render(<Page />);
-    expect(screen.getByText("Seu elenco ainda está vazio")).toBeInTheDocument();
+    expect(screen.getByText("Seu elenco começa aqui")).toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: /Encontrar criadores/ })[0]);
     expect(h.navigate).toHaveBeenCalledWith({ to: "/creators" });
   });
