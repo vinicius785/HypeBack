@@ -5,7 +5,8 @@ import { agencyProjectErrorMessage, AGENCY_PROJECT_LIMITS, type Task } from "@/s
 
 import { useProjectConfirm } from "../project-confirm";
 import { TASK_PRIORITY_LABEL, TASK_STATUS_LABEL, formatDate, taskDueLabel } from "../project-ui";
-import { SectionSkeleton, TaskSection } from "./task-section";
+import { CornerDownRight } from "lucide-react";
+import { SectionSkeleton, TaskSection, useSectionOpen } from "./task-section";
 import { validateTaskTitle } from "./task-logic";
 
 interface SubtasksSectionProps {
@@ -28,6 +29,7 @@ export function SubtasksSection({ subtasks, canWrite, onAdd, onToggle, onRemove,
   const [working, setWorking] = useState<string | null>(null);
   const { confirm, dialog } = useProjectConfirm();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useSectionOpen(!subtasks || subtasks.length > 0);
 
   const run = async (key: string, action: () => Promise<unknown>, fallback: string): Promise<boolean> => {
     setWorking(key);
@@ -70,11 +72,31 @@ export function SubtasksSection({ subtasks, canWrite, onAdd, onToggle, onRemove,
   return (
     <TaskSection
       title="Subtarefas"
-      collapsible
-      count={subtasks ? `${done}/${total}` : undefined}
+      icon={<CornerDownRight className="ico sm" aria-hidden />}
+      open={open}
+      onOpenChange={setOpen}
+      count={
+        subtasks ? (
+          <>
+            {done}/{total} concluídas
+            {total > 0 ? (
+              <span className="apj-bar apj-bar-mini" role="progressbar" aria-label="Subtarefas concluídas" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+                <i style={{ width: `${percent}%` }} />
+              </span>
+            ) : null}
+          </>
+        ) : undefined
+      }
       action={
         canWrite ? (
-          <button type="button" className="apj-link" onClick={() => inputRef.current?.focus()}>
+          <button
+            type="button"
+            className="apj-link"
+            onClick={() => {
+              setOpen(true);
+              window.setTimeout(() => inputRef.current?.focus(), 0);
+            }}
+          >
             + Adicionar
           </button>
         ) : null
@@ -84,11 +106,6 @@ export function SubtasksSection({ subtasks, canWrite, onAdd, onToggle, onRemove,
         <SectionSkeleton label="Carregando subtarefas" />
       ) : (
         <>
-          {total > 0 ? (
-            <div className="apj-bar" role="progressbar" aria-label="Subtarefas concluídas" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
-              <i style={{ width: `${percent}%` }} />
-            </div>
-          ) : null}
           {total === 0 ? <p className="apj-tm-none">Nenhuma subtarefa.</p> : null}
           {total > 0 ? (
             <div className="apj-st-head" aria-hidden="true">

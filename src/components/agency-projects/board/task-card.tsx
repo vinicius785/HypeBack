@@ -1,13 +1,13 @@
-import type { KeyboardEventHandler, ReactNode } from "react";
+import type { CSSProperties, KeyboardEventHandler, ReactNode } from "react";
 import { useDraggable } from "@dnd-kit/core";
-import { GripVertical } from "lucide-react";
+import { ChevronRight, GripVertical } from "lucide-react";
 
 import { AdminActionMenu, type AdminActionMenuItem } from "@/components/admin/platform/admin-action-menu";
 import { Av, I } from "@/components/prototype/ui";
 import { TASK_STATUSES, type Task, type TaskStatus } from "@/shared/services/agency-projects";
 
-import { TASK_PRIORITY_LABEL, TASK_PRIORITY_TONE, TASK_STATUS_LABEL, subtaskProgress, taskDueLabel } from "../project-ui";
-import { ToneBadge } from "../tone-badge";
+import { tagColor } from "./task-menus";
+import { TASK_PRIORITY_LABEL, TASK_STATUS_LABEL, subtaskProgress, taskDueLabel } from "../project-ui";
 
 const MAX_TAGS = 3;
 const MAX_AVATARS = 3;
@@ -43,11 +43,12 @@ export function TaskCardFace({ task, parentTitle, today, handle, menu, onOpen }:
 
   return (
     <div className="apj-tk-in">
-      <div className="apj-tk-top">
-        {handle}
-        {task.priority !== "normal" ? <ToneBadge tone={TASK_PRIORITY_TONE[task.priority]}>{TASK_PRIORITY_LABEL[task.priority]}</ToneBadge> : null}
-        {menu ? <span className="apj-tk-menu">{menu}</span> : null}
-      </div>
+      {handle || menu ? (
+        <div className="apj-tk-ctl">
+          {handle}
+          {menu ? <span className="apj-tk-menu">{menu}</span> : null}
+        </div>
+      ) : null}
 
       {onOpen ? (
         <button type="button" className="apj-tk-open" onClick={onOpen}>
@@ -58,19 +59,34 @@ export function TaskCardFace({ task, parentTitle, today, handle, menu, onOpen }:
       )}
       {task.parent_task_id ? <small className="apj-tk-parent">Subtarefa{parentTitle ? ` de ${parentTitle}` : ""}</small> : null}
 
+      {progress ? (
+        <span className="apj-tk-sub">
+          <ChevronRight className="ico sm" aria-hidden />
+          <span className="sr-only">Subtarefas concluídas: </span>
+          {progress} subtarefas
+        </span>
+      ) : null}
+
       <div className="apj-tk-meta">
+        {people.length > 0 ? (
+          <span className="apj-tk-people" role="group" aria-label={`Responsáveis: ${peopleNames}`} title={peopleNames}>
+            {people.slice(0, MAX_AVATARS).map((a) => (
+              <Av key={a.user_id} name={a.name} src={a.avatar ?? undefined} size={20} />
+            ))}
+            {people.length > MAX_AVATARS ? <em>+{people.length - MAX_AVATARS}</em> : null}
+          </span>
+        ) : null}
         {due.text ? (
           <span className={`apj-tk-due${due.overdue ? " apj-is-late" : ""}`}>
-            <I n="cal" cls="sm" />
+            <i className="apj-tk-dot" aria-hidden="true" />
             <span className="sr-only">Prazo: </span>
             {due.text}
           </span>
         ) : null}
-        {progress ? (
-          <span>
-            <I n="check" cls="sm" />
-            <span className="sr-only">Subtarefas concluídas: </span>
-            {progress}
+        {task.priority !== "normal" ? (
+          <span className="apj-tk-pri" data-priority={task.priority}>
+            <I n="flag" cls="sm" />
+            {TASK_PRIORITY_LABEL[task.priority]}
           </span>
         ) : null}
         {task.counts.comments > 0 ? (
@@ -89,26 +105,17 @@ export function TaskCardFace({ task, parentTitle, today, handle, menu, onOpen }:
         ) : null}
       </div>
 
-      {task.tags.length > 0 || people.length > 0 ? (
-        <div className="apj-tk-foot">
-          <div className="apj-tk-tags">
-            {task.tags.slice(0, MAX_TAGS).map((tag) => (
-              <span key={tag} className="apj-tk-tag" title={tag}>
-                {tag}
-              </span>
-            ))}
-            {extraTags > 0 ? (
-              <span className="apj-tk-tag more" title={task.tags.slice(MAX_TAGS).join(", ")}>
-                +{extraTags}
-              </span>
-            ) : null}
-          </div>
-          {people.length > 0 ? (
-            <span className="apj-tk-people" role="group" aria-label={`Responsáveis: ${peopleNames}`} title={peopleNames}>
-              {people.slice(0, MAX_AVATARS).map((a) => (
-                <Av key={a.user_id} name={a.name} src={a.avatar ?? undefined} size={24} />
-              ))}
-              {people.length > MAX_AVATARS ? <em>+{people.length - MAX_AVATARS}</em> : null}
+      {task.tags.length > 0 ? (
+        <div className="apj-tk-tags">
+          <I n="tag" cls="sm" />
+          {task.tags.slice(0, MAX_TAGS).map((tag) => (
+            <span key={tag} className="apj-tk-tag" title={tag} style={tagColor(tag) as CSSProperties}>
+              {tag}
+            </span>
+          ))}
+          {extraTags > 0 ? (
+            <span className="apj-tk-tag more" title={task.tags.slice(MAX_TAGS).join(", ")}>
+              +{extraTags}
             </span>
           ) : null}
         </div>

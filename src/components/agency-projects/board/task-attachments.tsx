@@ -7,7 +7,8 @@ import { AGENCY_PROJECT_LIMITS, TASK_ATTACHMENT_ACCEPT, agencyProjectErrorMessag
 
 import { useProjectConfirm } from "../project-confirm";
 import { formatDateTime } from "../project-ui";
-import { SectionSkeleton, TaskSection } from "./task-section";
+import { Paperclip } from "lucide-react";
+import { SectionSkeleton, TaskSection, useSectionOpen } from "./task-section";
 import { validateAttachment } from "./task-logic";
 
 const MAX_MB = Math.round(AGENCY_PROJECT_LIMITS.attachmentBytes / 1024 / 1024);
@@ -30,6 +31,7 @@ export function AttachmentsSection({ attachments, canWrite, onUpload, onRemove }
   const { confirm, dialog } = useProjectConfirm();
   const count = attachments?.length ?? 0;
   const atLimit = count >= AGENCY_PROJECT_LIMITS.taskAttachments;
+  const [open, setOpen] = useSectionOpen(!attachments || count > 0);
 
   const pick = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -77,11 +79,17 @@ export function AttachmentsSection({ attachments, canWrite, onUpload, onRemove }
   return (
     <TaskSection
       title="Anexos"
-      collapsible
+      icon={<Paperclip className="ico sm" aria-hidden />}
+      open={open}
+      onOpenChange={setOpen}
       count={attachments ? `${count}/${AGENCY_PROJECT_LIMITS.taskAttachments}` : undefined}
       action={
         canWrite ? (
-          <button type="button" className="apj-link" disabled={!!uploading || atLimit} onClick={() => fileRef.current?.click()}>
+          <button type="button" className="apj-link" disabled={!!uploading || atLimit} onClick={() => {
+              setOpen(true);
+              window.setTimeout(() => fileRef.current?.click(), 0);
+            }}
+          >
             + Adicionar
           </button>
         ) : null
