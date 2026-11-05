@@ -77,7 +77,7 @@
 
 /* Encerrados recolhidos ("Ver projetos encerrados (N)"). */
 .pv .apj-closed { display: flex; flex-direction: column; gap: var(--sp-4, 16px); }
-.pv .apj-closed-t { align-self: center; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 20px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--brand); transition: background .2s; }
+.pv .apj-closed-t { align-self: center; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 20px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--ink); transition: background .2s; }
 .pv .apj-closed-t:hover { background: #fff; }
 .pv .apj-closed-t:focus-visible { outline: none; box-shadow: var(--apj-ring); }
 
@@ -99,7 +99,8 @@
 @media (max-width: 760px) { .pv .apj-dh-t h1 { font-size: 26px; line-height: 30px; } .pv .apj-dh-id .apj-cover { width: 56px !important; height: 56px !important; } }
 @media (max-width: 560px) { .pv .apj-dh-act { width: 100%; } .pv .apj-dh-act .btn:not(.adm-actmenu-btn) { flex: 1; justify-content: center; } }
 
-.pv .apj-link { font-size: 13px; font-weight: 600; color: var(--brand); padding: 4px 0; }
+.pv .apj-link { font-size: 13px; font-weight: 600; color: var(--ink); padding: 4px 0; }
+.pv .apj-link:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 2px; }
 .pv .apj-link:hover { text-decoration: underline; }
 .pv .apj-link:disabled { opacity: .5; cursor: default; text-decoration: none; }
 .pv .apj-link:focus-visible { outline: none; box-shadow: var(--apj-ring); border-radius: 6px; }
@@ -232,7 +233,7 @@
 .pv .apj-tm-fb.error { color: var(--danger); text-align: right; }
 .pv .apj-tm-due { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
 .pv .apj-tm-due .ni { width: 100%; min-width: 0; }
-.pv .apj-tm-link { padding: 0; font-size: 12.5px; font-weight: 600; color: var(--brand); text-decoration: underline; text-underline-offset: 2px; border-radius: 4px; }
+.pv .apj-tm-link { padding: 0; font-size: 12.5px; font-weight: 600; color: var(--ink); text-decoration: underline; text-underline-offset: 2px; border-radius: 4px; }
 .pv .apj-tm-link:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(5,5,5,.3); }
 .pv .apj-tm-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .pv .apj-tm select.ni { appearance: none; padding-right: 38px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 22px) 50%, calc(100% - 16px) 50%; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; }
@@ -429,7 +430,7 @@
 .pv .apj-chip-in:focus { width: 150px; }
 .pv .apj-td-desc { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
 .pv .apj-td-desc label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.pv .apj-td-desc textarea { width: 100%; min-height: 120px; padding: 12px 14px; border: 1.5px solid transparent; border-radius: 12px; background: var(--bg); font: inherit; font-size: 14px; line-height: 1.55; color: var(--ink); resize: vertical; outline: none; transition: border-color .15s, background .15s; }
+.pv .apj-td-desc textarea { width: 100%; min-height: 120px; padding: 12px 14px; border: 1.5px solid transparent; border-radius: 12px; background: #f7f7f7; font: inherit; font-size: 14px; line-height: 1.55; color: var(--ink); resize: vertical; outline: none; transition: border-color .15s, background .15s; }
 .pv .apj-td-desc textarea:focus { background: #fff; border-color: var(--ink); }
 .pv .apj-td-desc.err textarea { border-color: var(--danger); }
 .pv .apj-td .apj-tm-sec { padding-top: 0; border-top: 0; gap: 10px; }

@@ -334,7 +334,7 @@ describe("edição: subtarefas", () => {
     const user = userEvent.setup();
     renderEdit();
     const subs = section("Subtarefas");
-    await user.click(subs.getByRole("button", { name: "Adicionar" }));
+    await user.type(subs.getByLabelText("Nova subtarefa"), "{Enter}");
     expect(subs.getByText("Informe o título da subtarefa")).toBeInTheDocument();
     expect(h.create).not.toHaveBeenCalled();
     await user.type(subs.getByLabelText("Nova subtarefa"), "Algo{Enter}");

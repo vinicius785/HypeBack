@@ -163,9 +163,6 @@ export function SubtasksSection({ subtasks, canWrite, onAdd, onToggle, onRemove,
                   setFieldError(null);
                 }}
               />
-              <button type="submit" className="btn out" disabled={working === "add"}>
-                {working === "add" ? "Adicionando…" : "Adicionar"}
-              </button>
             </form>
           ) : null}
           {fieldError ? (
