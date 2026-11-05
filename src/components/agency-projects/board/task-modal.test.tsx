@@ -43,6 +43,7 @@ vi.mock("@/hooks/use-agency-projects", () => ({
   useDeleteTaskAttachment: () => ({ mutateAsync: h.removeAttachment, isPending: false }),
 }));
 
+import { todayInSaoPaulo } from "../project-base";
 import { TaskModal } from "./task-modal";
 
 const project = { id: "p1", name: "Verão" } as Project;
@@ -104,6 +105,11 @@ function renderCreate(props: Partial<React.ComponentProps<typeof TaskModal>> = {
   return render(<TaskModal project={project} can={permissions} taskId={null} tasks={board()} onOpenTask={onOpenTask} onClose={onClose} {...props} />);
 }
 
+type U = ReturnType<typeof userEvent.setup>;
+const choose = async (user: U, trigger: RegExp, item: string | RegExp, role: "menuitemradio" | "menuitem" = "menuitemradio") => {
+  await user.click(screen.getByRole("button", { name: trigger }));
+  await user.click(screen.getByRole(role, { name: item }));
+};
 const openActivity = async () => undefined; // o painel de atividade já abre com a tarefa
 const section = (name: string) => within(screen.getByRole("region", { name }));
 
@@ -136,9 +142,9 @@ describe("edição: campos", () => {
     const dialog = screen.getByRole("dialog", { name: "Tarefa" });
     expect(dialog).toHaveAttribute("aria-modal", "true");
     expect(within(dialog).getByLabelText("Título")).toHaveValue("Roteiro");
-    expect(within(dialog).getByLabelText("Status")).toHaveValue("aberto");
-    expect(within(dialog).getByLabelText("Prioridade")).toHaveValue("alta");
-    expect(within(dialog).getByLabelText("Prazo")).toHaveValue("2026-11-10");
+    expect(within(dialog).getByRole("button", { name: "Status: Aberto" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Prioridade: Alta" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Prazo: 10/11/2026" })).toBeInTheDocument();
     expect(within(dialog).getByLabelText(/Descrição/)).toHaveValue("Texto base");
     expect(within(dialog).getByRole("group", { name: "Responsáveis" })).toHaveTextContent("Ana Souza");
     expect(within(dialog).getByRole("group", { name: "Etiquetas" })).toHaveTextContent("video");
@@ -149,9 +155,9 @@ describe("edição: campos", () => {
     h.update.mockReturnValueOnce(d.promise);
     const user = userEvent.setup();
     renderEdit();
-    await user.selectOptions(screen.getByLabelText("Status"), "em_ajustes");
+    await choose(user, /^Status/, "Em ajustes");
     expect(h.update).toHaveBeenCalledWith({ taskId: "t1", input: { status: "em_ajustes" } });
-    expect(screen.getByLabelText("Status")).toHaveValue("em_ajustes");
+    expect(screen.getByRole("button", { name: "Status: Em ajustes" })).toBeInTheDocument();
     expect(screen.getByText("Salvando…")).toBeInTheDocument();
     await act(async () => d.resolve(task("t1")));
     expect(await screen.findByText("Salvo ✓")).toBeInTheDocument();
@@ -160,7 +166,7 @@ describe("edição: campos", () => {
   it("prioridade grava", async () => {
     const user = userEvent.setup();
     renderEdit();
-    await user.selectOptions(screen.getByLabelText("Prioridade"), "urgente");
+    await choose(user, /^Prioridade/, "Urgente");
     expect(h.update).toHaveBeenCalledWith({ taskId: "t1", input: { priority: "urgente" } });
   });
 
@@ -168,20 +174,19 @@ describe("edição: campos", () => {
     h.update.mockRejectedValueOnce(apiError("TASK_NOT_FOUND"));
     const user = userEvent.setup();
     renderEdit();
-    await user.selectOptions(screen.getByLabelText("Status"), "concluido");
+    await choose(user, /^Status/, "Concluído");
     expect(await screen.findByText("Essa tarefa não existe mais.")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByLabelText("Status")).toHaveValue("aberto"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Status: Aberto" })).toBeInTheDocument());
   });
 
-  it("prazo: grava a data completa, ignora digitação parcial do ano e remove com o botão", async () => {
+  it("prazo: escolhe um dia no calendário e remove com Limpar", async () => {
     const user = userEvent.setup();
     renderEdit();
-    const due = screen.getByLabelText("Prazo");
-    fireEvent.change(due, { target: { value: "0002-12-01" } });
-    expect(h.update).not.toHaveBeenCalled();
-    fireEvent.change(due, { target: { value: "2026-12-01" } });
-    expect(h.update).toHaveBeenCalledWith({ taskId: "t1", input: { due_date: "2026-12-01" } });
-    await user.click(await screen.findByRole("button", { name: "Remover prazo" }));
+    await user.click(screen.getByRole("button", { name: /^Prazo/ }));
+    await user.click(screen.getByRole("button", { name: "20 de novembro de 2026" }));
+    expect(h.update).toHaveBeenCalledWith({ taskId: "t1", input: { due_date: "2026-11-20" } });
+    await user.click(screen.getByRole("button", { name: /^Prazo/ }));
+    await user.click(screen.getByRole("menuitem", { name: "Limpar" }));
     expect(h.update).toHaveBeenLastCalledWith({ taskId: "t1", input: { due_date: null } });
   });
 
@@ -277,10 +282,11 @@ describe("edição: responsáveis e etiquetas", () => {
   it("etiquetas: Enter acrescenta, repetida e a 11ª são recusadas, e o × remove", async () => {
     const user = userEvent.setup();
     renderEdit();
-    const input = screen.getByLabelText("Nova etiqueta");
-    await user.type(input, "  #Cliente {Enter}");
+    await user.click(screen.getByRole("button", { name: "Adicionar etiqueta" }));
+    await user.type(screen.getByLabelText("Nova etiqueta"), "  #Cliente {Enter}");
     expect(h.update).toHaveBeenCalledWith({ taskId: "t1", input: { tags: ["video", "Cliente"] } });
-    await user.type(input, "VIDEO{Enter}");
+    await user.click(screen.getByRole("button", { name: "Adicionar etiqueta" }));
+    await user.type(screen.getByLabelText("Nova etiqueta"), "VIDEO{Enter}");
     expect(screen.getByText("Essa etiqueta já está na tarefa")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Remover etiqueta video" }));
     expect(h.update).toHaveBeenLastCalledWith({ taskId: "t1", input: { tags: [] } });
@@ -290,6 +296,7 @@ describe("edição: responsáveis e etiquetas", () => {
     h.detail = detailOf({ tags: Array.from({ length: 10 }, (_, i) => `t${i}`) });
     const user = userEvent.setup();
     renderEdit();
+    await user.click(screen.getByRole("button", { name: "Adicionar etiqueta" }));
     await user.type(screen.getByLabelText("Nova etiqueta"), "mais{Enter}");
     expect(screen.getByText("Cada tarefa aceita até 10 etiquetas")).toBeInTheDocument();
     expect(h.update).not.toHaveBeenCalled();
@@ -564,9 +571,10 @@ describe("somente leitura", () => {
     renderEdit({}, can({ canWrite: false, canCreate: false, canDelete: false }));
     expect(screen.getByText("Você pode ver esta tarefa, mas não editá-la.")).toBeInTheDocument();
     expect(screen.getByLabelText("Título")).toHaveAttribute("readonly");
-    expect(screen.getByLabelText("Status")).toBeDisabled();
-    expect(screen.getByLabelText("Prioridade")).toBeDisabled();
-    expect(screen.getByLabelText("Prazo")).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /^Status/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Prioridade/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Prazo/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Adicionar etiqueta" })).not.toBeInTheDocument();
     expect(screen.getByLabelText(/Descrição/)).toHaveAttribute("readonly");
     expect(screen.queryByRole("button", { name: "Editar responsáveis" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Nova etiqueta")).not.toBeInTheDocument();
@@ -595,8 +603,8 @@ describe("criar tarefa", () => {
     renderCreate({ defaultStatus: "em_aprovacao" });
     expect(screen.getByRole("dialog", { name: "Nova tarefa" })).toBeInTheDocument();
     expect(screen.getByLabelText("Título")).toHaveValue("");
-    expect(screen.getByLabelText("Status")).toHaveValue("em_aprovacao");
-    expect(screen.getByLabelText("Prioridade")).toHaveValue("normal");
+    expect(screen.getByRole("button", { name: "Status: Em aprovação" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Prioridade: Normal" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: /Comentários/ })).not.toBeInTheDocument();
   });
 
@@ -613,8 +621,9 @@ describe("criar tarefa", () => {
     const user = userEvent.setup();
     renderCreate({ defaultStatus: "em_andamento" });
     await user.type(screen.getByLabelText("Título"), "  Gravar vídeo ");
-    await user.selectOptions(screen.getByLabelText("Prioridade"), "alta");
-    fireEvent.change(screen.getByLabelText("Prazo"), { target: { value: "2026-12-05" } });
+    await choose(user, /^Prioridade/, "Alta");
+    await choose(user, /^Prazo/, /^Hoje/, "menuitem");
+    await user.click(screen.getByRole("button", { name: "Adicionar etiqueta" }));
     await user.type(screen.getByLabelText("Nova etiqueta"), "video{Enter}");
     await user.click(screen.getByRole("button", { name: "Editar responsáveis" }));
     await user.click(screen.getByRole("checkbox", { name: /Bruno Lima/ }));
@@ -626,22 +635,12 @@ describe("criar tarefa", () => {
       description: "Brief completo",
       status: "em_andamento",
       priority: "alta",
-      due_date: "2026-12-05",
+      due_date: todayInSaoPaulo(),
       tags: ["video"],
       assignee_ids: [2],
       primary_assignee_id: 2,
     });
     expect(h.toast.success).toHaveBeenCalledWith("Tarefa criada");
-  });
-
-  it("prazo digitado pela metade não deixa criar", async () => {
-    const user = userEvent.setup();
-    renderCreate();
-    await user.type(screen.getByLabelText("Título"), "X");
-    fireEvent.change(screen.getByLabelText("Prazo"), { target: { value: "0002-01-01" } });
-    await user.click(screen.getByRole("button", { name: "Criar tarefa" }));
-    expect(screen.getByText("Informe um prazo válido")).toBeInTheDocument();
-    expect(h.create).not.toHaveBeenCalled();
   });
 
   it("erro da API: mostra e continua aberto com o que foi digitado", async () => {

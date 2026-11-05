@@ -194,7 +194,8 @@ describe("detalhe com dados reais dos hooks", () => {
     await user.click(await screen.findByRole("button", { name: "Roteiro" }));
     const dialog = await screen.findByRole("dialog", { name: "Tarefa" });
     await waitFor(() => expect(h.api.getTask).toHaveBeenCalledWith("p1", "t1"));
-    await user.selectOptions(within(dialog).getByLabelText("Prioridade"), "urgente");
+    await user.click(within(dialog).getByRole("button", { name: /^Prioridade/ }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Urgente" }));
     await waitFor(() => expect(h.api.updateTask).toHaveBeenCalledWith("p1", "t1", { priority: "urgente" }));
     await waitFor(() => expect(within(column("Aberto")).getByText("Urgente")).toBeInTheDocument());
 

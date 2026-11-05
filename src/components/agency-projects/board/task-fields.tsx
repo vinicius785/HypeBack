@@ -1,10 +1,10 @@
 import { useId, type ReactNode } from "react";
 
-import { I } from "@/components/prototype/ui";
 
-import { AGENCY_PROJECT_LIMITS, TASK_PRIORITIES, TASK_STATUSES } from "@/shared/services/agency-projects";
+import { AGENCY_PROJECT_LIMITS } from "@/shared/services/agency-projects";
 
-import { TASK_PRIORITY_LABEL, TASK_STATUS_LABEL, taskDueLabel } from "../project-ui";
+import { taskDueLabel } from "../project-ui";
+import { DueDateMenu, PriorityMenu, StatusMenu } from "./task-menus";
 import { AssigneesField } from "./assignees-field";
 import type { FieldFeedback, FieldKey } from "./field-label";
 import { TagsField } from "./tags-field";
@@ -93,16 +93,7 @@ export function TaskFields({
       </div>
 
       <div className="apj-props">
-        <label className="apj-chip apj-chip-sel" data-status={values.status}>
-          <span className="apj-chip-dot" aria-hidden="true" />
-          <select id={ids.status} aria-label="Status" value={values.status} disabled={readOnly} onChange={(e) => onChange({ status: e.target.value as TaskDraft["status"] })}>
-            {TASK_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {TASK_STATUS_LABEL[s]}
-              </option>
-            ))}
-          </select>
-        </label>
+        <StatusMenu value={values.status} readOnly={readOnly} onChange={(status) => onChange({ status })} />
 
         <AssigneesField
           value={{ ids: values.assignee_ids, primary: values.primary_assignee_id }}
@@ -114,35 +105,10 @@ export function TaskFields({
           onChange={(v) => onChange({ assignee_ids: v.ids, primary_assignee_id: v.primary })}
         />
 
-        <label className="apj-chip apj-chip-date" data-empty={!values.due_date || undefined} data-late={due?.overdue || undefined}>
-          <I n="clock" cls="sm" />
-          <input id={ids.due} aria-label="Prazo" type="date" value={values.due_date} disabled={readOnly} onChange={(e) => onChange({ due_date: e.target.value })} />
-          {values.due_date && !readOnly ? (
-            <button
-              type="button"
-              className="apj-chip-x"
-              aria-label="Remover prazo"
-              onClick={(e) => {
-                e.preventDefault();
-                onChange({ due_date: "" });
-              }}
-            >
-              <I n="x" cls="sm" />
-            </button>
-          ) : null}
-        </label>
+        <DueDateMenu value={values.due_date} late={due?.overdue} readOnly={readOnly} onChange={(date) => onChange({ due_date: date })} />
         {due?.overdue ? <span className="apj-chip apj-chip-late">{due.text}</span> : null}
 
-        <label className="apj-chip apj-chip-sel" data-priority={values.priority}>
-          <I n="flag" cls="sm" />
-          <select id={ids.priority} aria-label="Prioridade" value={values.priority} disabled={readOnly} onChange={(e) => onChange({ priority: e.target.value as TaskDraft["priority"] })}>
-            {TASK_PRIORITIES.map((p) => (
-              <option key={p} value={p}>
-                {TASK_PRIORITY_LABEL[p]}
-              </option>
-            ))}
-          </select>
-        </label>
+        <PriorityMenu value={values.priority} readOnly={readOnly} onChange={(priority) => onChange({ priority })} />
 
         <TagsField tags={values.tags} suggestions={tagSuggestions} readOnly={readOnly} feedback={feedback.tags} onChange={(tags) => onChange({ tags })} />
       </div>
