@@ -375,7 +375,7 @@ export interface AdminUserDeleteBody extends AdminReasonBody {
 export const ADMIN_PLATFORM_ROLES = ['admin', 'support', 'viewer'] as const;
 export type AdminPlatformRole = (typeof ADMIN_PLATFORM_ROLES)[number];
 
-export const ADMIN_PLATFORM_PERMISSIONS = ['read', 'users.moderate', 'workspaces.moderate'] as const;
+export const ADMIN_PLATFORM_PERMISSIONS = ['read', 'users.moderate', 'workspaces.moderate', 'support.manage'] as const;
 export type AdminPlatformPermission = (typeof ADMIN_PLATFORM_PERMISSIONS)[number];
 
 export interface AdminPlatformRoleInfo {

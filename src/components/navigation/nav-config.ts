@@ -89,6 +89,7 @@ export const PLATFORM_NAV: readonly NavSection[] = [
       { id: "workspaces", label: "Workspaces", icon: "box", href: "/admin/workspaces", pinned: true },
       { id: "users", label: "Usuários", icon: "user", href: "/admin/users", pinned: true },
       { id: "account-requests", label: "Solicitações", icon: "refresh", href: "/admin/account-requests" },
+      { id: "support", label: "Suporte", icon: "flag", href: "/admin/support" },
       { id: "team", label: "Equipe", icon: "users", href: "/admin/team" },
     ],
   },

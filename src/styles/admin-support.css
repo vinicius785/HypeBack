@@ -1,0 +1,40 @@
+/* Admin · Suporte. Só o vocabulário do kit (.adm-*) e tokens do protótipo. */
+.pv .adm-sup-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+.pv .adm-sup-bar .adm-search { min-width: 280px; }
+.pv .adm-sup-filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.pv .adm-sup-filters label, .pv .adm-sup-ctl label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--adm-text-muted); }
+.pv .adm-sup-filters select, .pv .adm-sup-ctl select, .pv .adm-sup-send select { height: 40px; min-width: 150px; padding: 0 34px 0 12px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; font: inherit; font-size: 13.5px; font-weight: 500; color: var(--ink); appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--adm-text-muted) 50%), linear-gradient(135deg, var(--adm-text-muted) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 12px) 50%; background-size: 6px 6px; background-repeat: no-repeat; }
+.pv .adm-sup-filters select:focus-visible, .pv .adm-sup-ctl select:focus-visible, .pv .adm-sup-send select:focus-visible { outline: none; border-color: var(--ink); }
+.pv .adm-sup-subj { display: flex; flex-direction: column; gap: 2px; min-width: 0; width: 100%; text-align: left; padding: 0; border-radius: 6px; }
+.pv .adm-sup-subj:hover b { text-decoration: underline; }
+.pv .adm-sup-subj:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(5,5,5,.3); }
+.pv .adm-sup-n { font-size: 11.5px; font-weight: 700; color: var(--adm-text-muted); }
+.pv .adm-sup-subj b { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .adm-sup-subj small { color: var(--adm-text-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .adm-sup-as { font-size: 13.5px; }
+.pv .adm-sup-none { font-size: 13px; color: var(--adm-text-muted); }
+.pv .adm-sup-detail { display: flex; flex-direction: column; gap: 20px; }
+.pv .adm-sup-detail h4 { margin: 0 0 10px; font-size: 14px; font-weight: 700; }
+.pv .adm-sup-badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--adm-text-muted); }
+.pv .adm-sup-ctl { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; padding: 14px; border-radius: 16px; background: var(--bg); }
+.pv .adm-sup-ctl select { min-width: 140px; }
+.pv .adm-sup-thread { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.pv .adm-sup-msg { padding: 12px 14px; border-radius: 14px; background: #fff; border: 1.5px solid var(--line); animation: adm-modal-fade .2s ease both; }
+.pv .adm-sup-msg[data-kind="staff"] { background: #f4f4f4; border-color: transparent; }
+.pv .adm-sup-msg[data-kind="note"] { background: #fff8e6; border-color: #f3dfa6; }
+.pv .adm-sup-msg header { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.pv .adm-sup-who { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--adm-text-muted); }
+.pv .adm-sup-msg time { margin-left: auto; font-size: 12px; color: var(--adm-text-muted); }
+.pv .adm-sup-msg p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.55; }
+.pv .adm-sup-composer { display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1.5px solid var(--line); }
+.pv .adm-sup-seg { display: inline-flex; align-self: flex-start; padding: 3px; border-radius: 12px; background: var(--bg); }
+.pv .adm-sup-seg button { height: 32px; padding: 0 14px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--adm-text-muted); }
+.pv .adm-sup-seg button[aria-checked="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(5,5,5,.12); }
+.pv .adm-sup-seg button:disabled { opacity: .45; cursor: default; }
+.pv .adm-sup-composer textarea { width: 100%; min-height: 110px; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 14px; font: inherit; font-size: 14px; line-height: 1.5; color: var(--ink); resize: vertical; }
+.pv .adm-sup-composer textarea:focus-visible { outline: none; border-color: var(--ink); }
+.pv .adm-sup-hint { margin: 0; font-size: 12.5px; color: var(--adm-text-muted); }
+.pv .adm-sup-hint a { color: var(--ink); font-weight: 600; }
+.pv .adm-sup-err { color: var(--danger); font-size: 12.5px; font-weight: 600; }
+.pv .adm-sup-send { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+@media (prefers-reduced-motion: reduce) { .pv .adm-sup-msg { animation: none; } }

@@ -77,6 +77,7 @@ describe("PLATFORM_NAV (Admin da plataforma)", () => {
           ["Workspaces", "/admin/workspaces"],
           ["Usuários", "/admin/users"],
           ["Solicitações", "/admin/account-requests"],
+          ["Suporte", "/admin/support"],
           ["Equipe", "/admin/team"],
         ],
       ],
@@ -277,7 +278,7 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
     render(<Sidebar scope="platform" />);
     const items = within(screen.getByRole("navigation", { name: "Navegação do Admin" }));
     for (const label of ["Início", "Lives", "Backoffice"]) expect(items.queryByRole("button", { name: label })).not.toBeInTheDocument();
-    expect(items.getAllByRole("button")).toHaveLength(12);
+    expect(items.getAllByRole("button")).toHaveLength(13);
     for (const group of ["Visão geral", "Gestão da plataforma", "Operação", "Monitoramento"]) {
       expect(items.getByRole("group", { name: group })).toBeInTheDocument();
     }
@@ -435,8 +436,8 @@ describe("Sidebar (volta ao app: o menu do Admin sai e o do app entra)", () => {
   it("a saída conta para trás a partir do 'Voltar ao app': `--n` é a vez dele na cascata", () => {
     render(<Sidebar scope="platform" />);
     // 12 itens + 4 títulos de grupo + o "Voltar ao app"
-    expect(aside().style.getPropertyValue("--n")).toBe("16");
-    expect(back().style.getPropertyValue("--i")).toBe("16");
+    expect(aside().style.getPropertyValue("--n")).toBe("17");
+    expect(back().style.getPropertyValue("--i")).toBe("17");
   });
 
   it("enquanto o menu sai, outros cliques não navegam e um segundo clique não agenda outra volta", () => {

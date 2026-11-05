@@ -26,6 +26,7 @@ export const PERMISSION_TEXT: Record<AdminPlatformPermission, string> = {
   read: "Ver todas as telas do Admin",
   "users.moderate": "Suspender e reativar contas e encerrar sessões",
   "workspaces.moderate": "Suspender e reativar workspaces",
+  "support.manage": "Responder pedidos de suporte e mudar status, prioridade e responsável",
 };
 
 /** O que só o administrador faz (os outros papéis nunca têm). */
