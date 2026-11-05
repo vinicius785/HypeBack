@@ -24,6 +24,7 @@ import { Route as privateappCampaignsRouteImport } from './screens/(private)/(ap
 import { Route as privateappCreatorsRouteImport } from './screens/(private)/(app)/creators'
 import { Route as privateappFinancialRouteImport } from './screens/(private)/(app)/financial'
 import { Route as privateappLivesRouteImport } from './screens/(private)/(app)/lives'
+import { Route as privateappProjectsRouteImport } from './screens/(private)/(app)/projects'
 import { Route as privateappRosterRouteImport } from './screens/(private)/(app)/roster'
 import { Route as privateappSettingsRouteImport } from './screens/(private)/(app)/settings'
 import { Route as privateOnboardingIndexRouteImport } from './screens/(private)/onboarding/index'
@@ -48,6 +49,7 @@ import { Route as privateappCampaignsNewRouteImport } from './screens/(private)/
 import { Route as privateappInfluencerInfluencerIdRouteImport } from './screens/(private)/(app)/influencer.$influencerId'
 import { Route as privateappLivesLiveIdRouteImport } from './screens/(private)/(app)/lives.$liveId'
 import { Route as privateappLivesNewRouteImport } from './screens/(private)/(app)/lives.new'
+import { Route as privateappProjectsProjectIdRouteImport } from './screens/(private)/(app)/projects.$projectId'
 import { Route as privateappWorkspaceSettingsRouteImport } from './screens/(private)/(app)/workspace.settings'
 import { Route as publicCampaignsCampaignIdInviteRouteImport } from './screens/(public)/campaigns.$campaignId.invite'
 import { Route as privateadminAdminCampaignsIndexRouteImport } from './screens/(private)/(admin)/admin.campaigns.index'
@@ -130,6 +132,11 @@ const privateappFinancialRoute = privateappFinancialRouteImport.update({
 const privateappLivesRoute = privateappLivesRouteImport.update({
   id: '/lives',
   path: '/lives',
+  getParentRoute: () => privateappLayoutRoute,
+} as any)
+const privateappProjectsRoute = privateappProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
   getParentRoute: () => privateappLayoutRoute,
 } as any)
 const privateappRosterRoute = privateappRosterRouteImport.update({
@@ -265,6 +272,12 @@ const privateappLivesNewRoute = privateappLivesNewRouteImport.update({
   path: '/new',
   getParentRoute: () => privateappLivesRoute,
 } as any)
+const privateappProjectsProjectIdRoute =
+  privateappProjectsProjectIdRouteImport.update({
+    id: '/$projectId',
+    path: '/$projectId',
+    getParentRoute: () => privateappProjectsRoute,
+  } as any)
 const privateappWorkspaceSettingsRoute =
   privateappWorkspaceSettingsRouteImport.update({
     id: '/workspace/settings',
@@ -349,6 +362,7 @@ export interface FileRoutesByFullPath {
   '/creators': typeof privateappCreatorsRoute
   '/financial': typeof privateappFinancialRoute
   '/lives': typeof privateappLivesRouteWithChildren
+  '/projects': typeof privateappProjectsRouteWithChildren
   '/roster': typeof privateappRosterRoute
   '/settings': typeof privateappSettingsRoute
   '/onboarding/create-workspace': typeof privateOnboardingCreateWorkspaceRoute
@@ -374,6 +388,7 @@ export interface FileRoutesByFullPath {
   '/influencer/$influencerId': typeof privateappInfluencerInfluencerIdRoute
   '/lives/$liveId': typeof privateappLivesLiveIdRoute
   '/lives/new': typeof privateappLivesNewRoute
+  '/projects/$projectId': typeof privateappProjectsProjectIdRoute
   '/workspace/settings': typeof privateappWorkspaceSettingsRoute
   '/campaigns/$campaignId/invite': typeof publicCampaignsCampaignIdInviteRoute
   '/admin/campaigns/$campaignId': typeof privateadminAdminCampaignsCampaignIdRoute
@@ -397,6 +412,7 @@ export interface FileRoutesByTo {
   '/creators': typeof privateappCreatorsRoute
   '/financial': typeof privateappFinancialRoute
   '/lives': typeof privateappLivesRouteWithChildren
+  '/projects': typeof privateappProjectsRouteWithChildren
   '/roster': typeof privateappRosterRoute
   '/settings': typeof privateappSettingsRoute
   '/onboarding/create-workspace': typeof privateOnboardingCreateWorkspaceRoute
@@ -419,6 +435,7 @@ export interface FileRoutesByTo {
   '/influencer/$influencerId': typeof privateappInfluencerInfluencerIdRoute
   '/lives/$liveId': typeof privateappLivesLiveIdRoute
   '/lives/new': typeof privateappLivesNewRoute
+  '/projects/$projectId': typeof privateappProjectsProjectIdRoute
   '/workspace/settings': typeof privateappWorkspaceSettingsRoute
   '/campaigns/$campaignId/invite': typeof publicCampaignsCampaignIdInviteRoute
   '/admin/campaigns/$campaignId': typeof privateadminAdminCampaignsCampaignIdRoute
@@ -448,6 +465,7 @@ export interface FileRoutesById {
   '/(private)/(app)/creators': typeof privateappCreatorsRoute
   '/(private)/(app)/financial': typeof privateappFinancialRoute
   '/(private)/(app)/lives': typeof privateappLivesRouteWithChildren
+  '/(private)/(app)/projects': typeof privateappProjectsRouteWithChildren
   '/(private)/(app)/roster': typeof privateappRosterRoute
   '/(private)/(app)/settings': typeof privateappSettingsRoute
   '/(private)/onboarding/create-workspace': typeof privateOnboardingCreateWorkspaceRoute
@@ -473,6 +491,7 @@ export interface FileRoutesById {
   '/(private)/(app)/influencer/$influencerId': typeof privateappInfluencerInfluencerIdRoute
   '/(private)/(app)/lives/$liveId': typeof privateappLivesLiveIdRoute
   '/(private)/(app)/lives/new': typeof privateappLivesNewRoute
+  '/(private)/(app)/projects/$projectId': typeof privateappProjectsProjectIdRoute
   '/(private)/(app)/workspace/settings': typeof privateappWorkspaceSettingsRoute
   '/(public)/campaigns/$campaignId/invite': typeof publicCampaignsCampaignIdInviteRoute
   '/(private)/(admin)/admin/campaigns/$campaignId': typeof privateadminAdminCampaignsCampaignIdRoute
@@ -499,6 +518,7 @@ export interface FileRouteTypes {
     | '/creators'
     | '/financial'
     | '/lives'
+    | '/projects'
     | '/roster'
     | '/settings'
     | '/onboarding/create-workspace'
@@ -524,6 +544,7 @@ export interface FileRouteTypes {
     | '/influencer/$influencerId'
     | '/lives/$liveId'
     | '/lives/new'
+    | '/projects/$projectId'
     | '/workspace/settings'
     | '/campaigns/$campaignId/invite'
     | '/admin/campaigns/$campaignId'
@@ -547,6 +568,7 @@ export interface FileRouteTypes {
     | '/creators'
     | '/financial'
     | '/lives'
+    | '/projects'
     | '/roster'
     | '/settings'
     | '/onboarding/create-workspace'
@@ -569,6 +591,7 @@ export interface FileRouteTypes {
     | '/influencer/$influencerId'
     | '/lives/$liveId'
     | '/lives/new'
+    | '/projects/$projectId'
     | '/workspace/settings'
     | '/campaigns/$campaignId/invite'
     | '/admin/campaigns/$campaignId'
@@ -597,6 +620,7 @@ export interface FileRouteTypes {
     | '/(private)/(app)/creators'
     | '/(private)/(app)/financial'
     | '/(private)/(app)/lives'
+    | '/(private)/(app)/projects'
     | '/(private)/(app)/roster'
     | '/(private)/(app)/settings'
     | '/(private)/onboarding/create-workspace'
@@ -622,6 +646,7 @@ export interface FileRouteTypes {
     | '/(private)/(app)/influencer/$influencerId'
     | '/(private)/(app)/lives/$liveId'
     | '/(private)/(app)/lives/new'
+    | '/(private)/(app)/projects/$projectId'
     | '/(private)/(app)/workspace/settings'
     | '/(public)/campaigns/$campaignId/invite'
     | '/(private)/(admin)/admin/campaigns/$campaignId'
@@ -746,6 +771,13 @@ declare module '@tanstack/react-router' {
       path: '/lives'
       fullPath: '/lives'
       preLoaderRoute: typeof privateappLivesRouteImport
+      parentRoute: typeof privateappLayoutRoute
+    }
+    '/(private)/(app)/projects': {
+      id: '/(private)/(app)/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof privateappProjectsRouteImport
       parentRoute: typeof privateappLayoutRoute
     }
     '/(private)/(app)/roster': {
@@ -915,6 +947,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/lives/new'
       preLoaderRoute: typeof privateappLivesNewRouteImport
       parentRoute: typeof privateappLivesRoute
+    }
+    '/(private)/(app)/projects/$projectId': {
+      id: '/(private)/(app)/projects/$projectId'
+      path: '/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof privateappProjectsProjectIdRouteImport
+      parentRoute: typeof privateappProjectsRoute
     }
     '/(private)/(app)/workspace/settings': {
       id: '/(private)/(app)/workspace/settings'
@@ -1150,12 +1189,24 @@ const privateappLivesRouteWithChildren = privateappLivesRoute._addFileChildren(
   privateappLivesRouteChildren,
 )
 
+interface privateappProjectsRouteChildren {
+  privateappProjectsProjectIdRoute: typeof privateappProjectsProjectIdRoute
+}
+
+const privateappProjectsRouteChildren: privateappProjectsRouteChildren = {
+  privateappProjectsProjectIdRoute: privateappProjectsProjectIdRoute,
+}
+
+const privateappProjectsRouteWithChildren =
+  privateappProjectsRoute._addFileChildren(privateappProjectsRouteChildren)
+
 interface privateappLayoutRouteChildren {
   privateappBrandsRoute: typeof privateappBrandsRoute
   privateappCampaignsRoute: typeof privateappCampaignsRouteWithChildren
   privateappCreatorsRoute: typeof privateappCreatorsRoute
   privateappFinancialRoute: typeof privateappFinancialRoute
   privateappLivesRoute: typeof privateappLivesRouteWithChildren
+  privateappProjectsRoute: typeof privateappProjectsRouteWithChildren
   privateappRosterRoute: typeof privateappRosterRoute
   privateappSettingsRoute: typeof privateappSettingsRoute
   privateappIndexRoute: typeof privateappIndexRoute
@@ -1169,6 +1220,7 @@ const privateappLayoutRouteChildren: privateappLayoutRouteChildren = {
   privateappCreatorsRoute: privateappCreatorsRoute,
   privateappFinancialRoute: privateappFinancialRoute,
   privateappLivesRoute: privateappLivesRouteWithChildren,
+  privateappProjectsRoute: privateappProjectsRouteWithChildren,
   privateappRosterRoute: privateappRosterRoute,
   privateappSettingsRoute: privateappSettingsRoute,
   privateappIndexRoute: privateappIndexRoute,

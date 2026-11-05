@@ -8,6 +8,7 @@ const ctx = vi.hoisted(() => ({
   navigate: vi.fn(),
   selectWorkspace: vi.fn(),
   user: { name: "Vini", email: "vini@hype.com", is_platform_admin: true } as Record<string, unknown>,
+  accountType: "brand" as string,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -19,7 +20,7 @@ vi.mock("@/contexts/auth-context", () => ({ useAuth: () => ({ user: ctx.user, se
 vi.mock("@/contexts/workspace-context", () => {
   const ws = { id: "w1", name: "Acme", role: "owner", photo: null };
   return {
-    useWorkspaceContext: () => ({ workspaces: [ws], selectedWorkspace: ws, selectWorkspace: ctx.selectWorkspace }),
+    useWorkspaceContext: () => ({ workspaces: [ws], selectedWorkspace: { ...ws, account_type: ctx.accountType }, selectWorkspace: ctx.selectWorkspace }),
     useWorkspacePermissions: () => ({ campaigns_read: true, catalog_read: true, community_lives_read: true, financial_read: true }),
   };
 });
@@ -33,6 +34,7 @@ beforeEach(() => {
   ctx.navigate.mockReset();
   ctx.selectWorkspace.mockReset();
   ctx.user = { name: "Vini", email: "vini@hype.com", is_platform_admin: true };
+  ctx.accountType = "brand";
 });
 
 describe("MobileNav no escopo da plataforma", () => {
@@ -124,6 +126,30 @@ describe("MobileNav no escopo do workspace (app)", () => {
     }
     expect(sheet.getByRole("button", { name: "Novo workspace" })).toBeInTheDocument();
     expect(sheet.queryByRole("button", { name: "Voltar ao app" })).not.toBeInTheDocument();
+  });
+
+  it("Projetos só existe para agência e vai para a gaveta (fora da barra)", async () => {
+    ctx.pathname = "/";
+    const { unmount } = render(<MobileNav />);
+    await userEvent.click(screen.getByRole("button", { name: "Mais opções" }));
+    expect(within(screen.getByRole("dialog", { name: "Mais opções" })).queryByRole("button", { name: "Projetos" })).not.toBeInTheDocument();
+    unmount();
+
+    ctx.accountType = "agency";
+    render(<MobileNav />);
+    const bar = within(screen.getByRole("navigation", { name: "Navegação principal" }));
+    expect(bar.queryByRole("button", { name: "Projetos" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Mais opções" }));
+    const sheet = within(screen.getByRole("dialog", { name: "Mais opções" }));
+    await userEvent.click(sheet.getByRole("button", { name: "Projetos" }));
+    expect(ctx.navigate).toHaveBeenCalledWith({ to: "/projects" });
+  });
+
+  it("estando em Projetos, o 'Mais' fica ativo (a página só existe na gaveta)", () => {
+    ctx.pathname = "/projects/abc";
+    ctx.accountType = "agency";
+    render(<MobileNav />);
+    expect(screen.getByRole("button", { name: "Mais opções" })).toHaveClass("on");
   });
 
   it("'Backoffice' na gaveta leva ao Admin", async () => {
