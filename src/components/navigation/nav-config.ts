@@ -56,7 +56,6 @@ export const WORKSPACE_NAV: readonly NavSection[] = [
       { id: "brands", label: "Marcas", icon: "box", href: "/brands", permission: "campaigns_read", agencyOnly: true },
       { id: "campaigns", label: "Campanhas", icon: "mega", href: "/campaigns", permission: "campaigns_read", pinned: true, badge: "activeCampaigns" },
       { id: "creators", label: "Criadores", icon: "users", href: "/creators", permission: "catalog_read", pinned: true },
-      { id: "roster", label: "Elenco", icon: "star", href: "/roster", permission: "catalog_read", agencyOnly: true },
       { id: "lives", label: "Lives", icon: "video", href: "/lives", permission: "community_lives_read" },
     ],
   },

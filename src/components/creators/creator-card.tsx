@@ -110,14 +110,8 @@ export function CreatorCard({
         </button>
       </header>
 
-      {(rosterStatus || (near && group.distance_km != null) || tags.length > 0) && (
+      {((near && group.distance_km != null) || tags.length > 0) && (
         <div className="ccd-tags">
-          {rosterStatus && (
-            <span className={`ccd-rs ${rosterStatus}`}>
-              <I n="star" cls="sm" />
-              {ROSTER_LABEL[rosterStatus]}
-            </span>
-          )}
           {near && group.distance_km != null && (
             <span className="ccd-d">
               <I n="flag" cls="sm" />
@@ -181,6 +175,12 @@ export function CreatorCard({
         <button type="button" className="btn out" onClick={stop(onInvite)}>
           Convidar
         </button>
+        {rosterStatus ? (
+          <span className={`ccd-roster st ${rosterStatus}`}>
+            <I n="star" cls="sm" />
+            {ROSTER_LABEL[rosterStatus]}
+          </span>
+        ) : null}
         {canRoster && (
           <button
             type="button"
@@ -192,7 +192,7 @@ export function CreatorCard({
             onClick={stop(onRoster)}
           >
             <I n="star" cls="sm" />
-            {rosterBusy ? "Enviando…" : "Adicionar ao elenco"}
+            {rosterBusy ? "Enviando…" : "Convidar para o elenco"}
           </button>
         )}
       </footer>

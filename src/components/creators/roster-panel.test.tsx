@@ -4,7 +4,6 @@ import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
-  isAgency: true,
   canWrite: true,
   members: [] as unknown[],
   remove: vi.fn(),
@@ -14,9 +13,7 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock("sonner", () => ({ toast: h.toast }));
-vi.mock("@tanstack/react-router", () => ({ createFileRoute: () => (opts: unknown) => opts, useNavigate: () => h.navigate }));
 vi.mock("@/contexts/workspace-context", () => ({ useWorkspacePermissions: () => ({ influencers_invite: h.canWrite }) }));
-vi.mock("@/hooks/use-agency-brands", () => ({ useIsAgencyWorkspace: () => h.isAgency }));
 vi.mock("@/hooks/use-agency-roster", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/hooks/use-agency-roster")>()),
   useAgencyRoster: () => ({ data: h.members, isLoading: false, error: null }),
@@ -25,9 +22,9 @@ vi.mock("@/hooks/use-agency-roster", async (importOriginal) => ({
 }));
 vi.mock("@/styles/agency-roster.css", () => ({}));
 
-import { Route } from "./roster";
+import { RosterPanel, type RosterSegment } from "./roster-panel";
 
-const Page = (Route as unknown as { component: () => ReactElement }).component;
+const Panel = ({ segment = "active" }: { segment?: RosterSegment }): ReactElement => <RosterPanel segment={segment} tabs={<div />} onFindCreators={h.navigate} />;
 
 const member = (id: string, name: string, status: "active" | "invited", over: Record<string, unknown> = {}) => ({
   id,
@@ -48,35 +45,28 @@ const member = (id: string, name: string, status: "active" | "invited", over: Re
 
 beforeEach(() => {
   vi.clearAllMocks();
-  h.isAgency = true;
   h.canWrite = true;
   h.members = [member("m1", "Bia Alves", "active"), member("m2", "Caio Lima", "invited"), member("m3", "Duda Reis", "active", { exclusive: false })];
 });
 
-describe("página Elenco", () => {
-  it("fora de agência explica que é exclusivo e não lista ninguém", () => {
-    h.isAgency = false;
-    render(<Page />);
-    expect(screen.getByText("O elenco é exclusivo de agências")).toBeInTheDocument();
-    expect(screen.queryByText("Bia Alves")).not.toBeInTheDocument();
-  });
-
-  it("mostra quem está no elenco, com a exclusividade de cada um, e os convites na outra aba", async () => {
-    const user = userEvent.setup();
-    render(<Page />);
+describe("Elenco dentro de Criadores (No elenco e Convites)", () => {
+  it("No elenco mostra quem aceitou, com a exclusividade de cada um; Convites mostra os pendentes", () => {
+    const { unmount } = render(<Panel />);
     expect(screen.getByText("Bia Alves")).toBeInTheDocument();
     expect(screen.getByText("Duda Reis")).toBeInTheDocument();
     expect(screen.queryByText("Caio Lima")).not.toBeInTheDocument();
     expect(screen.getByText("Exclusivo da agência")).toBeInTheDocument();
     expect(screen.getByText("Aberto a outros workspaces")).toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: /^Convites/ }));
+    unmount();
+    render(<Panel segment="invited" />);
     expect(screen.getByText("Caio Lima")).toBeInTheDocument();
+    expect(screen.queryByText("Bia Alves")).not.toBeInTheDocument();
     expect(screen.getByText("Eles entram no elenco quando aceitarem o convite pelo app.")).toBeInTheDocument();
   });
 
   it("alternar a exclusividade chama a API com o valor contrário", async () => {
     const user = userEvent.setup();
-    render(<Page />);
+    render(<Panel />);
     await user.click(screen.getByRole("switch", { name: "Exclusividade de Bia Alves" }));
     expect(h.setExclusive).toHaveBeenCalledWith({ rosterId: "m1", exclusive: false }, expect.any(Object));
     await user.click(screen.getByRole("switch", { name: "Exclusividade de Duda Reis" }));
@@ -85,7 +75,7 @@ describe("página Elenco", () => {
 
   it("remover pede confirmação antes de chamar a API; 'Voltar' desiste", async () => {
     const user = userEvent.setup();
-    render(<Page />);
+    render(<Panel />);
     const card = screen.getByText("Bia Alves").closest("li") as HTMLElement;
     await user.click(within(card).getByRole("button", { name: "Remover do elenco" }));
     expect(h.remove).not.toHaveBeenCalled();
@@ -99,8 +89,7 @@ describe("página Elenco", () => {
 
   it("cancelar um convite pendente usa a mesma confirmação", async () => {
     const user = userEvent.setup();
-    render(<Page />);
-    await user.click(screen.getByRole("tab", { name: /^Convites/ }));
+    render(<Panel segment="invited" />);
     const card = screen.getByText("Caio Lima").closest("li") as HTMLElement;
     await user.click(within(card).getByRole("button", { name: "Cancelar convite" }));
     expect(within(card).getByRole("alert")).toHaveTextContent("Cancelar o convite para Caio Lima?");
@@ -110,21 +99,15 @@ describe("página Elenco", () => {
 
   it("sem permissão de convidar: sem interruptor nem botões de remover", () => {
     h.canWrite = false;
-    render(<Page />);
+    render(<Panel />);
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remover do elenco" })).not.toBeInTheDocument();
     expect(screen.getByText("Bia Alves")).toBeInTheDocument();
   });
 
-  it("as abas mostram os contadores", () => {
-    render(<Page />);
-    expect(screen.getByRole("tab", { name: "No elenco 2" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Convites 1" })).toBeInTheDocument();
-  });
-
   it("cada linha traz @usuário, seguidores e a data de entrada no elenco", () => {
     h.members = [member("m1", "Bia Alves", "active", { responded_at: "2026-10-20T12:00:00Z" })];
-    render(<Page />);
+    render(<Panel />);
     const row = screen.getByText("Bia Alves").closest("li") as HTMLElement;
     expect(within(row).getByText("@bia")).toBeInTheDocument();
     expect(within(row).getByText("15 mil")).toBeInTheDocument();
@@ -137,7 +120,7 @@ describe("página Elenco", () => {
       member("m1", "Bia Alves", "active", { creator: { id: 1, name: "Bia Alves", photo: null, username: "bia", followers_total: 1000, networks: [{ type: "instagram", username: "bia", members: 1000 }] } }),
       member("m2", "Caio Lima", "active", { creator: { id: 2, name: "Caio Lima", photo: null, username: "caiol", followers_total: 9000, networks: [{ type: "tiktok", username: "caiol", members: 9000 }] } }),
     ];
-    render(<Page />);
+    render(<Panel />);
     const names = () => Array.from(screen.getByRole("list", { name: "Criadores no elenco" }).querySelectorAll(":scope > li")).map((li) => li.querySelector(".rst-id b")?.textContent);
     await user.click(screen.getByRole("button", { name: /^Ordenar:/ }));
     await user.click(screen.getByRole("menuitemradio", { name: "Mais seguidores" }));
@@ -157,9 +140,9 @@ describe("página Elenco", () => {
   it("elenco vazio orienta e leva ao catálogo", async () => {
     h.members = [];
     const user = userEvent.setup();
-    render(<Page />);
+    render(<Panel />);
     expect(screen.getByText("Seu elenco começa aqui")).toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: /Encontrar criadores/ })[0]);
-    expect(h.navigate).toHaveBeenCalledWith({ to: "/creators" });
+    expect(h.navigate).toHaveBeenCalledTimes(1);
   });
 });

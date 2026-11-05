@@ -69,6 +69,10 @@
 .pv .ccd-roster:hover:not(:disabled) { background: #f3e5ff; color: var(--brand); box-shadow: none; }
 .pv .ccd-roster:disabled { opacity: .6; cursor: progress; }
 .pv .ccd-roster .ico { width: 14px; height: 14px; }
+/* Estado já definido (convite enviado / no elenco): informação, não ação. */
+.pv .ccd-roster.st { cursor: default; background: var(--bg); color: var(--muted); }
+.pv .ccd-roster.st.active { background: #f3e5ff; color: var(--brand); }
+.pv .ccd-roster.st.active .ico { fill: var(--brand); }
 
 .pv .ccd button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 

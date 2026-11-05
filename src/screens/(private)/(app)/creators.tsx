@@ -24,7 +24,8 @@ import {
   useAddToInfluencerList,
 } from "@/hooks/use-creators-catalog";
 import { useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
-import { rosterErrorMessage, useInviteToRoster, useRosterStatusMap } from "@/hooks/use-agency-roster";
+import { RosterPanel } from "@/components/creators/roster-panel";
+import { rosterErrorMessage, useAgencyRoster, useInviteToRoster, useRosterStatusMap } from "@/hooks/use-agency-roster";
 import { CityPicker } from "@/components/creators/city-picker";
 import { MapCreatorPanel } from "@/components/creators/map-creator-panel";
 import {
@@ -67,7 +68,8 @@ export const Route = createFileRoute("/(private)/(app)/creators")({
 // Types & constants
 // ---------------------------------------------------------------------------
 
-type ActiveTab = "catalog" | "lists";
+/** Recortes da página: Todos (catálogo), No elenco e Convites (agência), Favoritos (listas salvas). */
+type Segment = "all" | "roster" | "invites" | "favorites";
 type FilterKey = "net" | "niche" | "uf" | "gen" | "fol" | "eng";
 type Opt = [value: string, label: string];
 
@@ -639,7 +641,6 @@ function CatalogTab({ tabs, onTotal }: { tabs: React.ReactNode; onTotal: (n: num
   const permissions = useWorkspacePermissions();
   const rosterMap = useRosterStatusMap();
   const inviteToRoster = useInviteToRoster();
-  const [rosterOnly, setRosterOnly] = useState(false);
   const canRoster = isAgency && permissions.influencers_invite;
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -683,9 +684,8 @@ function CatalogTab({ tabs, onTotal }: { tabs: React.ReactNode; onTotal: (n: num
       ...(nearMeLocation
         ? { lat: nearMeLocation.lat, lng: nearMeLocation.lng, radius_km: radiusKm }
         : {}),
-      ...(isAgency && rosterOnly ? { roster: true } : {}),
     };
-  }, [debouncedQ, filters, nearMeLocation, radiusKm, isAgency, rosterOnly]);
+  }, [debouncedQ, filters, nearMeLocation, radiusKm]);
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useCreatorsCatalog(queryFilters);
@@ -867,11 +867,6 @@ function CatalogTab({ tabs, onTotal }: { tabs: React.ReactNode; onTotal: (n: num
             <FilterButton count={activeCount} aria-haspopup="dialog" onClick={() => setFiltersOpen(true)}>
               Filtros
             </FilterButton>
-            {isAgency && (
-              <FilterButton icon="star" active={rosterOnly} aria-pressed={rosterOnly} onClick={() => setRosterOnly((v) => !v)}>
-                Meu elenco
-              </FilterButton>
-            )}
             <SortControl options={SORT_OPTIONS} value={filters.sort} onChange={(v) => setFilter("sort", v)} />
             <ViewSwitcher options={VIEW_OPTIONS} value={view} onChange={setView} />
           </PageToolbar>
@@ -1150,23 +1145,33 @@ function RouteComponent() {
   const { selectedWorkspace } = useWorkspaceContext();
   const permissions = useWorkspacePermissions();
   const navigate = useNavigate();
+  const isAgency = useIsAgencyWorkspace();
   const search = useSearch({ from: "/(private)/(app)/creators" });
-  const activeTab: ActiveTab =
-    (search as Record<string, string>).tab === "lists" && permissions.catalog_write
-      ? "lists"
-      : "catalog";
-
-  // O cabeçalho/abas ficam montados ao trocar de aba; só o conteúdo muda.
-  const [exploreCount, setExploreCount] = useState<number | undefined>(undefined);
-  const { data: myLists = [], isLoading: listsLoading } = useInfluencerLists();
   const canLists = !!permissions.catalog_write;
-  const [visitedLists, setVisitedLists] = useState(activeTab === "lists");
-  useEffect(() => {
-    if (activeTab === "lists") setVisitedLists(true);
-  }, [activeTab]);
 
-  function setTab(tab: ActiveTab) {
-    navigate({ search: tab === "lists" ? { tab: "lists" } : {} } as any);
+  // `tab=lists` é o endereço antigo de "Minhas listas": agora é Favoritos.
+  const requested = (search as Record<string, string>).tab;
+  const segment: Segment =
+    requested === "roster" && isAgency
+      ? "roster"
+      : requested === "invites" && isAgency
+        ? "invites"
+        : (requested === "favorites" || requested === "lists") && canLists
+          ? "favorites"
+          : "all";
+
+  // O cabeçalho e as abas ficam montados ao trocar de recorte; só o conteúdo muda.
+  const [exploreCount, setExploreCount] = useState<number | undefined>(undefined);
+  const { isLoading: listsLoading } = useInfluencerLists();
+  const membershipMap = useInfluencerMembershipMap();
+  const { data: roster = [], isLoading: rosterLoading } = useAgencyRoster();
+  const [visitedLists, setVisitedLists] = useState(segment === "favorites");
+  useEffect(() => {
+    if (segment === "favorites") setVisitedLists(true);
+  }, [segment]);
+
+  function setSegment(next: Segment) {
+    navigate({ search: next === "all" ? {} : { tab: next } } as any);
   }
 
   if (!selectedWorkspace) {
@@ -1185,28 +1190,41 @@ function RouteComponent() {
     );
   }
 
+  const inRoster = roster.filter((m) => m.status === "active").length;
+  const invited = roster.filter((m) => m.status === "invited").length;
   const tabs = (
     <PageTabs
-      ariaLabel="Seções de criadores"
-      value={activeTab}
-      onChange={setTab}
+      ariaLabel="Recortes de criadores"
+      value={segment}
+      onChange={setSegment}
       items={[
-        { id: "catalog", label: "Explorar", count: exploreCount },
-        ...(canLists ? [{ id: "lists" as const, label: "Minhas listas", count: !listsLoading ? myLists.length : undefined }] : []),
+        { id: "all", label: "Todos", count: exploreCount },
+        ...(isAgency
+          ? [
+              { id: "roster" as const, label: "No elenco", count: !rosterLoading ? inRoster : undefined },
+              { id: "invites" as const, label: "Convites", count: !rosterLoading ? invited : undefined },
+            ]
+          : []),
+        ...(canLists ? [{ id: "favorites" as const, label: "Favoritos", count: !listsLoading ? membershipMap.size : undefined }] : []),
       ]}
     />
   );
 
   return (
     <PageShell>
-      {/* As duas abas ficam montadas (a visitada fica só oculta): trocar não
-          refaz requisições, não mostra skeleton nem repete a animação. */}
-      <div className="pg-panel" hidden={activeTab !== "catalog"}>
+      {/* Todos e Favoritos ficam montados (o visitado fica só oculto): trocar não refaz requisições, não mostra
+          skeleton nem repete a animação. Elenco e Convites são leituras leves e montam quando abertos. */}
+      <div className="pg-panel" hidden={segment !== "all"}>
         <CatalogTab tabs={tabs} onTotal={setExploreCount} />
       </div>
       {canLists && visitedLists && (
-        <div className="pg-panel" hidden={activeTab !== "lists"}>
+        <div className="pg-panel" hidden={segment !== "favorites"}>
           <ListsTab tabs={tabs} />
+        </div>
+      )}
+      {isAgency && (segment === "roster" || segment === "invites") && (
+        <div className="pg-panel">
+          <RosterPanel key={segment} segment={segment === "roster" ? "active" : "invited"} tabs={tabs} onFindCreators={() => setSegment("all")} />
         </div>
       )}
     </PageShell>

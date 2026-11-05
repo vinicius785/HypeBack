@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Route } from "@/screens/(private)/(app)/creators";
@@ -6,7 +6,7 @@ import type { CatalogItem } from "@/shared/services/creators-catalog";
 
 const catalog = vi.hoisted(() => ({ items: [] as CatalogItem[], cached: null as unknown }));
 // Elenco da agência (marca = sem elenco): o catálogo de marca nunca mostra nada disso.
-const agency = vi.hoisted(() => ({ is: false, roster: new Map<number, "invited" | "active">(), canInvite: true, invite: vi.fn(), toast: { success: vi.fn(), error: vi.fn() } }));
+const agency = vi.hoisted(() => ({ is: false, roster: new Map<number, "invited" | "active">(), canInvite: true, catalogWrite: false, invite: vi.fn(), toast: { success: vi.fn(), error: vi.fn() } }));
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: unknown) => ({ options }),
@@ -15,12 +15,13 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("@/contexts/workspace-context", () => ({
   useWorkspaceContext: () => ({ selectedWorkspace: { id: "w1", name: "Marca" } }),
-  useWorkspacePermissions: () => ({ catalog_read: true, catalog_write: false, influencers_invite: agency.canInvite }),
+  useWorkspacePermissions: () => ({ catalog_read: true, catalog_write: agency.catalogWrite, influencers_invite: agency.canInvite }),
 }));
 vi.mock("sonner", () => ({ toast: agency.toast }));
 vi.mock("@/hooks/use-agency-brands", () => ({ useIsAgencyWorkspace: () => agency.is }));
 vi.mock("@/hooks/use-agency-roster", () => ({
   useRosterStatusMap: () => agency.roster,
+  useAgencyRoster: () => ({ data: [...agency.roster].map(([id, status]) => ({ id: String(id), status })), isLoading: false }),
   useInviteToRoster: () => ({ mutate: agency.invite, isPending: false }),
   rosterErrorMessage: (_e: unknown, fallback: string) => fallback,
 }));
@@ -90,6 +91,7 @@ const creator = (id: number): CatalogItem => ({
 
 beforeEach(() => {
   agency.is = false;
+  agency.catalogWrite = false;
   agency.roster = new Map();
   agency.canInvite = true;
   agency.invite.mockReset();
@@ -176,22 +178,45 @@ describe("Criadores · elenco da agência", () => {
     render(<Page />);
     expect(screen.queryByRole("button", { name: "Meu elenco" })).toBeNull();
     expect(screen.queryByRole("button", { name: /para o elenco/ })).toBeNull();
-    expect(screen.queryByText("No elenco")).toBeNull();
+    expect(screen.queryByText("No elenco", { selector: ".ccd-roster" })).toBeNull();
   });
 
-  it("agência: 'Meu elenco' aparece, os cartões marcam quem está no elenco ou foi convidado e convidar usa o id do criador", () => {
+  it("agência: os cartões marcam quem está no elenco ou foi convidado e convidar usa o id do criador", () => {
     agency.is = true;
     agency.roster = new Map([[1, "active"], [2, "invited"]]);
     catalog.items = [creator(1), creator(2), creator(3)];
     render(<Page />);
-    expect(screen.getByRole("button", { name: "Meu elenco" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByText("No elenco")).toBeInTheDocument();
-    expect(screen.getByText("Convite enviado")).toBeInTheDocument();
+    // O recorte "No elenco" substitui o antigo botão "Meu elenco": não há controle duplicado na barra.
+    expect(screen.queryByRole("button", { name: "Meu elenco" })).toBeNull();
+    expect(screen.getByText("No elenco", { selector: ".ccd-roster" })).toBeInTheDocument();
+    expect(screen.getByText("Convite enviado", { selector: ".ccd-roster" })).toBeInTheDocument();
     // Só quem ainda não tem vínculo ganha o botão de convidar.
     expect(screen.queryByRole("button", { name: "Convidar Criador 1 para o elenco" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Convidar Criador 2 para o elenco" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Convidar Criador 3 para o elenco" }));
     expect(agency.invite).toHaveBeenCalledWith(3, expect.any(Object));
+  });
+
+  it("agência: as abas são Todos, No elenco, Convites e Favoritos (com a contagem do elenco)", () => {
+    agency.is = true;
+    agency.catalogWrite = true;
+    agency.roster = new Map([[1, "active"], [2, "invited"], [3, "active"]]);
+    render(<Page />);
+    const tabs = within(screen.getByRole("tablist", { name: "Recortes de criadores" }));
+    expect(tabs.getAllByRole("tab").map((t) => t.textContent?.replace(/\d+$/, "").trim())).toEqual(["Todos", "No elenco", "Convites", "Favoritos"]);
+    expect(tabs.getByRole("tab", { name: /No elenco/ })).toHaveTextContent("2");
+    expect(tabs.getByRole("tab", { name: /Convites/ })).toHaveTextContent("1");
+  });
+
+  it("marca: só Todos e Favoritos (sem elenco nem convites); sem permissão de escrita, só Todos", () => {
+    agency.catalogWrite = true;
+    const { unmount } = render(<Page />);
+    const tabs = within(screen.getByRole("tablist", { name: "Recortes de criadores" }));
+    expect(tabs.getAllByRole("tab").map((t) => t.textContent?.replace(/\d+$/, "").trim())).toEqual(["Todos", "Favoritos"]);
+    unmount();
+    agency.catalogWrite = false;
+    render(<Page />);
+    expect(within(screen.getByRole("tablist", { name: "Recortes de criadores" })).getAllByRole("tab")).toHaveLength(1);
   });
 
   it("convite aceito pela API avisa que o criador entra quando aceitar", () => {
@@ -207,18 +232,8 @@ describe("Criadores · elenco da agência", () => {
     agency.canInvite = false;
     agency.roster = new Map([[1, "active"]]);
     render(<Page />);
-    expect(screen.getByText("No elenco")).toBeInTheDocument();
+    expect(screen.getByText("No elenco", { selector: ".ccd-roster" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /para o elenco/ })).toBeNull();
-  });
-
-  it("'Meu elenco' liga e desliga", () => {
-    agency.is = true;
-    render(<Page />);
-    const toggle = screen.getByRole("button", { name: "Meu elenco" });
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute("aria-pressed", "true");
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute("aria-pressed", "false");
   });
 
   it("também oferece escolher outra região, sem passar pelo painel de filtros", async () => {
