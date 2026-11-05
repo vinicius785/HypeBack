@@ -301,11 +301,11 @@ function TaskEditorBody({
   const feedbackStates = Object.values(feedback);
   const failed = feedbackStates.find((f) => f?.state === "error");
   const status = failed ? (
-    <span className="error">Não foi possível salvar</span>
+    <span key="err" className="error">Não foi possível salvar</span>
   ) : feedbackStates.some((f) => f?.state === "saving") || textPending ? (
-    <span role="status">{textPending && !feedbackStates.some((f) => f?.state === "saving") ? "Alterações pendentes" : "Salvando…"}</span>
+    <span key="saving" role="status">{textPending && !feedbackStates.some((f) => f?.state === "saving") ? "Alterações pendentes" : "Salvando…"}</span>
   ) : (
-    <span className="saved" role="status">
+    <span key="saved" className="saved" role="status">
       Salvo ✓
     </span>
   );

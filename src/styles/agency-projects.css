@@ -593,3 +593,38 @@
 .pv .apj-pw-star[data-on] svg { fill: currentColor; }
 .pv .apj-pw .apj-mi .iav { flex: none; width: 22px; height: 22px; }
 .pv .apj-st-new .apj-pop2 { top: auto; bottom: calc(100% + 6px); }
+
+/* ---------- Animações das tarefas (todas desligadas com "reduzir movimento") ---------- */
+@keyframes apj-in-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes apj-in-right { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes apj-pop-in { from { opacity: 0; transform: translateY(-4px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes apj-saved { 0% { opacity: 0; transform: translateY(3px) scale(.96); } 60% { transform: translateY(0) scale(1.04); } 100% { opacity: 1; transform: none; } }
+@keyframes apj-fold { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+.pv .apj-td-side { animation: apj-in-right .28s var(--ease) both; }
+.pv .apj-td-col > .apj-tm > *, .pv .apj-td-col .apj-tm-fields > * { animation: apj-in-up .32s var(--ease) both; }
+.pv .apj-td-col .apj-tm > :nth-child(2) { animation-delay: .04s; }
+.pv .apj-td-col .apj-tm > :nth-child(3) { animation-delay: .08s; }
+.pv .apj-td-col .apj-tm > :nth-child(4) { animation-delay: .12s; }
+.pv .apj-tm-sec > :not(.apj-tm-sech) { animation: apj-fold .22s var(--ease) both; }
+.pv .apj-pop2 { animation: apj-pop-in .14s var(--ease) both; transform-origin: top left; }
+.pv .apj-st-new .apj-pop2 { transform-origin: bottom left; }
+.pv .apj-td-status > span { display: inline-block; animation: apj-saved .3s var(--ease) both; }
+.pv .apj-st-row, .pv .apj-tm-comment, .pv .apj-tm-act li, .pv .apj-tm-row, .pv .apj-st-new { animation: apj-in-up .26s var(--ease) both; }
+.pv .apj-st-row, .pv .apj-tm-rowt, .pv .apj-st-c { transition: background-color .2s, color .2s; }
+.pv .apj-st-row:hover { background: var(--bg); }
+.pv .apj-st-row input[type="checkbox"]:active:not(:disabled) { transform: scale(.82); }
+.pv .apj-st-row input[type="checkbox"] { transition: background-color .2s, border-color .2s, transform .12s; }
+.pv .apj-tm-fold svg { transition: transform .2s var(--ease); }
+.pv .apj-chip, .pv .apj-chip-x, .pv .apj-mi, .pv .apj-cal-d { transition: background-color .15s, color .15s, box-shadow .15s, transform .12s; }
+.pv button.apj-chip:active { transform: scale(.97); }
+.pv .apj-tk { animation: apj-in-up .28s var(--ease) both; transition: box-shadow .2s, opacity .2s, transform .2s var(--ease); }
+.pv .apj-tk:hover { transform: translateY(-2px); }
+.pv .apj-tk[data-dragging] { transform: none; }
+.pv .apj-dz { transition: background-color .2s, border-color .2s, transform .2s var(--ease); }
+.pv .apj-dz[data-over] { transform: scale(1.01); }
+.pv .apj-bar i, .pv .apj-bar-mini i { transition: width .45s var(--ease); }
+@media (prefers-reduced-motion: reduce) {
+  .pv .apj-td-side, .pv .apj-td-col *, .pv .apj-tm-sec > *, .pv .apj-pop2, .pv .apj-td-status > span, .pv .apj-st-row, .pv .apj-tm-comment, .pv .apj-tm-act li, .pv .apj-tm-row, .pv .apj-st-new, .pv .apj-tk { animation: none !important; }
+  .pv .apj-tk:hover, .pv .apj-dz[data-over], .pv button.apj-chip:active { transform: none; }
+}
