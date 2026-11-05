@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
+import { useAuth } from "@/contexts/auth-context";
+import { useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
 import { useCampaigns } from "@/hooks/use-campaigns";
 import { useWorkspaceOverview } from "@/hooks/use-workspace-overview";
 import { getCampaignStatusValue } from "@/shared/utils/campaign-status";
@@ -38,6 +40,9 @@ function RouteComponent() {
   const navigate = useNavigate();
   const { selectedWorkspace, isInitialized } = useWorkspaceContext();
   const permissions = useWorkspacePermissions();
+  const { user } = useAuth();
+  const isAgency = useIsAgencyWorkspace();
+  const tasksRef = useRef<HTMLElement>(null);
   const { data: campaignsData = [], isLoading, error } = useCampaigns({
     enabled: !!selectedWorkspace,
   });
@@ -249,18 +254,32 @@ function RouteComponent() {
 
   const greeting = getGreeting();
   const workspaceName = selectedWorkspace?.name ?? "Início";
+  // Agência: a página é da pessoa (foto, primeiro nome, data), não da empresa.
+  const personName = user?.name?.trim() || workspaceName;
+  const firstName = personName.split(/\s+/)[0];
+  const taskTotals = new Map<string, number>();
+  for (const t of tasks) taskTotals.set(t.kind, (taskTotals.get(t.kind) ?? 0) + t.count);
+  const personalStats: Array<[string, number, string]> = [
+    ["Aguardando você", pendingTaskCount, pendingTaskCount === 1 ? "item para decidir" : "itens para decidir"],
+    ["Roteiros", taskTotals.get("script") ?? 0, "para aprovar"],
+    ["Conteúdos", taskTotals.get("content") ?? 0, "para aprovar"],
+    ["Inscrições", taskTotals.get("participant") ?? 0, "para analisar"],
+  ];
 
   return (
     <div className="pv">
       <div className="wrap dash" style={{ maxWidth: "none" }}>
         <div className="head fade">
           <div className="hello">
-            <WorkspaceBrand name={workspaceName} photo={selectedWorkspace?.photo} />
+            <WorkspaceBrand
+              name={isAgency ? personName : workspaceName}
+              photo={isAgency ? (user?.avatar ?? undefined) : selectedWorkspace?.photo}
+            />
             <div>
               <h1>
-                {greeting}, {workspaceName}
+                {greeting}, {isAgency ? firstName : workspaceName}
               </h1>
-              <p>Acompanhe as campanhas, as métricas e as aprovações do seu workspace.</p>
+              <p>{isAgency ? todayLabel() : "Acompanhe as campanhas, as métricas e as aprovações do seu workspace."}</p>
             </div>
           </div>
           <div className="btns">
@@ -279,33 +298,57 @@ function RouteComponent() {
           </div>
         </div>
 
-        <div className="fade">
-          <div className="card">
-            <div className="stats">
-              {(
-                [
-                  ["Total", stats.total, "campanhas no workspace"],
-                  ["Ativas", stats.active, stats.active === 0 ? "nenhuma em andamento" : "em andamento"],
-                  ["Finalizadas", stats.finished, "concluídas"],
-                  ["Rascunhos", stats.draft, "não publicadas"],
-                ] as const
-              ).map(([l, n, d]) => (
-                <div key={l} className="stat">
-                  <small>{l}</small>
-                  <b>{n}</b>
-                  <span className="d">{d}</span>
+        {isAgency ? (
+          showOverview && (
+            <div className="fade">
+              <div className="card">
+                <div className="stats" role="group" aria-label="O que precisa de você">
+                  {personalStats.map(([l, n, d]) => (
+                    <button
+                      key={l}
+                      type="button"
+                      className={`stat${n === 0 ? " zero" : ""}`}
+                      onClick={() => tasksRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                    >
+                      <small>{l}</small>
+                      <b>{isOverviewLoading ? "—" : n}</b>
+                      <span className="d">{d}</span>
+                    </button>
+                  ))}
                 </div>
-              ))}
+              </div>
+            </div>
+          )
+        ) : (
+        <div className="fade">
+            <div className="card">
+              <div className="stats">
+                {(
+                  [
+                    ["Total", stats.total, "campanhas no workspace"],
+                    ["Ativas", stats.active, stats.active === 0 ? "nenhuma em andamento" : "em andamento"],
+                    ["Finalizadas", stats.finished, "concluídas"],
+                    ["Rascunhos", stats.draft, "não publicadas"],
+                  ] as const
+                ).map(([l, n, d]) => (
+                  <div key={l} className="stat">
+                    <small>{l}</small>
+                    <b>{n}</b>
+                    <span className="d">{d}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+  
+        )}
 
         {showOverview && (
           <div className="cols fade">
-            <section className="tkcard" aria-labelledby="tasks-heading">
+            <section className="tkcard" aria-labelledby="tasks-heading" ref={tasksRef}>
               <div className="card-h" style={{ marginBottom: 22 }}>
                 <div>
-                  <h2 id="tasks-heading">Tarefas e aprovações</h2>
+                  <h2 id="tasks-heading">{isAgency ? "Meu trabalho" : "Tarefas e aprovações"}</h2>
                   <p className="sub">
                     {isOverviewLoading ? "Carregando pendências…" : "O que precisa da sua decisão"}
                   </p>
@@ -475,6 +518,12 @@ function RouteComponent() {
       </div>
     </div>
   );
+}
+
+/** "Quinta-feira, 5 de novembro". */
+function todayLabel(): string {
+  const t = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
 function getGreeting(): string {

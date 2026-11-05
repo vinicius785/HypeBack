@@ -87,6 +87,7 @@
 .pv .stat small { color: var(--muted); font-size: 13.5px; font-weight: 500; }
 .pv .stat b { font-size: 44px; font-weight: 600; letter-spacing: -.05em; line-height: 1; }
 .pv .stat .d { font-size: 12.5px; color: var(--muted); }
+.pv button.stat { cursor: pointer; transition: opacity .2s var(--ease); } .pv button.stat:hover { opacity: .72; } .pv button.stat.zero b { color: var(--muted); } .pv button.stat:focus-visible { outline: 3px solid var(--brand); outline-offset: 4px; border-radius: 12px; }
 .pv .stat .d em { font-style: normal; color: var(--brand); font-weight: 700; }
 
 .pv .cols { display: grid; grid-template-columns: 5fr 7fr; gap: 20px; align-items: start; }
