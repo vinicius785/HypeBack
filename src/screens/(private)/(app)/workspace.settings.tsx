@@ -50,7 +50,7 @@ function WorkspaceSettingsScreen() {
   const workspaceId = selectedWorkspace?.id;
   const perms = selectedWorkspace?.permissions;
 
-  const { data: members = [], isLoading: loadingMembers } = useWorkspaceMembersQuery(workspaceId);
+  const { data: members = [], isLoading: loadingMembers, isError: membersError, refetch: refetchMembers } = useWorkspaceMembersQuery(workspaceId);
   const { data: niches = [] } = useNiches();
 
   const [tab, setTab] = useState<Tab>("brand");
@@ -267,11 +267,11 @@ function WorkspaceSettingsScreen() {
 
   return (
     <div className="pv">
-      <div className="wrap" style={{ maxWidth: "none" }}>
+      <div className="wrap stg" style={{ maxWidth: "none" }}>
         <div className="head fade">
           <div>
             <h1>Configurações</h1>
-            <p>Marca, dados da empresa e equipe de {ws.name}.</p>
+            <p>Gerencie a identidade, os acessos e as configurações do seu workspace.</p>
           </div>
         </div>
         <div className="tools fade wkx-tl">
@@ -296,6 +296,8 @@ function WorkspaceSettingsScreen() {
               canEdit={canEditSettings}
               canPhoto={canPhoto}
               saving={updateMutation.isPending}
+              saved={updateMutation.isSuccess}
+              saveError={updateMutation.isError ? apiErr(updateMutation.error) : null}
               photoPending={photoMutation.isPending}
               onSave={(v) => updateMutation.mutate(v)}
               onPhoto={(f) => photoMutation.mutate(f)}
@@ -313,6 +315,8 @@ function WorkspaceSettingsScreen() {
               workspaceName={ws.name}
               members={members}
               loading={loadingMembers}
+              error={membersError}
+              onRetry={() => refetchMembers()}
               selfId={user?.id}
               canInvite={canInvite}
               canManagePermissions={canRoleWrite}

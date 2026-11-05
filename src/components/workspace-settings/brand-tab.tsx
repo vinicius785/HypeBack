@@ -6,6 +6,11 @@ import { z } from "zod";
 import { I } from "@/components/prototype/ui";
 import { getUploadUrl } from "@/lib/utils/api";
 import type { Niche } from "@/shared/types";
+import "@/styles/settings-redesign.css";
+
+import { NichePicker } from "./niche-picker";
+
+const DESC_MAX = 200;
 
 const schema = z.object({
   name: z.string().trim().min(2, "Informe o nome da marca").max(120),
@@ -25,10 +30,15 @@ interface Props {
   canPhoto: boolean;
   saving: boolean;
   photoPending: boolean;
+  /** O último salvamento deu certo (vale enquanto não houver nova edição). */
+  saved?: boolean;
+  /** Mensagem do último salvamento que falhou. */
+  saveError?: string | null;
   onSave: (v: BrandValues) => void;
   onPhoto: (f: File) => void;
 }
 
+/** Aba Marca: identidade (logo, nome, descrição), nicho e a barra de salvamento, com a prévia ao lado. */
 export function BrandTab({
   name,
   description,
@@ -39,6 +49,8 @@ export function BrandTab({
   canPhoto,
   saving,
   photoPending,
+  saved = false,
+  saveError = null,
   onSave,
   onPhoto,
 }: Props) {
@@ -59,127 +71,137 @@ export function BrandTab({
     reset({ name, description, niche_id: nicheId });
   }, [name, description, nicheId, reset]);
 
-  const niche = watch("niche_id") ?? "";
+  const live = watch();
+  const niche = live.niche_id ?? "";
+  const nicheName = niches.find((n) => String(n.id) === niche)?.name;
   const photoUrl = photo ? getUploadUrl(photo) : undefined;
 
   const [photoBroken, setPhotoBroken] = useState(false);
   useEffect(() => setPhotoBroken(false), [photoUrl]);
-
+  const showPhoto = !!photoUrl && !photoBroken;
   const pick = () => fileRef.current?.click();
+  const discard = () => reset({ name, description, niche_id: nicheId });
+
+  const shownName = (live.name ?? "").trim() || name || "Sua marca";
+  const shownDesc = (live.description ?? "").trim();
 
   return (
-    <form className="wkx-cd" onSubmit={handleSubmit(onSave)} noValidate>
-      <div className="wkx-h">
-        <div>
-          <h3>Marca</h3>
-          <p>Como a sua marca aparece para os criadores.</p>
-        </div>
-      </div>
-      <div className="wkx-br">
-        <div className="lvf-cvc wkx-lg">
-          <label className="n4l">Logo</label>
-          {photoUrl && !photoBroken ? (
-            <div className="lvf-cv">
-              <img src={photoUrl} alt="" onError={() => setPhotoBroken(true)} />
-              {canPhoto && (
-                <div className="lvf-cva">
-                  <button type="button" className="nbtn" disabled={photoPending} onClick={pick}>
+    <form className="stg-form" onSubmit={handleSubmit(onSave)} noValidate>
+      <div className="stg-cols">
+        <div className="stg-main">
+          <section className="stg-card" aria-labelledby="stg-id">
+            <header>
+              <h3 id="stg-id">Identidade da marca</h3>
+              <p>Logo, nome e descrição que os criadores veem.</p>
+            </header>
+            <div className="stg-id">
+              <div className="stg-logo">
+                {showPhoto ? <img src={photoUrl} alt="Logo da marca" onError={() => setPhotoBroken(true)} /> : <span aria-hidden="true">{(name || "?").slice(0, 1).toUpperCase()}</span>}
+                {canPhoto && (
+                  <button type="button" className="stg-logo-b" disabled={photoPending} onClick={pick}>
                     <I n="image" cls="sm" />
-                    {photoPending ? "Enviando…" : "Trocar"}
+                    {photoPending ? "Enviando…" : showPhoto ? "Trocar" : "Enviar logo"}
                   </button>
+                )}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png"
+                  hidden
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = "";
+                    if (f) onPhoto(f);
+                  }}
+                />
+              </div>
+              <div className="stg-fields">
+                <div className={`n4c wkx-fd ${errors.name ? "bad" : ""}`}>
+                  <label className="n4l" htmlFor="wkn">
+                    Nome da marca
+                  </label>
+                  <input className="cm-in" id="wkn" placeholder="Ex.: Casa Lume" autoComplete="off" disabled={!canEdit} {...register("name")} />
+                  {errors.name && <small className="nfe">{errors.name.message}</small>}
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="wkx-lv">
-              <div className="lvx-im sq wkx-ph">{(name || "?").slice(0, 1).toUpperCase()}</div>
-              {canPhoto && (
-                <button type="button" className="wkx-ch" disabled={photoPending} onClick={pick}>
-                  <I n="image" cls="sm" />
-                  {photoPending ? "Enviando…" : "Trocar logo"}
-                </button>
-              )}
-            </div>
-          )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/jpg,image/png"
-            hidden
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.target.value = "";
-              if (f) onPhoto(f);
-            }}
-          />
-          <small className="wkx-hn">
-            {canPhoto ? "Quadrada · 1000 × 1000 px" : "Apenas administradores podem alterar a foto."}
-          </small>
-        </div>
-
-        <div className="wkx-ff">
-          <div className={`n4c wkx-fd ${errors.name ? "bad" : ""}`}>
-            <label className="n4l" htmlFor="wkn">
-              Nome da marca
-            </label>
-            <input
-              className="cm-in"
-              id="wkn"
-              placeholder="Ex.: Casa Lume"
-              autoComplete="off"
-              disabled={!canEdit}
-              {...register("name")}
-            />
-            {errors.name && <small className="nfe">{errors.name.message}</small>}
-          </div>
-          <div className="n4c">
-            <label className="n4l" htmlFor="wkd">
-              Descrição
-            </label>
-            <textarea
-              className="cm-ta"
-              id="wkd"
-              rows={3}
-              maxLength={200}
-              placeholder="Sobre o workspace…"
-              disabled={!canEdit}
-              {...register("description")}
-            />
-          </div>
-          {niches.length > 0 && (
-            <div className="n4c">
-              <label className="n4l">Nicho principal</label>
-              <div className="nchips">
-                {niches.map((n) => {
-                  const id = String(n.id);
-                  const on = niche === id;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      className={`nch ${on ? "on" : ""}`}
-                      aria-pressed={on}
-                      disabled={!canEdit}
-                      onClick={() => setValue("niche_id", on ? "" : id, { shouldDirty: true })}
-                    >
-                      {on && <I n="check" cls="sm" />}
-                      {n.name}
-                    </button>
-                  );
-                })}
+                <div className="n4c">
+                  <label className="n4l" htmlFor="wkd">
+                    Descrição <em>(opcional)</em>
+                  </label>
+                  <textarea
+                    className="cm-ta"
+                    id="wkd"
+                    rows={3}
+                    maxLength={DESC_MAX}
+                    placeholder="Conte em poucas linhas o que a marca faz"
+                    disabled={!canEdit}
+                    {...register("description")}
+                  />
+                  <small className="stg-cnt">
+                    {(live.description ?? "").length}/{DESC_MAX}
+                  </small>
+                </div>
               </div>
             </div>
+            <p className="stg-hint">{canPhoto ? "Logo quadrada, JPG ou PNG, de preferência 1000 × 1000 px." : "Apenas administradores podem alterar o logo."}</p>
+          </section>
+
+          {niches.length > 0 && (
+            <section className="stg-card" aria-labelledby="stg-nc">
+              <header>
+                <h3 id="stg-nc">Nicho de atuação</h3>
+                <p>Escolha o nicho principal da marca. Ele ajuda a encontrar criadores e campanhas parecidas.</p>
+              </header>
+              <NichePicker niches={niches} value={niche} disabled={!canEdit} onChange={(id) => setValue("niche_id", id, { shouldDirty: true })} />
+            </section>
           )}
-          {!canEdit && (
-            <p className="wkx-note">Somente administradores podem editar nome, descrição e nicho.</p>
-          )}
+
+          {!canEdit && <p className="stg-hint">Somente administradores podem editar nome, descrição e nicho.</p>}
         </div>
+
+        <aside className="stg-side" aria-label="Prévia para os criadores">
+          <div className="stg-prev">
+            <small>Prévia para os criadores</small>
+            <div className="stg-pc">
+              <div className="stg-pl">{showPhoto ? <img src={photoUrl} alt="" /> : <span>{shownName.slice(0, 1).toUpperCase()}</span>}</div>
+              <b>{shownName}</b>
+              {nicheName && <span className="stg-pn">{nicheName}</span>}
+              <p className={shownDesc ? "" : "mute"}>{shownDesc || "A descrição da marca aparece aqui."}</p>
+            </div>
+            <em>Prévia aproximada: o app dos criadores pode mostrar menos texto.</em>
+          </div>
+        </aside>
       </div>
+
       {canEdit && (
-        <div className="wkx-ac">
+        <div className={`stg-bar${isDirty || saving || saveError || saved ? " show" : ""}${saveError ? " err" : ""}`} role="status" aria-live="polite">
+          <span className="stg-bs">
+            {saving ? (
+              "Salvando…"
+            ) : saveError ? (
+              <>
+                <I n="alert" cls="sm" />
+                Não foi possível salvar: {saveError}
+              </>
+            ) : isDirty ? (
+              <>
+                <i className="stg-dot" aria-hidden="true" />
+                Alterações não salvas
+              </>
+            ) : saved ? (
+              <>
+                <I n="check" cls="sm" />
+                Alterações salvas
+              </>
+            ) : null}
+          </span>
+          {isDirty && (
+            <button type="button" className="btn out" disabled={saving} onClick={discard}>
+              Descartar
+            </button>
+          )}
           <button type="submit" className="btn" disabled={!isDirty || saving}>
             <I n="check" cls="sm" />
-            {saving ? "Salvando…" : "Salvar alterações"}
+            {saving ? "Salvando…" : saveError ? "Tentar de novo" : "Salvar alterações"}
           </button>
         </div>
       )}
