@@ -311,9 +311,10 @@ describe("edição: subtarefas", () => {
     expect(subs.getByRole("progressbar", { name: "Subtarefas concluídas" })).toHaveAttribute("aria-valuenow", "50");
     expect(screen.getByRole("heading", { name: /Subtarefas/ })).toHaveTextContent("1/2");
 
+    await user.click(subs.getByRole("button", { name: "+ Adicionar subtarefa" }));
     await user.type(subs.getByLabelText("Nova subtarefa"), "Revisar{Enter}");
     expect(h.create).toHaveBeenCalledWith({ title: "Revisar", parent_task_id: "t1" });
-    await waitFor(() => expect(subs.getByLabelText("Nova subtarefa")).toHaveValue(""));
+    await waitFor(() => expect(subs.queryByLabelText("Nova subtarefa")).not.toBeInTheDocument());
 
     await user.click(subs.getByRole("checkbox", { name: "Concluir subtarefa Pesquisa" }));
     expect(h.update).toHaveBeenCalledWith({ taskId: "s1", input: { status: "concluido" } });
@@ -334,6 +335,7 @@ describe("edição: subtarefas", () => {
     const user = userEvent.setup();
     renderEdit();
     const subs = section("Subtarefas");
+    await user.click(subs.getByRole("button", { name: "+ Adicionar subtarefa" }));
     await user.type(subs.getByLabelText("Nova subtarefa"), "{Enter}");
     expect(subs.getByText("Informe o título da subtarefa")).toBeInTheDocument();
     expect(h.create).not.toHaveBeenCalled();

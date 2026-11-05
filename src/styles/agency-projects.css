@@ -572,3 +572,24 @@
 .pv .apj-st-row input[type="checkbox"]:hover:not(:disabled) { border-color: var(--apj-ok); }
 .pv .apj-st-row input[type="checkbox"]:checked { background-color: var(--apj-ok); border-color: var(--apj-ok); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 6.5l2.2 2.2L9.5 3.8'/%3E%3C/svg%3E"); }
 .pv .apj-st-row input[type="checkbox"]:disabled { cursor: default; opacity: .6; }
+.pv .apj-st-open { align-self: flex-start; padding: 8px 6px; font-size: 13.5px; color: var(--muted); border-radius: 8px; }
+.pv .apj-st-open:hover { color: var(--ink); background: var(--bg); }
+.pv .apj-st-new { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.pv .apj-st-new > input { width: 100%; border: 0; background: transparent; font: inherit; font-size: 14px; font-weight: 500; color: var(--ink); outline: none; }
+.pv .apj-st-new > input::placeholder { color: var(--muted); font-weight: 400; }
+.pv .apj-st-new-f { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.pv .apj-st-new-p { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pv .apj-st-new-b { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.pv .apj-st-new-b .btn { height: 32px; min-height: 32px; padding: 0 14px; font-size: 13px; }
+.pv .apj-pw-h { margin: 0; padding: 8px 10px 6px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.pv .apj-pw-l { display: flex; flex-direction: column; gap: 1px; margin: 0; padding: 0; list-style: none; max-height: 260px; overflow-y: auto; }
+.pv .apj-pw-r { display: flex; align-items: center; gap: 2px; }
+.pv .apj-pw-r .apj-mi { flex: 1; min-width: 0; }
+.pv .apj-pw-r .apj-mi:disabled { opacity: .45; cursor: default; }
+.pv .apj-pw-n { overflow: hidden; text-overflow: ellipsis; }
+.pv .apj-pw-star { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; color: var(--apj-dot-muted); }
+.pv .apj-pw-star:hover { background: var(--bg); color: var(--ink); }
+.pv .apj-pw-star[data-on] { color: #d97706; }
+.pv .apj-pw-star[data-on] svg { fill: currentColor; }
+.pv .apj-pw .apj-mi .iav { flex: none; width: 22px; height: 22px; }
+.pv .apj-st-new .apj-pop2 { top: auto; bottom: calc(100% + 6px); }

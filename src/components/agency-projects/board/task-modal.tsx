@@ -415,7 +415,10 @@ function TaskEditorBody({
             <SubtasksSection
               subtasks={detail?.subtasks}
               canWrite={can.canWrite}
-              onAdd={(title) => createSubtask.mutateAsync({ title, parent_task_id: task.id })}
+              onAdd={(input) => createSubtask.mutateAsync({ ...input, parent_task_id: task.id })}
+              people={people.people}
+              peopleLoading={people.isLoading}
+              peopleFailed={people.failed}
               onToggle={(subtask, done) => update.mutateAsync({ taskId: subtask.id, input: { status: done ? "concluido" : "aberto" } })}
               onRemove={(subtask) => removeTask.mutateAsync(subtask.id)}
               onOpen={onOpenTask}

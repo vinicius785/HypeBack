@@ -1,19 +1,25 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 
 import { I } from "@/components/prototype/ui";
-import { agencyProjectErrorMessage, AGENCY_PROJECT_LIMITS, type Task } from "@/shared/services/agency-projects";
+import { agencyProjectErrorMessage, AGENCY_PROJECT_LIMITS, type Task, type TaskInput, type TaskPriority } from "@/shared/services/agency-projects";
 
 import { useProjectConfirm } from "../project-confirm";
 import { TASK_PRIORITY_LABEL, TASK_STATUS_LABEL, formatDate, taskDueLabel } from "../project-ui";
 import { CornerDownRight } from "lucide-react";
 import { SectionSkeleton, TaskSection, useSectionOpen } from "./task-section";
-import { validateTaskTitle } from "./task-logic";
+import { AssigneesField } from "./assignees-field";
+import { DueDateMenu, PriorityMenu } from "./task-menus";
+import { validateTaskTitle, type AssigneeValue } from "./task-logic";
+import type { PersonOption } from "./use-workspace-people";
 
 interface SubtasksSectionProps {
   /** `undefined` enquanto o detalhe da tarefa carrega. */
   subtasks: readonly Task[] | undefined;
   canWrite: boolean;
-  onAdd: (title: string) => Promise<unknown>;
+  onAdd: (input: Pick<TaskInput, "title" | "due_date" | "priority" | "assignee_ids" | "primary_assignee_id">) => Promise<unknown>;
+  people: readonly PersonOption[];
+  peopleLoading: boolean;
+  peopleFailed: boolean;
   /** Marcar concluída (`true`) ou reabrir (`false`). */
   onToggle: (subtask: Task, done: boolean) => Promise<unknown>;
   onRemove: (subtask: Task) => Promise<unknown>;
@@ -22,13 +28,16 @@ interface SubtasksSectionProps {
 }
 
 /** Subtarefas de um nível: adicionar, marcar concluída, abrir e remover (com confirmação). */
-export function SubtasksSection({ subtasks, canWrite, onAdd, onToggle, onRemove, onOpen }: SubtasksSectionProps) {
+export function SubtasksSection({ subtasks, canWrite, onAdd, onToggle, onRemove, onOpen, people, peopleLoading, peopleFailed }: SubtasksSectionProps) {
   const [title, setTitle] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState<string | null>(null);
   const { confirm, dialog } = useProjectConfirm();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [composing, setComposing] = useState(false);
+  const [due, setDue] = useState("");
+  const [priority, setPriority] = useState<TaskPriority>("normal");
+  const [who, setWho] = useState<AssigneeValue>({ ids: [], primary: null });
   const [open, setOpen] = useSectionOpen(!subtasks || subtasks.length > 0);
 
   const run = async (key: string, action: () => Promise<unknown>, fallback: string): Promise<boolean> => {
@@ -52,7 +61,17 @@ export function SubtasksSection({ subtasks, canWrite, onAdd, onToggle, onRemove,
       setFieldError(title.trim() ? problem : "Informe o título da subtarefa");
       return;
     }
-    if (await run("add", () => onAdd(title.trim()), "Não foi possível criar a subtarefa.")) setTitle("");
+    const input = { title: title.trim(), ...(priority !== "normal" ? { priority } : {}), ...(due ? { due_date: due } : {}), ...(who.ids.length > 0 ? { assignee_ids: who.ids, primary_assignee_id: who.primary } : {}) };
+    if (await run("add", () => onAdd(input), "Não foi possível criar a subtarefa.")) closeComposer();
+  };
+
+  const closeComposer = () => {
+    setComposing(false);
+    setTitle("");
+    setDue("");
+    setPriority("normal");
+    setWho({ ids: [], primary: null });
+    setFieldError(null);
   };
 
   const remove = async (subtask: Task) => {
@@ -94,7 +113,7 @@ export function SubtasksSection({ subtasks, canWrite, onAdd, onToggle, onRemove,
             className="apj-link"
             onClick={() => {
               setOpen(true);
-              window.setTimeout(() => inputRef.current?.focus(), 0);
+              setComposing(true);
             }}
           >
             + Adicionar
@@ -149,20 +168,40 @@ export function SubtasksSection({ subtasks, canWrite, onAdd, onToggle, onRemove,
               );
             })}
           </ul>
-          {canWrite ? (
-            <form className="apj-st-add" onSubmit={(e) => void submit(e)} noValidate>
+          {canWrite && !composing ? (
+            <button type="button" className="apj-st-open" onClick={() => setComposing(true)}>
+              + Adicionar subtarefa
+            </button>
+          ) : null}
+          {canWrite && composing ? (
+            <form className="apj-st-new" onSubmit={(e) => void submit(e)} noValidate onKeyDown={(e) => e.key === "Escape" && !e.defaultPrevented && (e.stopPropagation(), closeComposer())}>
               <input
-                ref={inputRef}
+                autoFocus
                 aria-label="Nova subtarefa"
                 aria-invalid={fieldError ? true : undefined}
                 maxLength={AGENCY_PROJECT_LIMITS.taskTitle}
-                placeholder="+ Adicionar subtarefa"
+                placeholder="Nome da subtarefa"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
                   setFieldError(null);
                 }}
               />
+              <div className="apj-st-new-f">
+                <div className="apj-st-new-p">
+                  <DueDateMenu value={due} readOnly={false} onChange={setDue} />
+                  <AssigneesField value={who} people={people} current={[]} loading={peopleLoading} failed={peopleFailed} readOnly={false} onChange={setWho} />
+                  <PriorityMenu value={priority} readOnly={false} onChange={setPriority} />
+                </div>
+                <div className="apj-st-new-b">
+                  <button type="button" className="apj-link" onClick={closeComposer}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn" disabled={working === "add"}>
+                    {working === "add" ? "Adicionando…" : "Adicionar"}
+                  </button>
+                </div>
+              </div>
             </form>
           ) : null}
           {fieldError ? (

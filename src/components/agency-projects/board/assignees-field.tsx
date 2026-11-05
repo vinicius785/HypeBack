@@ -1,5 +1,6 @@
 import { useId, useMemo, useState } from "react";
 
+import { Check, Star } from "lucide-react";
 import { Av, I } from "@/components/prototype/ui";
 import { AGENCY_PROJECT_LIMITS } from "@/shared/services/agency-projects";
 
@@ -30,8 +31,7 @@ const SEARCH_FROM = 8;
 export function AssigneesField({ value, people, current, loading, failed, readOnly, onChange }: AssigneesFieldProps) {
   const [filter, setFilter] = useState("");
   const labelId = useId();
-  const groupName = useId();
-
+  
   const options = useMemo(() => {
     const byId = new Map<number, PersonOption>();
     for (const p of people) byId.set(p.id, p);
@@ -80,34 +80,49 @@ export function AssigneesField({ value, people, current, loading, failed, readOn
         }
       >
         {() => (
-          <fieldset className="apj-tm-pick">
-            <legend className="sr-only">Quem é responsável</legend>
-            {failed ? <small className="nfh">Não foi possível carregar os membros do workspace. Só você e quem já é responsável aparecem aqui.</small> : null}
-            {loading && options.length === 0 ? <small className="nfh">Carregando membros…</small> : null}
-            {options.length > SEARCH_FROM ? <input type="search" className="ni" aria-label="Buscar membro" placeholder="Buscar membro" value={filter} onChange={(e) => setFilter(e.target.value)} /> : null}
-            <ul role="list">
+          <div className="apj-pw">
+            <p className="apj-pw-h">Responsável e colaboradores</p>
+            {failed ? <small className="nfh apj-pad">Não foi possível carregar os membros do workspace. Só você e quem já é responsável aparecem aqui.</small> : null}
+            {loading && options.length === 0 ? <small className="nfh apj-pad">Carregando membros…</small> : null}
+            {options.length > SEARCH_FROM ? (
+              <label className="apj-tagpop-s">
+                <I n="search" cls="sm" />
+                <input type="search" aria-label="Buscar membro" placeholder="Buscar membro" value={filter} onChange={(e) => setFilter(e.target.value)} />
+              </label>
+            ) : null}
+            <ul role="list" className="apj-pw-l">
               {shown.map((p) => {
                 const checked = value.ids.includes(p.id);
+                const blocked = !checked && !canAddAssignee(value);
+                const isPrimary = value.primary === p.id;
                 return (
-                  <li key={p.id}>
-                    <label className="apj-tm-check">
-                      <input type="checkbox" checked={checked} disabled={!checked && !canAddAssignee(value)} onChange={() => onChange(toggleAssignee(value, p.id))} />
+                  <li key={p.id} className="apj-pw-r" data-on={checked || undefined}>
+                    <button type="button" role="checkbox" aria-checked={checked} aria-label={p.name} disabled={blocked} className="apj-mi" onClick={() => onChange(toggleAssignee(value, p.id))}>
                       <Av name={p.name} src={p.avatar ?? undefined} size={22} />
-                      <span>{p.name}</span>
-                    </label>
+                      <span className="apj-pw-n">{p.name}</span>
+                      {checked ? <Check className="ico sm apj-mi-ok" aria-hidden /> : null}
+                    </button>
                     {checked && value.ids.length > 1 ? (
-                      <label className="apj-tm-radio">
-                        <input type="radio" name={groupName} checked={value.primary === p.id} aria-label={`${p.name} é o responsável principal`} onChange={() => onChange(setPrimaryAssignee(value, p.id))} />
-                        Principal
-                      </label>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={isPrimary}
+                        aria-label={`${p.name} é o responsável principal`}
+                        title={isPrimary ? "Responsável principal" : "Tornar principal"}
+                        className="apj-pw-star"
+                        data-on={isPrimary || undefined}
+                        onClick={() => onChange(setPrimaryAssignee(value, p.id))}
+                      >
+                        <Star className="ico sm" aria-hidden />
+                      </button>
                     ) : null}
                   </li>
                 );
               })}
-              {shown.length === 0 ? <li className="apj-tm-none">Nenhum membro encontrado</li> : null}
+              {shown.length === 0 ? <li className="apj-tm-none apj-pad">Nenhum membro encontrado</li> : null}
             </ul>
-            {!canAddAssignee(value) ? <small className="nfh">Cada tarefa aceita até {AGENCY_PROJECT_LIMITS.taskAssignees} responsáveis.</small> : null}
-          </fieldset>
+            {!canAddAssignee(value) ? <small className="nfh apj-pad">Cada tarefa aceita até {AGENCY_PROJECT_LIMITS.taskAssignees} responsáveis.</small> : null}
+          </div>
         )}
       </ChipPopover>
     </>
