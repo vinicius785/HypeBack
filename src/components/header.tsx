@@ -2,17 +2,19 @@ import { type ComponentProps } from "react";
 
 import { ChatDrawerButton } from "./chat-drawer";
 import { NotificationsDropdown } from "./notifications-dropdown";
+import { SupportButton } from "./support/support-button";
 
 interface HeaderProps extends ComponentProps<"div"> {
   /** Só para páginas ainda não portadas; as portadas trazem o próprio título. */
   title?: string;
 }
 
-/** Ações do topo — chat e sino redondos, como no protótipo. */
+/** Ações do topo — chat, ajuda e sino redondos, como no protótipo. */
 export function TopActions() {
   return (
     <>
       <ChatDrawerButton />
+      <SupportButton />
       <NotificationsDropdown />
     </>
   );

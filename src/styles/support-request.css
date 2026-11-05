@@ -1,0 +1,9 @@
+/* "Falar com o suporte" (diálogo aberto pelo botão redondo do topo). */
+.pv .sup-form { display: flex; flex-direction: column; gap: 16px; }
+.pv .sup-form .nf > span { display: block; margin-bottom: 6px; font-size: 13.5px; font-weight: 600; }
+.pv .sup-form select.ni { appearance: none; padding-right: 38px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 22px) 50%, calc(100% - 16px) 50%; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; }
+.pv .sup-form .ni.ta { min-height: 140px; resize: vertical; font-family: inherit; }
+.pv .sup-err { padding: 10px 14px; border-radius: 14px; background: #fdecec; color: #b91c1c; font-size: 13.5px; font-weight: 600; }
+.pv .sup-done { display: flex; flex-direction: column; gap: 6px; padding: 8px 0 4px; }
+.pv .sup-done b { font-size: 18px; letter-spacing: -.02em; }
+.pv .sup-done p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
