@@ -1890,9 +1890,20 @@
 @media (max-width: 960px) { .pv .ppx-hero { grid-template-columns: 1fr; gap: 22px; margin-bottom: 32px; } .pv .ppx-av, .pv .ppx-av .iav { width: 112px !important; height: 112px !important; } .pv .ppx-ck { width: 34px; height: 34px; } .pv .ppx-id .pvx-h { font-size: 36px; } .pv .ppx-bio { font-size: 15.5px; } .pv .ppx-sg { grid-template-columns: 1fr 1fr; gap: 10px; } .pv .ppx-sc { padding: 18px 18px 16px; border-radius: 26px; } .pv .ppx-sc b { font-size: 32px; } .pv .ppx-mw { grid-template-columns: 1fr; } .pv .ppx-mg { padding: 22px 20px 22px; border-radius: 28px; } .pv .ppx-gb { grid-template-columns: 1fr; gap: 28px; margin-bottom: 28px; } .pv .ppx-big b { font-size: clamp(72px, 22vw, 110px); } .pv .ppx-hs { grid-template-columns: 1fr; } .pv .ppx-ds { padding-top: 32px; } }
 @media (max-width: 560px) { .pv .ppx-id .pvx-h { font-size: clamp(30px, 9vw, 36px); } .pv .ppx-mt b { font-size: 19px; } .pv .ppx-gr { gap: 8px; } .pv .ppx-cp span { display: none; } .pv .ppx-cp { padding: 0; width: 46px; height: 46px; justify-content: center; } .pv .ppx-fb .pvx-ac .btn { white-space: nowrap; } }
 /* rodapé do perfil do criador */
-.pv .pf-f { gap: 10px; padding: 16px 24px 22px; background: #fff; } .pv .pf-f .btn { height: 52px; padding: 0 24px; justify-content: center; font-size: 14.5px; } .pv .pf-f .btn.out { background: var(--bg); } .pv .pf-f .btn.out:hover { background: #e4e4e4; } .pv .pf-f .btn:not(.out) { flex: none; }
+.pv .pf-f { gap: 10px; padding: 16px 24px 22px; background: #fff; flex-wrap: wrap; }
+/* Ações do rodapé: texto sempre em uma linha, ícone em todas, e a barra quebra de linha inteira (nunca o texto do botão). */
+.pv .pf-f .btn { height: 52px; padding: 0 22px; gap: 8px; justify-content: center; font-size: 14.5px; white-space: nowrap; flex: none; }
+.pv .pf-f .btn.out { background: var(--bg); } .pv .pf-f .btn.out:hover { background: var(--ink); color: #fff; }
+.pv .pf-f .btn:disabled { opacity: .5; cursor: default; } .pv .pf-f .btn.out:disabled:hover { background: var(--bg); color: var(--ink); }
+.pv .pf-f .btn:focus-visible, .pv .pf-f .pf-ig .round:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
 .pv .pf-ig { margin-left: auto; display: flex; gap: 8px; padding-left: 14px; border-left: 1.5px solid var(--bg); } .pv .pf-f .pf-ig .round { margin-left: 0; width: 52px; height: 52px; background: var(--bg); transition: background .2s, color .2s; } .pv .pf-f .pf-ig .round:hover { background: var(--ink); color: #fff; } .pv .pf-f .pf-ig .round.on { background: var(--brand); color: #fff; }
-@media (max-width: 520px) { .pv .pf-f { flex-wrap: wrap; } .pv .pf-f .btn { flex: 1; } .pv .pf-ig { margin-left: 0; width: 100%; border-left: 0; padding-left: 0; justify-content: flex-end; } }
+@media (max-width: 640px) {
+  .pv .pf-f { padding: 14px 16px 18px; }
+  .pv .pf-f .btn.pf-main { flex: 1 1 100%; }
+  .pv .pf-f .btn.pf-sel { flex: 1 1 0; min-width: 0; padding: 0 14px; }
+  .pv .pf-f .btn.pf-sv { width: 52px; padding: 0; flex: none; } .pv .pf-f .btn.pf-sv .pf-lb { display: none; }
+  .pv .pf-ig { margin-left: 0; border-left: 0; padding-left: 0; }
+}
 .pv .me > div:nth-child(2) { cursor: pointer; } .pv .me { cursor: pointer; }
 .pv .ovd.mpw { width: min(480px, 100%); } .pv .mpw-b { padding: 6px 28px 22px; display: flex; flex-direction: column; gap: 18px; } .pv .mpw .cm-f { display: flex; justify-content: flex-end; gap: 10px; } .pv .mpw .cvm-fd { display: flex; flex-direction: column; gap: 8px; } .pv .mpw .aux-st { margin-top: -6px; } .pv .mpw .mpx-lk { align-self: flex-start; margin: 0; }
 .pv .me:hover > div:nth-child(2) b { text-decoration: underline; text-underline-offset: 3px; }

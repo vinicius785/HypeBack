@@ -114,22 +114,24 @@ export function InfluencerProfileDrawer({ influencerId, onClose }: InfluencerPro
 
   const footer = (
     <>
-      <button type="button" className="btn" onClick={() => setCampaignAction("invite")} disabled={disabled}>
+      <button type="button" className="btn pf-main" onClick={() => setCampaignAction("invite")} disabled={disabled}>
         <I n="send" cls="sm" />
         Enviar convite
       </button>
-      <button type="button" className="btn out" onClick={() => setCampaignAction("preselection")} disabled={disabled}>
+      <button type="button" className="btn out pf-sel" onClick={() => setCampaignAction("preselection")} disabled={disabled}>
+        <I n="checks" cls="sm" />
         Convidar para pré-seleção
       </button>
       <button
         type="button"
-        className="btn out"
+        className="btn out pf-sv"
         onClick={() => setShowSaveModal(true)}
         disabled={disabled}
+        aria-label="Salvar influenciador"
         title="Salvar este influenciador em uma lista"
       >
         <I n="heart" cls="sm" />
-        Salvar influenciador
+        <span className="pf-lb">Salvar</span>
       </button>
       <div className="pf-ig">
         <button
