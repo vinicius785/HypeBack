@@ -198,7 +198,6 @@ describe("detalhe com dados reais dos hooks", () => {
     await waitFor(() => expect(h.api.updateTask).toHaveBeenCalledWith("p1", "t1", { priority: "urgente" }));
     await waitFor(() => expect(within(column("Aberto")).getByText("Urgente")).toBeInTheDocument());
 
-    await user.click(within(dialog).getByRole("button", { name: /^Atividade/ }));
     await user.type(await within(dialog).findByLabelText("Novo comentário"), "Aprovado pelo cliente");
     await user.click(within(dialog).getByRole("button", { name: "Comentar" }));
     await waitFor(() => expect(h.api.createComment).toHaveBeenCalledWith("p1", "t1", "Aprovado pelo cliente"));
@@ -233,7 +232,6 @@ describe("detalhe com dados reais dos hooks", () => {
     await user.click(screen.getByRole("button", { name: "Roteiro" }));
     const dialog = await screen.findByRole("dialog", { name: "Tarefa" });
     expect(within(dialog).getByText("Você pode ver esta tarefa, mas não editá-la.")).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: /^Atividade/ }));
     expect(within(dialog).queryByLabelText("Novo comentário")).not.toBeInTheDocument();
     expect(h.api.updateTask).not.toHaveBeenCalled();
   });

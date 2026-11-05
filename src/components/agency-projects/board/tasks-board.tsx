@@ -196,6 +196,14 @@ function Board({ project, can }: ProjectTasksBoardProps) {
 
   return (
     <div className="apj-kb">
+      <p className="apj-kb-sum">
+        {all.length} no total
+        {TASK_STATUSES.filter((st) => st !== "arquivado")
+          .map((st) => ({ st, n: all.filter((t) => t.status === st).length }))
+          .filter((x) => x.n > 0)
+          .map((x) => ` · ${x.n} ${TASK_STATUS_LABEL[x.st].toLowerCase()}`)
+          .join("")}
+      </p>
       <BoardToolbar
         query={query}
         onQuery={setQuery}

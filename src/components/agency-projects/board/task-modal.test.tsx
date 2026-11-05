@@ -104,9 +104,7 @@ function renderCreate(props: Partial<React.ComponentProps<typeof TaskModal>> = {
   return render(<TaskModal project={project} can={permissions} taskId={null} tasks={board()} onOpenTask={onOpenTask} onClose={onClose} {...props} />);
 }
 
-const openActivity = async () => {
-  await userEvent.setup().click(screen.getByRole("button", { name: /^Atividade/ }));
-};
+const openActivity = async () => undefined; // o painel de atividade já abre com a tarefa
 const section = (name: string) => within(screen.getByRole("region", { name }));
 
 beforeEach(() => {
@@ -357,9 +355,9 @@ describe("edição: comentários", () => {
       expect.stringContaining("Primeiro comentário"),
       expect.stringContaining("Segundo comentário"),
     ]);
-    const box = comments.getByLabelText("Novo comentário");
+    const box = screen.getByLabelText("Novo comentário");
     await user.type(box, "Olá time");
-    await user.click(comments.getByRole("button", { name: "Comentar" }));
+    await user.click(screen.getByRole("button", { name: "Comentar" }));
     expect(h.addComment).toHaveBeenCalledWith({ taskId: "t1", body: "Olá time" });
     await waitFor(() => expect(box).toHaveValue(""));
     await user.type(box, "Outro{Control>}{Enter}{/Control}");
@@ -372,13 +370,13 @@ describe("edição: comentários", () => {
     renderEdit();
     await openActivity();
     const comments = section("Comentários");
-    await user.click(comments.getByRole("button", { name: "Comentar" }));
+    await user.click(screen.getByRole("button", { name: "Comentar" }));
     expect(comments.getByText("Escreva o comentário")).toBeInTheDocument();
     expect(h.addComment).not.toHaveBeenCalled();
-    await user.type(comments.getByLabelText("Novo comentário"), "Texto");
-    await user.click(comments.getByRole("button", { name: "Comentar" }));
+    await user.type(screen.getByLabelText("Novo comentário"), "Texto");
+    await user.click(screen.getByRole("button", { name: "Comentar" }));
     expect(await comments.findByText("Sem conexão")).toBeInTheDocument();
-    expect(comments.getByLabelText("Novo comentário")).toHaveValue("Texto");
+    expect(screen.getByLabelText("Novo comentário")).toHaveValue("Texto");
   });
 
   it("só o autor apaga o próprio comentário (sem exclusão); com campaigns_delete apaga qualquer um", async () => {

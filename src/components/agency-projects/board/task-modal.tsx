@@ -295,7 +295,9 @@ function TaskEditorBody({
   };
 
   const parentTitle = task.parent_task_id ? tasks.find((t) => t.id === task.parent_task_id)?.title : undefined;
-  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(true);
+  const [composerHost, setComposerHost] = useState<HTMLElement | null>(null);
+  const [tab, setTab] = useState<"all" | "comments" | "history">("all");
   const feedbackStates = Object.values(feedback);
   const failed = feedbackStates.find((f) => f?.state === "error");
   const status = failed ? (
@@ -345,14 +347,33 @@ function TaskEditorBody({
                 onToggle: () => setActivityOpen((v) => !v),
                 panel: (
                   <>
-                    <CommentsSection
-                      comments={detail?.comments}
-                      canWrite={can.canWrite}
-                      canRemove={(comment) => canRemoveComment(comment, user?.id, can)}
-                      onAdd={(body) => addComment.mutateAsync({ taskId: task.id, body })}
-                      onRemove={(comment) => removeComment.mutateAsync({ taskId: task.id, commentId: comment.id })}
-                    />
-                    <ActivitySection events={detail?.events} />
+                    <div className="apj-td-tabs" role="tablist" aria-label="Filtrar atividade">
+                      {(
+                        [
+                          ["all", "Tudo"],
+                          ["comments", "Comentários"],
+                          ["history", "Histórico"],
+                        ] as const
+                      ).map(([key, text]) => (
+                        <button key={key} type="button" role="tab" aria-selected={tab === key} data-on={tab === key || undefined} onClick={() => setTab(key)}>
+                          {text}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="apj-td-feed">
+                      {tab === "history" ? null : (
+                        <CommentsSection
+                          comments={detail?.comments}
+                          canWrite={can.canWrite}
+                          canRemove={(comment) => canRemoveComment(comment, user?.id, can)}
+                          onAdd={(body) => addComment.mutateAsync({ taskId: task.id, body })}
+                          onRemove={(comment) => removeComment.mutateAsync({ taskId: task.id, commentId: comment.id })}
+                          composerHost={composerHost}
+                        />
+                      )}
+                      {tab === "comments" ? null : <ActivitySection events={detail?.events} />}
+                    </div>
+                    <div className="apj-td-compose" ref={setComposerHost} />
                   </>
                 ),
               }

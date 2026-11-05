@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 import { I } from "@/components/prototype/ui";
 import { agencyProjectErrorMessage, AGENCY_PROJECT_LIMITS, type Task } from "@/shared/services/agency-projects";
@@ -27,6 +27,7 @@ export function SubtasksSection({ subtasks, canWrite, onAdd, onToggle, onRemove,
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState<string | null>(null);
   const { confirm, dialog } = useProjectConfirm();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const run = async (key: string, action: () => Promise<unknown>, fallback: string): Promise<boolean> => {
     setWorking(key);
@@ -67,7 +68,18 @@ export function SubtasksSection({ subtasks, canWrite, onAdd, onToggle, onRemove,
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
   return (
-    <TaskSection title="Subtarefas" count={subtasks ? `${done}/${total}` : undefined}>
+    <TaskSection
+      title="Subtarefas"
+      collapsible
+      count={subtasks ? `${done}/${total}` : undefined}
+      action={
+        canWrite ? (
+          <button type="button" className="apj-link" onClick={() => inputRef.current?.focus()}>
+            + Adicionar
+          </button>
+        ) : null
+      }
+    >
       {!subtasks ? (
         <SectionSkeleton label="Carregando subtarefas" />
       ) : (
@@ -123,6 +135,7 @@ export function SubtasksSection({ subtasks, canWrite, onAdd, onToggle, onRemove,
           {canWrite ? (
             <form className="apj-st-add" onSubmit={(e) => void submit(e)} noValidate>
               <input
+                ref={inputRef}
                 aria-label="Nova subtarefa"
                 aria-invalid={fieldError ? true : undefined}
                 maxLength={AGENCY_PROJECT_LIMITS.taskTitle}

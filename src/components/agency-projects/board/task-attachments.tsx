@@ -75,7 +75,18 @@ export function AttachmentsSection({ attachments, canWrite, onUpload, onRemove }
   };
 
   return (
-    <TaskSection title="Anexos" count={attachments ? `${count}/${AGENCY_PROJECT_LIMITS.taskAttachments}` : undefined}>
+    <TaskSection
+      title="Anexos"
+      collapsible
+      count={attachments ? `${count}/${AGENCY_PROJECT_LIMITS.taskAttachments}` : undefined}
+      action={
+        canWrite ? (
+          <button type="button" className="apj-link" disabled={!!uploading || atLimit} onClick={() => fileRef.current?.click()}>
+            + Adicionar
+          </button>
+        ) : null
+      }
+    >
       {!attachments ? (
         <SectionSkeleton label="Carregando anexos" />
       ) : (

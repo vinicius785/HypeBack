@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { Av, I } from "@/components/prototype/ui";
 import { AGENCY_PROJECT_LIMITS, agencyProjectErrorMessage, type TaskComment, type TaskEvent } from "@/shared/services/agency-projects";
@@ -16,10 +17,12 @@ interface CommentsSectionProps {
   canRemove: (comment: TaskComment) => boolean;
   onAdd: (body: string) => Promise<unknown>;
   onRemove: (comment: TaskComment) => Promise<unknown>;
+  /** Onde o campo de novo comentário é desenhado (rodapé fixo do painel). Sem isso, fica no fim da lista. */
+  composerHost?: HTMLElement | null;
 }
 
 /** Comentários em ordem de conversa (mais antigo no alto) e o campo de novo comentário; Ctrl/Cmd + Enter envia. */
-export function CommentsSection({ comments, canWrite, canRemove, onAdd, onRemove }: CommentsSectionProps) {
+export function CommentsSection({ comments, canWrite, canRemove, onAdd, onRemove, composerHost }: CommentsSectionProps) {
   const [body, setBody] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,34 +61,8 @@ export function CommentsSection({ comments, canWrite, canRemove, onAdd, onRemove
     }
   };
 
-  return (
-    <TaskSection title="Comentários" count={comments?.length}>
-      {!comments ? (
-        <SectionSkeleton label="Carregando comentários" />
-      ) : (
-        <>
-          {comments.length === 0 ? <p className="apj-tm-none">Nenhum comentário ainda.</p> : null}
-          <ul className="apj-tm-comments" role="list">
-            {sortComments(comments).map((c) => (
-              <li key={c.id} className="apj-tm-comment">
-                <Av name={c.author.name} src={c.author.avatar ?? undefined} size={28} />
-                <div>
-                  <p className="apj-tm-cm">
-                    <b>{c.author.name}</b>
-                    <time dateTime={c.created_at}>{formatDateTime(c.created_at)}</time>
-                  </p>
-                  <p className="apj-tm-cb">{c.body}</p>
-                </div>
-                {canRemove(c) ? (
-                  <button type="button" className="apj-tm-x" aria-label={`Excluir comentário de ${c.author.name}`} disabled={removing === c.id} onClick={() => void remove(c)}>
-                    <I n="trash" cls="sm" />
-                  </button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-          {canWrite ? (
-            <form className="apj-tm-new" onSubmit={(e) => void submit(e)} noValidate>
+  const composer: ReactNode = (
+<form className="apj-tm-new" onSubmit={(e) => void submit(e)} noValidate>
               <textarea
                 className="ni ta"
                 rows={3}
@@ -114,7 +91,35 @@ export function CommentsSection({ comments, canWrite, canRemove, onAdd, onRemove
                 </button>
               </div>
             </form>
-          ) : null}
+  );
+
+  return (
+    <TaskSection title="Comentários" count={comments?.length}>
+      {!comments ? (
+        <SectionSkeleton label="Carregando comentários" />
+      ) : (
+        <>
+          {comments.length === 0 ? <p className="apj-tm-none">Nenhum comentário ainda.</p> : null}
+          <ul className="apj-tm-comments" role="list">
+            {sortComments(comments).map((c) => (
+              <li key={c.id} className="apj-tm-comment">
+                <Av name={c.author.name} src={c.author.avatar ?? undefined} size={28} />
+                <div>
+                  <p className="apj-tm-cm">
+                    <b>{c.author.name}</b>
+                    <time dateTime={c.created_at}>{formatDateTime(c.created_at)}</time>
+                  </p>
+                  <p className="apj-tm-cb">{c.body}</p>
+                </div>
+                {canRemove(c) ? (
+                  <button type="button" className="apj-tm-x" aria-label={`Excluir comentário de ${c.author.name}`} disabled={removing === c.id} onClick={() => void remove(c)}>
+                    <I n="trash" cls="sm" />
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          {canWrite ? (composerHost ? createPortal(composer, composerHost) : composer) : null}
           {fieldError ? (
             <small className="nfe" role="alert">
               {fieldError}
