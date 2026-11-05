@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 
+import { PageContainer, PageControls, PageHeader, PageTabs, PageToolbar, SearchInput, SelectControl, SortControl } from "@/components/page/page-kit";
 import { I, Av } from "@/components/prototype/ui";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspacePermissions } from "@/contexts/workspace-context";
@@ -199,9 +200,7 @@ function RosterPage() {
 
   const wrap = (children: React.ReactNode) => (
     <div className="pv">
-      <div className="wrap" style={{ maxWidth: "none" }}>
-        {children}
-      </div>
+      <PageContainer>{children}</PageContainer>
     </div>
   );
 
@@ -244,67 +243,44 @@ function RosterPage() {
 
   return wrap(
     <>
-      <div className="head fade">
-        <div>
-          <h1>Elenco</h1>
-          <p>Criadores que aceitaram fazer parte da sua agência. Por padrão, só vocês veem e convidam esses criadores.</p>
-        </div>
-        <div className="btns">
+      <PageHeader
+        title="Elenco"
+        subtitle="Criadores que aceitaram fazer parte da sua agência. Por padrão, só vocês veem e convidam esses criadores."
+        actions={
           <button type="button" className="btn" onClick={findCreators}>
             <I n="search" cls="sm" />
             Encontrar criadores
           </button>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="rst-bar fade">
-        <div className="seg rst-tabs" role="tablist" aria-label="Estado do elenco">
-          <button type="button" role="tab" aria-selected={tab === "active"} className={tab === "active" ? "on" : ""} onClick={() => switchTab("active")}>
-            No elenco
-            <em>{active.length}</em>
-          </button>
-          <button type="button" role="tab" aria-selected={tab === "invited"} className={tab === "invited" ? "on" : ""} onClick={() => switchTab("invited")}>
-            Convites
-            <em>{invited.length}</em>
-          </button>
-        </div>
+      <PageControls>
+        <PageTabs
+          ariaLabel="Estado do elenco"
+          value={tab}
+          onChange={switchTab}
+          items={[
+            { id: "active", label: "No elenco", count: active.length },
+            { id: "invited", label: "Convites", count: invited.length },
+          ]}
+        />
         {inTab.length > 0 && (
-          <div className="rst-tools">
-            <label className="rst-q">
-              <I n="search" cls="sm" />
-              <input type="search" aria-label="Buscar no elenco" placeholder="Buscar por nome ou @" value={query} onChange={(e) => setQuery(e.target.value)} />
-              {query && (
-                <button type="button" aria-label="Limpar busca" onClick={() => setQuery("")}>
-                  <I n="x" cls="sm" />
-                </button>
-              )}
-            </label>
+          <PageToolbar>
+            <SearchInput value={query} onChange={setQuery} placeholder="Buscar por nome ou @" label="Buscar no elenco" />
             {networks.length > 1 && (
-              <label className="rst-s">
-                <span className="sr-only">Filtrar por rede social</span>
-                <select value={network} onChange={(e) => setNetwork(e.target.value)}>
-                  <option value="all">Todas as redes</option>
-                  {networks.map(([v, l]) => (
-                    <option key={v} value={v}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <label className="rst-s">
-              <span className="sr-only">Ordenar por</span>
-              <select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
-                {SORTS.map(([v, l]) => (
+              <SelectControl label="Filtrar por rede social" value={network} onChange={(e) => setNetwork(e.target.value)}>
+                <option value="all">Todas as redes</option>
+                {networks.map(([v, l]) => (
                   <option key={v} value={v}>
                     {l}
                   </option>
                 ))}
-              </select>
-            </label>
-          </div>
+              </SelectControl>
+            )}
+            <SortControl options={SORTS} value={sort} onChange={setSort} />
+          </PageToolbar>
         )}
-      </div>
+      </PageControls>
 
       {isLoading ? (
         <div className="rst-list" aria-busy="true" aria-label="Carregando o elenco">

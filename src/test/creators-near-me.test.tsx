@@ -146,7 +146,7 @@ describe("Criadores · tirar 'Perto de mim' estando no mapa", () => {
 
   it("remover 'Perto de mim' no painel de filtros também sai do mapa", async () => {
     await openMapWithLocation();
-    fireEvent.click(document.querySelector(".cx-fb")!);
+    fireEvent.click(screen.getByRole("button", { name: /^Filtros/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Remover" }));
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
     expectBackToCards();
@@ -227,6 +227,6 @@ describe("Criadores · elenco da agência", () => {
     fireEvent.click(screen.getByRole("button", { name: /Buscar outra cidade ou região/ }));
     fireEvent.click(screen.getByRole("button", { name: "Escolher Ribeirão Preto" }));
     await screen.findByTestId("near-me-map");
-    expect(screen.getByRole("button", { name: "Remover filtro de cidade" })).toHaveTextContent("Ribeirão Preto · 25 km");
+    expect(screen.getByRole("button", { name: "Remover filtro de cidade" }).closest("[role=listitem]")).toHaveTextContent("Ribeirão Preto · 25 km");
   });
 });

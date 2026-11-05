@@ -25,6 +25,7 @@ const MAP: Record<string, keyof typeof icons> = {
   checks: "CheckCheck",
   search: "Search",
   funnel: "Funnel",
+  sort: "ArrowDownUp",
   video: "Video",
   sparkles: "Sparkles",
   heart: "Heart",

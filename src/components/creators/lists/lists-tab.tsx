@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { toast } from "sonner";
 
+import { PageControls } from "@/components/page/page-kit";
 import { I } from "@/components/prototype/ui";
 import { useWorkspacePermissions } from "@/contexts/workspace-context";
 import {
@@ -18,7 +19,7 @@ import { ListDeleteModal, ListFormModal } from "./list-dialogs";
 import { ListDetailModal } from "./list-detail-modal";
 
 /** Aba "Minhas listas" do catálogo de criadores. */
-export function ListsTab() {
+export function ListsTab({ tabs }: { tabs?: React.ReactNode }) {
   const { data: lists = [], isLoading, isError, refetch } = useInfluencerLists();
   const canWrite = !!useWorkspacePermissions().catalog_write;
   const createMutation = useCreateInfluencerList();
@@ -56,6 +57,7 @@ export function ListsTab() {
 
   return (
     <>
+      {tabs ? <PageControls>{tabs}</PageControls> : null}
       <div id="crres" className="fade lsm">
         {isLoading ? (
           <div className="lst-grid" aria-busy="true">

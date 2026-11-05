@@ -1,0 +1,104 @@
+/* Kit de página (PageContainer, PageHeader, PageTabs, PageToolbar…): a ÚNICA fonte das medidas de cabeçalho, abas,
+   barra de ferramentas e espaçamento entre blocos. As páginas não definem margens próprias entre esses blocos.
+
+   Escala de espaçamento (múltiplos de 4): 4 · 8 · 12 · 16 · 20 · 24 · 32.
+   Valores de referência medidos nas páginas e unificados: título 32/600, subtítulo 14, controles 48px, raio 999px.
+   Os tokens usam o fallback do protótipo para funcionar também fora de `.pv` (a página Campanhas mistura os dois). */
+.pgk {
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-7: 32px;
+  --pg-bg: var(--bg, #efefef); --pg-ink: var(--ink, #050505); --pg-muted: var(--muted, #7e7e7e); --pg-brand: var(--brand, #9e2cfa);
+  --pg-ctl: 48px;
+  /* Espaço entre os cartões de qualquer grade da página. */
+  --pg-grid-gap: var(--sp-5);
+  display: flex; flex-direction: column; gap: var(--sp-6); width: 100%; min-width: 0;
+}
+
+/* Cabeçalho: título e subtítulo à esquerda, ações à direita alinhadas à base. */
+.pgk .pg-head { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-4) var(--sp-6); }
+.pgk .pg-ht { min-width: 0; flex: 1 1 320px; }
+.pgk .pg-head h1 { margin: 0; font-size: 32px; line-height: 34px; font-weight: 600; letter-spacing: -.04em; color: var(--pg-ink); }
+.pgk .pg-head p { margin: var(--sp-1) 0 0; font-size: 14px; line-height: 21px; color: var(--pg-muted); max-width: 88ch; }
+.pgk .pg-act { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); flex: none; }
+.pgk .pg-act .btn, .pgk .pg-act button { height: var(--pg-ctl); }
+
+/* Abas + barra + chips: um bloco, com o mesmo espaço entre as partes em qualquer página. */
+.pgk .pg-controls { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-4); position: relative; z-index: 30; min-width: 0; }
+.pgk .pg-controls > .pg-tabs { align-self: flex-start; }
+
+/* Navegação secundária. */
+.pgk .pg-tabs { display: inline-flex; max-width: 100%; overflow-x: auto; scrollbar-width: none; background: #fff; border-radius: 999px; padding: 5px; gap: 2px; }
+.pgk .pg-tabs::-webkit-scrollbar { display: none; }
+.pgk .pg-tabs button { flex: none; height: 38px; padding: 0 16px; border-radius: 999px; display: inline-flex; align-items: center; gap: var(--sp-2); white-space: nowrap; font-size: 14px; font-weight: 600; color: var(--pg-muted); transition: background-color .25s, color .25s; }
+.pgk .pg-tabs button:hover { color: var(--pg-ink); }
+.pgk .pg-tabs button.on { background: var(--pg-ink); color: #fff; }
+.pgk .pg-tabs em { font-style: normal; font-size: 11.5px; font-weight: 700; line-height: 1; padding: 3px 7px; border-radius: 99px; background: var(--pg-bg); color: var(--pg-ink); transition: background-color .25s, color .25s; }
+.pgk .pg-tabs button.on em { background: var(--pg-brand); color: #fff; }
+
+/* Barra de ferramentas: todos os controles com a mesma altura, raio e espaço. */
+.pgk .pg-bar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-3); min-width: 0; }
+.pgk .pg-search { flex: 1 1 280px; min-width: 0; height: var(--pg-ctl); display: flex; align-items: center; gap: var(--sp-3); padding: 0 var(--sp-2) 0 var(--sp-5); border-radius: 999px; background: #fff; border: 2px solid transparent; color: var(--pg-muted); transition: border-color .2s, box-shadow .2s; }
+.pgk .pg-search:focus-within { border-color: var(--pg-brand); box-shadow: 0 0 0 4px color-mix(in srgb, var(--pg-brand) 16%, transparent); }
+.pgk .pg-search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; font: inherit; font-size: 14.5px; color: var(--pg-ink); }
+.pgk .pg-search input::placeholder { color: var(--pg-muted); opacity: 1; }
+.pgk .pg-search input::-webkit-search-cancel-button { display: none; }
+.pgk .pg-clear { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; color: var(--pg-muted); }
+.pgk .pg-clear:hover { background: var(--pg-bg); color: var(--pg-ink); }
+
+.pgk .pg-btn, .pgk .pg-select { height: var(--pg-ctl); border-radius: 999px; background: #fff; flex: none; font-size: 14px; font-weight: 600; color: var(--pg-ink); }
+.pgk .pg-btn { display: inline-flex; align-items: center; gap: var(--sp-2); padding: 0 var(--sp-5); white-space: nowrap; transition: background-color .25s, color .25s; }
+.pgk .pg-btn:hover, .pgk .pg-btn.on, .pgk .pg-menu.open > .pg-btn { background: var(--pg-ink); color: #fff; }
+.pgk .pg-btn em { font-style: normal; font-size: 12px; font-weight: 700; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 99px; background: var(--pg-brand); color: #fff; display: grid; place-items: center; }
+.pgk .pg-select { position: relative; display: inline-flex; max-width: 240px; }
+.pgk .pg-select select { appearance: none; -webkit-appearance: none; height: 100%; width: 100%; padding: 0 40px 0 var(--sp-5); border: 0; border-radius: 999px; background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23050505' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 16px center; font: inherit; font-weight: 600; color: var(--pg-ink); cursor: pointer; outline: 0; text-overflow: ellipsis; }
+.pgk .pg-select:focus-within { box-shadow: 0 0 0 3px var(--pg-brand); }
+
+.pgk .pg-menu { position: relative; flex: none; }
+.pgk .pg-pop { position: absolute; right: 0; top: calc(100% + var(--sp-2)); z-index: 40; min-width: 220px; background: #fff; border-radius: 22px; padding: 6px; box-shadow: 0 24px 48px -18px rgba(5,5,5,.35), 0 0 0 1.5px #efefef; animation: pg-pop .2s ease both; }
+@keyframes pg-pop { from { opacity: 0; transform: translateY(-6px) scale(.98); } }
+.pgk .pg-pop > small { display: block; padding: 8px 14px 6px; color: var(--pg-muted); font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.pgk .pg-pop button { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: 11px 14px; border-radius: 14px; font-size: 14px; font-weight: 500; text-align: left; }
+.pgk .pg-pop button:hover { background: var(--pg-bg); }
+.pgk .pg-pop button.on { font-weight: 700; }
+
+.pgk .pg-view { display: inline-flex; flex: none; background: #fff; border-radius: 999px; padding: 5px; gap: 2px; height: var(--pg-ctl); box-sizing: border-box; }
+.pgk .pg-view button { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: var(--pg-muted); transition: background-color .25s, color .25s; }
+.pgk .pg-view button:hover { color: var(--pg-ink); }
+.pgk .pg-view button.on { background: var(--pg-ink); color: #fff; }
+
+/* Chips de filtros aplicados. */
+.pgk .pg-chips { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
+.pgk .pg-chips > small { color: var(--pg-muted); font-size: 13.5px; font-weight: 500; margin-right: 2px; }
+.pgk .pg-chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 6px 0 14px; border-radius: 99px; background: #fff; font-size: 13.5px; font-weight: 600; }
+.pgk .pg-chip button { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: var(--pg-muted); }
+.pgk .pg-chip button:hover { background: var(--pg-bg); color: var(--pg-ink); }
+.pgk .pg-clearall { font-size: 13.5px; font-weight: 600; color: var(--pg-brand); padding: 0 6px; height: 34px; }
+
+/* Estados de foco: um traço suave, igual em todos os controles (sem o anel roxo grosso). */
+.pgk .pg-tabs button:focus-visible, .pgk .pg-btn:focus-visible, .pgk .pg-view button:focus-visible, .pgk .pg-chip button:focus-visible, .pgk .pg-clearall:focus-visible, .pgk .pg-pop button:focus-visible, .pgk .pg-clear:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(5,5,5,.24); }
+
+/* Grades de cartões: o mesmo espaço entre cartões nas quatro páginas. */
+.pgk .crg, .pgk .agb-grid, .pgk .lst-grid, .pgk .cgrid { gap: var(--pg-grid-gap); margin-top: 0; }
+.pgk .clist { gap: var(--sp-3); }
+
+@media (max-width: 760px) {
+  .pgk { gap: var(--sp-5); }
+  .pgk .pg-head h1 { font-size: 28px; line-height: 30px; }
+  .pgk .pg-search { flex-basis: 100%; padding-left: var(--sp-4); }
+  /* Sem espaço para o nome: só o ícone (o nome continua em aria-label e title). */
+  .pgk .pg-btn:has(.pg-btn-l):not(.pg-keep-label) { padding: 0 var(--sp-4); }
+  .pgk .pg-menu .pg-btn .pg-btn-l { display: none; }
+  .pgk .pg-menu .pg-btn { width: var(--pg-ctl); padding: 0; justify-content: center; }
+  .pgk .pg-select { flex: 1 1 140px; max-width: none; }
+}
+@media (max-width: 560px) {
+  .pgk .pg-act { width: 100%; }
+  .pgk .pg-act .btn, .pgk .pg-act > a, .pgk .pg-act > button { flex: 1; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pgk .pg-tabs button, .pgk .pg-btn, .pgk .pg-view button, .pgk .pg-search { transition: none; }
+  .pgk .pg-pop { animation: none; }
+}
+
+/* Painéis de aba que ficam montados e só se alternam por `hidden`: o espaço entre os blocos é o mesmo da página. */
+.pgk .pg-panel { display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0; }
+.pgk .pg-panel[hidden] { display: none; }

@@ -1,9 +1,20 @@
-import { useState, useMemo, useRef, useEffect } from "react";
-import { clsx } from "clsx";
+import { useState, useMemo, useEffect } from "react";
 
 import { createFileRoute, Outlet, useLocation, Link } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
+import {
+  PageContainer,
+  PageControls,
+  PageHeader,
+  PageTabs,
+  PageToolbar,
+  SearchInput,
+  SelectControl,
+  SortControl,
+  ViewSwitcher,
+  type ViewOption,
+} from "@/components/page/page-kit";
 import { Modal } from "@/components/ui/modal";
 import { CampaignCard, CampaignRow } from "@/components/campaign-card";
 import { Icon } from "@/components/ui/icon";
@@ -59,6 +70,13 @@ const SORT_LABEL: Record<SortKey, string> = {
   name: "Nome (A–Z)",
 };
 
+const SORT_OPTIONS = (Object.keys(SORT_LABEL) as SortKey[]).map((k) => [k, SORT_LABEL[k]] as const);
+
+const VIEW_OPTIONS: ViewOption<"grid" | "list">[] = [
+  { id: "grid", icon: "grid", label: "Cartões" },
+  { id: "list", icon: "list", label: "Lista" },
+];
+
 const EMPTY_MESSAGES: Record<FilterKey, { title: string; description: string }> = {
   all: {
     title: "Nenhuma campanha por aqui… ainda!",
@@ -88,25 +106,13 @@ function RouteComponent() {
   const [filterStatus, setFilterStatus] = useState<FilterKey>("all");
   const [sort, setSort] = useState<SortKey>("recent");
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [sortOpen, setSortOpen] = useState(false);
   const isAgency = useIsAgencyWorkspace();
   const { data: agencyBrands = [] } = useAgencyBrands();
   const { brand: brandFromUrl } = Route.useSearch();
   const [brandFilter, setBrandFilter] = useState(brandFromUrl ?? "");
   useEffect(() => setBrandFilter(brandFromUrl ?? ""), [brandFromUrl]);
-  const sortRef = useRef<HTMLDivElement>(null);
   const [draftVersion, setDraftVersion] = useState(0);
 
-  useEffect(() => {
-    if (!sortOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
-        setSortOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [sortOpen]);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
 
   const {
@@ -344,138 +350,45 @@ function RouteComponent() {
     : EMPTY_MESSAGES[filterStatus];
 
   return (
-    <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6">
-      <div className="pv"><header className="head">
-        <div>
-          <h1>Campanhas</h1>
-          <p>Crie, acompanhe e aprove tudo em um só lugar.</p>
-        </div>
-        {permissions.campaigns_create && (
-          <Link to="/campaigns/new" params={{}}>
-            <Button>
-              <Icon name="Plus" color="currentColor" size={16} />
-              Nova campanha
-            </Button>
-          </Link>
-        )}
-      </header></div>
+    <PageContainer>
+      <PageHeader
+        title="Campanhas"
+        subtitle="Crie, acompanhe e aprove tudo em um só lugar."
+        actions={
+          permissions.campaigns_create ? (
+            <Link to="/campaigns/new" params={{}}>
+              <Button>
+                <Icon name="Plus" color="currentColor" size={16} />
+                Nova campanha
+              </Button>
+            </Link>
+          ) : undefined
+        }
+      />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div
-          role="tablist"
-          className="inline-flex max-w-full overflow-x-auto rounded-full bg-white p-[5px] [scrollbar-width:none]"
-        >
-          {(Object.keys(FILTER_LABEL) as FilterKey[]).map((key) => {
-            const on = filterStatus === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={on}
-                onClick={() => setFilterStatus(key)}
-                className={clsx(
-                  "inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-full px-3.5 text-sm font-semibold transition-colors duration-300",
-                  on ? "bg-neutral-950 text-white" : "text-neutral-500 hover:text-neutral-950",
-                )}
-              >
-                {FILTER_LABEL[key]}
-                <em
-                  className={clsx(
-                    "rounded-full px-[7px] py-0.5 text-[11.5px] font-bold not-italic transition-colors",
-                    on ? "bg-primary-600 text-white" : "bg-canvas text-neutral-950",
-                  )}
-                >
-                  {counts[key]}
-                </em>
-              </button>
-            );
-          })}
-        </div>
-
-        {isAgency && agencyBrands.length > 0 ? (
-          <select
-            aria-label="Filtrar por marca"
-            value={brandFilter}
-            onChange={(e) => setBrandFilter(e.target.value)}
-            className="h-[52px] max-w-[220px] rounded-full bg-white px-[18px] text-[14.5px] font-semibold text-neutral-950 outline-none ring-2 ring-transparent focus:ring-primary-600"
-          >
-            <option value="">Todas as marcas</option>
-            {agencyBrands.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.status === "archived" ? `${b.name} (arquivada)` : b.name}
-              </option>
-            ))}
-          </select>
-        ) : null}
-
-        <label className="flex h-[52px] min-w-[150px] max-w-[320px] flex-1 items-center gap-2.5 rounded-full bg-white px-[18px] text-neutral-500 ring-2 ring-transparent focus-within:ring-primary-600">
-          <Icon name="Search" color="currentColor" size={16} />
-          <input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Pesquisar"
-            autoComplete="off"
-            className="min-w-0 flex-1 bg-transparent text-[14.5px] text-neutral-950 outline-none placeholder:text-neutral-400"
-          />
-        </label>
-
-        <span className="flex-1" />
-
-        <div className="relative" ref={sortRef}>
-          <button
-            type="button"
-            onClick={() => setSortOpen((v) => !v)}
-            aria-haspopup="menu"
-            aria-expanded={sortOpen}
-            className="inline-flex h-[52px] items-center gap-2 whitespace-nowrap rounded-full bg-white px-[18px] text-sm font-semibold"
-          >
-            <Icon name="ArrowDownUp" color="currentColor" size={16} />
-            {SORT_LABEL[sort]}
-          </button>
-          <div
-            role="menu"
-            className={clsx(
-              "absolute right-0 top-[calc(100%+8px)] z-30 min-w-[210px] origin-top-right rounded-[22px] bg-white p-2 shadow-[0_18px_40px_-12px_rgba(5,5,5,0.35)] transition-all duration-300 ease-hype",
-              sortOpen ? "visible scale-100 opacity-100" : "invisible -translate-y-1.5 scale-[0.98] opacity-0",
-            )}
-          >
-            {(Object.keys(SORT_LABEL) as SortKey[]).map((key) => (
-              <button
-                key={key}
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setSort(key);
-                  setSortOpen(false);
-                }}
-                className="flex w-full items-center justify-between gap-2.5 rounded-2xl px-3.5 py-3 text-left text-sm font-semibold hover:bg-canvas"
-              >
-                {SORT_LABEL[key]}
-                {sort === key && <Icon name="Check" color="#9e2cfa" size={16} />}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="inline-flex rounded-full bg-white p-[5px]">
-          {(["grid", "list"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              aria-label={v === "grid" ? "Cartões" : "Lista"}
-              aria-pressed={view === v}
-              onClick={() => setView(v)}
-              className={clsx(
-                "grid size-[42px] place-items-center rounded-full transition-colors duration-300",
-                view === v ? "bg-neutral-950 text-white" : "text-neutral-500",
-              )}
-            >
-              <Icon name={v === "grid" ? "LayoutGrid" : "List"} color="currentColor" size={16} />
-            </button>
-          ))}
-        </div>
-      </div>
+      <PageControls>
+        <PageTabs
+          ariaLabel="Situação das campanhas"
+          value={filterStatus}
+          onChange={setFilterStatus}
+          items={(Object.keys(FILTER_LABEL) as FilterKey[]).map((key) => ({ id: key, label: FILTER_LABEL[key], count: counts[key] }))}
+        />
+        <PageToolbar>
+          <SearchInput value={searchTerm} onChange={setSearchTerm} placeholder="Pesquisar campanhas" label="Pesquisar campanhas" />
+          {isAgency && agencyBrands.length > 0 ? (
+            <SelectControl label="Filtrar por marca" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}>
+              <option value="">Todas as marcas</option>
+              {agencyBrands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.status === "archived" ? `${b.name} (arquivada)` : b.name}
+                </option>
+              ))}
+            </SelectControl>
+          ) : null}
+          <SortControl options={SORT_OPTIONS} value={sort} onChange={setSort} />
+          <ViewSwitcher options={VIEW_OPTIONS} value={view} onChange={setView} />
+        </PageToolbar>
+      </PageControls>
 
       {showLocalDraft && localDraft ? (
         <div className="pv">
@@ -551,6 +464,6 @@ function RouteComponent() {
           ))}
         </div></div>
       )}
-    </div>
+    </PageContainer>
   );
 }

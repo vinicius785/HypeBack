@@ -16,6 +16,7 @@ import {
   type BrandFilters,
 } from "@/components/agency/brand-list";
 import { BrandToolbar } from "@/components/agency/brand-toolbar";
+import { PageContainer, PageHeader } from "@/components/page/page-kit";
 import { I } from "@/components/prototype/ui";
 import { useWorkspacePermissions } from "@/contexts/workspace-context";
 import {
@@ -49,9 +50,7 @@ function BrandsPage() {
 
   const wrap = (children: React.ReactNode) => (
     <div className="pv">
-      <div className="wrap" style={{ maxWidth: "none" }}>
-        {children}
-      </div>
+      <PageContainer>{children}</PageContainer>
     </div>
   );
 
@@ -150,26 +149,18 @@ function BrandsPage() {
 
   return wrap(
     <>
-      <div className="head fade">
-        <div>
-          <h1>Marcas</h1>
-          <p>
-            Todas as marcas da agência e as campanhas vinculadas em um só lugar.
-          </p>
-        </div>
-        {canWrite ? (
-          <div className="btns">
-            <button
-              type="button"
-              className="btn"
-              onClick={() => setEditing("new")}
-            >
+      <PageHeader
+        title="Marcas"
+        subtitle="Todas as marcas da agência e as campanhas vinculadas em um só lugar."
+        actions={
+          canWrite ? (
+            <button type="button" className="btn" onClick={() => setEditing("new")}>
               <I n="plus" cls="sm" />
               Nova marca
             </button>
-          </div>
-        ) : null}
-      </div>
+          ) : undefined
+        }
+      />
 
       {hasAny ? (
         <div className="fade">

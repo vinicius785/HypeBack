@@ -22,27 +22,17 @@
 .pv .stats .stat.clk:focus-visible { background: var(--bg); }
 @media (max-width: 720px) { .pv .stats:has(.stat.clk) { grid-template-columns: repeat(2, 1fr); row-gap: 10px; } .pv .stats .stat.clk { border-left: 0; padding: 10px 14px; } }
 
-/* Barra: busca, filtros e ordenação (classes cx-* e cfw/cfm vêm do protótipo; aqui só o conteúdo do popover). */
-.pv .bt-bar { margin-top: 18px; margin-bottom: 10px; }
-.pv .bt-bar .bt-sort { gap: 8px; padding: 0 18px; }
-.pv .bt-bar .bt-sort:hover { background: var(--ink); color: #fff; }
+/* Popover de filtros (a barra, o botão e os chips são do kit de página: page-kit.css). */
 .pv .bt-pop { min-width: 300px; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
 .pv .bt-grp { border: 0; margin: 0; padding: 0; min-width: 0; }
 .pv .bt-grp legend { padding: 0 0 8px; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .pv .bt-grp > div { display: flex; flex-wrap: wrap; gap: 6px; }
 /* O menu `.cfm` estiliza todo `button` dele (linha cheia, fundo no `.on`); as pílulas precisam vencer essa regra. */
-.pv .cfm .bt-pill { width: auto; display: inline-flex; align-items: center; justify-content: center; height: 34px; padding: 0 14px; border-radius: 99px; background: var(--bg); color: var(--ink); font-size: 13px; font-weight: 600; transition: background .2s, color .2s; }
-.pv .cfm .bt-pill:hover { background: #e2e2e2; }
-.pv .cfm .bt-pill.on, .pv .cfm .bt-pill.on:hover { background: var(--ink); color: #fff; }
-.pv .cfm button.bt-clear { justify-content: center; margin-top: 2px; color: var(--muted); font-size: 13px; }
-.pv .cfm button.bt-clear:disabled { opacity: .45; cursor: default; }
-.pv .bt-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; }
-.pv .bt-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 6px 0 14px; border-radius: 99px; background: #fff; font-size: 13px; font-weight: 600; }
-.pv .bt-chip button { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); }
-.pv .bt-chip button:hover { background: var(--bg); color: var(--ink); }
-.pv .bt-clear-all { font-size: 13px; font-weight: 600; color: var(--muted); padding: 4px 8px; border-radius: 99px; }
-.pv .bt-clear-all:hover { color: var(--ink); background: #fff; }
-@media (max-width: 720px) { .pv .bt-bar .bt-sort-l { display: none; } .pv .bt-bar .bt-sort { width: 52px; padding: 0; justify-content: center; } }
+.pv .bt-pop .bt-pill { width: auto; display: inline-flex; align-items: center; justify-content: center; height: 34px; padding: 0 14px; border-radius: 99px; background: var(--bg); color: var(--ink); font-size: 13px; font-weight: 600; transition: background .2s, color .2s; }
+.pv .bt-pop .bt-pill:hover { background: #e2e2e2; }
+.pv .bt-pop .bt-pill.on, .pv .bt-pop .bt-pill.on:hover { background: var(--ink); color: #fff; }
+.pv .bt-pop button.bt-clear { justify-content: center; margin-top: 2px; color: var(--muted); font-size: 13px; }
+.pv .bt-pop button.bt-clear:disabled { opacity: .45; cursor: default; }
 
 /* Cartão de marca (padrão do cartão de Clientes). */
 .pv .bcd { position: relative; background: #fff; border-radius: 28px; padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0;
@@ -75,14 +65,12 @@
 .pv .bcd-sk.round { width: 48px; height: 48px; border-radius: 50%; flex: none; }
 @keyframes bcd-sh { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .pv .bcd, .pv .bcd-sk { transition: none; animation: none; } .pv .bcd:hover { transform: none; } }
-@media (max-width: 720px) { .pv .cfm.bt-pop { left: 12px; right: 12px; width: auto; min-width: 0; } }
+@media (max-width: 720px) { .pv .pg-pop.bt-pop { left: 12px; right: 12px; width: auto; min-width: 0; } }
 .pv .ov-empty .btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 4px; }
 
 /* Sem anel de foco grosso nos controles da página (o roxo de 3px aparecia até ao clicar): o foco vira um traço fino e suave. */
-.pv .bt-bar button:focus-visible, .pv .bt-bar .cx-find:focus-within, .pv .bcd-dots:focus-visible, .pv .bcd-open:focus-visible, .pv .bt-chip button:focus-visible, .pv .bt-clear-all:focus-visible { outline: none; }
-.pv .bt-bar button:focus-visible, .pv .bcd-dots:focus-visible, .pv .bt-chip button:focus-visible, .pv .bt-clear-all:focus-visible { box-shadow: 0 0 0 2px rgba(5,5,5,.14); }
+.pv .bcd-dots:focus-visible { box-shadow: 0 0 0 2px rgba(5,5,5,.14); }
 .pv .bcd-open:focus-visible { box-shadow: 0 0 0 2px rgba(5,5,5,.14); }
-.pv .bt-bar .cx-fb.on:focus-visible { box-shadow: none; }
 
 /* Formulário completo da marca (identidade, empresa, endereço). */
 .pv .agb-sec { display: flex; flex-direction: column; gap: 14px; }

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback, lazy, Suspense } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { createFileRoute, useSearch, useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
@@ -27,6 +27,19 @@ import { useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
 import { rosterErrorMessage, useInviteToRoster, useRosterStatusMap } from "@/hooks/use-agency-roster";
 import { CityPicker } from "@/components/creators/city-picker";
 import { MapCreatorPanel } from "@/components/creators/map-creator-panel";
+import {
+  FilterButton,
+  FilterChips,
+  PageContainer,
+  PageControls,
+  PageHeader,
+  PageTabs,
+  PageToolbar,
+  SearchInput,
+  SortControl,
+  ViewSwitcher,
+  type ViewOption,
+} from "@/components/page/page-kit";
 import type { CityPlace } from "@/lib/city-search";
 import { InviteNetworksModal } from "@/components/influencer-lists/invite-networks-modal";
 import { defaultCatalogOrder } from "@/shared/utils/creators-default-order";
@@ -217,70 +230,16 @@ function requestLocation(): Promise<GeoResult> {
 
 
 // ---------------------------------------------------------------------------
-// Shell da página (cabeçalho + abas) — marcação do protótipo
+// Shell da página (cabeçalho do kit) — o conteúdo de cada aba monta as abas, a barra e os chips
 // ---------------------------------------------------------------------------
 
-function PageShell({
-  tab,
-  setTab,
-  canLists,
-  exploreCount,
-  listCount,
-  children,
-}: {
-  tab: ActiveTab;
-  setTab: (t: ActiveTab) => void;
-  canLists: boolean;
-  exploreCount?: number;
-  listCount?: number;
-  children: React.ReactNode;
-}) {
-  const segRef = useRef<HTMLDivElement>(null);
-  const indRef = useRef<HTMLElement>(null);
-
-  const moveInd = useCallback(() => {
-    const on = segRef.current?.querySelector<HTMLElement>("button.on");
-    const ind = indRef.current;
-    if (!on || !ind) return;
-    ind.style.width = `${on.offsetWidth}px`;
-    ind.style.transform = `translateX(${on.offsetLeft}px)`;
-  }, []);
-
-  useLayoutEffect(() => {
-    moveInd();
-  }, [moveInd, tab, exploreCount, listCount, canLists]);
-
-  useEffect(() => {
-    window.addEventListener("resize", moveInd);
-    return () => window.removeEventListener("resize", moveInd);
-  }, [moveInd]);
-
+function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="pv">
-      <div className="wrap" style={{ maxWidth: "none" }}>
-        <div className="head fade crhd">
-          <div>
-            <h1>Criadores</h1>
-            <p>Descubra, salve e convide perfis para as suas campanhas.</p>
-          </div>
-        </div>
-        <div className="tools fade crt">
-          <div className="seg" id="crseg" ref={segRef}>
-            <i className="ind" ref={indRef} />
-            <button type="button" className={tab === "catalog" ? "on" : ""} onClick={() => setTab("catalog")}>
-              Explorar
-              {exploreCount != null && <em>{exploreCount}</em>}
-            </button>
-            {canLists && (
-              <button type="button" className={tab === "lists" ? "on" : ""} onClick={() => setTab("lists")}>
-                Minhas listas
-                {listCount != null && <em>{listCount}</em>}
-              </button>
-            )}
-          </div>
-        </div>
+      <PageContainer>
+        <PageHeader title="Criadores" subtitle="Descubra, salve e convide perfis para as suas campanhas." />
         {children}
-      </div>
+      </PageContainer>
     </div>
   );
 }
@@ -658,12 +617,17 @@ interface InviteTarget {
   profileIds?: string[];
 }
 
-function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
+const VIEW_OPTIONS: ViewOption<"grid" | "list" | "map">[] = [
+  { id: "grid", icon: "grid", label: "Cartões" },
+  { id: "list", icon: "list", label: "Lista" },
+  { id: "map", icon: "map", label: "Mapa" },
+];
+
+function CatalogTab({ tabs, onTotal }: { tabs: React.ReactNode; onTotal: (n: number | undefined) => void }) {
   const [filters, setFilters] = useState<CatalogFilters>(EMPTY_FILTERS);
   const [debouncedQ, setDebouncedQ] = useState("");
   const [view, setView] = useState<"grid" | "list" | "map">("grid");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [sortOpen, setSortOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [selectedForList, setSelectedForList] = useState<SelectedForList | null>(null);
   const [bulkSave, setBulkSave] = useState(false);
@@ -703,15 +667,6 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
     return () => clearTimeout(t);
   }, [filters.q]);
 
-  // Fecha o menu de ordenação ao clicar fora.
-  useEffect(() => {
-    if (!sortOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (!(e.target as Element).closest?.(".cfw")) setSortOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [sortOpen]);
 
   const queryFilters = useMemo(() => {
     const range = FOLLOWER_RANGES[filters.fol];
@@ -867,8 +822,6 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
   const nearOn = !!nearMeLocation;
   const activeCount = activeKeys.length + (nearOn ? 1 : 0);
   const selectedCreators = creators.filter((c) => selected.has(c.key));
-  const sortActive = !!filters.sort;
-  const sortLabel = SORT_OPTIONS.find((s) => s[0] === filters.sort)?.[1] ?? "Relevância";
   const searching = !!debouncedQ;
   // Sem contagem de resultados: o catálogo pagina por conta de rede social, então
   // qualquer número seria de contas ou de criadores parcialmente carregados.
@@ -904,122 +857,50 @@ function CatalogTab({ onTotal }: { onTotal: (n: number | undefined) => void }) {
     return view === "list" ? <CreatorRow key={group.key} {...props} /> : <CreatorCard key={group.key} {...props} />;
   };
 
-  const VIEWS: Array<["grid" | "list" | "map", string, string]> = [
-    ["grid", "grid", "Cartões"],
-    ["list", "list", "Lista"],
-    ["map", "map", "Mapa"],
-  ];
-
   return (
     <>
       <>
-        <div id="crfb" className="fade cx-bar">
-          <label className="cx-find">
-            <I n="search" cls="sm" />
-            <input
-              type="search"
-              placeholder="Buscar criador por nome ou @"
-              aria-label="Buscar criador"
-              value={filters.q}
-              autoComplete="off"
-              onChange={(e) => setFilter("q", e.target.value)}
-            />
-            {filters.q && (
-              <button type="button" className="cx-x" aria-label="Limpar busca" onClick={() => setFilter("q", "")}>
-                <I n="x" cls="sm" />
-              </button>
+        <PageControls>
+          {tabs}
+          <PageToolbar>
+            <SearchInput value={filters.q} onChange={(v) => setFilter("q", v)} placeholder="Buscar criador por nome ou @" label="Buscar criador" />
+            <FilterButton count={activeCount} aria-haspopup="dialog" onClick={() => setFiltersOpen(true)}>
+              Filtros
+            </FilterButton>
+            {isAgency && (
+              <FilterButton icon="star" active={rosterOnly} aria-pressed={rosterOnly} onClick={() => setRosterOnly((v) => !v)}>
+                Meu elenco
+              </FilterButton>
             )}
-          </label>
-
-          <button type="button" className={`cx-fb ${activeCount > 0 ? "on" : ""}`} aria-haspopup="dialog" onClick={() => setFiltersOpen(true)}>
-            <I n="funnel" cls="sm" />
-            Filtros
-            {activeCount > 0 && <em aria-label={`${activeCount} filtros ativos`}>{activeCount}</em>}
-          </button>
-
-          {isAgency && (
-            <button type="button" className={`cx-fb ${rosterOnly ? "on" : ""}`} aria-pressed={rosterOnly} onClick={() => setRosterOnly((v) => !v)}>
-              <I n="star" cls="sm" />
-              Meu elenco
-            </button>
-          )}
-
-          <div className="cx-ctl">
-            <div className={`cfw ${sortOpen ? "open" : ""}`}>
-              <button
-                type="button"
-                className={`cfb crso ${sortActive ? "on" : ""}`}
-                aria-label={`Ordenar: ${sortLabel}`}
-                aria-haspopup="menu"
-                aria-expanded={sortOpen}
-                title={`Ordenar: ${sortLabel}`}
-                onClick={() => setSortOpen((v) => !v)}
-              >
-                <svg className="ico sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="m3 16 4 4 4-4" />
-                  <path d="M7 20V4" />
-                  <path d="m21 8-4-4-4 4" />
-                  <path d="M17 4v16" />
-                </svg>
-              </button>
-              <div className="cfm right" role="menu">
-                <small className="cfh">Ordenar por</small>
-                {SORT_OPTIONS.map(([v, l]) => (
-                  <button
-                    key={v}
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked={filters.sort === v}
-                    className={filters.sort === v ? "on" : ""}
-                    onClick={() => {
-                      setFilter("sort", v);
-                      setSortOpen(false);
-                    }}
-                  >
-                    {l}
-                    {filters.sort === v && <I n="check" cls="sm" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="vt crvt" role="group" aria-label="Visualização">
-              {VIEWS.map(([v, icon, label]) => (
-                <button key={v} type="button" className={view === v ? "on" : ""} aria-label={label} aria-pressed={view === v} title={label} onClick={() => setView(v)}>
-                  <I n={icon} cls="sm" />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {activeCount > 0 && (
-          <div className="fade cx-act" aria-label="Filtros ativos">
-            <small>Filtros ativos:</small>
-            {activeKeys.map((k) => {
-              const o = optsFor(k).find((x) => x[0] === filters[k]);
-              return (
-                <button key={k} type="button" className="crx" aria-label={`Remover filtro ${FILTER_LABEL[k]}`} onClick={() => setFilter(k, EMPTY_FILTERS[k])}>
-                  {o ? o[1].split(" · ")[0] : filters[k]}
-                  <I n="x" cls="sm" />
-                </button>
-              );
-            })}
-            {nearOn && (
-              <button
-                type="button"
-                className="crx"
-                aria-label={`Remover filtro ${nearMeLocation?.label ? "de cidade" : "Perto de mim"}`}
-                onClick={removeNearMe}
-              >
-                {nearMeLocation?.label ? nearMeLocation.label.split(",")[0] : "Perto de mim"} · {radiusKm} km
-                <I n="x" cls="sm" />
-              </button>
-            )}
-            <button type="button" className="lnk" onClick={clearCriteria}>
-              Limpar filtros
-            </button>
-          </div>
-        )}
+            <SortControl options={SORT_OPTIONS} value={filters.sort} onChange={(v) => setFilter("sort", v)} />
+            <ViewSwitcher options={VIEW_OPTIONS} value={view} onChange={setView} />
+          </PageToolbar>
+          <FilterChips
+            label="Filtros ativos"
+            onClear={clearCriteria}
+            chips={[
+              ...activeKeys.map((k) => {
+                const o = optsFor(k).find((x) => x[0] === filters[k]);
+                return {
+                  id: k,
+                  label: o ? o[1].split(" · ")[0] : String(filters[k]),
+                  removeLabel: `Remover filtro ${FILTER_LABEL[k]}`,
+                  onRemove: () => setFilter(k, EMPTY_FILTERS[k]),
+                };
+              }),
+              ...(nearOn
+                ? [
+                    {
+                      id: "near",
+                      label: `${nearMeLocation?.label ? nearMeLocation.label.split(",")[0] : "Perto de mim"} · ${radiusKm} km`,
+                      removeLabel: `Remover filtro ${nearMeLocation?.label ? "de cidade" : "Perto de mim"}`,
+                      onRemove: removeNearMe,
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        </PageControls>
 
         <div id="crres" className="fade">
           {!isLoading && contextLine && (
@@ -1304,22 +1185,28 @@ function RouteComponent() {
     );
   }
 
+  const tabs = (
+    <PageTabs
+      ariaLabel="Seções de criadores"
+      value={activeTab}
+      onChange={setTab}
+      items={[
+        { id: "catalog", label: "Explorar", count: exploreCount },
+        ...(canLists ? [{ id: "lists" as const, label: "Minhas listas", count: !listsLoading ? myLists.length : undefined }] : []),
+      ]}
+    />
+  );
+
   return (
-    <PageShell
-      tab={activeTab}
-      setTab={setTab}
-      canLists={canLists}
-      exploreCount={exploreCount}
-      listCount={canLists && !listsLoading ? myLists.length : undefined}
-    >
+    <PageShell>
       {/* As duas abas ficam montadas (a visitada fica só oculta): trocar não
           refaz requisições, não mostra skeleton nem repete a animação. */}
-      <div hidden={activeTab !== "catalog"}>
-        <CatalogTab onTotal={setExploreCount} />
+      <div className="pg-panel" hidden={activeTab !== "catalog"}>
+        <CatalogTab tabs={tabs} onTotal={setExploreCount} />
       </div>
       {canLists && visitedLists && (
-        <div hidden={activeTab !== "lists"}>
-          <ListsTab />
+        <div className="pg-panel" hidden={activeTab !== "lists"}>
+          <ListsTab tabs={tabs} />
         </div>
       )}
     </PageShell>

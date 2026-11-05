@@ -139,7 +139,8 @@ describe("página Elenco", () => {
     ];
     render(<Page />);
     const names = () => Array.from(screen.getByRole("list", { name: "Criadores no elenco" }).querySelectorAll(":scope > li")).map((li) => li.querySelector(".rst-id b")?.textContent);
-    await user.selectOptions(screen.getByLabelText("Ordenar por"), "followers");
+    await user.click(screen.getByRole("button", { name: /^Ordenar:/ }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Mais seguidores" }));
     expect(names()).toEqual(["Caio Lima", "Bia Alves"]);
     await user.selectOptions(screen.getByLabelText("Filtrar por rede social"), "instagram");
     expect(names()).toEqual(["Bia Alves"]);
