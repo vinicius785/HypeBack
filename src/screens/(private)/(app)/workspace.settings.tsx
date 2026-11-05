@@ -1,6 +1,6 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { BrandTab, type BrandValues } from "@/components/workspace-settings/brand-tab";
@@ -8,6 +8,8 @@ import { CompanyTab, type CompanyValues } from "@/components/workspace-settings/
 import { AccountTypeCard } from "@/components/workspace-settings/account-type-card";
 import { apiErr } from "@/components/workspace-settings/constants";
 import { DangerTab } from "@/components/workspace-settings/danger-tab";
+import { SettingsSection } from "@/components/workspace-settings/settings-section";
+import { PageContainer, PageControls, PageHeader, PageTabs } from "@/components/page/page-kit";
 import { DeleteModal } from "@/components/workspace-settings/delete-modal";
 import { InviteModal, type InvitePayload } from "@/components/workspace-settings/invite-modal";
 import { PermModal } from "@/components/workspace-settings/perm-modal";
@@ -40,7 +42,8 @@ export const Route = createFileRoute("/(private)/(app)/workspace/settings")({
   component: WorkspaceSettingsScreen,
 });
 
-type Tab = "brand" | "company" | "team" | "adv";
+type Tab = "brand" | "team" | "adv";
+const TAB_IDS: readonly Tab[] = ["brand", "team", "adv"];
 
 const NON_PRIVILEGED: WorkspaceRole[] = ["member", "aprovador", "observador", "juridico", "financeiro", "analista"];
 
@@ -56,7 +59,13 @@ function WorkspaceSettingsScreen() {
   const { data: niches = [] } = useNiches();
   const typeRequests = useAccountTypeRequests(workspaceId);
 
-  const [tab, setTab] = useState<Tab>("brand");
+  // A aba fica no endereço (`?tab=equipe`): recarregar, voltar e compartilhar o link levam à mesma aba.
+  const search = useSearch({ from: "/(private)/(app)/workspace/settings" }) as Record<string, string>;
+  const [tab, setTabState] = useState<Tab>(() => (TAB_IDS as readonly string[]).includes(search?.tab) ? (search.tab as Tab) : "brand");
+  const setTab = (t: Tab) => {
+    setTabState(t);
+    navigate({ search: t === "brand" ? {} : { tab: t }, replace: true } as never);
+  };
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [forceNew, setForceNew] = useState(0);
@@ -73,26 +82,12 @@ function WorkspaceSettingsScreen() {
   const canDeleteWs = perms?.workspace_delete === true;
   const isOwner = selectedWorkspace?.role === "owner";
 
+  // Avançado reúne o tipo do workspace, os dados da empresa (só o proprietário) e a exclusão.
+  const showAdv = canDeleteWs || isOwner || canEditSettings;
   const tabs: Array<[Tab, string]> = [["brand", "Marca"]];
-  if (isOwner) tabs.push(["company", "Empresa"]);
   if (canListMembers) tabs.push(["team", "Equipe"]);
-  if (canDeleteWs) tabs.push(["adv", "Avançado"]);
+  if (showAdv) tabs.push(["adv", "Avançado"]);
   const active: Tab = tabs.some(([k]) => k === tab) ? tab : "brand";
-
-  const segRef = useRef<HTMLDivElement>(null);
-  const indRef = useRef<HTMLElement>(null);
-  const moveInd = useCallback(() => {
-    const on = segRef.current?.querySelector<HTMLElement>("button.on");
-    const ind = indRef.current;
-    if (!on || !ind) return;
-    ind.style.width = `${on.offsetWidth}px`;
-    ind.style.transform = `translateX(${on.offsetLeft}px)`;
-  }, []);
-  useLayoutEffect(() => {
-    moveInd();
-    window.addEventListener("resize", moveInd);
-    return () => window.removeEventListener("resize", moveInd);
-  }, [moveInd, active, members.length, tabs.length]);
 
   const syncWorkspaceFromServer = useCallback(async () => {
     if (!workspaceId) return;
@@ -268,29 +263,54 @@ function WorkspaceSettingsScreen() {
 
   const ws = selectedWorkspace;
 
+  // Todas as abas permitidas ficam montadas e só se alternam por `hidden`: o que foi digitado numa aba (ex.: o
+  // formulário da Marca) não se perde ao olhar outra, e trocar de aba não refaz consultas.
+  const teamPanel = (
+    <TeamTab
+      workspaceName={ws.name}
+      members={members}
+      loading={loadingMembers}
+      error={membersError}
+      onRetry={() => refetchMembers()}
+      selfId={user?.id}
+      canInvite={canInvite}
+      canManagePermissions={canRoleWrite}
+      canRemoveMember={canRemoveMember}
+      removing={removeMutation.isPending}
+      pendingInvites={pendingInvites}
+      cancelingInvite={cancelInviteMutation.isPending}
+      onCancelInvite={(invite) =>
+        cancelInviteMutation.mutate(invite.id, {
+          onSuccess: () => toast.success(`Convite para ${invite.email} cancelado.`),
+          onError: (e) => toast.error(apiErr(e)),
+        })
+      }
+      onInvite={() => setInviteOpen(true)}
+      onEdit={setPermMember}
+      onRemove={(m) =>
+        removeMutation.mutate(m.user_id, {
+          onSuccess: () => toast.success(`${m.name.split(" ")[0]} removido da equipe`),
+          onError: (e) => toast.error(apiErr(e)),
+        })
+      }
+    />
+  );
+
   return (
     <div className="pv">
-      <div className="wrap stg" style={{ maxWidth: "none" }}>
-        <div className="head fade">
-          <div>
-            <h1>Configurações</h1>
-            <p>Gerencie a identidade, os acessos e as configurações do seu workspace.</p>
-          </div>
-        </div>
-        <div className="tools fade wkx-tl">
-          <div className="seg" id="wkseg" ref={segRef}>
-            <i className="ind" ref={indRef} />
-            {tabs.map(([k, l]) => (
-              <button key={k} type="button" className={active === k ? "on" : ""} onClick={() => setTab(k)}>
-                {l}
-                {k === "team" && <em>{members.length}</em>}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div id="wkres" className="fade wkx-rs" key={active}>
-          {active === "brand" && (
-            <>
+      <PageContainer>
+        <PageHeader title="Configurações" subtitle="Gerencie a identidade, os acessos e as configurações do seu workspace." />
+        <PageControls>
+          <PageTabs
+            ariaLabel="Seções das configurações"
+            value={active}
+            onChange={setTab}
+            items={tabs.map(([id, label]) => ({ id, label, count: id === "team" && !loadingMembers ? members.length : undefined }))}
+          />
+        </PageControls>
+
+        <div className="st-body">
+          <div className="st-panel" hidden={active !== "brand"}>
             <BrandTab
               name={ws.name ?? ""}
               description={ws.description ?? ""}
@@ -306,59 +326,41 @@ function WorkspaceSettingsScreen() {
               onSave={(v) => updateMutation.mutate(v)}
               onPhoto={(f) => photoMutation.mutate(f)}
             />
-            <div className="stg-after">
-              <AccountTypeCard
-                workspaceId={ws.id}
-                current={ws.account_type === "agency" ? "agency" : "brand"}
-                requests={typeRequests.data ?? []}
-                loading={typeRequests.isLoading}
-                error={typeRequests.isError}
-                canRequest={canEditSettings}
-                onRetry={() => void typeRequests.refetch()}
-              />
+          </div>
+
+          {canListMembers && (
+            <div className="st-panel" hidden={active !== "team"}>
+              {teamPanel}
             </div>
-            </>
           )}
-          {active === "company" && (
-            <CompanyTab
-              workspace={ws}
-              saving={updateCompanyMutation.isPending}
-              onSave={(v) => updateCompanyMutation.mutate(v)}
-            />
+
+          {showAdv && (
+            <div className="st-panel" hidden={active !== "adv"}>
+              <SettingsSection id="st-type" title="Tipo de workspace" description="Define como o workspace opera no HypeApp: como marca ou como agência.">
+                <AccountTypeCard
+                  workspaceId={ws.id}
+                  current={ws.account_type === "agency" ? "agency" : "brand"}
+                  requests={typeRequests.data ?? []}
+                  loading={typeRequests.isLoading}
+                  error={typeRequests.isError}
+                  canRequest={canEditSettings}
+                  onRetry={() => void typeRequests.refetch()}
+                />
+              </SettingsSection>
+              {isOwner && (
+                <SettingsSection id="st-co" title="Dados da empresa" description="Usados em contratos e notas dos pagamentos. Visível apenas para o proprietário.">
+                  <CompanyTab workspace={ws} saving={updateCompanyMutation.isPending} onSave={(v) => updateCompanyMutation.mutate(v)} />
+                </SettingsSection>
+              )}
+              {canDeleteWs && (
+                <SettingsSection id="st-del" title="Excluir workspace" description="Remove o workspace para você e para toda a equipe.">
+                  <DangerTab name={ws.name} onDelete={() => setDeleteOpen(true)} />
+                </SettingsSection>
+              )}
+            </div>
           )}
-          {active === "team" && (
-            <TeamTab
-              workspaceName={ws.name}
-              members={members}
-              loading={loadingMembers}
-              error={membersError}
-              onRetry={() => refetchMembers()}
-              selfId={user?.id}
-              canInvite={canInvite}
-              canManagePermissions={canRoleWrite}
-              canRemoveMember={canRemoveMember}
-              removing={removeMutation.isPending}
-              pendingInvites={pendingInvites}
-              cancelingInvite={cancelInviteMutation.isPending}
-              onCancelInvite={(invite) =>
-                cancelInviteMutation.mutate(invite.id, {
-                  onSuccess: () => toast.success(`Convite para ${invite.email} cancelado.`),
-                  onError: (e) => toast.error(apiErr(e)),
-                })
-              }
-              onInvite={() => setInviteOpen(true)}
-              onEdit={setPermMember}
-              onRemove={(m) =>
-                removeMutation.mutate(m.user_id, {
-                  onSuccess: () => toast.success(`${m.name.split(" ")[0]} removido da equipe`),
-                  onError: (e) => toast.error(apiErr(e)),
-                })
-              }
-            />
-          )}
-          {active === "adv" && <DangerTab name={ws.name} onDelete={() => setDeleteOpen(true)} />}
         </div>
-      </div>
+      </PageContainer>
 
       {permMember && (
         <PermModal

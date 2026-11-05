@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -40,9 +40,12 @@ beforeEach(() => vi.clearAllMocks());
 describe("Tipo de conta", () => {
   it("mostra o tipo atual e as diferenças entre Marca e Agência", () => {
     wrap(<AccountTypeCard {...base} />);
+    expect(screen.getByText("Tipo atual")).toBeTruthy();
+    expect(screen.queryByRole("list", { name: "Tipos de conta" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Ver diferenças/ }));
     const list = screen.getByRole("list", { name: "Tipos de conta" });
     expect(list.children).toHaveLength(2);
-    expect(within(list).getByText("Tipo atual")).toBeTruthy();
+    expect(within(list).getAllByText("Tipo atual").length).toBeGreaterThan(0);
     expect(within(list).getByText(/gerencia campanhas de diferentes marcas/i)).toBeTruthy();
   });
 

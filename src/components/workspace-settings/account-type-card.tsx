@@ -7,7 +7,7 @@ import {
   type AccountType,
   type AccountTypeRequest,
 } from "@/shared/services/account-type-requests";
-import "@/styles/settings-redesign.css";
+import "@/styles/settings.css";
 
 import { AccountTypeRequestModal } from "./account-type-request-modal";
 import { ACCOUNT_TYPE_INFO } from "./account-type-info";
@@ -32,63 +32,69 @@ interface Props {
 }
 
 /**
- * Tipo de conta do workspace: qual é, o que muda entre Marca e Agência e o estado do último pedido. O usuário não troca
- * o tipo: só pede, e a equipe Hype decide (um pedido pendente por vez).
+ * Tipo do workspace (Marca ou Agência): qual é, o que o define, as diferenças (recolhidas) e o estado do último pedido.
+ * O usuário não troca o tipo: só pede, e a equipe Hype decide (um pedido pendente por vez). O título e a descrição da
+ * seção vêm da página; aqui só o conteúdo.
  */
 export function AccountTypeCard({ workspaceId, current, requests, loading, error, canRequest, onRetry }: Props) {
   const [open, setOpen] = useState(false);
+  const [diff, setDiff] = useState(false);
   const latest = requests[0];
   const pending = latest?.status === "pending" ? latest : null;
-  // O último pedido decidido só aparece enquanto é a novidade; depois de um novo pedido, vale o pendente.
   const decided = latest && latest.status !== "pending" ? latest : null;
+  const info = ACCOUNT_TYPE_INFO[current];
 
   return (
-    <section className="stg-card" aria-labelledby="stg-at">
-      <header className="stg-ath">
-        <div>
-          <h3 id="stg-at">Tipo de conta</h3>
-          <p>Define como o workspace opera no HypeApp. A troca é analisada pela equipe Hype.</p>
-        </div>
+    <div className="st-at">
+      <div className="st-at-cur">
+        <b>{ACCOUNT_TYPE_LABEL[current]}</b>
+        <span>Tipo atual</span>
+        <p>{info.description}</p>
+      </div>
+
+      <div className="st-at-row">
+        <button type="button" className="st-link" aria-expanded={diff} onClick={() => setDiff((v) => !v)}>
+          {diff ? "Ocultar diferenças" : "Ver diferenças entre Marca e Agência"}
+          <I n="chevdown" cls="sm" />
+        </button>
         {canRequest && (
-          <button type="button" className="btn out" disabled={!!pending || loading} onClick={() => setOpen(true)} title={pending ? "Já existe uma solicitação pendente" : undefined}>
+          <button type="button" className="btn out st-btn" disabled={!!pending || loading} onClick={() => setOpen(true)} title={pending ? "Já existe uma solicitação pendente" : undefined}>
             <I n="refresh" cls="sm" />
             Solicitar alteração do tipo de conta
           </button>
         )}
-      </header>
+      </div>
 
-      <div className="stg-at-grid" role="list" aria-label="Tipos de conta">
-        {TYPES.map((t) => {
-          const info = ACCOUNT_TYPE_INFO[t];
-          const isCurrent = t === current;
-          return (
-            <div key={t} role="listitem" className={`stg-at-col${isCurrent ? " cur" : ""}`}>
-              <div className="stg-at-ch">
-                <b>{ACCOUNT_TYPE_LABEL[t]}</b>
-                {isCurrent && <span>Tipo atual</span>}
-              </div>
-              <p>{info.description}</p>
+      {diff && (
+        <div className="st-at-grid" role="list" aria-label="Tipos de conta">
+          {TYPES.map((t) => (
+            <div key={t} role="listitem" className={`st-at-col${t === current ? " cur" : ""}`}>
+              <b>
+                {ACCOUNT_TYPE_LABEL[t]}
+                {t === current && <span>Tipo atual</span>}
+              </b>
+              <p>{ACCOUNT_TYPE_INFO[t].description}</p>
               <ul>
-                {info.points.map((p) => (
+                {ACCOUNT_TYPE_INFO[t].points.map((p) => (
                   <li key={p}>{p}</li>
                 ))}
               </ul>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
 
       {loading ? (
-        <p className="stg-hint">Carregando solicitações…</p>
+        <p className="st-note">Carregando solicitações…</p>
       ) : error ? (
-        <p className="stg-hint" role="alert">
+        <p className="st-note" role="alert">
           Não foi possível carregar as solicitações.{" "}
-          <button type="button" className="lnk" onClick={onRetry}>
+          <button type="button" className="st-link" onClick={onRetry}>
             Tentar de novo
           </button>
         </p>
       ) : pending ? (
-        <div className="stg-req is-pending" role="status">
+        <div className="st-req is-pending" role="status">
           <b>
             Solicitação pendente <span>{ACCOUNT_REQUEST_STATUS_LABEL.pending}</span>
           </b>
@@ -97,7 +103,7 @@ export function AccountTypeCard({ workspaceId, current, requests, loading, error
           </p>
         </div>
       ) : decided ? (
-        <div className={`stg-req is-${decided.status}`} role="status">
+        <div className={`st-req is-${decided.status}`} role="status">
           <b>
             Última solicitação <span>{ACCOUNT_REQUEST_STATUS_LABEL[decided.status]}</span>
           </b>
@@ -110,9 +116,9 @@ export function AccountTypeCard({ workspaceId, current, requests, loading, error
         </div>
       ) : null}
 
-      {!canRequest && <p className="stg-hint">Só o proprietário e os administradores podem solicitar a troca do tipo de conta.</p>}
+      {!canRequest && <p className="st-note">Só o proprietário e os administradores podem solicitar a troca do tipo de conta.</p>}
 
       {open && <AccountTypeRequestModal workspaceId={workspaceId} current={current} onClose={() => setOpen(false)} />}
-    </section>
+    </div>
   );
 }

@@ -6,8 +6,10 @@ import type { WorkspaceMember, WorkspaceRole } from "@/shared/types";
 import type { PendingWorkspaceInvite } from "@/shared/services/workspace-invites";
 import { expiryLabel } from "@/components/workspace-invites/my-invites";
 import "@/styles/settings-redesign.css";
+import "@/styles/settings.css";
 
 import { ROLE_LABEL } from "./constants";
+import { SettingsSection } from "./settings-section";
 
 interface Props {
   workspaceName: string;
@@ -65,21 +67,20 @@ export function TeamTab({
   const rows = q ? sorted.filter((m) => norm(`${m.name} ${m.email}`).includes(q)) : sorted;
   return (
     <div className="stg-team">
-      <section className="stg-card" aria-labelledby="stg-tm">
-        <header className="stg-th">
-          <div>
-            <h3 id="stg-tm">Equipe</h3>
-            <p>
-              {members.length} {members.length === 1 ? "pessoa com acesso" : "pessoas com acesso"} a {workspaceName}.
-            </p>
-          </div>
-          {canInvite && (
+      <SettingsSection
+        id="stg-tm"
+        wide
+        title="Membros"
+        description={`${members.length} ${members.length === 1 ? "pessoa com acesso" : "pessoas com acesso"} a ${workspaceName}.`}
+        action={
+          canInvite ? (
             <button type="button" className="btn" onClick={onInvite}>
               <I n="plus" cls="sm" />
               Adicionar membro
             </button>
-          )}
-        </header>
+          ) : undefined
+        }
+      >
 
         {!loading && !error && members.length >= SEARCH_MIN && (
           <label className="stg-tq">
@@ -199,16 +200,10 @@ export function TeamTab({
         {!loading && !error && members.length > 0 && !canInvite && !canManagePermissions && (
           <p className="stg-hint">Você pode ver a equipe, mas só administradores convidam pessoas e mudam permissões.</p>
         )}
-      </section>
+      </SettingsSection>
 
       {pendingInvites.length > 0 && (
-        <section className="stg-card" aria-labelledby="stg-pi">
-          <header>
-            <h3 id="stg-pi" className="stg-h4">
-              Convites aguardando resposta
-            </h3>
-            <p>A pessoa entra na equipe quando aceitar o convite.</p>
-          </header>
+        <SettingsSection id="stg-pi" wide title="Convites aguardando resposta" description="A pessoa entra na equipe quando aceitar o convite.">
           <div className="stg-tbl">
             <ul className="stg-rows" aria-label="Convites pendentes">
               {pendingInvites.map((invite) => (
@@ -241,7 +236,7 @@ export function TeamTab({
               ))}
             </ul>
           </div>
-        </section>
+        </SettingsSection>
       )}
     </div>
   );

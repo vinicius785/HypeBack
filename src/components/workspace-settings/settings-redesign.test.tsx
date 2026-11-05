@@ -84,19 +84,28 @@ const niches = [
 ];
 
 describe("Seletor de nicho", () => {
-  it("categorias recolhidas, busca abre a que combina, escolher e remover", () => {
+  it("fecha por padrão; abre com busca, agrupa, escolhe, limpa e fecha com Escape", () => {
     const onChange = vi.fn();
     const { rerender } = render(<NichePicker niches={niches} value="" onChange={onChange} />);
-    expect(screen.queryByRole("button", { name: "Streetwear" })).toBeNull();
+    expect(screen.queryByRole("listbox")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Nicho principal" }));
+    expect(screen.getByRole("group", { name: "Moda" })).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Buscar nicho"), { target: { value: "street" } });
-    fireEvent.click(screen.getByRole("button", { name: "Streetwear" }));
+    expect(screen.queryByRole("option", { name: "Games" })).toBeNull();
+    fireEvent.click(screen.getByRole("option", { name: "Streetwear" }));
     expect(onChange).toHaveBeenCalledWith("2");
+    expect(screen.queryByRole("listbox")).toBeNull();
+
     rerender(<NichePicker niches={niches} value="2" onChange={onChange} />);
-    expect(screen.getByText("1 selecionado")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Nicho principal" })).toHaveTextContent("Streetwear");
     fireEvent.click(screen.getByRole("button", { name: "Remover nicho Streetwear" }));
     expect(onChange).toHaveBeenLastCalledWith("");
+
+    fireEvent.click(screen.getByRole("button", { name: "Nicho principal" }));
     fireEvent.change(screen.getByLabelText("Buscar nicho"), { target: { value: "zzz" } });
     expect(screen.getByText(/Nenhum nicho encontrado/)).toBeTruthy();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByLabelText("Buscar nicho")).toBeNull();
   });
 });
 

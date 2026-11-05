@@ -4,8 +4,10 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { I } from "@/components/prototype/ui";
+import "@/styles/settings.css";
 
 import { maskCep, maskCnpj, UF } from "./constants";
+import { Field } from "./settings-section";
 
 const schema = z.object({
   legalName: z.string().trim().max(200, "Máximo 200 caracteres"),
@@ -145,75 +147,39 @@ export function CompanyTab({
             ? register(k, { onChange: (e) => (e.target.value = e.target.value.replace(/\D/g, "")) })
             : register(k);
     return (
-      <div className={`n4c wkx-fd ${err ? "bad" : ""}`}>
-        <label className="n4l" htmlFor={id}>
-          {label}
-          {opt && (
-            <>
-              {" "}
-              <em>opcional</em>
-            </>
-          )}
-        </label>
-        <input
-          className="cm-in"
-          id={id}
-          placeholder={ph}
-          autoComplete="off"
-          inputMode={numeric ? "numeric" : undefined}
-          {...reg}
-        />
-        {children}
-        {err && <small className="nfe">{err}</small>}
-      </div>
+      <Field label={label} htmlFor={id} optional={opt} error={err} aside={children}>
+        <input className="st-in" id={id} placeholder={ph} autoComplete="off" inputMode={numeric ? "numeric" : undefined} {...reg} />
+      </Field>
     );
   };
 
   return (
-    <form className="wkx-cd" onSubmit={handleSubmit(onSave)} noValidate>
-      <div className="wkx-h">
-        <div>
-          <h3>Dados da empresa</h3>
-          <p>Usados em contratos e notas dos pagamentos. Visível apenas para o proprietário.</p>
-        </div>
+    <form className="st-form" onSubmit={handleSubmit(onSave)} noValidate>
+      <div className="st-g2">
+        {fd({ id: "wkl", label: "Razão social", k: "legalName", ph: "Ex.: Empresa Exemplo Ltda." })}
+        {fd({ id: "wkcnpj", label: "CNPJ", k: "taxId", ph: "00.000.000/0000-00", numeric: true })}
       </div>
-      <div className="wkx-gr">
-        <div className="wkx-r2">
-          {fd({id: "wkl",  label: "Razão social",  k: "legalName",  ph: "Ex.: Empresa Exemplo Ltda.",  })}
-          {fd({id: "wkcnpj",  label: "CNPJ",  k: "taxId",  ph: "00.000.000/0000-00",  numeric: true, })}
-        </div>
-        <div className="wkx-r3">
-          {fd({
-            id: "wkcep",
-            label: "CEP",
-            k: "postalCode",
-            ph: "00000-000",
-            numeric: true,
-            children: loadingCep ? <span className="wkx-ld">Buscando…</span> : null,
-          })}
-          {fd({id: "wkst",  label: "Rua / Avenida",  k: "street",  ph: "Nome da rua",  })}
-          {fd({id: "wknum",  label: "Número",  k: "streetNumber",  ph: "Ex.: 123",  numeric: true, })}
-        </div>
-        <div className="wkx-r4">
-          {fd({id: "wkcomp",  label: "Complemento",  k: "unit",  ph: "Apto, sala…",  opt: true, })}
-          {fd({id: "wkbai",  label: "Bairro",  k: "neighborhood",  ph: "Nome do bairro",  })}
-          {fd({id: "wkcity",  label: "Cidade",  k: "city",  ph: "Nome da cidade",  })}
-          <div className="n4c wkx-fd">
-            <label className="n4l" htmlFor="wkuf">
-              Estado
-            </label>
-            <select className="cm-in wkx-sel" id="wkuf" {...register("state")}>
-              <option value="">—</option>
-              {UF.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+      <div className="st-g3">
+        {fd({ id: "wkcep", label: "CEP", k: "postalCode", ph: "00000-000", numeric: true, children: loadingCep ? "Buscando…" : null })}
+        {fd({ id: "wkst", label: "Rua / Avenida", k: "street", ph: "Nome da rua" })}
+        {fd({ id: "wknum", label: "Número", k: "streetNumber", ph: "Ex.: 123", numeric: true })}
       </div>
-      <div className="wkx-ac">
+      <div className="st-g4">
+        {fd({ id: "wkcomp", label: "Complemento", k: "unit", ph: "Apto, sala…", opt: true })}
+        {fd({ id: "wkbai", label: "Bairro", k: "neighborhood", ph: "Nome do bairro" })}
+        {fd({ id: "wkcity", label: "Cidade", k: "city", ph: "Nome da cidade" })}
+        <Field label="Estado" htmlFor="wkuf">
+          <select className="st-in st-selnat" id="wkuf" {...register("state")}>
+            <option value="">—</option>
+            {UF.map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <div className="st-actions">
         <button type="submit" className="btn" disabled={!isDirty || saving}>
           <I n="check" cls="sm" />
           {saving ? "Salvando…" : "Salvar dados da empresa"}

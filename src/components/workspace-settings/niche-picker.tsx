@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { I } from "@/components/prototype/ui";
 import type { Niche } from "@/shared/types";
+import "@/styles/settings.css";
 
 import { filterNicheGroups, groupNiches } from "./niche-groups";
 
@@ -14,108 +15,102 @@ interface Props {
 }
 
 /**
- * Seleção do nicho principal: busca, categorias recolhidas (abre a que tem o nicho escolhido ou
- * as que combinam com a busca) e o nicho atual em destaque, com remoção.
+ * Seleção do nicho principal: um campo que abre uma lista agrupada por categoria, com busca. O nicho escolhido fica
+ * no próprio campo (com "×" para limpar); nada de nuvem de botões na página.
  */
 export function NichePicker({ niches, value, disabled, onChange }: Props) {
+  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState<Set<string>>(new Set());
+  const rootRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const listId = useId();
   const groups = useMemo(() => groupNiches(niches), [niches]);
   const shown = useMemo(() => filterNicheGroups(groups, query), [groups, query]);
   const selected = niches.find((n) => String(n.id) === value);
-  const searching = query.trim().length > 0;
 
-  const isOpen = (label: string, items: Niche[]) =>
-    searching || open.has(label) || items.some((n) => String(n.id) === value);
-  const toggle = (label: string) =>
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      return next;
-    });
+  useEffect(() => {
+    if (!open) return;
+    searchRef.current?.focus();
+    const onDown = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const close = () => {
+    setOpen(false);
+    setQuery("");
+  };
 
   return (
-    <div className="stg-np">
-      <div className="stg-np-top">
-        <label className="stg-np-q">
-          <I n="search" cls="sm" />
-          <input
-            type="search"
-            aria-label="Buscar nicho"
-            placeholder="Buscar nicho"
-            value={query}
-            disabled={disabled}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          {query && (
-            <button type="button" aria-label="Limpar busca" onClick={() => setQuery("")}>
-              <I n="x" cls="sm" />
-            </button>
-          )}
-        </label>
-        <span className="stg-np-n" aria-live="polite">
-          {selected ? "1 selecionado" : "Nenhum selecionado"}
-        </span>
-      </div>
+    <div className="st-np" ref={rootRef}>
+      <button
+        type="button"
+        className={`st-in st-sel${open ? " open" : ""}`}
+        aria-label="Nicho principal"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={open ? listId : undefined}
+        disabled={disabled}
+        onClick={() => (open ? close() : setOpen(true))}
+      >
+        <span className={selected ? "" : "ph"}>{selected ? selected.name : "Escolha o nicho da marca"}</span>
+        <I n="chevdown" cls="sm" />
+      </button>
+      {selected && !disabled ? (
+        <button type="button" className="st-np-x" aria-label={`Remover nicho ${selected.name}`} onClick={() => onChange("")}>
+          <I n="x" cls="sm" />
+        </button>
+      ) : null}
 
-      {selected && (
-        <div className="stg-np-sel">
-          <span className="nch on">
-            <I n="check" cls="sm" />
-            {selected.name}
-            {!disabled && (
-              <button type="button" className="stg-np-rm" aria-label={`Remover nicho ${selected.name}`} onClick={() => onChange("")}>
-                <I n="x" cls="sm" />
-              </button>
-            )}
-          </span>
-        </div>
-      )}
-
-      {shown.length === 0 ? (
-        <p className="stg-np-empty">Nenhum nicho encontrado para “{query}”.</p>
-      ) : (
-        <div className="stg-np-gs">
-          {shown.map((g) => {
-            const expanded = isOpen(g.label, g.items);
-            const hasSel = g.items.some((n) => String(n.id) === value);
-            return (
-              <section key={g.label} className={`stg-np-g${expanded ? " open" : ""}`}>
-                <button type="button" className="stg-np-gh" aria-expanded={expanded} onClick={() => toggle(g.label)}>
-                  <b>{g.label}</b>
-                  <span>
-                    {hasSel && <em>1</em>}
-                    {g.items.length}
-                  </span>
-                  <I n="chevdown" cls="sm" />
-                </button>
-                {expanded && (
-                  <div className="nchips">
+      {open ? (
+        <div className="st-pop">
+          <label className="st-pop-q">
+            <I n="search" cls="sm" />
+            <input ref={searchRef} type="search" aria-label="Buscar nicho" placeholder="Buscar nicho" value={query} onChange={(e) => setQuery(e.target.value)} />
+          </label>
+          {shown.length === 0 ? (
+            <p className="st-pop-empty">Nenhum nicho encontrado para “{query}”.</p>
+          ) : (
+            <ul id={listId} role="listbox" aria-label="Nichos">
+              {shown.map((g) => (
+                <li key={g.label} role="presentation">
+                  <span className="st-pop-g">{g.label}</span>
+                  <ul role="group" aria-label={g.label}>
                     {g.items.map((n) => {
                       const id = String(n.id);
-                      const on = value === id;
+                      const on = id === value;
                       return (
-                        <button
-                          key={id}
-                          type="button"
-                          className={`nch ${on ? "on" : ""}`}
-                          aria-pressed={on}
-                          disabled={disabled}
-                          onClick={() => onChange(on ? "" : id)}
-                        >
-                          {on && <I n="check" cls="sm" />}
-                          {n.name}
-                        </button>
+                        <li key={id} role="presentation">
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={on}
+                            className={on ? "on" : ""}
+                            onClick={() => {
+                              onChange(on ? "" : id);
+                              close();
+                            }}
+                          >
+                            {n.name}
+                            {on ? <I n="check" cls="sm" /> : null}
+                          </button>
+                        </li>
                       );
                     })}
-                  </div>
-                )}
-              </section>
-            );
-          })}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -24,6 +24,7 @@ const ctx = vi.hoisted(() => ({
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: { component: unknown }) => ({ options }),
   useNavigate: () => ctx.navigate,
+  useSearch: () => ({}),
 }));
 vi.mock("sonner", () => ({ toast: ctx.toast }));
 vi.mock("@/contexts/auth-context", () => ({ useAuth: () => ({ user: { id: 1 } }) }));
@@ -96,7 +97,9 @@ function blockedError() {
 
 async function openDeleteDialog() {
   render(createElement(QueryClientProvider, { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) }, createElement(Screen)));
-  await userEvent.click(screen.getByRole("button", { name: "Avançado" }));
+  await userEvent.click(screen.getByRole("tab", { name: "Avançado" }));
+  // Trocar de aba atualiza o endereço (?tab=adv): isso não conta como a navegação pós-exclusão que o teste confere.
+  ctx.navigate.mockClear();
   await userEvent.click(screen.getByRole("button", { name: "Excluir workspace" }));
   const dialog = within(screen.getByRole("dialog", { name: "Excluir workspace" }));
   await userEvent.type(dialog.getByLabelText("Nome do workspace"), "Acme Ltda");
@@ -113,7 +116,7 @@ beforeEach(() => {
 describe("aba Avançado", () => {
   it("o texto da zona de risco não promete destruição", async () => {
     render(createElement(QueryClientProvider, { client: new QueryClient() }, createElement(Screen)));
-    await userEvent.click(screen.getByRole("button", { name: "Avançado" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Avançado" }));
     const text = document.body.textContent ?? "";
     expect(text).toContain("Ações que afetam toda a equipe.");
     expect(text).toContain("Acme Ltda deixa de aparecer para a equipe");
