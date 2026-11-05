@@ -30,6 +30,7 @@ const MAP: Record<string, keyof typeof icons> = {
   msg: "MessageSquare",
   plus: "Plus",
   minus: "Minus",
+  external: "ExternalLink",
   more: "Ellipsis",
   shield: "Shield",
   verified: "CircleCheck",

@@ -3,13 +3,24 @@ import { getApiUrl, getAuthToken, getWorkspaceId } from "@/lib/utils/api";
 export interface InfluencerList {
   id: string;
   name: string;
+  /** Texto opcional da lista (a API já grava e devolve). */
+  description?: string | null;
   created_at: string;
+  /** Última edição de nome/descrição, quando a API informa. */
+  updated_at?: string | null;
   influencer_count: number;
 }
+
+/** Quantos itens por página pedimos à API (o padrão dela é 20; o máximo, 100). */
+export const LIST_PAGE_SIZE = 100;
 
 export interface InfluencerListDetail {
   id: string;
   name: string;
+  description?: string | null;
+  updated_at?: string | null;
+  /** Total de criadores da lista, quando a API informa (pode passar do que veio nesta página). */
+  influencers_total?: number;
   influencers: Array<{
     id: number;
     name: string;
@@ -93,7 +104,7 @@ export async function getInfluencerLists(): Promise<InfluencerList[]> {
     throw new Error("Workspace ID é obrigatório");
   }
 
-  const request = await fetch(getApiUrl("/influencer-lists"), {
+  const request = await fetch(getApiUrl(`/influencer-lists?per_page=${LIST_PAGE_SIZE}`), {
     method: "GET",
     headers: {
       Accept: "application/json",
@@ -128,7 +139,7 @@ export async function getInfluencerList(
     throw new Error("Workspace ID é obrigatório");
   }
 
-  const request = await fetch(getApiUrl(`/influencer-lists/${listId}`), {
+  const request = await fetch(getApiUrl(`/influencer-lists/${listId}?per_page=${LIST_PAGE_SIZE}`), {
     method: "GET",
     headers: {
       Accept: "application/json",
@@ -149,7 +160,8 @@ export async function getInfluencerList(
     }
 
   const response = await request.json();
-  return response.data;
+  const total = response?.meta?.influencers?.total;
+  return typeof total === "number" ? { ...response.data, influencers_total: total } : response.data;
 }
 
 export type ReachNetworkKey = "instagram" | "tiktok" | "youtube";

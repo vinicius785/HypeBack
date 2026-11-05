@@ -35,7 +35,8 @@ export function useCreateInfluencerList() {
   const workspaceId = useWorkspaceQueryKey();
 
   return useMutation({
-    mutationFn: (name: string) => createInfluencerList(name),
+    mutationFn: (input: string | { name: string; description?: string }) =>
+      typeof input === "string" ? createInfluencerList(input) : createInfluencerList(input.name, input.description),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: withWorkspaceKey(["influencer-lists"], workspaceId),
@@ -51,8 +52,8 @@ export function useUpdateInfluencerList() {
   const workspaceId = useWorkspaceQueryKey();
 
   return useMutation({
-    mutationFn: ({ listId, name }: { listId: string; name: string }) =>
-      updateInfluencerList(listId, name),
+    mutationFn: ({ listId, name, description }: { listId: string; name: string; description?: string }) =>
+      updateInfluencerList(listId, name, description),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: withWorkspaceKey(["influencer-lists"], workspaceId),
@@ -119,5 +120,34 @@ export function useRemoveFromInfluencerList() {
       toast.success("Criador removido da lista");
     },
     onError: () => toast.error("Erro ao remover da lista"),
+  });
+}
+
+/**
+ * Duplica uma lista: cria "<nome> (cópia)" com a mesma descrição e adiciona os mesmos criadores
+ * (a API não tem rota de cópia; usa as de sempre). Se alguma adição falhar, a lista nova fica com
+ * o que deu certo e o aviso diz quantos ficaram de fora.
+ */
+export function useDuplicateInfluencerList() {
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceQueryKey();
+
+  return useMutation({
+    mutationFn: async ({ name, description, userIds }: { name: string; description?: string | null; userIds: number[] }) => {
+      const created = await createInfluencerList(`${name} (cópia)`, description ?? undefined);
+      let failed = 0;
+      for (let i = 0; i < userIds.length; i += 5) {
+        const batch = userIds.slice(i, i + 5);
+        const res = await Promise.allSettled(batch.map((id) => addToInfluencerList(created.id, id)));
+        failed += res.filter((r) => r.status === "rejected").length;
+      }
+      return { created, failed };
+    },
+    onSuccess: ({ failed }) => {
+      queryClient.invalidateQueries({ queryKey: withWorkspaceKey(["influencer-lists"], workspaceId) });
+      if (failed > 0) toast.warning(`Lista duplicada, mas ${failed} ${failed === 1 ? "criador não entrou" : "criadores não entraram"}.`);
+      else toast.success("Lista duplicada");
+    },
+    onError: () => toast.error("Erro ao duplicar lista"),
   });
 }

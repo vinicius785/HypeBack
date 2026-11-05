@@ -262,12 +262,13 @@ export async function getCreatorsCatalog(
 // ---------------------------------------------------------------------------
 
 export async function createInfluencerList(
-  name: string
+  name: string,
+  description?: string
 ): Promise<{ id: string; name: string; influencer_count: number; created_at: string }> {
   const request = await fetch(getApiUrl("/influencer-lists"), {
     method: "POST",
     headers: { "Content-Type": "application/json", ...buildHeaders() },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(description?.trim() ? { name, description: description.trim() } : { name }),
   });
 
   if (!request.ok) {
@@ -280,11 +281,12 @@ export async function createInfluencerList(
   return response.data ?? response;
 }
 
-export async function updateInfluencerList(listId: string, name: string): Promise<void> {
+/** `description: ""` limpa a descrição; sem o campo, ela fica como está. */
+export async function updateInfluencerList(listId: string, name: string, description?: string): Promise<void> {
   const request = await fetch(getApiUrl(`/influencer-lists/${listId}`), {
     method: "PUT",
     headers: { "Content-Type": "application/json", ...buildHeaders() },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(description === undefined ? { name } : { name, description: description.trim() }),
   });
 
   if (!request.ok) {
