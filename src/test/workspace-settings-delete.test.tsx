@@ -62,6 +62,7 @@ vi.mock("@/shared/services/workspace", () => ({
 }));
 // As outras abas e diálogos não importam aqui.
 vi.mock("@/components/workspace-settings/brand-tab", () => ({ BrandTab: () => <div /> }));
+vi.mock("@/components/workspace-settings/account-type-card", () => ({ AccountTypeCard: () => <div /> }));
 vi.mock("@/components/workspace-settings/company-tab", () => ({ CompanyTab: () => <div /> }));
 vi.mock("@/components/workspace-settings/team-tab", () => ({ TeamTab: () => <div /> }));
 vi.mock("@/components/workspace-settings/invite-modal", () => ({ InviteModal: () => null }));

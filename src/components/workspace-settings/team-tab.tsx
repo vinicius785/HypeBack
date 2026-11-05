@@ -63,12 +63,6 @@ export function TeamTab({
   );
   const q = norm(query);
   const rows = q ? sorted.filter((m) => norm(`${m.name} ${m.email}`).includes(q)) : sorted;
-  const counts = useMemo(() => {
-    const c = { owner: 0, admin: 0, other: 0 };
-    for (const m of members) c[m.role === "owner" ? "owner" : m.role === "admin" ? "admin" : "other"] += 1;
-    return c;
-  }, [members]);
-
   return (
     <div className="stg-team">
       <section className="stg-card" aria-labelledby="stg-tm">
@@ -87,24 +81,11 @@ export function TeamTab({
           )}
         </header>
 
-        {!loading && !error && members.length > 0 && (
-          <div className="stg-sum" aria-label="Resumo por função">
-            <span>
-              <b>{counts.owner}</b> {counts.owner === 1 ? "proprietário" : "proprietários"}
-            </span>
-            <span>
-              <b>{counts.admin}</b> {counts.admin === 1 ? "administrador" : "administradores"}
-            </span>
-            <span>
-              <b>{counts.other}</b> {counts.other === 1 ? "membro" : "membros"}
-            </span>
-            {members.length >= SEARCH_MIN && (
-              <label className="stg-tq">
-                <I n="search" cls="sm" />
-                <input type="search" aria-label="Buscar na equipe" placeholder="Buscar por nome ou e-mail" value={query} onChange={(e) => setQuery(e.target.value)} />
-              </label>
-            )}
-          </div>
+        {!loading && !error && members.length >= SEARCH_MIN && (
+          <label className="stg-tq">
+            <I n="search" cls="sm" />
+            <input type="search" aria-label="Buscar na equipe" placeholder="Buscar por nome ou e-mail" value={query} onChange={(e) => setQuery(e.target.value)} />
+          </label>
         )}
 
         {loading ? (
@@ -140,70 +121,79 @@ export function TeamTab({
             <small>Nenhum membro combina com “{query}”.</small>
           </div>
         ) : (
-          <ul className="stg-rows" aria-label="Membros da equipe">
-            {rows.map((m) => {
-              const isSelf = selfId != null && String(selfId) === String(m.user_id);
-              const isOwner = m.role === "owner";
-              const confirming = conf === m.user_id;
-              const canEditPerms = canManagePermissions && !isOwner;
-              // O proprietário nunca sai por aqui, e ninguém remove a si mesmo.
-              const canRemove = canRemoveMember(m) && !isSelf && !isOwner;
-              return (
-                <li key={m.user_id} className={`stg-row${confirming ? " cf" : ""}`}>
-                  <Av name={m.name} size={44} />
-                  <div className="stg-who">
-                    <b>
-                      {m.name}
+          <div className="stg-tbl">
+            <div className="stg-th-row" aria-hidden="true">
+              <span />
+              <span>Nome</span>
+              <span>E-mail</span>
+              <span>Função</span>
+              <span />
+            </div>
+            <ul className="stg-rows" aria-label="Membros da equipe">
+              {rows.map((m) => {
+                const isSelf = selfId != null && String(selfId) === String(m.user_id);
+                const isOwner = m.role === "owner";
+                const confirming = conf === m.user_id;
+                const canEditPerms = canManagePermissions && !isOwner;
+                // O proprietário nunca sai por aqui, e ninguém remove a si mesmo.
+                const canRemove = canRemoveMember(m) && !isSelf && !isOwner;
+                return (
+                  <li key={m.user_id} className={`stg-row${confirming ? " cf" : ""}`}>
+                    <Av name={m.name} size={36} />
+                    <div className="stg-nm">
+                      <b title={m.name}>{m.name}</b>
                       {isSelf && <em>Você</em>}
-                    </b>
-                    <small>{m.email}</small>
-                  </div>
-                  <span className={`stg-role ${m.role}`}>{ROLE_LABEL[m.role]}</span>
-                  <div className="stg-act">
-                    {confirming ? (
-                      <div className="stg-cf" role="group" aria-label={`Remover ${m.name} da equipe`}>
-                        <span>Remover {m.name.split(" ")[0]} da equipe?</span>
-                        <button type="button" className="btn out" onClick={() => setConf(null)}>
-                          Voltar
-                        </button>
-                        <button
-                          type="button"
-                          className="btn dng stg-del"
-                          disabled={removing}
-                          onClick={() => {
-                            onRemove(m);
-                            setConf(null);
-                          }}
-                        >
-                          {removing ? "Removendo…" : "Remover"}
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        {isOwner && (
-                          <span className="stg-lock" title="O proprietário não pode ser removido nem ter o papel alterado aqui">
-                            <I n="lock" cls="sm" />
-                            Fixo
-                          </span>
-                        )}
-                        {canEditPerms && (
-                          <button type="button" className="btn out" aria-label={`Permissões de ${m.name}`} onClick={() => onEdit(m)}>
-                            <I n="shield" cls="sm" />
-                            Permissões
+                    </div>
+                    <span className="stg-em" title={m.email}>
+                      {m.email}
+                    </span>
+                    <span className={`stg-role ${m.role}`}>{ROLE_LABEL[m.role]}</span>
+                    <div className="stg-act">
+                      {confirming ? (
+                        <div className="stg-cf" role="group" aria-label={`Remover ${m.name} da equipe`}>
+                          <span>Remover {m.name.split(" ")[0]}?</span>
+                          <button type="button" className="stg-tb" onClick={() => setConf(null)}>
+                            Voltar
                           </button>
-                        )}
-                        {canRemove && (
-                          <button type="button" className="stg-ib" aria-label={`Remover ${m.name}`} title="Remover da equipe" onClick={() => setConf(m.user_id)}>
-                            <I n="trash" cls="sm" />
+                          <button
+                            type="button"
+                            className="stg-tb dng"
+                            disabled={removing}
+                            onClick={() => {
+                              onRemove(m);
+                              setConf(null);
+                            }}
+                          >
+                            {removing ? "Removendo…" : "Remover"}
                           </button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+                        </div>
+                      ) : (
+                        <>
+                          {isOwner && (
+                            <span className="stg-lock" title="O proprietário tem acesso fixo: não pode ser removido nem ter o papel alterado por aqui">
+                              <I n="lock" cls="sm" />
+                              Acesso fixo
+                            </span>
+                          )}
+                          {canEditPerms && (
+                            <button type="button" className="stg-tb" aria-label={`Permissões de ${m.name}`} onClick={() => onEdit(m)}>
+                              Permissões
+                            </button>
+                          )}
+                          {!canRemove && canEditPerms && <span className="stg-ph" aria-hidden="true" />}
+                          {canRemove && (
+                            <button type="button" className="stg-ib" aria-label={`Remover ${m.name}`} title="Remover da equipe" onClick={() => setConf(m.user_id)}>
+                              <I n="trash" cls="sm" />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
 
         {!loading && !error && members.length > 0 && !canInvite && !canManagePermissions && (
@@ -219,34 +209,38 @@ export function TeamTab({
             </h3>
             <p>A pessoa entra na equipe quando aceitar o convite.</p>
           </header>
-          <ul className="stg-rows">
-            {pendingInvites.map((invite) => (
-              <li key={invite.id} className="stg-row">
-                <Av name={invite.email} size={44} />
-                <div className="stg-who">
-                  <b>{invite.email}</b>
-                  <small>
-                    {[invite.invitedByName ? `Convidado por ${invite.invitedByName}` : "", expiryLabel(invite.expiresAt)].filter(Boolean).join(" · ")}
-                  </small>
-                </div>
-                <span className={`stg-role ${invite.role}`}>{ROLE_LABEL[invite.role as keyof typeof ROLE_LABEL] ?? invite.roleLabel}</span>
-                <div className="stg-act">
-                  <span className="stg-pend">Pendente</span>
-                  {canInvite && onCancelInvite && (
-                    <button
-                      type="button"
-                      className="btn out"
-                      disabled={cancelingInvite}
-                      aria-label={`Cancelar convite de ${invite.email}`}
-                      onClick={() => onCancelInvite(invite)}
-                    >
-                      Cancelar convite
-                    </button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="stg-tbl">
+            <ul className="stg-rows" aria-label="Convites pendentes">
+              {pendingInvites.map((invite) => (
+                <li key={invite.id} className="stg-row">
+                  <Av name={invite.email} size={36} />
+                  <div className="stg-nm">
+                    <b className="mute">Aguardando resposta</b>
+                  </div>
+                  <span className="stg-em" title={invite.email}>
+                    {invite.email}
+                    <small>
+                      {[invite.invitedByName ? `Convidado por ${invite.invitedByName}` : "", expiryLabel(invite.expiresAt)].filter(Boolean).join(" · ")}
+                    </small>
+                  </span>
+                  <span className={`stg-role ${invite.role}`}>{ROLE_LABEL[invite.role as keyof typeof ROLE_LABEL] ?? invite.roleLabel}</span>
+                  <div className="stg-act">
+                    {canInvite && onCancelInvite && (
+                      <button
+                        type="button"
+                        className="stg-tb"
+                        disabled={cancelingInvite}
+                        aria-label={`Cancelar convite de ${invite.email}`}
+                        onClick={() => onCancelInvite(invite)}
+                      >
+                        Cancelar convite
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
       )}
     </div>

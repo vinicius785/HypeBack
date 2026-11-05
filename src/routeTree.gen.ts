@@ -31,6 +31,7 @@ import { Route as privateOnboardingCreateWorkspaceRouteImport } from './screens/
 import { Route as privateOnboardingVerifyPhoneRouteImport } from './screens/(private)/onboarding/verify-phone'
 import { Route as privateOnboardingWelcomeRouteImport } from './screens/(private)/onboarding/welcome'
 import { Route as publicUUsernameRouteImport } from './screens/(public)/u.$username'
+import { Route as privateadminAdminAccountRequestsRouteImport } from './screens/(private)/(admin)/admin.account-requests'
 import { Route as privateadminAdminActivityRouteImport } from './screens/(private)/(admin)/admin.activity'
 import { Route as privateadminAdminCampaignsRouteImport } from './screens/(private)/(admin)/admin.campaigns'
 import { Route as privateadminAdminCreatorsRouteImport } from './screens/(private)/(admin)/admin.creators'
@@ -169,6 +170,12 @@ const publicUUsernameRoute = publicUUsernameRouteImport.update({
   path: '/u/$username',
   getParentRoute: () => publicLayoutRoute,
 } as any)
+const privateadminAdminAccountRequestsRoute =
+  privateadminAdminAccountRequestsRouteImport.update({
+    id: '/admin/account-requests',
+    path: '/admin/account-requests',
+    getParentRoute: () => privateadminLayoutRoute,
+  } as any)
 const privateadminAdminActivityRoute =
   privateadminAdminActivityRouteImport.update({
     id: '/admin/activity',
@@ -350,6 +357,7 @@ export interface FileRoutesByFullPath {
   '/u/$username': typeof publicUUsernameRoute
   '/': typeof privateappIndexRoute
   '/onboarding/': typeof privateOnboardingIndexRoute
+  '/admin/account-requests': typeof privateadminAdminAccountRequestsRoute
   '/admin/activity': typeof privateadminAdminActivityRoute
   '/admin/campaigns': typeof privateadminAdminCampaignsRouteWithChildren
   '/admin/creators': typeof privateadminAdminCreatorsRoute
@@ -397,6 +405,7 @@ export interface FileRoutesByTo {
   '/u/$username': typeof publicUUsernameRoute
   '/': typeof privateappIndexRoute
   '/onboarding': typeof privateOnboardingIndexRoute
+  '/admin/account-requests': typeof privateadminAdminAccountRequestsRoute
   '/admin/activity': typeof privateadminAdminActivityRoute
   '/admin/creators': typeof privateadminAdminCreatorsRoute
   '/admin/dashboard': typeof privateadminAdminDashboardRoute
@@ -447,6 +456,7 @@ export interface FileRoutesById {
   '/(public)/u/$username': typeof publicUUsernameRoute
   '/(private)/(app)/': typeof privateappIndexRoute
   '/(private)/onboarding/': typeof privateOnboardingIndexRoute
+  '/(private)/(admin)/admin/account-requests': typeof privateadminAdminAccountRequestsRoute
   '/(private)/(admin)/admin/activity': typeof privateadminAdminActivityRoute
   '/(private)/(admin)/admin/campaigns': typeof privateadminAdminCampaignsRouteWithChildren
   '/(private)/(admin)/admin/creators': typeof privateadminAdminCreatorsRoute
@@ -497,6 +507,7 @@ export interface FileRouteTypes {
     | '/u/$username'
     | '/'
     | '/onboarding/'
+    | '/admin/account-requests'
     | '/admin/activity'
     | '/admin/campaigns'
     | '/admin/creators'
@@ -544,6 +555,7 @@ export interface FileRouteTypes {
     | '/u/$username'
     | '/'
     | '/onboarding'
+    | '/admin/account-requests'
     | '/admin/activity'
     | '/admin/creators'
     | '/admin/dashboard'
@@ -593,6 +605,7 @@ export interface FileRouteTypes {
     | '/(public)/u/$username'
     | '/(private)/(app)/'
     | '/(private)/onboarding/'
+    | '/(private)/(admin)/admin/account-requests'
     | '/(private)/(admin)/admin/activity'
     | '/(private)/(admin)/admin/campaigns'
     | '/(private)/(admin)/admin/creators'
@@ -783,6 +796,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/u/$username'
       preLoaderRoute: typeof publicUUsernameRouteImport
       parentRoute: typeof publicLayoutRoute
+    }
+    '/(private)/(admin)/admin/account-requests': {
+      id: '/(private)/(admin)/admin/account-requests'
+      path: '/admin/account-requests'
+      fullPath: '/admin/account-requests'
+      preLoaderRoute: typeof privateadminAdminAccountRequestsRouteImport
+      parentRoute: typeof privateadminLayoutRoute
     }
     '/(private)/(admin)/admin/activity': {
       id: '/(private)/(admin)/admin/activity'
@@ -1051,6 +1071,7 @@ const privateadminAdminWorkspacesRouteWithChildren =
   )
 
 interface privateadminLayoutRouteChildren {
+  privateadminAdminAccountRequestsRoute: typeof privateadminAdminAccountRequestsRoute
   privateadminAdminActivityRoute: typeof privateadminAdminActivityRoute
   privateadminAdminCampaignsRoute: typeof privateadminAdminCampaignsRouteWithChildren
   privateadminAdminCreatorsRoute: typeof privateadminAdminCreatorsRoute
@@ -1065,6 +1086,7 @@ interface privateadminLayoutRouteChildren {
 }
 
 const privateadminLayoutRouteChildren: privateadminLayoutRouteChildren = {
+  privateadminAdminAccountRequestsRoute: privateadminAdminAccountRequestsRoute,
   privateadminAdminActivityRoute: privateadminAdminActivityRoute,
   privateadminAdminCampaignsRoute: privateadminAdminCampaignsRouteWithChildren,
   privateadminAdminCreatorsRoute: privateadminAdminCreatorsRoute,

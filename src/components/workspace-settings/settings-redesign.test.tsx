@@ -63,12 +63,17 @@ describe("Equipe", () => {
     expect(screen.getByText(/só administradores convidam/)).toBeTruthy();
   });
 
-  it("mostra o resumo por função", () => {
+  it("não há indicadores de contagem por função; as colunas são nome, e-mail e função, iguais em todas as linhas", () => {
     render(<TeamTab {...team} />);
-    const sum = screen.getByLabelText("Resumo por função");
-    expect(sum.textContent).toMatch(/1 proprietário/);
-    expect(sum.textContent).toMatch(/1 administrador/);
-    expect(sum.textContent).toMatch(/1 membro/);
+    expect(screen.queryByLabelText("Resumo por função")).toBeNull();
+    const rows = within(screen.getByRole("list", { name: "Membros da equipe" })).getAllByRole("listitem");
+    expect(rows).toHaveLength(3);
+    for (const row of rows) {
+      expect(row.querySelector(".stg-nm")).toBeTruthy();
+      expect(row.querySelector(".stg-em")).toBeTruthy();
+      expect(row.querySelector(".stg-role")).toBeTruthy();
+    }
+    expect(within(rows[1]).getByText("marcos@x.com")).toBeTruthy();
   });
 });
 

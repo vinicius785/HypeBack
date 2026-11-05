@@ -979,6 +979,12 @@ export const ADMIN_ACTION_CODES = [
   'workspace.restore',
   /** O próprio cliente excluiu o workspace pelo app (agora lógico). */
   'workspace.delete_by_tenant',
+  /** O cliente pediu a troca do tipo de conta (marca/agência). */
+  'workspace.account_type.request',
+  /** O Admin aprovou o pedido: o tipo de conta mudou. */
+  'workspace.account_type.approve',
+  /** O Admin rejeitou o pedido: o tipo de conta continua o mesmo. */
+  'workspace.account_type.reject',
   'workspace.member.add',
   'workspace.member.role_change',
   'workspace.member.remove',

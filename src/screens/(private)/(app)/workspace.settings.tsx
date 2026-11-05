@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { BrandTab, type BrandValues } from "@/components/workspace-settings/brand-tab";
 import { CompanyTab, type CompanyValues } from "@/components/workspace-settings/company-tab";
+import { AccountTypeCard } from "@/components/workspace-settings/account-type-card";
 import { apiErr } from "@/components/workspace-settings/constants";
 import { DangerTab } from "@/components/workspace-settings/danger-tab";
 import { DeleteModal } from "@/components/workspace-settings/delete-modal";
@@ -20,6 +21,7 @@ import {
   useWorkspaceMembersQuery,
 } from "@/hooks/use-workspace-members";
 import { useCancelWorkspaceInvite, useWorkspaceInvitesQuery } from "@/hooks/use-workspace-invites";
+import { useAccountTypeRequests } from "@/hooks/use-account-type-requests";
 import { useNiches } from "@/hooks/use-niches";
 import { removeWorkspaceId, saveWorkspaceId } from "@/lib/utils/api";
 import { getDeleteBlockers } from "@/lib/workspace-state/delete-blockers";
@@ -52,6 +54,7 @@ function WorkspaceSettingsScreen() {
 
   const { data: members = [], isLoading: loadingMembers, isError: membersError, refetch: refetchMembers } = useWorkspaceMembersQuery(workspaceId);
   const { data: niches = [] } = useNiches();
+  const typeRequests = useAccountTypeRequests(workspaceId);
 
   const [tab, setTab] = useState<Tab>("brand");
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -287,6 +290,7 @@ function WorkspaceSettingsScreen() {
         </div>
         <div id="wkres" className="fade wkx-rs" key={active}>
           {active === "brand" && (
+            <>
             <BrandTab
               name={ws.name ?? ""}
               description={ws.description ?? ""}
@@ -302,6 +306,18 @@ function WorkspaceSettingsScreen() {
               onSave={(v) => updateMutation.mutate(v)}
               onPhoto={(f) => photoMutation.mutate(f)}
             />
+            <div className="stg-after">
+              <AccountTypeCard
+                workspaceId={ws.id}
+                current={ws.account_type === "agency" ? "agency" : "brand"}
+                requests={typeRequests.data ?? []}
+                loading={typeRequests.isLoading}
+                error={typeRequests.isError}
+                canRequest={canEditSettings}
+                onRetry={() => void typeRequests.refetch()}
+              />
+            </div>
+            </>
           )}
           {active === "company" && (
             <CompanyTab
