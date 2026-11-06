@@ -89,17 +89,22 @@ export function StepCampaign({ formData, updateFormData, fieldErrors, tried }: W
   const titleBad = bad("title", !title.trim());
   const brandBad = bad("brandId", !formData.brandId);
   // Só em workspace de agência (`brandRequired`); só marcas ativas entram na escolha.
-  const { data: allBrands = [], isLoading: brandsLoading } = useAgencyBrands({ enabled: !!formData.brandRequired });
+  const brandsQuery = useAgencyBrands({ enabled: !!formData.brandRequired });
+  const allBrands = brandsQuery.data ?? [];
+  // Só vale a lista depois de CARREGADA com sucesso: consulta ainda desligada (workspace carregando) ou com erro devolve
+  // lista vazia, e isso não pode apagar a marca escolhida nem dizer que não há marcas.
+  const brandsReady = brandsQuery.isSuccess;
+  const brandsLoading = !brandsReady && !brandsQuery.isError;
   const brandOptions = allBrands.filter((b) => b.status === "active").map((b) => ({ value: b.id, label: b.name }));
   const brandKey = brandOptions.map((o) => o.value).join(",");
   // Rascunho de outro workspace pode trazer uma marca que não existe aqui: limpa. Com uma só marca ativa, já escolhe.
   useEffect(() => {
-    if (!formData.brandRequired || brandsLoading) return;
+    if (!formData.brandRequired || !brandsReady) return;
     const current = formData.brandId ?? "";
     const values = brandKey ? brandKey.split(",") : [];
     if (current && !values.includes(current)) updateFormData("brandId", "");
     else if (!current && values.length === 1) updateFormData("brandId", values[0]);
-  }, [formData.brandRequired, formData.brandId, brandsLoading, brandKey, updateFormData]);
+  }, [formData.brandRequired, formData.brandId, brandsReady, brandKey, updateFormData]);
   const descBad = bad("description", !desc.trim());
   const todoBad = bad("whatToDo", todo.length === 0);
   const notsBad = bad("whatNotToDo", nots.length === 0);
@@ -265,7 +270,7 @@ export function StepCampaign({ formData, updateFormData, fieldErrors, tried }: W
               <Field
                 label="Marca"
                 err={brandBad}
-                hint={!brandsLoading && brandOptions.length === 0 ? "Crie uma marca em Marcas antes de criar a campanha." : undefined}
+                hint={brandsReady && brandOptions.length === 0 ? "Crie uma marca em Marcas antes de criar a campanha." : undefined}
               >
                 <Dropdown
                   value={formData.brandId ?? ""}

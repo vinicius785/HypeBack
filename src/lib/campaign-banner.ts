@@ -25,3 +25,29 @@ export function isSquareImage(width: number, height: number): boolean {
   if (width <= 0 || height <= 0) return false;
   return Math.abs(width - height) / Math.max(width, height) <= 0.01;
 }
+
+/** Converte uma `data:` URL em arquivo; `null` quando não é uma `data:` URL válida. Não depende de `fetch`. */
+export function dataUrlToFile(dataUrl: string, baseName = "banner"): File | null {
+  const m = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(dataUrl);
+  if (!m) return null;
+  const type = m[1] || "image/jpeg";
+  try {
+    const raw = m[2] ? atob(m[3]) : decodeURIComponent(m[3]);
+    const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    const ext = type === "image/png" ? "png" : "jpg";
+    return new File([bytes], `${baseName}.${ext}`, { type });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Arquivo do banner a enviar ao publicar. Na mesma sessão é o `File` escolhido; num rascunho restaurado só sobrou a
+ * prévia (`data:` URL, o `File` não vai para o localStorage): reconstruímos o arquivo a partir dela. `null` = sem banner.
+ */
+export function bannerFileForUpload(banner: string | undefined, bannerFile: unknown): File | null {
+  if (bannerFile instanceof File) return bannerFile;
+  if (banner && banner.startsWith("data:")) return dataUrlToFile(banner);
+  return null;
+}

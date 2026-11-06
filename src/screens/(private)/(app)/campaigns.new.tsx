@@ -7,6 +7,8 @@ import { StepPayment } from "@/components/campaign-wizard/step-payment";
 import { StepPhases } from "@/components/campaign-wizard/step-phases";
 import { WizardShell } from "@/components/campaign-wizard/wizard-shell";
 import { wizardMissing } from "@/components/campaign-wizard/config";
+import { useSyncBrandRequired } from "@/components/campaign-wizard/use-brand-required";
+import { bannerFileForUpload } from "@/lib/campaign-banner";
 import { useWorkspaceContext } from "@/contexts/workspace-context";
 import { createAllCampaignProducts } from "@/shared/services/campaign-products";
 import type { CampaignFormData } from "@/shared/types";
@@ -119,6 +121,8 @@ function CreateCampaignPage() {
     ...(initialDraft?.data ?? initialFormData),
     brandRequired: isAgencyWorkspace,
   }));
+  // O workspace pode carregar depois da primeira renderização: a marca obrigatória acompanha o tipo dele.
+  useSyncBrandRequired(isAgencyWorkspace, setFormData);
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
   // Controla a visibilidade do "Descartar rascunho": só faz sentido quando há
   // um rascunho (restaurado na montagem ou salvo durante esta sessão).
@@ -360,14 +364,20 @@ function CreateCampaignPage() {
         }
       }
 
-      const bannerFile = (formData as CampaignFormData & { bannerFile?: File }).bannerFile;
-      if (bannerFile instanceof File) {
+      // Rascunho restaurado só guarda a prévia da imagem: o arquivo é refeito a partir dela (senão o banner se perdia).
+      const bannerFile = bannerFileForUpload(
+        formData.banner,
+        (formData as CampaignFormData & { bannerFile?: File }).bannerFile,
+      );
+      if (bannerFile) {
         try {
           await uploadCampaignBanner(createdCampaign.id, bannerFile);
           queryClient.invalidateQueries({ queryKey: ["campaigns"] });
         } catch {
-          toast.error("Campanha criada, mas houve um erro ao fazer upload do banner.");
+          toast.error("Campanha criada, mas houve um erro ao fazer upload do banner. Envie a imagem de novo na campanha.");
         }
+      } else if (formData.banner) {
+        toast.error("Campanha criada, mas não foi possível enviar o banner. Envie a imagem de novo na campanha.");
       }
 
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
