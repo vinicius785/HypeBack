@@ -60,6 +60,21 @@ describe("resolveParticipantColumnId", () => {
       ),
     ).toBe("awaiting_shipment");
   });
+
+  it("status `applications` NÃO vira aprovado pelo histórico (criador com 2 redes, só 1 perfil aprovado)", () => {
+    expect(
+      resolveParticipantColumnId(
+        make({
+          status: "applications",
+          status_history: [
+            { id: "1", status: "applications", timestamp: "2026-11-06T17:35:00Z" },
+            { id: "2", status: "curation", timestamp: "2026-11-06T18:31:00Z" },
+            { id: "3", status: "approved", timestamp: "2026-11-06T19:28:00Z" },
+          ],
+        } as Partial<CampaignManagementParticipant>),
+      ),
+    ).toBe("applications");
+  });
 });
 
 describe("getVisibleKanbanColumns", () => {
