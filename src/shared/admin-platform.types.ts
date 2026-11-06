@@ -118,6 +118,7 @@ export const ADMIN_ERROR_CODES = [
   'INVALID_STATE_TRANSITION', // 409
   'WORKSPACE_DELETE_BLOCKED', // 409, `details.blockers`
   'USER_DELETE_BLOCKED', // 409, `details.blockers` (conta com saldo, saque em andamento ou único proprietário)
+  'CAMPAIGN_DELETE_BLOCKED', // 409, `details.blockers` (campanha que já movimentou saldo ou reservas de criadores)
   'IMPACT_TOKEN_MISMATCH', // 409: o impacto mudou desde que o resumo foi mostrado
   'CONFIRMATION_MISMATCH', // 422: o nome digitado não confere
   'CANNOT_ACT_ON_SELF', // 409
@@ -364,6 +365,11 @@ export interface AdminReasonBody {
 /** POST .../suspend | .../reactivate | .../unarchive | .../restore */
 export type AdminWorkspaceTransitionBody = AdminReasonBody;
 
+/** POST /admin/campaigns/:campaignId/delete — irreversível; exige o título da campanha digitado. */
+export interface AdminCampaignDeleteBody extends AdminReasonBody {
+  confirm_title: string;
+}
+
 /** POST /admin/users/:userId/delete — irreversível (anonimiza); exige o e-mail atual da conta digitado. */
 export interface AdminUserDeleteBody extends AdminReasonBody {
   confirm_email: string;
@@ -471,9 +477,16 @@ export const USER_DELETE_BLOCKER_CODES = [
   'HAS_PENDING_WITHDRAWAL', // saque do criador ainda pendente
 ] as const;
 export type AdminUserDeleteBlockerCode = (typeof USER_DELETE_BLOCKER_CODES)[number];
+/** Impedimentos da exclusão de CAMPANHA (POST /admin/campaigns/:campaignId/delete). */
+export const CAMPAIGN_DELETE_BLOCKER_CODES = [
+  'BALANCE_ENTRIES', // lançamentos de saldo de criadores ligados à campanha
+  'BALANCE_HOLDS', // valores reservados para criadores nesta campanha
+] as const;
+export type AdminCampaignDeleteBlockerCode = (typeof CAMPAIGN_DELETE_BLOCKER_CODES)[number];
 export type AdminDeleteBlockerCode =
   | (typeof WORKSPACE_DELETE_BLOCKER_CODES)[number]
-  | AdminUserDeleteBlockerCode;
+  | AdminUserDeleteBlockerCode
+  | AdminCampaignDeleteBlockerCode;
 
 export interface AdminDeleteBlocker {
   code: AdminDeleteBlockerCode;
@@ -1005,7 +1018,7 @@ export type AdminActionCode = (typeof ADMIN_ACTION_CODES)[number];
 
 /** GET /admin/audit-log — leitura de platform_admin_action_log. */
 export interface AdminAuditLogQuery extends AdminListQuery {
-  target_type?: 'workspace' | 'user' | 'workspace_member';
+  target_type?: 'workspace' | 'user' | 'workspace_member' | 'campaign';
   target_id?: string;
   workspace_id?: string; // public_id
   actor_user_id?: number;

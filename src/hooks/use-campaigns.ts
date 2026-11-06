@@ -67,7 +67,10 @@ export function useDeleteCampaign() {
 
   return useMutation({
     mutationFn: (campaignId: string) => deleteCampaign(campaignId),
-    onSuccess: () => {
+    onSuccess: (_, campaignId) => {
+      // A campanha deixou de existir: tira dela do cache ANTES de invalidar, para a tela que ainda a mostra não
+      // refazer a consulta (404) e piscar um erro no instante da exclusão.
+      queryClient.removeQueries({ queryKey: ["campaigns", campaignId] });
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
     },
   });

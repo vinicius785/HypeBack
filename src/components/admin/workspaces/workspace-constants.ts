@@ -213,6 +213,9 @@ export const BLOCKER_LABEL: Record<AdminDeleteBlockerCode, string> = {
   IS_SOLE_WORKSPACE_OWNER: "Único proprietário de workspace",
   HAS_OPEN_BALANCE: "Saldo do criador em aberto",
   HAS_PENDING_WITHDRAWAL: "Saque pendente",
+  // Exclusão de CAMPANHA
+  BALANCE_ENTRIES: "Saldo de criadores movimentado",
+  BALANCE_HOLDS: "Valores reservados",
 };
 
 /** Status do lançamento (ledger) em texto. Status novo do servidor aparece cru, nunca some. */

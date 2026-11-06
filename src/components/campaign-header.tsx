@@ -4,6 +4,8 @@ import { getInitials } from "@/components/campaign-card";
 import { I } from "@/components/prototype/ui";
 import { getUploadUrl } from "@/lib/utils/api";
 
+import "@/styles/campaign-delete.css";
+
 export interface CampaignHeaderProps {
   title: string;
   description?: string;
@@ -24,6 +26,9 @@ export interface CampaignHeaderProps {
   onEdit: () => void;
   onOpenInvite: () => void;
   onShare: () => void;
+  /** `campaigns_delete`: mostra "Excluir" (só com `onDelete`). */
+  canDelete?: boolean;
+  onDelete?: () => void;
   /** Abas da campanha, coladas na base do cartão. */
   children?: ReactNode;
 }
@@ -45,6 +50,8 @@ export function CampaignHeader({
   onEdit,
   onOpenInvite,
   onShare,
+  canDelete = false,
+  onDelete,
   children,
 }: CampaignHeaderProps) {
   const cover = getUploadUrl(banner);
@@ -117,6 +124,12 @@ export function CampaignHeader({
           <button type="button" className="btn out" onClick={onEdit}>
             <I n="notepad" cls="sm" />
             Editar
+          </button>
+        )}
+        {canDelete && onDelete && (
+          <button type="button" className="btn out chd-del" onClick={onDelete}>
+            <I n="trash" cls="sm" />
+            Excluir
           </button>
         )}
         <span className="chd-qs">

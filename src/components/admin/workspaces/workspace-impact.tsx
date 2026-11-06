@@ -120,8 +120,11 @@ function blockerFacts(blocker: AdminDeleteBlocker): string | null {
 export function WorkspaceBlockers({
   blockers,
   onArchive,
+  resolveHint,
 }: {
   blockers: readonly AdminDeleteBlocker[];
+  /** Troca a frase final (padrão: a do workspace). */
+  resolveHint?: string;
   /** Presente quando o estado atual permite arquivar: vira o botão "Arquivar em vez de excluir". */
   onArchive?: () => void;
 }) {
@@ -143,7 +146,8 @@ export function WorkspaceBlockers({
         })}
       </ul>
       <p>
-        Resolva os impedimentos acima para poder excluir{onArchive ? ", ou arquive o workspace em vez de excluir" : ""}.
+        {resolveHint ??
+          `Resolva os impedimentos acima para poder excluir${onArchive ? ", ou arquive o workspace em vez de excluir" : ""}.`}
       </p>
       {onArchive ? (
         <button type="button" className="btn out adm-btn-sm" onClick={onArchive}>

@@ -1,0 +1,3 @@
+/* Botão "Excluir" do cabeçalho da campanha: contorno, texto vermelho, e só no hover vira vermelho cheio. */
+.pv .chd-act .btn.out.chd-del { color: var(--danger, #e5262b); }
+.pv .chd-act .btn.out.chd-del:hover { background: var(--danger, #e5262b); color: #fff; }

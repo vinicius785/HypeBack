@@ -311,8 +311,8 @@ describe("Detalhe da campanha: estados", () => {
   });
 });
 
-describe("Detalhe da campanha: somente leitura", () => {
-  it("nenhuma escrita é chamada e não há botão que altere a campanha", async () => {
+describe("Detalhe da campanha: nada escreve sem confirmar", () => {
+  it("abrir a página não escreve nada, e a única ação (excluir) fica no menu \"Mais\", atrás de confirmação", async () => {
     await renderLoaded();
     expect(client.adminPost).not.toHaveBeenCalled();
     expect(client.adminPatch).not.toHaveBeenCalled();

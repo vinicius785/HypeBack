@@ -39,6 +39,19 @@ function setup(props: Partial<CampaignHeaderProps> = {}) {
   return { ...view, ...handlers };
 }
 
+describe("CampaignHeader: excluir", () => {
+  it("mostra Excluir só com permissão e com a ação ligada; o clique chama onDelete", () => {
+    const onDelete = vi.fn();
+    const { unmount } = setup({ canDelete: true, onDelete });
+    fireEvent.click(screen.getByRole("button", { name: /Excluir/ }));
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    unmount();
+
+    setup({ canDelete: false, onDelete });
+    expect(screen.queryByRole("button", { name: /Excluir/ })).not.toBeInTheDocument();
+  });
+});
+
 describe("CampaignHeader", () => {
   it("mostra o banner pela URL de uploads e as abas dentro do cartão", () => {
     const { container } = setup({ banner: "/uploads/campaigns/speediance.png" });

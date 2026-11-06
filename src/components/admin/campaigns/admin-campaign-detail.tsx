@@ -1,4 +1,8 @@
+import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+
 import {
+  AdminActionMenu,
   AdminEmptyState,
   AdminErrorState,
   AdminFigureCard,
@@ -18,7 +22,10 @@ import { isAdminApiError } from "@/lib/admin/admin-client";
 import { formatDate, formatDateOrInstant, formatInt } from "@/lib/admin/format";
 import type { AdminCampaignDetail as AdminCampaignDetailData } from "@/shared/admin-platform.types";
 
+import { useAdminCapabilities } from "@/hooks/admin/use-admin-team";
+
 import { AdminCampaignBanner } from "./admin-campaign-banner";
+import { AdminCampaignDeleteDialog } from "./admin-campaign-delete";
 import { campaignsListLink, campaignWorkspaceLink } from "./campaign-links";
 import {
   CAMPAIGN_COLUMN_DEFINITIONS,
@@ -177,11 +184,14 @@ function DetailSkeleton() {
 /**
  * Detalhe de uma campanha (`/admin/campaigns/:campaignId`): cabeçalho com banner, estado, workspace e pagamento;
  * resumo, financeiro (os números com a definição de cada um), cronograma e participações por status.
- * Só leitura.
+ * Leitura, mais a exclusão (menu "Mais", só administrador da plataforma).
  */
 export function AdminCampaignDetail({ campaignId }: { campaignId: string }) {
   const query = useAdminCampaign(campaignId);
   const campaign = query.data;
+  const navigate = useNavigate();
+  const capabilities = useAdminCapabilities();
+  const [deleting, setDeleting] = useState(false);
   const back = [{ label: "Campanhas", to: campaignsListLink() }] as const;
 
   if (!campaign) {
@@ -207,6 +217,14 @@ export function AdminCampaignDetail({ campaignId }: { campaignId: string }) {
         leading={<AdminCampaignBanner title={campaign.title} banner={campaign.banner} />}
         title={campaign.title}
         badges={<AdminStatusBadge kind="campaign" value={campaign.status} />}
+        actions={
+          capabilities.isAdmin ? (
+            <AdminActionMenu
+              label="Mais"
+              items={[{ id: "delete", label: "Excluir campanha", icon: "trash", tone: "danger", onSelect: () => setDeleting(true) }]}
+            />
+          ) : null
+        }
         meta={
           <>
             <span>
@@ -233,6 +251,14 @@ export function AdminCampaignDetail({ campaignId }: { campaignId: string }) {
         <ScheduleSection campaign={campaign} />
         <ParticipationsSection campaign={campaign} />
       </div>
+
+      {deleting ? (
+        <AdminCampaignDeleteDialog
+          campaign={{ id: campaign.id, title: campaign.title, workspaceName: workspace.name }}
+          onClose={() => setDeleting(false)}
+          onDeleted={() => void navigate({ to: "/admin/campaigns" })}
+        />
+      ) : null}
     </AdminPage>
   );
 }

@@ -149,7 +149,8 @@ describe("Lista de campanhas: dados", () => {
   it("'Criada em' é a última coluna e o '↓' da ordenação padrão (criação) continua nela", async () => {
     await renderLoaded();
     const table = screen.getByRole("table", { name: "Campanhas" });
-    const headers = within(table).getAllByRole("columnheader");
+    // A coluna de ações (menu da linha) não tem texto e vem depois: "Criada em" é a última com título.
+    const headers = within(table).getAllByRole("columnheader").filter((header) => header.textContent);
     expect(headers.at(-1)).toHaveTextContent("Criada em");
     expect(headers.at(-1)).toHaveAttribute("aria-sort", "descending");
   });
@@ -539,8 +540,8 @@ describe("Lista de campanhas: ordenação e paginação", () => {
   });
 });
 
-describe("Lista de campanhas: somente leitura", () => {
-  it("só lê: nenhuma escrita é chamada ao usar a lista, e não há botão que altere campanha", async () => {
+describe("Lista de campanhas: nada escreve sem confirmar", () => {
+  it("filtrar e ordenar só leem: nenhuma escrita é chamada, e a única ação (excluir) fica no menu da linha, atrás de confirmação", async () => {
     await renderLoaded();
     await userEvent.click(screen.getByRole("button", { name: "Publicadas" }));
     await userEvent.selectOptions(screen.getByLabelText("Pagamento"), "fixed");
