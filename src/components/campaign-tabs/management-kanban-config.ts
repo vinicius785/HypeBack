@@ -100,7 +100,11 @@ export function resolveParticipantColumnId(
 ): string {
   if (p.status) {
     const mapped = mapUserStatusToKanbanColumn(p.status);
-    if (mapped !== "applications" || !p.status_history?.length) {
+    // `applications` é um status REAL: o histórico pode ter "approved" de UM perfil de quem tem
+    // duas redes (o status geral só muda quando todos os perfis são decididos). Usar o histórico
+    // aqui mostrava o card como aprovado enquanto o app seguia em análise. Só um status
+    // desconhecido ou ausente cai no histórico.
+    if (p.status === "applications" || mapped !== "applications" || !p.status_history?.length) {
       return mapped;
     }
   }

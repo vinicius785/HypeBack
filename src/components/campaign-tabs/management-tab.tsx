@@ -407,7 +407,9 @@ export function ManagementTab({
     // Priorizar o status direto do objeto (mais confiável e atualizado)
     if (inf.status) {
       const mappedStatus = mapUserStatusToKanbanColumn(inf.status);
+      // `applications` é status real (ver resolveParticipantColumnId): não troca pelo histórico.
       if (
+        inf.status === "applications" ||
         mappedStatus !== "applications" ||
         !inf.statusHistory ||
         inf.statusHistory.length === 0
