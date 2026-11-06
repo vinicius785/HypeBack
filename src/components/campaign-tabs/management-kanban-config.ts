@@ -11,6 +11,8 @@ export interface StatusHistory {
   status: string;
   timestamp: string;
   notes?: string;
+  /** Origem da movimentação (backoffice, app, automation, scheduler, system); a API não informa o nome de quem agiu. */
+  source?: string | null;
 }
 
 export interface ExtendedInfluencer extends Omit<Influencer, "id" | "user_id"> {
@@ -154,6 +156,7 @@ export function participantToExtended(p: CampaignManagementParticipant): Extende
     status: mapUserStatusToKanbanColumn(h.status),
     timestamp: h.timestamp,
     notes: h.notes,
+    source: h.source ?? null,
   }));
   const primaryNetwork = p.social_network || p.social_networks?.[0]?.type;
   return {

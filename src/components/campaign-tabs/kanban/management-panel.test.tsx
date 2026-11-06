@@ -185,17 +185,50 @@ describe("ManagementPanel", () => {
     });
   });
 
-  it("o histórico lista as movimentações do criador", () => {
+  it("o histórico compacto mostra só as últimas movimentações, com data, hora e origem", () => {
     setup({
       inf: inf({
         statusHistory: [
-          { id: "h1", status: "applications", timestamp: "2026-10-23T17:47:00Z" },
-          { id: "h2", status: "curation", timestamp: "2026-10-25T10:00:00Z" },
+          { id: "h1", status: "applications", timestamp: "2026-10-23T17:47:00Z", source: "app" },
+          { id: "h2", status: "curation", timestamp: "2026-10-25T10:00:00Z", source: "backoffice" },
+          { id: "h3", status: "invited", timestamp: "2026-10-26T10:00:00Z", source: "backoffice" },
+          { id: "h4", status: "price_proposed", timestamp: "2026-10-27T10:00:00Z", source: "system" },
         ],
       }),
     });
-    const hist = screen.getByRole("region", { name: "Histórico" });
-    expect(within(hist).getByText("Curadoria")).toBeInTheDocument();
-    expect(within(hist).getByText("Inscrições")).toBeInTheDocument();
+    const log = screen.getByRole("complementary", { name: "Últimas movimentações" });
+    expect(within(log).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(log).getByText("Proposta enviada")).toBeInTheDocument();
+    expect(within(log).queryByText("Inscrições")).not.toBeInTheDocument(); // a mais antiga fica só no histórico completo
+    expect(within(log).getByText(/Automático/)).toBeInTheDocument();
+    expect(within(log).getAllByText(/Equipe/)).toHaveLength(2);
+    expect(within(log).getByRole("button", { name: /Ver histórico completo \(4\)/ })).toBeInTheDocument();
+  });
+
+  it("'Ver histórico completo' expande o painel; expandido mostra tudo e esconde o link", async () => {
+    const user = userEvent.setup();
+    const history = [1, 2, 3, 4].map((n) => ({ id: `h${n}`, status: "applications", timestamp: `2026-10-2${n}T10:00:00Z` }));
+    const p = setup({ inf: inf({ statusHistory: history }) });
+    await user.click(screen.getByRole("button", { name: /Ver histórico completo/ }));
+    expect(p.onToggleExpanded).toHaveBeenCalledTimes(1);
+  });
+
+  it("expandido: aparece o histórico anterior (sem repetir as últimas) e some o link", () => {
+    const history = [1, 2, 3, 4].map((n) => ({ id: `h${n}`, status: "applications", timestamp: `2026-10-2${n}T10:00:00Z` }));
+    setup({ expanded: true, inf: inf({ statusHistory: history }) });
+    expect(screen.getByRole("region", { name: "Histórico anterior" })).toBeInTheDocument(); // só as mais antigas (as 3 últimas já estão ao lado)
+    expect(screen.queryByRole("button", { name: /Ver histórico completo/ })).not.toBeInTheDocument();
+  });
+
+  it("fora das etapas de proposta a negociação não aparece no compacto", () => {
+    const neg = { proposed_price_cents: 1, counter_price_cents: null, agreed_price_cents: null, price_status: null, origin: null } as never;
+    setup({ column: "script_pending", inf: inf({ price_negotiation: neg }) });
+    expect(screen.queryByText("NEGOCIACAO")).not.toBeInTheDocument();
+  });
+
+  it("expandido mostra a negociação mesmo fora das etapas de proposta", () => {
+    const neg = { proposed_price_cents: 1, counter_price_cents: null, agreed_price_cents: null, price_status: null, origin: null } as never;
+    setup({ column: "script_pending", expanded: true, inf: inf({ price_negotiation: neg }) });
+    expect(screen.getByText("NEGOCIACAO")).toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -34,7 +34,7 @@ import {
 } from "./kanban/influencer-card";
 import { ManagementPanel } from "./kanban/management-panel";
 import { ManagementSummary } from "./kanban/management-summary";
-import { nextPanelId } from "./kanban/panel-nav";
+import { nextPanelId, revealDelta } from "./kanban/panel-nav";
 import "@/styles/management-board.css";
 import {
   ACTION_TARGET,
@@ -74,6 +74,18 @@ import { isShipmentColumn } from "./shared/shipment-panel-actions";
 import { isScriptColumn } from "./shared/script-panel-actions";
 import { isSelectionColumn } from "./shared/selection-panel-actions";
 import type { CampaignPhaseForCost } from "./shared/prices-utils";
+
+/** Ancestral que rola a página (o conteúdo do app rola num contêiner próprio); `null` = a janela. */
+function scrollParentOf(el: HTMLElement): HTMLElement | null {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const oy = getComputedStyle(p).overflowY;
+    if ((oy === "auto" || oy === "scroll") && p.scrollHeight > p.clientHeight) return p;
+  }
+  return null;
+}
+
+/** Folga (px) entre a borda do quadro e a coluna revelada. */
+const BOARD_PAD = 8;
 
 interface ManagementTabProps {
   participants: CampaignManagementParticipant[];
@@ -300,6 +312,12 @@ export function ManagementTab({
   const scrollToCardRef = useRef(false);
   const [stage, setStage] = useState<StageKey>("sel");
   const kbxRef = useRef<HTMLDivElement>(null);
+  const kbwRef = useRef<HTMLDivElement>(null);
+  // Topo do quadro medido ANTES de abrir/fechar o painel, para o quadro não "pular" sob o cursor.
+  const anchorTopRef = useRef<number | null>(null);
+  const captureBoardTop = () => {
+    anchorTopRef.current = kbwRef.current?.getBoundingClientRect().top ?? null;
+  };
   const fpopRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -859,12 +877,47 @@ export function ManagementTab({
     scrollToCardRef.current = true;
     setPanelId(id);
   };
+  // Mostra o cartão aberto SEM deixar a coluna cortada: ajusta só a rolagem horizontal do quadro até a coluna caber
+  // inteira (com folga) e deixa o cartão à vista dentro da coluna. Só roda em anterior/próximo e deep-links.
   useEffect(() => {
     if (panelId == null || !scrollToCardRef.current) return;
     scrollToCardRef.current = false;
-    const card = kbxRef.current?.querySelector<HTMLElement>(`[data-inf="${CSS.escape(panelId)}"]`);
-    card?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    const board = kbxRef.current;
+    const card = board?.querySelector<HTMLElement>(`[data-inf="${CSS.escape(panelId)}"]`);
+    const col = card?.closest<HTMLElement>(".kcol");
+    if (!board || !card || !col) return;
+    const delta = revealDelta(col.getBoundingClientRect(), board.getBoundingClientRect(), BOARD_PAD);
+    if (delta !== 0) board.scrollBy?.({ left: delta, behavior: "smooth" });
+    const list = card.closest<HTMLElement>(".kl");
+    if (list) {
+      const c = card.getBoundingClientRect();
+      const l = list.getBoundingClientRect();
+      if (c.top < l.top) list.scrollBy?.({ top: c.top - l.top - 8 });
+      else if (c.bottom > l.bottom) list.scrollBy?.({ top: c.bottom - l.bottom + 8 });
+    }
   }, [panelId]);
+
+  // Abrir ou fechar o painel muda a altura acima do quadro: compensa a rolagem para o quadro (e o cartão clicado) ficarem
+  // exatamente onde estavam na tela.
+  const panelOpen = panelId != null;
+  useLayoutEffect(() => {
+    const before = anchorTopRef.current;
+    anchorTopRef.current = null;
+    const board = kbwRef.current;
+    if (before == null || !board) return;
+    const delta = board.getBoundingClientRect().top - before;
+    if (Math.abs(delta) < 1) return;
+    const sp = scrollParentOf(board);
+    if (sp) sp.scrollTop += delta;
+    else window.scrollBy(0, delta);
+  }, [panelOpen]);
+
+  /** Setas do quadro: rolam quase uma tela, parando no começo de uma coluna. */
+  const scrollBoard = (dir: -1 | 1) => {
+    const board = kbxRef.current;
+    if (!board) return;
+    board.scrollBy?.({ left: dir * Math.round(board.clientWidth * 0.8), behavior: "smooth" });
+  };
 
   const draggedInf = activeId
     ? extendedInfluencers.find((inf) => idToString(inf.id) === activeId)
@@ -877,7 +930,10 @@ export function ManagementTab({
   };
 
   const cardHandlers: CardHandlers = {
-    onSelect: (inf) => setPanelId((cur) => nextPanelId(cur, idToString(inf.id))),
+    onSelect: (inf) => {
+      captureBoardTop();
+      setPanelId((cur) => nextPanelId(cur, idToString(inf.id)));
+    },
     onAction: handleCardAction,
     onChat: openChat,
     onProfile: openProfile,
@@ -919,7 +975,10 @@ export function ManagementTab({
                   expanded={panelExpanded}
                   onToggleExpanded={() => setPanelExpanded((v) => !v)}
                   onSelect={selectFromPanel}
-                  onClose={() => setPanelId(null)}
+                  onClose={() => {
+                    captureBoardTop();
+                    setPanelId(null);
+                  }}
                   campaignId={campaignId}
                   paymentType={paymentType}
                   phasesWithFormats={phasesWithFormats}
@@ -948,7 +1007,7 @@ export function ManagementTab({
                   onCharge={openChat}
                 />
               )}
-              <div className="kbw">
+              <div className="kbw" ref={kbwRef}>
                 <div className="kbt">
                   <div className="jumps">
                     {groups.map((g) => (
@@ -961,6 +1020,15 @@ export function ManagementTab({
                         {STAGE_SHORT[g.k]}
                       </button>
                     ))}
+                  </div>
+                  <div className="kbt-r">
+                  <div className="kbt-arr" role="group" aria-label="Rolar o quadro">
+                    <button type="button" className="round" aria-label="Rolar o quadro para a esquerda" onClick={() => scrollBoard(-1)}>
+                      <I n="chevl" cls="sm" />
+                    </button>
+                    <button type="button" className="round" aria-label="Rolar o quadro para a direita" onClick={() => scrollBoard(1)}>
+                      <I n="chev" cls="sm" />
+                    </button>
                   </div>
                   <div className={`pop fpop ${fpopOpen ? "open" : ""}`} ref={fpopRef}>
                     <button
@@ -1024,6 +1092,7 @@ export function ManagementTab({
                         </button>
                       </div>
                     </div>
+                  </div>
                   </div>
                 </div>
 

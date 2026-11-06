@@ -36,3 +36,45 @@ export function rejectionReason(
   const notes = last?.notes?.trim();
   return last && notes ? { notes, timestamp: last.timestamp } : null;
 }
+
+/** Quem fez a movimentação, a partir da origem registrada (a API não devolve o nome da pessoa). */
+export function historyActor(source: string | null | undefined): string | null {
+  switch (source) {
+    case "backoffice":
+      return "Equipe";
+    case "app":
+      return "Criador";
+    case "automation":
+    case "scheduler":
+    case "system":
+      return "Automático";
+    default:
+      return null;
+  }
+}
+
+/** As últimas `n` movimentações, da mais recente para a mais antiga. */
+export function recentHistory<T extends { timestamp: string }>(history: readonly T[] | undefined, n: number): T[] {
+  return [...(history ?? [])]
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, n);
+}
+
+/** Etapas em que o valor negociado faz parte da decisão e por isso aparece já no painel compacto. */
+export const NEGOTIATION_INLINE_COLUMNS: readonly string[] = [
+  "price_proposed",
+  "price_countered",
+  "contract_pending",
+  "payment_pending",
+];
+
+/**
+ * Quanto do quadro uma coluna precisa rolar para ficar inteira à vista (px, positivo = para a direita), com `pad` de folga.
+ * Zero quando já está toda visível. Se a coluna for mais larga que a área, alinha a borda esquerda.
+ */
+export function revealDelta(col: { left: number; right: number }, view: { left: number; right: number }, pad: number): number {
+  if (col.right - col.left > view.right - view.left - pad * 2) return col.left - (view.left + pad);
+  if (col.left < view.left + pad) return col.left - (view.left + pad);
+  if (col.right > view.right - pad) return col.right - (view.right - pad);
+  return 0;
+}
