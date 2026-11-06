@@ -24,7 +24,7 @@ import { useAgencyBrands, useIsAgencyWorkspace } from "@/hooks/use-agency-brands
 import { useWorkspaceOverview } from "@/hooks/use-workspace-overview";
 import { useWorkspaceContext, useWorkspacePermissions } from "@/contexts/workspace-context";
 import { getUploadUrl } from "@/lib/utils/api";
-import { discardCampaignDraft, readCampaignDraftSummary } from "@/lib/campaign-draft";
+import { discardCampaignDraft, listCampaignDrafts } from "@/lib/campaign-draft";
 import { LocalDraftCard } from "@/components/local-draft-card";
 import { getCampaignStatusValue } from "@/shared/utils/campaign-status";
 
@@ -169,8 +169,8 @@ function RouteComponent() {
 
   // Rascunho do assistente "Nova campanha": só existe neste navegador, então entra à parte das campanhas da API.
   // Relê ao navegar (voltar do assistente) e ao descartar.
-  const localDraft = useMemo(
-    () => readCampaignDraftSummary(selectedWorkspace?.id),
+  const localDrafts = useMemo(
+    () => listCampaignDrafts(selectedWorkspace?.id),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedWorkspace?.id, location.pathname, draftVersion],
   );
@@ -179,10 +179,10 @@ function RouteComponent() {
     () => ({
       all: campaigns.length,
       active: campaigns.filter((c) => FILTERS.active(c.statusValue)).length,
-      draft: campaigns.filter((c) => FILTERS.draft(c.statusValue)).length + (localDraft ? 1 : 0),
+      draft: campaigns.filter((c) => FILTERS.draft(c.statusValue)).length + localDrafts.length,
       finished: campaigns.filter((c) => FILTERS.finished(c.statusValue)).length,
     }),
-    [campaigns, localDraft],
+    [campaigns, localDrafts],
   );
 
   const filteredCampaigns = useMemo(() => {
@@ -336,11 +336,15 @@ function RouteComponent() {
     );
   }
 
-  const showLocalDraft =
-    !!localDraft &&
-    !brandFilter &&
-    (filterStatus === "draft" || filterStatus === "all") &&
-    (!searchTerm.trim() || normalize(localDraft.title || "campanha sem título").includes(normalize(searchTerm.trim())));
+  const visibleLocalDrafts =
+    !brandFilter && (filterStatus === "draft" || filterStatus === "all")
+      ? localDrafts.filter(
+          (d) =>
+            !searchTerm.trim() ||
+            normalize(d.title || "campanha sem título").includes(normalize(searchTerm.trim())),
+        )
+      : [];
+  const showLocalDraft = visibleLocalDrafts.length > 0;
 
   const emptyMessage = searchTerm.trim()
     ? {
@@ -390,16 +394,19 @@ function RouteComponent() {
         </PageToolbar>
       </PageControls>
 
-      {showLocalDraft && localDraft ? (
+      {showLocalDraft ? (
         <div className="pv">
           <div className="cgrid">
-            <LocalDraftCard
-              draft={localDraft}
-              onDiscard={() => {
-                discardCampaignDraft();
-                setDraftVersion((v) => v + 1);
-              }}
-            />
+            {visibleLocalDrafts.map((draft) => (
+              <LocalDraftCard
+                key={draft.id}
+                draft={draft}
+                onDiscard={() => {
+                  discardCampaignDraft(draft.id);
+                  setDraftVersion((v) => v + 1);
+                }}
+              />
+            ))}
           </div>
         </div>
       ) : null}

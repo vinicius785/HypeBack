@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { CAMPAIGN_DRAFT_KEY } from "@/lib/campaign-draft";
+import { discardCampaignDraft, readCampaignDraft, saveCampaignDraft } from "@/lib/campaign-draft";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { StepCampaign } from "@/components/campaign-wizard/step-campaign";
 import { StepCreators } from "@/components/campaign-wizard/step-creators";
@@ -25,6 +25,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/(private)/(app)/campaigns/new")({
+  // `draft`: id do rascunho a retomar. Sem ele a tela abre em branco, mesmo havendo rascunhos salvos.
+  validateSearch: (search: Record<string, unknown>): { draft?: string } =>
+    typeof search.draft === "string" && search.draft ? { draft: search.draft } : {},
   component: CreateCampaignPage,
 });
 
@@ -69,38 +72,30 @@ const initialFormData: CampaignFormData = {
   campaignVisibility: "public",
 };
 
-/** Chave do rascunho de criação no localStorage (escopo deste navegador). */
-const DRAFT_KEY = CAMPAIGN_DRAFT_KEY;
-
 interface CampaignDraft {
   data: CampaignFormData;
   step: number;
 }
 
 /**
- * Lê o rascunho salvo no localStorage. Retorna `null` quando não há rascunho,
- * o JSON é inválido ou o localStorage está indisponível (modo privado/quota).
- * Mescla sobre `initialFormData` para tolerar rascunhos de versões antigas do
- * formulário (campos novos entram com default em vez de ficar `undefined`).
+ * Lê o rascunho `id` do localStorage. Retorna `null` quando não existe mais ou o localStorage está indisponível
+ * (modo privado/quota). Mescla sobre `initialFormData` para tolerar rascunhos de versões antigas do formulário
+ * (campos novos entram com default em vez de ficar `undefined`).
  */
-function loadCampaignDraft(): CampaignDraft | null {
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<CampaignDraft> | null;
-    if (parsed && typeof parsed === "object" && parsed.data && typeof parsed.data === "object") {
-      return {
-        data: { ...initialFormData, ...(parsed.data as CampaignFormData) },
-        step: typeof parsed.step === "number" ? parsed.step : 1,
-      };
-    }
-  } catch {
-    // JSON inválido / localStorage indisponível — começa do zero.
-  }
-  return null;
+function loadCampaignDraft(id: string | undefined): CampaignDraft | null {
+  if (!id) return null;
+  const stored = readCampaignDraft<CampaignFormData>(id);
+  if (!stored) return null;
+  return { data: { ...initialFormData, ...stored.data }, step: stored.step };
 }
 
 function CreateCampaignPage() {
+  const { draft } = Route.useSearch();
+  // `key`: trocar de rascunho (ou voltar ao em branco) remonta o formulário em vez de reaproveitar o estado.
+  return <CreateCampaignForm key={draft ?? "new"} draftId={draft} />;
+}
+
+function CreateCampaignForm({ draftId }: { draftId?: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -108,7 +103,7 @@ function CreateCampaignPage() {
   // de estado — evita ler o localStorage a cada render.
   const initialDraftRef = useRef<CampaignDraft | null | undefined>(undefined);
   if (initialDraftRef.current === undefined) {
-    initialDraftRef.current = loadCampaignDraft();
+    initialDraftRef.current = loadCampaignDraft(draftId);
   }
   const initialDraft = initialDraftRef.current;
 
@@ -128,6 +123,8 @@ function CreateCampaignPage() {
   // Controla a visibilidade do "Descartar rascunho": só faz sentido quando há
   // um rascunho (restaurado na montagem ou salvo durante esta sessão).
   const [hasDraft, setHasDraft] = useState<boolean>(!!initialDraft);
+  // Id do rascunho em edição: o recebido pela URL ou o criado ao salvar pela primeira vez.
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(initialDraft ? (draftId ?? null) : null);
 
   // Avisa (uma vez) que o rascunho foi restaurado, para o usuário não achar que
   // entrou num formulário "sujo" por engano.
@@ -408,11 +405,7 @@ function CreateCampaignPage() {
 
       // Campanha criada → descarta o rascunho para não reabrir dados obsoletos
       // na próxima "Nova campanha".
-      try {
-        localStorage.removeItem(DRAFT_KEY);
-      } catch {
-        // localStorage indisponível — sem efeito colateral.
-      }
+      if (currentDraftId) discardCampaignDraft(currentDraftId);
       setHasDraft(false);
 
       toast.success("Campanha criada com sucesso!", {
@@ -428,36 +421,31 @@ function CreateCampaignPage() {
   };
 
   const handleSaveDraft = () => {
-    try {
-      const { bannerFile: _bf, ...rest } = formData as CampaignFormData & {
-        bannerFile?: File;
-      };
-      localStorage.setItem(
-        DRAFT_KEY,
-        JSON.stringify({
-          savedAt: new Date().toISOString(),
-          workspaceId: selectedWorkspace?.id ?? null,
-          step: 4,
-          data: rest,
-        })
-      );
-      setHasDraft(true);
-      toast.success("Rascunho salvo", {
-        description:
-          "Ele aparece na aba Rascunhos das campanhas, neste navegador. Conclua e envie quando quiser.",
-        duration: 6000,
-      });
-    } catch {
+    const { bannerFile: _bf, ...rest } = formData as CampaignFormData & {
+      bannerFile?: File;
+    };
+    const id = saveCampaignDraft({
+      id: currentDraftId,
+      workspaceId: selectedWorkspace?.id ?? null,
+      step: 4,
+      data: rest,
+    });
+    if (!id) {
       toast.error("Não foi possível salvar o rascunho. Tente de novo.");
+      return;
     }
+    setCurrentDraftId(id);
+    setHasDraft(true);
+    toast.success("Rascunho salvo", {
+      description:
+        "Ele aparece na aba Rascunhos das campanhas, neste navegador. Você pode criar outra campanha e voltar a ele quando quiser.",
+      duration: 6000,
+    });
   };
 
   const handleDiscardDraft = () => {
-    try {
-      localStorage.removeItem(DRAFT_KEY);
-    } catch {
-      // localStorage indisponível — sem efeito colateral.
-    }
+    if (currentDraftId) discardCampaignDraft(currentDraftId);
+    setCurrentDraftId(null);
     setFormData({ ...initialFormData, brandRequired: isAgencyWorkspace });
     setFieldErrors(new Set());
     setCurrentStep(1);

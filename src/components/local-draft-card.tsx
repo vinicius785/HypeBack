@@ -25,7 +25,7 @@ export function LocalDraftCard({ draft, onDiscard }: { draft: CampaignDraftSumma
   const title = draft.title || "Campanha sem título";
   return (
     <article className="cc" aria-label={`${title}, rascunho`}>
-      <Link to="/campaigns/new" params={{}} className="cc-img" aria-label={`Continuar editando ${title}`}>
+      <Link to="/campaigns/new" search={{ draft: draft.id }} className="cc-img" aria-label={`Continuar editando ${title}`}>
         <div className="cc-scene" style={{ background: SCENE_BG }}>
           <span
             style={{
@@ -55,7 +55,7 @@ export function LocalDraftCard({ draft, onDiscard }: { draft: CampaignDraftSumma
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
-          <Link to="/campaigns/new" params={{}} className="cc-go">
+          <Link to="/campaigns/new" search={{ draft: draft.id }} className="cc-go">
             <I n="file" cls="sm" />
             Continuar editando
           </Link>
