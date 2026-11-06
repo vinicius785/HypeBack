@@ -34,6 +34,8 @@ describe("CampaignTasksTab", () => {
     expect(screen.getByTestId("board")).toHaveTextContent("Verão Hype");
     // O quadro só tem estilo dentro de `.pv`: sem esse contêiner ele aparece como texto solto.
     expect(screen.getByTestId("board").closest(".pv")).not.toBeNull();
+    // A barra de busca e filtros só tem estilo dentro de `.pgk` (PageContainer).
+    expect(screen.getByTestId("board").closest(".pgk")).not.toBeNull();
     expect(h.open).not.toHaveBeenCalled();
   });
 

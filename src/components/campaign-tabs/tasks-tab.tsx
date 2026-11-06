@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 
+import { PageContainer } from "@/components/page/page-kit";
 import { I } from "@/components/prototype/ui";
 import { ProjectTasksBoard } from "@/components/agency-projects/board";
 import { useProjectPermissions } from "@/components/agency-projects/use-project-permissions";
@@ -81,13 +82,16 @@ export function CampaignTasksTab({ campaignId }: { campaignId: string }) {
     );
   }
 
-  // `.pv` dá os estilos do protótipo e `apj-sec` o espaçamento da seção, como na página do projeto: fora deles o quadro
-  // aparece sem estilo nenhum.
+  // Mesma moldura da página do projeto: `.pv` (estilos do protótipo), `PageContainer` (`.pgk`: os estilos da barra de
+  // busca, filtros e ordenação, que só valem dentro dele) e `apj-sec` (espaçamento da seção). Fora deles o quadro
+  // aparece sem estilo, ou com a barra empilhada como texto solto.
   return (
     <div className="pv">
-      <section className="apj-sec" aria-label="Tarefas da campanha">
-        <ProjectTasksBoard project={board} can={can} />
-      </section>
+      <PageContainer>
+        <section className="apj-sec" aria-label="Tarefas da campanha">
+          <ProjectTasksBoard project={board} can={can} />
+        </section>
+      </PageContainer>
     </div>
   );
 }
