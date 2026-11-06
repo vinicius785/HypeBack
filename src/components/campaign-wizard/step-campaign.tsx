@@ -74,6 +74,7 @@ export function StepCampaign({ formData, updateFormData, fieldErrors, tried }: W
   const filesInput = useRef<HTMLInputElement>(null);
 
   const [bannerErr, setBannerErr] = useState("");
+  const [dragOver, setDragOver] = useState(false);
   // Arquivo em recorte; o original fica guardado para o botão "Ajustar" reabrir o recorte.
   const [cropFile, setCropFile] = useState<File | null>(null);
   const original = useRef<File | null>(null);
@@ -124,7 +125,7 @@ export function StepCampaign({ formData, updateFormData, fieldErrors, tried }: W
     updateFormData("bannerFile", file);
   };
 
-  const onBannerPick = async (files: FileList | null) => {
+  const onBannerPick = async (files: FileList | readonly File[] | null) => {
     const file = files?.[0];
     if (bannerInput.current) bannerInput.current.value = "";
     if (!file) return;
@@ -176,10 +177,36 @@ export function StepCampaign({ formData, updateFormData, fieldErrors, tried }: W
 
   const hasBanner = !!formData.banner;
 
+  /* Arrastar e soltar: vale no bloco todo (sem banner ou para trocar o atual) e passa pelas mesmas validações do clique. */
+  const hasFiles = (e: React.DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes("Files");
+  const dropProps = {
+    onDragEnter: (e: React.DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      setDragOver(true);
+    },
+    onDragOver: (e: React.DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault(); // sem isto o navegador não aceita o `drop`
+      e.dataTransfer.dropEffect = "copy";
+      setDragOver(true);
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      // Passar por cima de um filho dispara `dragleave` no pai: só sai de verdade quando o ponteiro deixa o bloco.
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragOver(false);
+    },
+    onDrop: (e: React.DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      setDragOver(false);
+      void onBannerPick(Array.from(e.dataTransfer.files));
+    },
+  };
+
   return (
     <>
       <div className="n1top">
-        <div id="wz-banner" className={`nf nban ${bannerBad ? "err" : ""}`.trim()}>
+        <div id="wz-banner" className={`nf nban ${bannerBad ? "err" : ""} ${dragOver ? "drag" : ""}`.trim()} {...dropProps}>
           <label>Banner da campanha</label>
           <input
             ref={bannerInput}
@@ -197,6 +224,7 @@ export function StepCampaign({ formData, updateFormData, fieldErrors, tried }: W
                   style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                 />
               </span>
+              {dragOver ? <div className="nbn-drop">Solte para trocar o banner</div> : null}
               <div className="nbn-b">
                 <button type="button" className="nbtn" aria-label="Ajustar" onClick={adjust}>
                   <I n="image" cls="sm" />
@@ -212,8 +240,14 @@ export function StepCampaign({ formData, updateFormData, fieldErrors, tried }: W
               <span>
                 <I n="image" />
               </span>
-              <b>Enviar banner</b>
+              <b>{dragOver ? "Solte a imagem aqui" : "Enviar banner"}</b>
               <small>
+                {dragOver ? null : (
+                  <>
+                    Clique ou arraste uma imagem
+                    <br />
+                  </>
+                )}
                 JPG ou PNG
                 <br />
                 {CAMPAIGN_BANNER_LABEL}
