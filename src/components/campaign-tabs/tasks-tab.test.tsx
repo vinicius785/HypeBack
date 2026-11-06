@@ -32,6 +32,8 @@ describe("CampaignTasksTab", () => {
     h.board = { id: "b1", name: "Verão Hype" };
     render(<CampaignTasksTab campaignId="c1" />);
     expect(screen.getByTestId("board")).toHaveTextContent("Verão Hype");
+    // O quadro só tem estilo dentro de `.pv`: sem esse contêiner ele aparece como texto solto.
+    expect(screen.getByTestId("board").closest(".pv")).not.toBeNull();
     expect(h.open).not.toHaveBeenCalled();
   });
 

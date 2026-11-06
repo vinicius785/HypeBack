@@ -81,5 +81,13 @@ export function CampaignTasksTab({ campaignId }: { campaignId: string }) {
     );
   }
 
-  return <ProjectTasksBoard project={board} can={can} />;
+  // `.pv` dá os estilos do protótipo e `apj-sec` o espaçamento da seção, como na página do projeto: fora deles o quadro
+  // aparece sem estilo nenhum.
+  return (
+    <div className="pv">
+      <section className="apj-sec" aria-label="Tarefas da campanha">
+        <ProjectTasksBoard project={board} can={can} />
+      </section>
+    </div>
+  );
 }
