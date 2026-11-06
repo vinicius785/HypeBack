@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { Av, I } from "@/components/prototype/ui";
+import { I } from "@/components/prototype/ui";
 import { getNetworkLabel } from "@/shared/constants/network-labels";
 import { COLUMN_LABEL, formatEngagement, formatFollowers } from "../campaign-flow";
 import type { ExtendedInfluencer } from "../management-kanban-config";
@@ -16,7 +16,8 @@ export function PanelSection({ title, children }: { title: string; children: Rea
   );
 }
 
-export function PanelIdentity({
+/** Redes do criador (e @ em cada uma) e, quando for o caso, o aviso de atraso. */
+export function PanelNetworks({
   inf,
   late,
   idle,
@@ -26,28 +27,23 @@ export function PanelIdentity({
   idle?: number;
 }) {
   const nets = inf.social_networks ?? [];
+  const since = enrolledAt(inf);
   return (
-    <PanelSection title="Identificação">
-      <div className="pn-id">
-        <Av name={inf.name} src={inf.avatar} size={56} />
-        <div>
-          <h2>
-            {inf.name}
-            {inf.isExternal ? <em className="ext">Externo</em> : null}
-          </h2>
-          <p>{inf.username ? `@${inf.username}` : "Sem usuário"}</p>
-        </div>
-      </div>
+    <PanelSection title="Redes e inscrição">
       {nets.length > 0 ? (
         <ul className="pn-nets" aria-label="Redes sociais">
           {nets.map((n) => (
             <li key={n.id}>
               <b>{getNetworkLabel(n.type, n.type)}</b>
               {n.username ? <span>@{n.username}</span> : null}
+              {typeof n.members === "number" && n.members > 0 ? <span>{formatFollowers(n.members)}</span> : null}
             </li>
           ))}
         </ul>
-      ) : null}
+      ) : (
+        <p className="pn-since">Sem redes cadastradas.</p>
+      )}
+      {since ? <p className="pn-since">Inscrito em {fullDate(since)}</p> : null}
       {late ? (
         <span className="lt2 flag">
           <I n="clock" cls="sm" />
@@ -96,10 +92,8 @@ export function PanelFinancial({ inf, children }: { inf: ExtendedInfluencer; chi
 /** Movimentações em ordem cronológica, da mais recente para a mais antiga. */
 export function PanelHistory({ inf }: { inf: ExtendedInfluencer }) {
   const entries = [...(inf.statusHistory ?? [])].reverse();
-  const since = enrolledAt(inf);
   return (
     <PanelSection title="Histórico">
-      {since ? <p className="pn-since">Inscrito em {fullDate(since)}</p> : null}
       {entries.length === 0 ? (
         <p className="pn-since">Sem movimentações registradas.</p>
       ) : (

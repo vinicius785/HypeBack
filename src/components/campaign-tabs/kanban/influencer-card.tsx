@@ -221,6 +221,7 @@ export function SortableInfluencerCard({
       }}
       {...attributes}
       {...listeners}
+      data-inf={String(influencer.id)}
       aria-current={selected ? "true" : undefined}
       aria-busy={moving || undefined}
       className={`kc kc2 ${dim ? "dim" : ""} ${selected ? "sel" : ""} ${moving ? "moving" : ""}`}

@@ -25,22 +25,18 @@ import { Avatar } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/text-area";
 import type { CampaignManagementParticipant } from "@/shared/services/campaign-management";
 import { mapUserStatusToKanbanColumn } from "./management-status-map";
-import { Av, I } from "@/components/prototype/ui";
+import { I } from "@/components/prototype/ui";
 import {
   DragOverlayCard,
   SortableInfluencerCard,
   idleDaysOf,
   type CardHandlers,
 } from "./kanban/influencer-card";
+import { ManagementPanel } from "./kanban/management-panel";
+import { ManagementSummary } from "./kanban/management-summary";
+import { nextPanelId } from "./kanban/panel-nav";
+import "@/styles/management-board.css";
 import {
-  PanelFinancial,
-  PanelHistory,
-  PanelIdentity,
-  PanelPerformance,
-  PanelSection,
-} from "./kanban/panel-sections";
-import {
-  ACTION_LABEL,
   ACTION_TARGET,
   COLUMN_LABEL,
   HOT_COLUMNS,
@@ -71,16 +67,12 @@ import { openChatDrawer } from "@/components/chat-drawer";
 import { useNiches } from "@/hooks/use-niches";
 import { resolveNicheDisplayName } from "@/shared/utils/niche-display";
 import { getNetworkLabel } from "@/shared/constants/network-labels";
-import { PriceNegotiationSection } from "./shared/price-negotiation-section";
 import { reconcileSelectedById } from "./shared/reconcile-selected";
-import { ContentPanelActions, isContentColumn } from "./shared/content-panel-actions";
-import { ShipmentPanelActions, isShipmentColumn } from "./shared/shipment-panel-actions";
-import { ScriptPanelActions, isScriptColumn } from "./shared/script-panel-actions";
-import {
-  SelectionPanelActions,
-  isSelectionColumn,
-  type SelectionColumn,
-} from "./shared/selection-panel-actions";
+import { PriceNegotiationSection } from "./shared/price-negotiation-section";
+import { isContentColumn } from "./shared/content-panel-actions";
+import { isShipmentColumn } from "./shared/shipment-panel-actions";
+import { isScriptColumn } from "./shared/script-panel-actions";
+import { isSelectionColumn } from "./shared/selection-panel-actions";
 import type { CampaignPhaseForCost } from "./shared/prices-utils";
 
 interface ManagementTabProps {
@@ -302,6 +294,10 @@ export function ManagementTab({
   const [net, setNet] = useState<string>("all");
   const [movingId, setMovingId] = useState<string | null>(null);
   const [panelId, setPanelId] = useState<string | null>(null);
+  // Painel de detalhes: normal (cabe no conteúdo, até ~42% da altura) ou expandido.
+  const [panelExpanded, setPanelExpanded] = useState(false);
+  // Anterior/próximo e deep-links rolam o quadro até o cartão; o clique no cartão não precisa (ele já está à vista).
+  const scrollToCardRef = useRef(false);
   const [stage, setStage] = useState<StageKey>("sel");
   const kbxRef = useRef<HTMLDivElement>(null);
   const fpopRef = useRef<HTMLDivElement>(null);
@@ -854,6 +850,22 @@ export function ManagementTab({
     return n === 0 ? "hoje" : n > 0 ? `em ${n} ${n === 1 ? "dia" : "dias"}` : `há ${-n} ${n === -1 ? "dia" : "dias"}`;
   };
 
+  // Ordem do quadro (etapa por etapa, coluna por coluna); com filtro ativo, anterior/próximo só passam pelos que aparecem.
+  const navIds = groups
+    .flatMap((g) => g.cols.flatMap((colId) => getInfluencersByStatus(colId)))
+    .filter((inf) => !isDimmed(inf) || idToString(inf.id) === panelId)
+    .map((inf) => idToString(inf.id));
+  const selectFromPanel = (id: string) => {
+    scrollToCardRef.current = true;
+    setPanelId(id);
+  };
+  useEffect(() => {
+    if (panelId == null || !scrollToCardRef.current) return;
+    scrollToCardRef.current = false;
+    const card = kbxRef.current?.querySelector<HTMLElement>(`[data-inf="${CSS.escape(panelId)}"]`);
+    card?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [panelId]);
+
   const draggedInf = activeId
     ? extendedInfluencers.find((inf) => idToString(inf.id) === activeId)
     : undefined;
@@ -865,7 +877,7 @@ export function ManagementTab({
   };
 
   const cardHandlers: CardHandlers = {
-    onSelect: (inf) => setPanelId(idToString(inf.id)),
+    onSelect: (inf) => setPanelId((cur) => nextPanelId(cur, idToString(inf.id))),
     onAction: handleCardAction,
     onChat: openChat,
     onProfile: openProfile,
@@ -896,7 +908,46 @@ export function ManagementTab({
               </div>
             </div>
           ) : (
-            <div className="mg">
+            <div className="mg mgv">
+              {panelInfluencer ? (
+                <ManagementPanel
+                  inf={panelInfluencer}
+                  column={getCurrentStatus(panelInfluencer)}
+                  late={isLateInf(panelInfluencer)}
+                  idle={idleDaysOf(panelInfluencer)}
+                  orderedIds={navIds}
+                  expanded={panelExpanded}
+                  onToggleExpanded={() => setPanelExpanded((v) => !v)}
+                  onSelect={selectFromPanel}
+                  onClose={() => setPanelId(null)}
+                  campaignId={campaignId}
+                  paymentType={paymentType}
+                  phasesWithFormats={phasesWithFormats}
+                  highlightContentId={panelHighlight}
+                  onChat={() => openChat(panelInfluencer)}
+                  onProfile={() => openProfile(panelInfluencer)}
+                  onStageAction={() => handleCardAction(panelInfluencer, getCurrentStatus(panelInfluencer))}
+                  onReject={() => {
+                    setSelectedInfluencer(panelInfluencer);
+                    setIsRejectModalOpen(true);
+                  }}
+                  onReconsider={() => handleApprove(panelInfluencer, "applications")}
+                />
+              ) : (
+                <ManagementSummary
+                  progress={progress}
+                  attention={attention}
+                  attentionTotal={attentionTotal}
+                  late={lateList}
+                  deadlines={deadlines}
+                  inDays={inDays}
+                  onAttention={(st) => {
+                    setFlt("me");
+                    jumpStage(st);
+                  }}
+                  onCharge={openChat}
+                />
+              )}
               <div className="kbw">
                 <div className="kbt">
                   <div className="jumps">
@@ -1006,6 +1057,7 @@ export function ManagementTab({
                           key={g.k}
                           className={`kg ${g.k === "rec" ? "rec" : ""}`}
                           data-grp={g.k}
+                          style={{ ["--n" as string]: g.cols.length }}
                         >
                           <div className="kgh">
                             <span>{g.k === "rec" ? "" : g.n + 1}</span>
@@ -1047,191 +1099,6 @@ export function ManagementTab({
                 </DndContext>
               </div>
 
-              <div id="s2h">
-              {panelInfluencer ? (
-                <aside className="side2 pf fade" aria-label={`Detalhes de ${panelInfluencer.name}`}>
-                  <div className="s2-nav">
-                    <button type="button" className="lnk" onClick={() => setPanelId(null)}>
-                      <I n="back" cls="sm" />
-                      Resumo
-                    </button>
-                    <span
-                      className={`pill ${HOT_COLUMNS.includes(getCurrentStatus(panelInfluencer)) ? "" : "p"}`}
-                    >
-                      {COLUMN_LABEL[getCurrentStatus(panelInfluencer)]}
-                    </span>
-                  </div>
-                  <PanelIdentity
-                    inf={panelInfluencer}
-                    late={isLateInf(panelInfluencer)}
-                    idle={idleDaysOf(panelInfluencer)}
-                  />
-                  <PanelPerformance inf={panelInfluencer} />
-                  <PanelFinancial inf={panelInfluencer}>
-                    <PriceNegotiationSection
-                      campaignId={campaignId}
-                      userId={panelInfluencer.user_id}
-                      status={panelInfluencer.status}
-                      negotiation={panelInfluencer.price_negotiation}
-                    />
-                  </PanelFinancial>
-                  <PanelSection title="Decisão">
-                    <div className="drw-b">
-                      {isSelectionColumn(getCurrentStatus(panelInfluencer)) ? (
-                        <SelectionPanelActions
-                          key={panelInfluencer.id}
-                          campaignId={campaignId}
-                          influencerId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
-                          column={getCurrentStatus(panelInfluencer) as SelectionColumn}
-                          paymentType={paymentType}
-                          phasesWithFormats={phasesWithFormats}
-                        />
-                      ) : isScriptColumn(getCurrentStatus(panelInfluencer)) ? (
-                        <ScriptPanelActions
-                          key={panelInfluencer.id}
-                          campaignId={campaignId}
-                          influencerId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
-                          influencer={{
-                            id: idToString(panelInfluencer.id),
-                            name: panelInfluencer.name,
-                            username: panelInfluencer.username,
-                            avatar: panelInfluencer.avatar,
-                          }}
-                        />
-                      ) : isContentColumn(getCurrentStatus(panelInfluencer)) ? (
-                        <ContentPanelActions
-                          key={panelInfluencer.id}
-                          campaignId={campaignId}
-                          influencerId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
-                          highlightContentId={panelHighlight}
-                        />
-                      ) : isShipmentColumn(getCurrentStatus(panelInfluencer)) ? (
-                        <ShipmentPanelActions
-                          key={panelInfluencer.id}
-                          campaignId={campaignId}
-                          userId={String(panelInfluencer.user_id ?? panelInfluencer.id)}
-                        />
-                      ) : ACTION_LABEL[getCurrentStatus(panelInfluencer)] ? (
-                        <button
-                          type="button"
-                          className="btn"
-                          onClick={() =>
-                            handleCardAction(panelInfluencer, getCurrentStatus(panelInfluencer))
-                          }
-                        >
-                          {ACTION_LABEL[getCurrentStatus(panelInfluencer)]}
-                        </button>
-                      ) : null}
-                      {getCurrentStatus(panelInfluencer) === "rejected" ? (
-                        <button
-                          type="button"
-                          className="btn out"
-                          onClick={() => handleApprove(panelInfluencer, "applications")}
-                        >
-                          <I n="refresh" cls="sm" />
-                          Reconsiderar
-                        </button>
-                      ) : isSelectionColumn(getCurrentStatus(panelInfluencer)) ? null : (
-                        <button
-                          type="button"
-                          className="btn out dng"
-                          onClick={() => {
-                            setSelectedInfluencer(panelInfluencer);
-                            setIsRejectModalOpen(true);
-                          }}
-                        >
-                          <I n="ban" cls="sm" />
-                          Recusar
-                        </button>
-                      )}
-                    </div>
-                  </PanelSection>
-                  <PanelSection title="Relacionamento">
-                    <div className="kb2-r">
-                      <button type="button" className="btn out" onClick={() => openChat(panelInfluencer)}>
-                        <I n="msg" cls="sm" />
-                        Abrir chat
-                      </button>
-                      <button type="button" className="btn out" onClick={() => openProfile(panelInfluencer)}>
-                        <I n="user" cls="sm" />
-                        Perfil completo
-                      </button>
-                    </div>
-                  </PanelSection>
-                  <PanelHistory inf={panelInfluencer} />
-                </aside>
-              ) : (
-                <aside className="side2 fade">
-                  <div className="s2-top">
-                    <small>Resumo da campanha</small>
-                    <div className="s2-p">
-                      <b>{Math.round(progress)}%</b>
-                      <span>concluído</span>
-                    </div>
-                    <div className="cc-trk">
-                      <i style={{ ["--w" as string]: `${Math.round(progress)}%`, ["--i" as string]: 0 }} />
-                    </div>
-                  </div>
-                  <section className="s2">
-                    <h3>
-                      Precisa da sua ação<em>{attentionTotal}</em>
-                    </h3>
-                    {attention.map((a) => (
-                      <button
-                        key={a.label}
-                        type="button"
-                        className="s2r"
-                        onClick={() => {
-                          setFlt("me");
-                          jumpStage(a.stage);
-                        }}
-                      >
-                        <b>{a.n}</b>
-                        <span>{a.label}</span>
-                        <I n="chev" cls="sm" />
-                      </button>
-                    ))}
-                  </section>
-                  <section className="s2">
-                    <h3>
-                      Em atraso<em>{lateList.length}</em>
-                    </h3>
-                    {lateList.map((inf) => (
-                      <div key={inf.id} className="s2l">
-                        <Av name={inf.name} src={inf.avatar} size={32} />
-                        <div>
-                          <b>{inf.name}</b>
-                          <small>{idleDaysOf(inf)} dias sem avanço</small>
-                        </div>
-                        <button
-                          type="button"
-                          className="rm"
-                          onClick={() => {
-                            openChat(inf);
-                          }}
-                        >
-                          Cobrar
-                        </button>
-                      </div>
-                    ))}
-                  </section>
-                  {deadlines.length > 0 && (
-                    <section className="s2">
-                      <h3>Próximos prazos</h3>
-                      {deadlines.map(([label, d]) => (
-                        <div key={label} className="s2d">
-                          <span>
-                            {d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-                          </span>
-                          <b>{label}</b>
-                          <small>{inDays(d)}</small>
-                        </div>
-                      ))}
-                    </section>
-                  )}
-                </aside>
-              )}
-              </div>
             </div>
           )}
         </div>
