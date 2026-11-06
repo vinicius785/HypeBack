@@ -1,6 +1,7 @@
 import type { CampaignFormData } from "@/shared/types";
 import type { CampaignDetail, UpdateCampaignData } from "@/shared/services/campaign";
 import type { CampaignPhaseUpsertPayload, CreatePhaseData } from "@/shared/services/phase";
+import { gendersOf } from "@/shared/utils/campaign-segment";
 import { unformatNumber, currencyToNumber } from "@/shared/utils/masks";
 import { aggregateImageRightsPeriodMonths } from "@/shared/utils/campaign-image-rights";
 
@@ -199,8 +200,7 @@ export function buildCampaignUpdatePayloadFromForm(
       : undefined,
     segment_state: formData.state ? formData.state.split(",").filter(Boolean) : undefined,
     segment_city: formData.city ? formData.city.split(",").filter(Boolean) : undefined,
-    segment_genders:
-      formData.gender && formData.gender !== "all" ? [formData.gender] : undefined,
+    segment_genders: gendersOf(formData.gender).length > 0 ? gendersOf(formData.gender) : undefined,
     image_rights_period: aggregateImageRightsPeriodMonths(formData.phases),
   };
 }

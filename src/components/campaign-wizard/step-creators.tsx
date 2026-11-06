@@ -1,22 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueries } from "@tanstack/react-query";
 
 import { I } from "@/components/prototype/ui";
-import { useInfluencersCatalog } from "@/hooks/use-catalog";
 import { useNiches } from "@/hooks/use-niches";
+import { useWorkspaceQueryKey, withWorkspaceKey } from "@/hooks/use-workspace-query-key";
 import {
   BRAZILIAN_STATES,
   buildCityKey,
   getCitiesByState,
-  parseCityKey,
   retainCitiesForStates,
 } from "@/shared/data/brazilian-states-cities";
+import { getInfluencersCatalog } from "@/shared/services/catalog";
+import { catalogFilterSets, gendersOf, gendersToForm } from "@/shared/utils/campaign-segment";
 import {
   getNicheIdKey,
   isNicheChildOf,
   isNicheRoot,
 } from "@/shared/utils/niche-tree";
 
-import { Chips, Dropdown, FieldError, SectionCard } from "./fields";
+import { Chips, FieldError, MultiSelect, SectionCard } from "./fields";
 import { nicheIconFor } from "./niche-icons";
 import type { WizardStepProps } from "./types";
 
@@ -129,7 +131,7 @@ export function StepCreators({ formData, updateFormData, fieldErrors, tried }: W
   const selectedSubs = useMemo(() => splitCsv(formData.subniches), [formData.subniches]);
   const selectedStates = useMemo(() => splitCsv(formData.state), [formData.state]);
   const selectedCities = useMemo(() => splitCsv(formData.city), [formData.city]);
-  const gender = formData.gender && formData.gender !== "all" ? formData.gender : "";
+  const genders = useMemo(() => gendersOf(formData.gender), [formData.gender]);
 
   // "minSet": o usuário já escolheu uma faixa (inclusive "Sem mínimo").
   const [minSet, setMinSet] = useState(
@@ -195,36 +197,24 @@ export function StepCreators({ formData, updateFormData, fieldErrors, tried }: W
   };
 
   /* --- localização --- */
-  const stateOptions = useMemo(
-    () => [
-      { value: "", label: "Todo o Brasil" },
-      ...BRAZILIAN_STATES.map((s) => ({ value: s.code, label: s.name })),
-    ],
-    [],
-  );
-  const stateValue = selectedStates.length === 1 ? selectedStates[0] : "";
-  const multiStates = selectedStates.length > 1;
-  const stateDropdownOptions = multiStates
-    ? [{ value: "__multi", label: `${selectedStates.length} estados` }, ...stateOptions]
-    : stateOptions;
-  const onState = (v: string) => {
-    if (v === "__multi") return;
-    updateFormData("state", v);
-    const kept = retainCitiesForStates(selectedCities, v ? [v] : []);
+  const stateOptions = useMemo(() => BRAZILIAN_STATES.map((st) => ({ value: st.code, label: st.name })), []);
+  // Trocar a lista de estados mantém as cidades dos estados que continuam escolhidos.
+  const onStates = (next: string[]) => {
+    updateFormData("state", next.join(","));
+    const kept = retainCitiesForStates(selectedCities, next);
     if (kept.length !== selectedCities.length) updateFormData("city", kept.join(","));
   };
+  // Cidades de TODOS os estados escolhidos; com mais de um estado, a sigla aparece ao lado do nome.
   const cityOptions = useMemo(
     () =>
-      stateValue
-        ? [
-            { value: "", label: "Todas as cidades" },
-            ...getCitiesByState(stateValue).map((c) => ({
-              value: buildCityKey(c.name, c.state),
-              label: c.name,
-            })),
-          ]
-        : [],
-    [stateValue],
+      selectedStates.flatMap((uf) =>
+        getCitiesByState(uf).map((c) => ({
+          value: buildCityKey(c.name, c.state),
+          label: c.name,
+          hint: selectedStates.length > 1 ? c.state : undefined,
+        })),
+      ),
+    [selectedStates],
   );
   const stateLabel =
     selectedStates.length === 0
@@ -240,29 +230,44 @@ export function StepCreators({ formData, updateFormData, fieldErrors, tried }: W
   };
 
   /* --- potencial: dado real do catálogo (mesmos filtros do formulário antigo) --- */
-  const catalogFilters = useMemo(() => {
-    const f: { gender?: string; followers_min?: number; state?: string; city?: string } = {};
-    if (gender) f.gender = gender;
-    const min = parseInt((formData.minFollowers || "").replace(/\D/g, ""), 10);
-    if (min > 0) f.followers_min = min;
-    if (selectedStates.length > 0) f.state = selectedStates[0];
-    if (selectedCities.length > 0) {
-      const name = parseCityKey(selectedCities[0])?.name;
-      if (name) f.city = name;
-    }
-    return f;
-  }, [gender, formData.minFollowers, selectedStates, selectedCities]);
-  const { data: catalog, isError: catalogError } = useInfluencersCatalog(catalogFilters);
+  const minFollowersNum = parseInt((formData.minFollowers || "").replace(/\D/g, ""), 10);
+  // Uma consulta por combinação de estado/cidade/gênero (o catálogo filtra um valor de cada vez) e a soma dá o potencial.
+  const filterSets = useMemo(
+    () =>
+      catalogFilterSets({
+        genders,
+        minFollowers: Number.isFinite(minFollowersNum) ? minFollowersNum : undefined,
+        states: selectedStates,
+        cities: selectedCities,
+      }),
+    [genders, minFollowersNum, selectedStates, selectedCities],
+  );
+  const workspaceKey = useWorkspaceQueryKey();
+  const catalogQueries = useQueries({
+    queries: (filterSets ?? []).map((f) => ({
+      queryKey: withWorkspaceKey(["influencers", "catalog", f], workspaceKey),
+      queryFn: () => getInfluencersCatalog(f),
+      staleTime: 60000,
+      enabled: !!workspaceKey,
+    })),
+  });
+  const countOf = (c: { stats?: { influencer_count: number } | null; items?: unknown[] } | undefined) =>
+    c?.stats != null ? c.stats.influencer_count : c?.items?.length;
+  // Combinações demais (ou alguma consulta com erro) caem na estimativa visual.
+  const catalogError = filterSets === null || catalogQueries.some((r) => r.isError);
+  const counts = catalogQueries.map((r) => countOf(r.data));
   const realPot =
-    catalog?.stats != null ? catalog.stats.influencer_count : catalog?.items?.length;
+    filterSets !== null && counts.length > 0 && counts.every((n): n is number => typeof n === "number")
+      ? counts.reduce((a, n) => a + n, 0)
+      : undefined;
   // Sem dado do catálogo (erro/indisponível) cai numa estimativa só visual.
   const estimate = useMemo(() => {
     let x = 1840;
     x *= SHARE[tier] ?? 1;
-    if (selectedStates.length) x *= 0.22;
-    if (gender) x *= 0.5;
+    if (selectedStates.length) x *= Math.min(1, 0.22 * selectedStates.length);
+    if (genders.length) x *= Math.min(1, 0.5 * genders.length);
     return Math.round(x);
-  }, [tier, selectedStates.length, gender]);
+  }, [tier, selectedStates.length, genders.length]);
   const potTarget = typeof realPot === "number" ? realPot : catalogError ? estimate : 0;
   const isEstimate = typeof realPot !== "number" && catalogError;
 
@@ -299,7 +304,8 @@ export function StepCreators({ formData, updateFormData, fieldErrors, tried }: W
     return w;
   }, [show, tier, minSet]);
 
-  const figGender = gender || null;
+  // O bonequinho só muda de visual com um gênero; com vários (ou nenhum) fica neutro.
+  const figGender = genders.length === 1 ? genders[0] : null;
   const figNiche = (i: number): string | null => {
     if (!selectedMain.length) return null;
     return iconFor(selectedMain[i % selectedMain.length]) ?? TAG_ICON;
@@ -491,31 +497,36 @@ export function StepCreators({ formData, updateFormData, fieldErrors, tried }: W
               title="Localização"
               sub="Onde os criadores moram"
             >
-              <Dropdown
-                value={multiStates ? "__multi" : stateValue}
-                options={stateDropdownOptions}
-                onChange={onState}
+              <MultiSelect
+                ariaLabel="Estados"
+                values={selectedStates}
+                options={stateOptions}
+                onChange={onStates}
                 placeholder="Todo o Brasil"
+                searchPlaceholder="Buscar estado"
               />
-              {stateValue ? (
-                <Dropdown
-                  value={selectedCities[0] ?? ""}
+              {selectedStates.length > 0 ? (
+                <MultiSelect
+                  ariaLabel="Cidades"
+                  values={selectedCities}
                   options={cityOptions}
-                  onChange={(v) => updateFormData("city", v)}
+                  onChange={(next) => updateFormData("city", next.join(","))}
                   placeholder="Todas as cidades"
+                  searchPlaceholder="Buscar cidade"
                 />
               ) : null}
             </SectionCard>
             <SectionCard
               icon={<I n="user" cls="sm" />}
               title="Gênero"
-              sub="Opcional. Muda o visual do time"
+              sub="Opcional. Escolha um ou mais"
             >
               <Chips
-                multi={false}
                 options={GENDERS}
-                selected={gender}
-                onToggle={(v) => updateFormData("gender", v === gender ? "all" : v)}
+                selected={genders}
+                onToggle={(v) =>
+                  updateFormData("gender", gendersToForm(genders.includes(v) ? genders.filter((g) => g !== v) : [...genders, v]))
+                }
               />
             </SectionCard>
           </div>

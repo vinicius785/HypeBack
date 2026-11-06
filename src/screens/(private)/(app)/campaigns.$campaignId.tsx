@@ -52,6 +52,7 @@ import {
 import { useWorkspacePermissions } from "@/contexts/workspace-context";
 import { CAMPAIGN_BANNER_ASPECT } from "@/lib/campaign-banner";
 import type { WorkspacePermissions } from "@/shared/types";
+import { gendersToForm } from "@/shared/utils/campaign-segment";
 
 export const Route = createFileRoute("/(private)/(app)/campaigns/$campaignId")({
   component: RouteComponent,
@@ -315,7 +316,7 @@ function RouteComponent() {
         ? campaign.segment_city.join(",")
         : campaign.segment_city || "",
       gender: Array.isArray(campaign.segment_genders)
-        ? campaign.segment_genders.join(", ")
+        ? gendersToForm(campaign.segment_genders)
         : campaign.segment_genders || "all",
       paymentType: campaign.payment_method || "",
       paymentFixedAmount: campaign.payment_method === "fixed" && campaign.payment_method_details?.amount

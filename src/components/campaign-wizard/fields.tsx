@@ -201,6 +201,120 @@ export function Dropdown({
   );
 }
 
+/**
+ * Seleção MÚLTIPLA com busca (`.ndd`): o painel fica aberto enquanto se marca, fecha ao clicar fora ou com Esc, e o que foi
+ * escolhido aparece como chips removíveis logo abaixo. Nada marcado = "sem filtro" (o `placeholder` diz o que isso significa).
+ */
+export function MultiSelect({
+  values,
+  options,
+  onChange,
+  placeholder,
+  searchPlaceholder = "Buscar",
+  ariaLabel,
+}: {
+  values: string[];
+  options: Array<{ value: string; label: string; hint?: string }>;
+  onChange: (next: string[]) => void;
+  placeholder: string;
+  searchPlaceholder?: string;
+  ariaLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+
+  const norm = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const q = norm(query.trim());
+  const shown = q ? options.filter((o) => norm(o.label).includes(q)) : options;
+  const toggle = (v: string) => onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
+  const labelOf = (v: string) => options.find((o) => o.value === v)?.label ?? v;
+  const summary =
+    values.length === 0 ? null : values.length <= 2 ? values.map(labelOf).join(", ") : `${values.length} selecionados`;
+
+  return (
+    <div className="nms">
+      <div ref={ref} className={`ndd ${open ? "open" : ""}`}>
+        <button
+          type="button"
+          className="ndd-b"
+          aria-label={ariaLabel}
+          aria-expanded={open}
+          onClick={() => {
+            setOpen((o) => !o);
+            setQuery("");
+          }}
+        >
+          {summary ? <span>{summary}</span> : <span className="ph">{placeholder}</span>}
+          <I n="chev" cls="sm" />
+        </button>
+        <div className="ndd-p">
+          <div className="ndd-l">
+            {options.length > 7 ? (
+              <div className="ndd-s">
+                <input
+                  type="search"
+                  placeholder={searchPlaceholder}
+                  aria-label={`${searchPlaceholder} em ${ariaLabel}`}
+                  autoComplete="off"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
+            ) : null}
+            {shown.length === 0 ? <p className="ndd-e">Nada encontrado</p> : null}
+            {shown.map((o, i) => (
+              <button
+                key={o.value}
+                type="button"
+                role="checkbox"
+                aria-checked={values.includes(o.value)}
+                className={`ndd-o ${values.includes(o.value) ? "on" : ""}`}
+                style={{ ["--i" as string]: Math.min(i, 8) }}
+                onClick={() => toggle(o.value)}
+              >
+                <span>
+                  {o.label}
+                  {o.hint ? <em className="ndd-h">{o.hint}</em> : null}
+                </span>
+                <I n="check" cls="sm" />
+              </button>
+            ))}
+            {values.length > 0 ? (
+              <button type="button" className="ndd-c" onClick={() => onChange([])}>
+                Limpar seleção
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+      {values.length > 0 ? (
+        <div className="nchips nms-c" role="group" aria-label={`Selecionados: ${ariaLabel}`}>
+          {values.map((v) => (
+            <button key={v} type="button" className="nch on" aria-label={`Remover ${labelOf(v)}`} onClick={() => toggle(v)}>
+              {labelOf(v)}
+              <I n="x" cls="sm" />
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /** Lista editável (`.nl.nlbox`): "O que fazer", "O que não fazer", benefícios. */
 export function ListBox({
   title,

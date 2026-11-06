@@ -41,6 +41,7 @@ import {
 import { getUploadUrl } from "@/lib/utils/api";
 import { useNiches } from "@/hooks/use-niches";
 import { getCampaignStatusValue } from "@/shared/utils/campaign-status";
+import { gendersToForm } from "@/shared/utils/campaign-segment";
 
 export const Route = createFileRoute("/(private)/(app)/campaigns/$campaignId/edit")({
   component: RouteComponent,
@@ -210,7 +211,7 @@ function RouteComponent() {
         ? campaign.segment_city.join(",")
         : campaign.segment_city || "",
       gender: Array.isArray(campaign.segment_genders)
-        ? campaign.segment_genders[0] || "all"
+        ? gendersToForm(campaign.segment_genders)
         : campaign.segment_genders || "all",
       paymentType: campaign.payment_method || "",
       paymentFixedAmount:

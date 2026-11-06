@@ -2865,3 +2865,17 @@
 @media (prefers-reduced-motion: reduce) {
   .pv .nm-loading::after, .pv .nm-pan { animation: none; }
 }
+
+/* Seleção múltipla do assistente (estados, cidades): busca no topo do painel, "limpar" no fim e chips removíveis abaixo. */
+.pv .ndd-s { position: sticky; top: 0; z-index: 1; background: #fff; padding: 2px 0 8px; }
+.pv .ndd-s input { width: 100%; height: 42px; border: 0; outline: 0; border-radius: 14px; background: var(--bg); padding: 0 14px; font: inherit; font-size: 14px; box-sizing: border-box; }
+.pv .ndd-s input::-webkit-search-cancel-button { display: none; }
+.pv .ndd-s input:focus { box-shadow: 0 0 0 2px var(--ink); }
+.pv .ndd-e { margin: 0; padding: 14px 16px; color: var(--muted); font-size: 13.5px; }
+.pv .ndd-h { font-style: normal; color: var(--muted); font-weight: 500; margin-left: 6px; font-size: 12.5px; }
+.pv .ndd-c { align-self: flex-start; margin: 4px 0 2px; padding: 8px 14px; border-radius: 99px; color: var(--brand); font-size: 13px; font-weight: 600; }
+.pv .ndd-c:hover { background: var(--bg); }
+.pv .ndd .ndd-o[role="checkbox"] > .ico { opacity: 0; } .pv .ndd .ndd-o.on[role="checkbox"] > .ico { opacity: 1; }
+.pv .nms { display: flex; flex-direction: column; }
+.pv .nms-c { margin-top: 10px; }
+.pv .nms-c .nch { cursor: pointer; }

@@ -9,6 +9,7 @@ import { WizardShell } from "@/components/campaign-wizard/wizard-shell";
 import { wizardMissing } from "@/components/campaign-wizard/config";
 import { useSyncBrandRequired } from "@/components/campaign-wizard/use-brand-required";
 import { bannerFileForUpload } from "@/lib/campaign-banner";
+import { gendersOf } from "@/shared/utils/campaign-segment";
 import { useWorkspaceContext } from "@/contexts/workspace-context";
 import { createAllCampaignProducts } from "@/shared/services/campaign-products";
 import type { CampaignFormData } from "@/shared/types";
@@ -268,8 +269,9 @@ function CreateCampaignPage() {
     if (formData.city) {
       payload.segment_city = formData.city.split(",").filter(Boolean);
     }
-    if (formData.gender && formData.gender !== "all") {
-      payload.segment_genders = [formData.gender];
+    const genders = gendersOf(formData.gender);
+    if (genders.length > 0) {
+      payload.segment_genders = genders;
     }
 
     return payload;
