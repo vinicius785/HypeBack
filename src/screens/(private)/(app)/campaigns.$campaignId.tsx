@@ -50,35 +50,14 @@ import {
   getCampaignStatusValue,
 } from "@/shared/utils/campaign-status";
 import { useWorkspacePermissions } from "@/contexts/workspace-context";
+import { campaignTabsFor } from "@/components/campaign-tabs/tab-defs";
+import { useIsClientRole } from "@/hooks/use-is-client-role";
 import { CAMPAIGN_BANNER_ASPECT } from "@/lib/campaign-banner";
-import type { WorkspacePermissions } from "@/shared/types";
 import { gendersToForm } from "@/shared/utils/campaign-segment";
 
 export const Route = createFileRoute("/(private)/(app)/campaigns/$campaignId")({
   component: RouteComponent,
 });
-
-/** Abas da campanha filtradas por `permissions` do workspace (@see API_BACKOFFICE_WORKSPACES_AND_PERMISSIONS.md). */
-const CAMPAIGN_TAB_DEFS: Array<{
-  id: string;
-  label: string;
-  visible: (p: WorkspacePermissions) => boolean;
-}> = [
-    { id: "dashboard", label: "Dashboard", visible: (p) => p.campaigns_read },
-    {
-      id: "selection",
-      label: "Seleção de influenciadores",
-      visible: (p) => p.influencers_read,
-    },
-    { id: "management", label: "Gerenciamento", visible: (p) => p.campaigns_read },
-    { id: "groups", label: "Comunidade", visible: (p) => p.campaigns_read },
-    { id: "contracts", label: "Contratos", visible: (p) => p.contracts_read },
-    {
-      id: "metrics",
-      label: "Métricas e conteúdos",
-      visible: (p) => p.campaigns_read,
-    },
-  ];
 
 function RouteComponent() {
   const navigate = useNavigate();
@@ -118,11 +97,8 @@ function RouteComponent() {
     error: campaignError,
   } = useCampaign(campaignId);
 
-  const visibleTabs = useMemo(
-    () =>
-      CAMPAIGN_TAB_DEFS.filter((t) => t.visible(permissions)).map(({ id, label }) => ({ id, label })),
-    [permissions],
-  );
+  const isClient = useIsClientRole();
+  const visibleTabs = useMemo(() => campaignTabsFor(permissions, isClient), [permissions, isClient]);
 
   useEffect(() => {
     if (visibleTabs.length === 0) return;
