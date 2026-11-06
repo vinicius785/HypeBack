@@ -24,31 +24,32 @@ import type { WizardStepProps } from "./types";
 
 const FMAX = 24;
 
-type Tier = "any" | "10k" | "50k" | "100k";
+type Tier = string;
 
-/** As 4 faixas do protótipo mapeadas para o valor real de `minFollowers`. */
-const MINF: Array<{ key: Tier; label: string; value: string; min: number }> = [
-  { key: "any", label: "Sem mínimo", value: "", min: 0 },
-  { key: "10k", label: "10 mil", value: "10000", min: 10000 },
-  { key: "50k", label: "50 mil", value: "50000", min: 50000 },
-  { key: "100k", label: "100 mil", value: "100000", min: 100000 },
+/** Faixas de seguidores mínimos: da base (sem mínimo) aos grandes nomes. `value` é o `minFollowers` enviado à API. */
+const MINF: Array<{ key: Tier; label: string; value: string; min: number; txt: string; cap: string }> = [
+  { key: "any", label: "Sem mínimo", value: "", min: 0, txt: "Qualquer tamanho", cap: "Qualquer tamanho de perfil" },
+  { key: "1k", label: "1 mil", value: "1000", min: 1000, txt: "1 mil+ seguidores", cap: "Nanocriadores: comunidade pequena e muito próxima" },
+  { key: "3k", label: "3 mil", value: "3000", min: 3000, txt: "3 mil+ seguidores", cap: "Nanocriadores: público fiel e custo baixo" },
+  { key: "5k", label: "5 mil", value: "5000", min: 5000, txt: "5 mil+ seguidores", cap: "Nanocriadores: boa conversa com a audiência" },
+  { key: "10k", label: "10 mil", value: "10000", min: 10000, txt: "10 mil+ seguidores", cap: "Microcriadores: engajados e acessíveis" },
+  { key: "25k", label: "25 mil", value: "25000", min: 25000, txt: "25 mil+ seguidores", cap: "Microcriadores: alcance e engajamento em equilíbrio" },
+  { key: "50k", label: "50 mil", value: "50000", min: 50000, txt: "50 mil+ seguidores", cap: "Criadores em ascensão. Já têm holofote" },
+  { key: "100k", label: "100 mil", value: "100000", min: 100000, txt: "100 mil+ seguidores", cap: "Grandes nomes. Alcance máximo" },
+  { key: "250k", label: "250 mil", value: "250000", min: 250000, txt: "250 mil+ seguidores", cap: "Grandes nomes. Alcance máximo" },
+  { key: "500k", label: "500 mil", value: "500000", min: 500000, txt: "500 mil+ seguidores", cap: "Celebridades digitais. Alcance de massa" },
 ];
 
-const TIERTXT: Record<Tier, string> = {
-  any: "Qualquer tamanho",
-  "10k": "10 mil+ seguidores",
-  "50k": "50 mil+ seguidores",
-  "100k": "100 mil+ seguidores",
+const TIERTXT: Record<Tier, string> = Object.fromEntries(MINF.map((m) => [m.key, m.txt]));
+const CAP: Record<Tier, string> = Object.fromEntries(MINF.map((m) => [m.key, m.cap]));
+/** Quanto maior a faixa, maior o bonequinho do palco (52 a 90). */
+const TARGET_W: Record<Tier, number> = Object.fromEntries(
+  MINF.map((m, i) => [m.key, Math.round(52 + (38 * i) / (MINF.length - 1))]),
+);
+/** Fração do universo de criadores que passa do mínimo (só para a estimativa sem catálogo). */
+const SHARE: Record<Tier, number> = {
+  any: 1, "1k": 0.9, "3k": 0.8, "5k": 0.75, "10k": 0.7, "25k": 0.5, "50k": 0.35, "100k": 0.15, "250k": 0.07, "500k": 0.03,
 };
-
-const CAP: Record<Tier, string> = {
-  any: "Qualquer tamanho de perfil",
-  "10k": "Microcriadores: engajados e acessíveis",
-  "50k": "Criadores em ascensão. Já têm holofote",
-  "100k": "Grandes nomes. Alcance máximo",
-};
-
-const TARGET_W: Record<Tier, number> = { any: 52, "10k": 64, "50k": 76, "100k": 90 };
 
 /** Gêneros: valor aceito pela API -> rótulo do protótipo. */
 const GENDERS = [
@@ -66,10 +67,10 @@ const splitCsv = (s: string | undefined) => (s ? s.split(",").filter(Boolean) : 
 function tierOf(minFollowers: string): Tier {
   const n = parseInt((minFollowers || "").replace(/\D/g, ""), 10);
   if (!Number.isFinite(n) || n <= 0) return "any";
-  if (n >= 100000) return "100k";
-  if (n >= 50000) return "50k";
-  if (n >= 10000) return "10k";
-  return "any";
+  // A maior faixa que o valor alcança (um valor antigo, entre duas faixas, cai na de baixo).
+  let found: Tier = "any";
+  for (const m of MINF) if (n >= m.min) found = m.key;
+  return found;
 }
 
 /* ===== Bonequinho ===== */
@@ -257,7 +258,7 @@ export function StepCreators({ formData, updateFormData, fieldErrors, tried }: W
   // Sem dado do catálogo (erro/indisponível) cai numa estimativa só visual.
   const estimate = useMemo(() => {
     let x = 1840;
-    x *= { any: 1, "10k": 0.7, "50k": 0.35, "100k": 0.15 }[tier];
+    x *= SHARE[tier] ?? 1;
     if (selectedStates.length) x *= 0.22;
     if (gender) x *= 0.5;
     return Math.round(x);
