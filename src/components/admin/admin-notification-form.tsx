@@ -25,6 +25,7 @@ import type {
   AdminNotificationCreatePayload,
 } from "@/shared/types";
 import { createIdempotencyKeeper } from "@/shared/utils/idempotency-key";
+import { TimeClock } from "@/components/campaign-wizard/time-pick";
 
 const TITLE_MAX = 65;
 const BODY_MAX = 240;
@@ -52,15 +53,6 @@ const WD = [
 const pad = (n: number) => String(n).padStart(2, "0");
 const isoOf = (d: Date) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const SLOTS: string[] = (() => {
-  const sl: string[] = [];
-  for (let h = 9; h <= 21; h++) {
-    sl.push(`${pad(h)}:00`);
-    if (h < 21) sl.push(`${pad(h)}:30`);
-  }
-  return sl;
-})();
-
 function validateUrl(url: string): boolean {
   if (!url) return true;
   return /^https?:\/\/.+/i.test(url) || /^[a-z][a-z0-9+\-.]*:\/\/.+/i.test(url);
@@ -211,7 +203,7 @@ export function AdminNotificationForm({
       ? "Assim que confirmar"
       : (() => {
           const d = new Date(`${date}T12:00:00`);
-          return `${d.getDate()} de ${MESES[d.getMonth()].toLowerCase()}, ${time}`;
+          return `${d.getDate()} de ${MESES[d.getMonth()].toLowerCase()}, ${time || "sem horário"}`;
         })();
 
   const go = (k: number) => {
@@ -236,8 +228,11 @@ export function AdminNotificationForm({
   };
 
   const save = async () => {
-    const scheduledAt =
-      when === "sched" ? new Date(`${date}T${time || "00:00"}:00`) : null;
+    if (when === "sched" && !/^\d{2}:\d{2}$/.test(time)) {
+      adminToast.error("Escolha o horário do envio.");
+      return;
+    }
+    const scheduledAt = when === "sched" ? new Date(`${date}T${time}:00`) : null;
     if (scheduledAt && scheduledAt.getTime() < Date.now()) {
       adminToast.error("A data/hora do agendamento deve estar no futuro.");
       return;
@@ -495,18 +490,7 @@ export function AdminNotificationForm({
                 </b>
                 <small>Escolha o horário</small>
               </div>
-              <div className="lvq-tl">
-                {SLOTS.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    className={time === t ? "on" : ""}
-                    onClick={() => setTime(t)}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
+              <TimeClock value={time} onChange={setTime} />
             </div>
           </div>
         ) : (

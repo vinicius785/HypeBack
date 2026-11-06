@@ -2879,3 +2879,6 @@
 .pv .nms { display: flex; flex-direction: column; }
 .pv .nms-c { margin-top: 10px; }
 .pv .nms-c .nch { cursor: pointer; }
+
+/* Relógio em linha (agendamento de notificações): o mesmo mostrador do popover da campanha, aberto dentro do quadro. */
+.pv .tim-inline { width: 212px; max-width: 100%; margin: 6px auto 0; padding: 8px 0 4px; }

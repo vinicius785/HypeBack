@@ -182,6 +182,44 @@ describe("AdminNotificationForm — envio", () => {
     expect(toastSuccess).toHaveBeenCalledWith("Envio agendado.", expect.anything());
   });
 
+  it("agenda em qualquer horário, inclusive de madrugada (relógio, sem lista de 09h às 21h)", async () => {
+    const user = userEvent.setup();
+    render(<AdminNotificationForm onClose={onClose} />);
+    await goToSendStep(user);
+    await user.click(screen.getByRole("button", { name: /Agendar para depois/ }));
+
+    const hora = screen.getByLabelText("Hora");
+    const minutos = screen.getByLabelText("Minutos");
+    await user.clear(hora);
+    await user.type(hora, "06");
+    await user.clear(minutos);
+    await user.type(minutos, "30");
+    expect(hora).toHaveValue("06");
+    expect(minutos).toHaveValue("30");
+
+    await user.click(screen.getByRole("button", { name: "Agendar envio" }));
+    await waitFor(() => expect(createMutate).toHaveBeenCalledTimes(1));
+    const sentAt = new Date(createMutate.mock.calls[0][0].payload.scheduled_at as string);
+    expect(sentAt.getHours()).toBe(6);
+    expect(sentAt.getMinutes()).toBe(30);
+  });
+
+  it("apagar o campo da hora não deixa o horário vazio: volta ao último valor válido e agenda normalmente", async () => {
+    const user = userEvent.setup();
+    render(<AdminNotificationForm onClose={onClose} />);
+    await goToSendStep(user);
+    await user.click(screen.getByRole("button", { name: /Agendar para depois/ }));
+
+    const hora = screen.getByLabelText("Hora");
+    await user.clear(hora);
+    await user.tab();
+    expect(hora).toHaveValue("10");
+
+    await user.click(screen.getByRole("button", { name: "Agendar envio" }));
+    await waitFor(() => expect(createMutate).toHaveBeenCalledTimes(1));
+    expect(new Date(createMutate.mock.calls[0][0].payload.scheduled_at as string).getHours()).toBe(10);
+  });
+
   it("trocar para agendamento fecha a confirmação do envio imediato", async () => {
     const user = userEvent.setup();
     render(<AdminNotificationForm onClose={onClose} />);
