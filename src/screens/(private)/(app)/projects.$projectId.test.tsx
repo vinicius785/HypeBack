@@ -8,6 +8,7 @@ import { AgencyProjectsUnavailableError } from "@/shared/services/agency-project
 
 const h = vi.hoisted(() => ({
   isAgency: true,
+  role: "owner",
   can: { campaigns_read: true, campaigns_create: true, campaigns_write: true, campaigns_delete: true },
   project: undefined as unknown,
   loading: false,
@@ -32,7 +33,10 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
 }));
-vi.mock("@/contexts/workspace-context", () => ({ useWorkspacePermissions: () => h.can }));
+vi.mock("@/contexts/workspace-context", () => ({
+  useWorkspacePermissions: () => h.can,
+  useWorkspaceContext: () => ({ selectedWorkspace: { role: h.role } }),
+}));
 vi.mock("@/hooks/use-agency-brands", () => ({ useIsAgencyWorkspace: () => h.isAgency }));
 vi.mock("@/hooks/use-agency-projects", () => ({
   useAgencyProject: () => ({ data: h.project, isLoading: h.loading, error: h.error, refetch: h.refetch, isFetching: false }),

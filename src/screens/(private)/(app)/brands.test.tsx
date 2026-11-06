@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
   isAgency: true,
+  role: "owner",
   canWrite: true,
   loading: false,
   brands: [] as unknown[],
@@ -23,6 +24,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("@/contexts/workspace-context", () => ({
   useWorkspacePermissions: () => ({ workspace_settings_write: h.canWrite }),
+  useWorkspaceContext: () => ({ selectedWorkspace: { role: h.role } }),
 }));
 vi.mock("@/hooks/use-agency-brands", () => ({
   useIsAgencyWorkspace: () => h.isAgency,
@@ -49,12 +51,20 @@ const kpi = (label: RegExp | string) => within(screen.getByRole("group", { name:
 beforeEach(() => {
   vi.clearAllMocks();
   h.isAgency = true;
+  h.role = "owner";
   h.canWrite = true;
   h.loading = false;
   h.brands = [mk("b1", "Acme", "active", 3, "Cosméticos"), mk("b2", "Beta Moda", "active", 1), mk("b3", "Velha", "archived", 0)];
 });
 
 describe("página Marcas", () => {
+  it("Cliente da agência não entra em Marcas (área interna da equipe)", () => {
+    h.role = "cliente";
+    render(<Page />);
+    expect(screen.getByText("Você não tem acesso a Marcas")).toBeInTheDocument();
+    expect(screen.queryByText("Acme")).not.toBeInTheDocument();
+  });
+
   it("fora de agência explica que é exclusivo e não lista nada", () => {
     h.isAgency = false;
     render(<Page />);

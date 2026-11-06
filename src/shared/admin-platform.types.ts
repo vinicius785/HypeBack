@@ -168,6 +168,7 @@ export type AdminWorkspaceRole =
   | 'juridico'
   | 'financeiro'
   | 'analista'
+  | 'cliente'
   | 'custom';
 
 /** users.type: 10 criador, 20 cliente, 30 agência, 100 admin. */

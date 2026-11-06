@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import { useAuth } from "@/contexts/auth-context";
 import { useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
+import { useIsClientRole } from "@/hooks/use-is-client-role";
 import { useCampaigns } from "@/hooks/use-campaigns";
 import { useWorkspaceOverview } from "@/hooks/use-workspace-overview";
 import { getCampaignStatusValue } from "@/shared/utils/campaign-status";
@@ -42,6 +43,7 @@ function RouteComponent() {
   const permissions = useWorkspacePermissions();
   const { user } = useAuth();
   const isAgency = useIsAgencyWorkspace();
+  const isClient = useIsClientRole();
   const tasksRef = useRef<HTMLElement>(null);
   const { data: campaignsData = [], isLoading, error } = useCampaigns({
     enabled: !!selectedWorkspace,
@@ -61,7 +63,7 @@ function RouteComponent() {
     hasError: overviewHasError,
     aggregateMetrics,
     perCampaign,
-    tasks,
+    tasks: allTasks,
     enabled: overviewEnabled,
     campaignStats: overviewCampaignStats,
     campaignTable,
@@ -170,6 +172,9 @@ function RouteComponent() {
   const showOverview =
     permissions.campaigns_read && overviewEnabled && campaignsData.length > 0;
 
+  // O Cliente aprova roteiros e conteúdos; inscrições de criadores são decisão da agência e não aparecem para ele.
+  const tasks = useMemo(() => (isClient ? allTasks.filter((t) => t.kind !== "participant") : allTasks), [isClient, allTasks]);
+
   const pendingTaskCount = tasks.reduce((acc, t) => acc + t.count, 0);
 
   const [tasksPage, setTasksPage] = useState(1);
@@ -264,7 +269,7 @@ function RouteComponent() {
     ["Roteiros", taskTotals.get("script") ?? 0, "para aprovar"],
     ["Conteúdos", taskTotals.get("content") ?? 0, "para aprovar"],
     ["Inscrições", taskTotals.get("participant") ?? 0, "para analisar"],
-  ];
+  ].filter(([label]) => !(isClient && label === "Inscrições")) as Array<[string, number, string]>;
 
   return (
     <div className="pv">
@@ -302,7 +307,7 @@ function RouteComponent() {
           showOverview && (
             <div className="fade">
               <div className="card">
-                <div className="stats" role="group" aria-label="O que precisa de você">
+                <div className="stats" role="group" aria-label="O que precisa de você" style={{ ["--stat-n" as string]: personalStats.length }}>
                   {personalStats.map(([l, n, d]) => (
                     <button
                       key={l}

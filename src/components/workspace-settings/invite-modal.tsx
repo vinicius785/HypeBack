@@ -23,6 +23,13 @@ export interface InvitePayload {
   role: AssignableRole;
   /** undefined = padrão do papel (servidor). */
   permissions: string[] | undefined;
+  /** Marcas do papel Cliente (ids de `/agency/brands`); `undefined` nos outros papéis. */
+  brandIds?: string[];
+}
+
+export interface InviteBrand {
+  id: string;
+  name: string;
 }
 
 interface Props {
@@ -30,13 +37,17 @@ interface Props {
   canManagePermissions: boolean;
   /** Modo forçado pelo pai (ex.: API pediu nome). */
   forceNew: number;
+  /** Workspace de agência: libera o papel Cliente (acompanha só as marcas escolhidas). */
+  isAgency?: boolean;
+  /** Marcas ativas da agência, para escolher o que o Cliente enxerga. */
+  brands?: readonly InviteBrand[];
   onClose: () => void;
   onSubmit: (p: InvitePayload) => void;
 }
 
 const mail = (v: string) => /^\S+@\S+\.\S+$/.test(v);
 
-export function InviteModal({ pending, canManagePermissions, forceNew, onClose, onSubmit }: Props) {
+export function InviteModal({ pending, canManagePermissions, forceNew, isAgency = false, brands = [], onClose, onSubmit }: Props) {
   const [mode, setMode] = useState<"invite" | "new">("invite");
   const [seenForce, setSeenForce] = useState(forceNew);
   if (seenForce !== forceNew) {
@@ -50,6 +61,11 @@ export function InviteModal({ pending, canManagePermissions, forceNew, onClose, 
   const [touched, setTouched] = useState(false);
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState(false);
+  const [brandIds, setBrandIds] = useState<string[]>([]);
+
+  const isClient = role === "cliente";
+  const roles: AssignableRole[] = isAgency ? [...ASSIGNABLE_ROLES, "cliente"] : ASSIGNABLE_ROLES;
+  const brandBad = err && isClient && brandIds.length === 0;
 
   const okE = mail(email.trim());
   const nameBad = err && mode === "new" && name.trim().length < 2;
@@ -58,7 +74,7 @@ export function InviteModal({ pending, canManagePermissions, forceNew, onClose, 
   const n = countGroups(perms);
 
   const submit = () => {
-    if (!okE || (mode === "new" && name.trim().length < 2) || (touched && perms.length === 0)) {
+    if (!okE || (mode === "new" && name.trim().length < 2) || (touched && perms.length === 0) || (isClient && brandIds.length === 0)) {
       setErr(true);
       return;
     }
@@ -67,7 +83,8 @@ export function InviteModal({ pending, canManagePermissions, forceNew, onClose, 
       name: name.trim(),
       email: email.trim(),
       role,
-      permissions: canManagePermissions && touched ? perms : undefined,
+      permissions: canManagePermissions && touched && !isClient ? perms : undefined,
+      ...(isClient ? { brandIds } : {}),
     });
   };
 
@@ -137,7 +154,7 @@ export function InviteModal({ pending, canManagePermissions, forceNew, onClose, 
       <div className="wkn-fd">
         <label>Papel</label>
         <div className="nchips">
-          {ASSIGNABLE_ROLES.map((r) => (
+          {roles.map((r) => (
             <button
               key={r}
               type="button"
@@ -145,6 +162,7 @@ export function InviteModal({ pending, canManagePermissions, forceNew, onClose, 
               aria-pressed={role === r}
               onClick={() => {
                 setRole(r);
+                if (r !== "cliente") setBrandIds([]);
                 setPerms(roleDefaultPerms(r));
                 setTouched(false);
                 setErr(false);
@@ -157,7 +175,37 @@ export function InviteModal({ pending, canManagePermissions, forceNew, onClose, 
         </div>
         <p className="wkn-rd">{ROLE_DESC[role]}</p>
       </div>
-      {canManagePermissions && (
+      {isClient && (
+        <div className={`wkn-fd ${brandBad ? "bad" : ""}`}>
+          <label>Marcas que o cliente acompanha</label>
+          {brands.length === 0 ? (
+            <p className="wkn-rd">A agência ainda não tem marcas ativas. Crie uma marca antes de convidar um cliente.</p>
+          ) : (
+            <div className="nchips" role="group" aria-label="Marcas do cliente">
+              {brands.map((b) => {
+                const on = brandIds.includes(b.id);
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    className={`nch ${on ? "on" : ""}`}
+                    aria-pressed={on}
+                    onClick={() => {
+                      setBrandIds((cur) => (on ? cur.filter((x) => x !== b.id) : [...cur, b.id]));
+                      setErr(false);
+                    }}
+                  >
+                    {on && <I n="check" cls="sm" />}
+                    {b.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {brandBad && <small>Escolha ao menos uma marca</small>}
+        </div>
+      )}
+      {canManagePermissions && !isClient && (
         <div className={`wkn-ax ${permBad ? "bad" : ""}`}>
           <div className="wkn-ah">
             <div>

@@ -17,6 +17,7 @@ const ctx = vi.hoisted(() => ({
   edges: { before: false, after: false },
   permissions: { campaigns_read: true, catalog_read: true, community_lives_read: true, financial_read: true } as Record<string, boolean>,
   accountType: "brand" as string,
+  role: "owner" as string,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -28,7 +29,7 @@ vi.mock("@/contexts/auth-context", () => ({ useAuth: () => ({ user: ctx.user, se
 vi.mock("@/contexts/workspace-context", () => {
   const ws = { id: "w1", name: "Acme", role: "owner", photo: null };
   return {
-    useWorkspaceContext: () => ({ workspaces: [ws, { id: "w2", name: "Beta", role: "member", photo: null }], selectedWorkspace: { ...ws, account_type: ctx.accountType }, selectWorkspace: ctx.selectWorkspace }),
+    useWorkspaceContext: () => ({ workspaces: [ws, { id: "w2", name: "Beta", role: "member", photo: null }], selectedWorkspace: { ...ws, role: ctx.role, account_type: ctx.accountType }, selectWorkspace: ctx.selectWorkspace }),
     useWorkspacePermissions: () => ctx.permissions,
   };
 });
@@ -56,6 +57,7 @@ beforeEach(() => {
   ctx.edges = { before: false, after: false };
   ctx.permissions = { campaigns_read: true, catalog_read: true, community_lives_read: true, financial_read: true };
   ctx.accountType = "brand";
+  ctx.role = "owner";
 });
 
 afterEach(() => {
@@ -206,6 +208,21 @@ describe("Sidebar (escopo do workspace, como no app)", () => {
     render(<Sidebar />);
     expect(within(nav()).queryByRole("button", { name: "Marcas" })).not.toBeInTheDocument();
     expect(within(nav()).queryByRole("button", { name: "Projetos" })).not.toBeInTheDocument();
+  });
+
+  it("Cliente da agência vê só Início e Campanhas: nada de Marcas, Projetos, Criadores, Lives nem Financeiro", () => {
+    ctx.accountType = "agency";
+    ctx.role = "cliente";
+    // O papel cliente só tem leitura de campanhas (o servidor não dá catálogo, lives nem financeiro).
+    ctx.permissions = { campaigns_read: true, catalog_read: false, community_lives_read: false, financial_read: false };
+    ctx.user = { name: "Cliente", email: "c@marca.com" };
+    render(<Sidebar />);
+    const items = within(nav());
+    expect(items.getByRole("button", { name: "Início" })).toBeInTheDocument();
+    expect(items.getByRole("button", { name: /Campanhas/ })).toBeInTheDocument();
+    for (const hidden of ["Marcas", "Projetos", "Criadores", "Lives", "Financeiro", "Backoffice"]) {
+      expect(items.queryByRole("button", { name: hidden })).not.toBeInTheDocument();
+    }
   });
 
   it("a equipe Hype vê só o Backoffice (uma porta), não a estrutura inteira do Admin", async () => {

@@ -3,6 +3,7 @@ import { useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/auth-context";
 import { useWorkspaceContext, useWorkspacePermissions } from "@/contexts/workspace-context";
 import { useCampaigns } from "@/hooks/use-campaigns";
+import { useIsClientRole } from "@/hooks/use-is-client-role";
 import { isPlatformStaff } from "@/lib/utils/platform-admin";
 import { getCampaignStatusValue } from "@/shared/utils/campaign-status";
 
@@ -20,6 +21,7 @@ export function useNavSections(scope: NavScope = "workspace") {
   const { selectedWorkspace } = useWorkspaceContext();
   const showPlatformStaff = isPlatformStaff(user);
   const isAgency = selectedWorkspace?.account_type === "agency";
+  const isClient = useIsClientRole();
 
   // O número de campanhas ativas é do workspace: no Admin nem se busca (nem com o workspace suspenso, que
   // recusa toda chamada).
@@ -47,6 +49,7 @@ export function useNavSections(scope: NavScope = "workspace") {
         .filter((item) => {
           if (item.platformStaffOnly && !showPlatformStaff) return false;
           if (item.agencyOnly && !isAgency) return false;
+          if (item.teamOnly && isClient) return false;
           if (item.permission && !permissions[item.permission]) return false;
           return true;
         })

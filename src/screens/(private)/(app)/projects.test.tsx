@@ -11,6 +11,7 @@ const h = vi.hoisted(() => {
     store,
     pathname: "/projects",
     isAgency: true,
+    role: "owner",
     can: { campaigns_read: true, campaigns_create: true, campaigns_write: true, campaigns_delete: true },
     loading: false,
     error: null as unknown,
@@ -50,7 +51,10 @@ vi.mock("@tanstack/react-router", async () => {
     ),
   };
 });
-vi.mock("@/contexts/workspace-context", () => ({ useWorkspacePermissions: () => h.can }));
+vi.mock("@/contexts/workspace-context", () => ({
+  useWorkspacePermissions: () => h.can,
+  useWorkspaceContext: () => ({ selectedWorkspace: { role: h.role } }),
+}));
 vi.mock("@/hooks/use-agency-brands", () => ({ useIsAgencyWorkspace: () => h.isAgency }));
 vi.mock("@/hooks/use-agency-projects", () => ({
   useAgencyProjects: () => ({
@@ -126,6 +130,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   h.pathname = "/projects";
   h.isAgency = true;
+  h.role = "owner";
   h.can = { campaigns_read: true, campaigns_create: true, campaigns_write: true, campaigns_delete: true };
   h.loading = false;
   h.error = null;
@@ -166,6 +171,14 @@ describe("rota", () => {
 });
 
 describe("bloqueios", () => {
+  it("Cliente da agência tem campaigns_read, mas Projetos é interno: vê o aviso de sem acesso e nenhum projeto", () => {
+    h.role = "cliente";
+    h.projects = [mk("p1", "Lançamento Verão")];
+    render(<Page />);
+    expect(screen.getByText("Você não tem acesso a Projetos")).toBeInTheDocument();
+    expect(screen.queryByText("Lançamento Verão")).not.toBeInTheDocument();
+  });
+
   it("fora de agência explica que é exclusivo e não lista nada", () => {
     h.isAgency = false;
     render(<Page />);

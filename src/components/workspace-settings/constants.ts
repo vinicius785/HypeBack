@@ -14,6 +14,7 @@ export const ROLE_LABEL: Record<WorkspaceRole, string> = {
   juridico: "Jurídico",
   financeiro: "Financeiro",
   analista: "Analista",
+  cliente: "Cliente",
 };
 
 export type AssignableRole = Exclude<WorkspaceRole, "owner">;
@@ -37,6 +38,7 @@ export const ROLE_DESC: Record<AssignableRole, string> = {
   juridico: "Cuida dos contratos e dos conteúdos.",
   financeiro: "Cuida do saldo e dos pagamentos.",
   analista: "Analisa campanhas, criadores e financeiro.",
+  cliente: "Acompanha e aprova roteiros e conteúdos só das marcas escolhidas, sem ver valores nem a equipe.",
 };
 
 export interface PermGroup {
@@ -138,6 +140,7 @@ export const ROLE_GROUPS: Record<AssignableRole, number[]> = {
   juridico: [5, 6],
   financeiro: [7],
   analista: [2, 3, 7],
+  cliente: [3],
 };
 
 export const groupKeys = (i: number) => PERMISSION_GROUPS[i].items.map((x) => x.key);

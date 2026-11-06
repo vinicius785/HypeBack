@@ -1,4 +1,4 @@
-import { useWorkspacePermissions } from "@/contexts/workspace-context";
+import { useWorkspaceContext, useWorkspacePermissions } from "@/contexts/workspace-context";
 
 export interface ProjectPermissions {
   /** Ver projetos, tarefas e documentos (`campaigns_read`). */
@@ -14,8 +14,10 @@ export interface ProjectPermissions {
 /** Projetos reaproveita as permissões de campanha do workspace (nada novo): ver, criar, editar e excluir. */
 export function useProjectPermissions(): ProjectPermissions {
   const p = useWorkspacePermissions();
+  // Projetos é interno da agência: o Cliente tem `campaigns_read` (vê as campanhas das marcas dele), mas não entra aqui.
+  const isClient = useWorkspaceContext().selectedWorkspace?.role === "cliente";
   return {
-    canRead: !!p.campaigns_read,
+    canRead: !!p.campaigns_read && !isClient,
     canCreate: !!p.campaigns_create,
     canWrite: !!p.campaigns_write,
     canDelete: !!p.campaigns_delete,

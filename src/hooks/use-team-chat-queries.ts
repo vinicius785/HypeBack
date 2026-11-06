@@ -63,6 +63,8 @@ const retry = (failureCount: number, error: unknown) =>
 export function useTeamChatEnabled(): boolean {
   const workspaceId = useWorkspaceQueryKey();
   const { selectedWorkspace } = useWorkspaceContext();
+  // Cliente da agência não entra no chat interno da equipe (a API também recusa).
+  if (selectedWorkspace?.role === "cliente") return false;
   return !!workspaceId && !!getAuthToken() && selectedWorkspace?.status !== "suspended";
 }
 
