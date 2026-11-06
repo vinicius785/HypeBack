@@ -79,9 +79,9 @@ describe("Campanhas e Criadores: o que o kit passou a fazer", () => {
 });
 
 describe("Campanhas: banner", () => {
-  it("o comentário e a regra concordam: a imagem preenche a caixa 5:2 (`cover`), que na proporção certa a mostra inteira", () => {
+  it("o comentário e a regra concordam: a imagem preenche a caixa 1:1 do banner (`cover`), que na proporção certa a mostra inteira", () => {
     expect(campaignsCss).toMatch(/\.pv \.adm-campaigns-banner img \{[^}]*object-fit: cover/);
-    expect(campaignsCss).toMatch(/\.pv \.adm-campaigns-banner \{[^}]*aspect-ratio: 5 \/ 2/);
+    expect(campaignsCss).toMatch(/\.pv \.adm-campaigns-banner \{[^}]*aspect-ratio: 1 \/ 1/);
     expect(campaignsCss).not.toMatch(/sem corte/);
     expect(read("../components/admin/campaigns/admin-campaign-banner.tsx")).not.toMatch(/sem corte/);
   });

@@ -49,6 +49,7 @@ import {
   getCampaignStatusValue,
 } from "@/shared/utils/campaign-status";
 import { useWorkspacePermissions } from "@/contexts/workspace-context";
+import { CAMPAIGN_BANNER_ASPECT } from "@/lib/campaign-banner";
 import type { WorkspacePermissions } from "@/shared/types";
 
 export const Route = createFileRoute("/(private)/(app)/campaigns/$campaignId")({
@@ -509,7 +510,7 @@ function RouteComponent() {
             </div>
             <div className="chd">
               <div className="chd-top">
-                <div className="sk" style={{ aspectRatio: "5 / 2", borderRadius: 20 }} />
+                <div className="sk" style={{ aspectRatio: CAMPAIGN_BANNER_ASPECT, borderRadius: 20 }} />
                 <div className="chd-main">
                   <div className="sk" style={{ height: 26, width: 230, borderRadius: 999 }} />
                   <div className="sk" style={{ height: 36, width: "72%" }} />

@@ -2389,13 +2389,13 @@
 .pv .empty.big { align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; }
 .pv .empty.big b { font-size: 20px; letter-spacing: -.02em; line-height: 1.2; margin-top: 0; white-space: normal; }
 
-/* ---- Cabeçalho do detalhe da campanha: cartão com o banner inteiro (5:2), identificação, ações e abas ---- */
+/* ---- Cabeçalho do detalhe da campanha: cartão com o banner (1:1, medida única de campaign-banner.ts), identificação, ações e abas ---- */
 .pv .crumb { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; font-weight: 600; }
 .pv .crumb-back { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px 0 10px; border-radius: 999px; background: #fff; color: var(--ink); flex: none; transition: background .25s, color .25s; }
 .pv .crumb-back:hover { background: var(--ink); color: #fff; }
 .pv .chd { background: #fff; border-radius: 28px; overflow: hidden; margin-top: -8px; }
-.pv .chd-top { display: grid; grid-template-columns: minmax(220px, 38%) minmax(0, 1fr); gap: 28px; align-items: center; padding: 14px 14px 0; }
-.pv .chd-cover { position: relative; aspect-ratio: 5 / 2; border-radius: 20px; overflow: hidden; background: linear-gradient(135deg, #ead1ff, #c47aff, #5d1390); box-shadow: inset 0 0 0 1px rgba(5, 5, 5, .06); }
+.pv .chd-top { display: grid; grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); gap: 28px; align-items: center; padding: 14px 14px 0; }
+.pv .chd-cover { position: relative; aspect-ratio: 1 / 1; border-radius: 20px; overflow: hidden; background: linear-gradient(135deg, #ead1ff, #c47aff, #5d1390); box-shadow: inset 0 0 0 1px rgba(5, 5, 5, .06); }
 .pv .chd-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .pv .chd-ph { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255, 255, 255, .45); font-size: 56px; font-weight: 600; letter-spacing: -.06em; }
 .pv .chd-main { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding-right: 14px; }
@@ -2426,12 +2426,12 @@
 .pv .chd .dtabs em { background: var(--brand); color: #fff; }
 .pv .chd .dtabs .dsub.open { margin-left: 10px; }
 @media (max-width: 1000px) {
-  .pv .chd-top { grid-template-columns: minmax(200px, 36%) minmax(0, 1fr); gap: 22px; }
+  .pv .chd-top { grid-template-columns: minmax(160px, 220px) minmax(0, 1fr); gap: 22px; }
 }
 @media (max-width: 760px) {
   .pv .chd { margin-top: 0; border-radius: 24px; }
   .pv .chd-top { grid-template-columns: minmax(0, 1fr); gap: 0; align-items: start; padding: 10px 10px 0; }
-  .pv .chd-cover { border-radius: 18px; }
+  .pv .chd-cover { border-radius: 18px; width: min(100%, 300px); }
   .pv .chd-ph { font-size: 40px; }
   .pv .chd-main { padding: 16px 8px 4px; }
   .pv .chd-act { padding: 14px 18px 16px; }
@@ -2457,6 +2457,8 @@
 .pv .pcm-vp:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
 .pv .pcm-vp img { position: absolute; left: 0; top: 0; max-width: none; pointer-events: none; }
 .pv .pcm-mask { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 200px rgba(5,5,5,.55), inset 0 0 0 2px rgba(255,255,255,.9); pointer-events: none; }
+/* banner: o quadro de recorte já é o banner inteiro (1:1), então só ganha um contorno, sem escurecer o resto */
+.pv .pcm-mask.sq { border-radius: 0; box-shadow: inset 0 0 0 2px rgba(255,255,255,.7); }
 .pv .pcm-z { display: flex; align-items: center; gap: 14px; width: min(280px, 100%); font-size: 14px; font-weight: 600; }
 .pv .pcm-z input { flex: 1; accent-color: var(--brand); min-height: 28px; }
 .pv .pcm-b .wkm-hn { text-align: center; margin: 0; }

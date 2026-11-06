@@ -7,7 +7,7 @@ import { getUploadUrl } from "@/lib/utils/api";
 export interface CampaignHeaderProps {
   title: string;
   description?: string;
-  /** Path do banner (1280 × 512, proporção 5:2). */
+  /** Path do banner (medida única 1080 × 1080, 1:1; os antigos em 5:2 aparecem cortados no centro). */
   banner?: string | null;
   /** Status normalizado (draft, published, finished…) e o rótulo da etiqueta. */
   status: string;

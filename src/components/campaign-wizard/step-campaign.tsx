@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 
 import { I } from "@/components/prototype/ui";
+import { SquareCropModal } from "@/components/square-crop-modal";
 import { useAgencyBrands } from "@/hooks/use-agency-brands";
+import {
+  CAMPAIGN_BANNER_ACCEPT,
+  CAMPAIGN_BANNER_LABEL,
+  CAMPAIGN_BANNER_SIZE,
+  isSquareImage,
+  validateCampaignBannerFile,
+} from "@/lib/campaign-banner";
 
 import { Dropdown, Field, FieldError, ListBox } from "./fields";
 import type { WizardStepProps } from "./types";
@@ -10,11 +18,6 @@ const TITLE_MAX = 60;
 const DESC_MAX = 600;
 const OBJECTIVE_MAX = 1000;
 
-// Regra real do banner (mesma do formulário antigo): JPG/PNG, saída 1280 × 512 px.
-const BANNER_W = 1280;
-const BANNER_H = 512;
-const BANNER_ACCEPT = "image/jpeg,image/jpg,image/png";
-const BANNER_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 const FILES_ACCEPT = "image/*,.pdf,.doc,.docx";
 
 // ListBox não aceita className: aplica a variante de cor (verde/vermelho) do protótipo no `.nlbox`.
@@ -33,20 +36,47 @@ function toList(v: string | string[] | undefined | null): string[] {
   return [];
 }
 
+function readAsDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("image"));
+    img.src = src;
+  });
+}
+
+/** Imagem já quadrada: só é reduzida (nunca ampliada) para a medida do banner, sem passar pelo recorte. */
+function squareToJpeg(img: HTMLImageElement): Promise<Blob | null> {
+  const side = Math.min(CAMPAIGN_BANNER_SIZE, img.naturalWidth);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = side;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return Promise.resolve(null);
+  ctx.drawImage(img, 0, 0, side, side);
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+}
+
+function bannerFileName(file: File): string {
+  return `${file.name.replace(/\.[^.]+$/, "") || "banner"}.jpg`;
+}
+
 export function StepCampaign({ formData, updateFormData, fieldErrors, tried }: WizardStepProps) {
   const bannerInput = useRef<HTMLInputElement>(null);
   const filesInput = useRef<HTMLInputElement>(null);
-  const cropBox = useRef<HTMLDivElement>(null);
-  const cropImg = useRef<HTMLImageElement>(null);
 
   const [bannerErr, setBannerErr] = useState("");
-  // Imagem original em recorte (data URL) + arquivo de origem
-  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  // Arquivo em recorte; o original fica guardado para o botão "Ajustar" reabrir o recorte.
   const [cropFile, setCropFile] = useState<File | null>(null);
-  const [pos, setPos] = useState(0);
-  const drag = useRef<{ y: number; p: number } | null>(null);
-  // Original guardado para o botão "Ajustar" reabrir o recorte
-  const original = useRef<{ src: string; file: File } | null>(null);
+  const original = useRef<File | null>(null);
 
   const todo = toList(formData.whatToDo);
   const nots = toList(formData.whatNotToDo);
@@ -94,87 +124,43 @@ export function StepCampaign({ formData, updateFormData, fieldErrors, tried }: W
     updateFormData("bannerFile", file);
   };
 
-  const onBannerPick = (files: FileList | null) => {
+  const onBannerPick = async (files: FileList | null) => {
     const file = files?.[0];
     if (bannerInput.current) bannerInput.current.value = "";
     if (!file) return;
-    if (!BANNER_TYPES.includes(file.type)) {
-      setBannerErr("Use uma imagem JPG ou PNG");
+    const typeError = validateCampaignBannerFile(file);
+    if (typeError) {
+      setBannerErr(typeError);
       return;
     }
     setBannerErr("");
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const src = reader.result as string;
-      const img = new Image();
-      img.onload = () => {
-        original.current = { src, file };
-        if (img.height > BANNER_H) {
-          setCropSrc(src);
-          setCropFile(file);
-          setPos(0);
-        } else {
-          applyBanner(src, file);
-        }
-      };
-      img.src = src;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const closeCrop = () => {
-    setCropSrc(null);
-    setCropFile(null);
-  };
-
-  const clampPos = (p: number) => {
-    const box = cropBox.current;
-    const img = cropImg.current;
-    if (!box || !img || !img.naturalWidth) return Math.min(0, p);
-    const shown = img.naturalHeight * (box.clientWidth / img.naturalWidth);
-    return Math.max(box.clientHeight - shown, Math.min(0, p));
-  };
-
-  const confirmCrop = () => {
-    const img = cropImg.current;
-    const box = cropBox.current;
-    if (!img || !box || !cropSrc) return;
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    canvas.width = BANNER_W;
-    canvas.height = BANNER_H;
-    const scale = box.clientWidth / img.naturalWidth;
-    const top = Math.max(0, -pos / scale);
-    const visibleH = Math.min(img.naturalHeight - top, box.clientHeight / scale);
-    const ratio = BANNER_W / BANNER_H;
-    let sx = 0;
-    let sw = img.naturalWidth;
-    if (img.naturalWidth / img.naturalHeight > ratio) {
-      sw = img.naturalHeight * ratio;
-      sx = (img.naturalWidth - sw) / 2;
+    try {
+      const img = await loadImage(await readAsDataUrl(file));
+      original.current = file;
+      if (isSquareImage(img.naturalWidth, img.naturalHeight)) {
+        const blob = await squareToJpeg(img);
+        if (!blob) throw new Error("canvas");
+        await confirmCrop(blob, file);
+      } else {
+        setCropFile(file);
+      }
+    } catch {
+      setBannerErr("Não foi possível abrir essa imagem. Escolha outro arquivo.");
     }
-    let sh = visibleH;
-    if (sh < BANNER_H / scale) sh = Math.min(img.naturalHeight - top, BANNER_H / scale);
-    ctx.drawImage(img, sx, top, sw, sh, 0, 0, BANNER_W, BANNER_H);
-    const name = cropFile?.name || "banner.jpg";
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return;
-        const out = new File([blob], name, { type: blob.type || "image/jpeg" });
-        applyBanner(canvas.toDataURL("image/jpeg", 0.9), out);
-        closeCrop();
-      },
-      "image/jpeg",
-      0.9,
-    );
+  };
+
+  const closeCrop = () => setCropFile(null);
+
+  // Recorte pronto (JPEG quadrado na medida do banner): vira o banner da campanha.
+  const confirmCrop = async (blob: Blob, source: File) => {
+    const out = new File([blob], bannerFileName(source), { type: "image/jpeg" });
+    applyBanner(await readAsDataUrl(out), out);
+    closeCrop();
   };
 
   const adjust = () => {
-    if (original.current && original.current.src) {
-      setCropSrc(original.current.src);
-      setCropFile(original.current.file);
-      setPos(0);
+    if (original.current) {
+      setCropFile(original.current);
     } else {
       // Banner já salvo (sem original em memória): escolher outro arquivo
       bannerInput.current?.click();
@@ -198,9 +184,9 @@ export function StepCampaign({ formData, updateFormData, fieldErrors, tried }: W
           <input
             ref={bannerInput}
             type="file"
-            accept={BANNER_ACCEPT}
+            accept={CAMPAIGN_BANNER_ACCEPT}
             hidden
-            onChange={(e) => onBannerPick(e.target.files)}
+            onChange={(e) => void onBannerPick(e.target.files)}
           />
           {hasBanner ? (
             <div className="nbn sq">
@@ -230,7 +216,7 @@ export function StepCampaign({ formData, updateFormData, fieldErrors, tried }: W
               <small>
                 JPG ou PNG
                 <br />
-                {BANNER_W} × {BANNER_H} px
+                {CAMPAIGN_BANNER_LABEL}
               </small>
             </button>
           )}
@@ -371,95 +357,19 @@ export function StepCampaign({ formData, updateFormData, fieldErrors, tried }: W
         </button>
       </div>
 
-      {cropSrc ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 1000,
-            background: "rgba(5,5,5,.55)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: 26,
-              padding: 22,
-              width: "min(680px, 100%)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 14,
-            }}
-          >
-            <div className="nl-h">
-              <b>Ajustar banner</b>
-              <small>Arraste a imagem para escolher a área visível ({BANNER_W} × {BANNER_H} px)</small>
-            </div>
-            <div
-              ref={cropBox}
-              style={{
-                position: "relative",
-                width: "100%",
-                aspectRatio: `${BANNER_W} / ${BANNER_H}`,
-                overflow: "hidden",
-                borderRadius: 18,
-                background: "var(--bg)",
-                cursor: "grab",
-                touchAction: "none",
-              }}
-              onPointerDown={(e) => {
-                e.currentTarget.setPointerCapture(e.pointerId);
-                drag.current = { y: e.clientY, p: pos };
-              }}
-              onPointerMove={(e) => {
-                if (!drag.current) return;
-                setPos(clampPos(drag.current.p + e.clientY - drag.current.y));
-              }}
-              onPointerUp={() => {
-                drag.current = null;
-              }}
-              onPointerCancel={() => {
-                drag.current = null;
-              }}
-            >
-              <img
-                ref={cropImg}
-                src={cropSrc}
-                alt="Banner original"
-                draggable={false}
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  top: 0,
-                  width: "100%",
-                  transform: `translateY(${pos}px)`,
-                  userSelect: "none",
-                  pointerEvents: "none",
-                }}
-              />
-            </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button type="button" className="nbtn" onClick={closeCrop}>
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="nbtn"
-                style={{ background: "var(--ink)", color: "#fff" }}
-                onClick={confirmCrop}
-              >
-                <I n="check" cls="sm" />
-                Confirmar
-              </button>
-            </div>
-          </div>
-        </div>
+      {cropFile ? (
+        <SquareCropModal
+          file={cropFile}
+          output={CAMPAIGN_BANNER_SIZE}
+          shape="square"
+          eyebrow="Banner da campanha"
+          title="Ajustar banner"
+          hint={`Arraste para escolher a área visível. O banner fica em ${CAMPAIGN_BANNER_LABEL}, como aparece no app.`}
+          confirmLabel="Confirmar"
+          zoomLabel="Zoom do banner"
+          onClose={closeCrop}
+          onConfirm={(blob) => void confirmCrop(blob, cropFile)}
+        />
       ) : null}
     </>
   );
