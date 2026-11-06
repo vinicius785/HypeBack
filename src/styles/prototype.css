@@ -2883,6 +2883,27 @@
 /* Relógio em linha (agendamento de notificações): o mesmo mostrador do popover da campanha, aberto dentro do quadro. */
 .pv .tim-inline { width: 212px; max-width: 100%; margin: 6px auto 0; padding: 8px 0 4px; }
 
+/* Métricas no workspace: alcance por campanha em barras (substitui a curva suave, que inventava picos entre campanhas). */
+.pv .rc { margin-top: 14px; }
+.pv .rc-head { display: flex; align-items: baseline; gap: 10px; min-width: 0; margin-bottom: 12px; }
+.pv .rc-head b { font-size: 20px; font-weight: 600; letter-spacing: -.03em; line-height: 1; }
+.pv .rc-head span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-size: 13px; font-weight: 500; }
+.pv .rc-head em { margin-left: auto; flex: none; font-style: normal; color: var(--muted); font-size: 12px; }
+.pv .rc-plot { position: relative; height: 150px; padding-left: 38px; }
+.pv .rc-grid { position: absolute; inset: 0 0 0 0; pointer-events: none; }
+.pv .rc-grid span { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--line); }
+.pv .rc-grid span:last-child { border-top: 1.5px solid var(--line); }
+.pv .rc-grid i { position: absolute; left: 0; top: -8px; width: 32px; font-style: normal; font-size: 11px; line-height: 16px; color: var(--muted); text-align: right; background: transparent; }
+.pv .rc-bars { position: relative; display: flex; align-items: stretch; gap: 6px; height: 100%; margin: 0; padding: 0; list-style: none; }
+.pv .rc-bars li { flex: 1 1 0; min-width: 0; max-width: 56px; display: flex; }
+.pv .rc-bars button { all: unset; box-sizing: border-box; width: 100%; height: 100%; display: flex; align-items: flex-end; cursor: pointer; }
+.pv .rc-bars button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 8px; }
+.pv .rc-bars span { display: block; width: 100%; border-radius: 8px 8px 3px 3px; background: rgba(158, 44, 250, .22); transition: background .15s, height .5s var(--ease); transform-origin: bottom; animation: rc-grow .6s var(--ease) both; }
+.pv .rc-bars li.on span { background: var(--brand, #9e2cfa); }
+@keyframes rc-grow { from { transform: scaleY(0); } }
+@media (prefers-reduced-motion: reduce) { .pv .rc-bars span { animation: none; transition: none; } }
+.pv .rc + .axis, .pv .rc .axis { padding-left: 38px; }
+
 /* Filtros do quadro (Gerenciamento): painel mais largo e arejado, grupos separados por linha, linha marcada com o roxo da marca e botão "Ver N criadores" sem quebrar. */
 .pv .fpop .popm.fpm { min-width: 352px; padding: 16px; gap: 0; border-radius: 24px; box-shadow: 0 24px 56px -16px rgba(5,5,5,.38), 0 0 0 1px rgba(5,5,5,.05); }
 .pv .fpm .fp-q { height: 44px; padding: 0 16px; box-shadow: inset 0 0 0 1.5px transparent; transition: box-shadow .15s; }
