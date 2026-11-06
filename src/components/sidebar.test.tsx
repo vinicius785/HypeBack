@@ -225,6 +225,15 @@ describe("Sidebar (escopo do workspace, como no app)", () => {
     }
   });
 
+  it("Cliente não vê Criadores nem se a permissão de catálogo vier ligada (o papel manda, não só a permissão)", () => {
+    ctx.accountType = "agency";
+    ctx.role = "cliente";
+    ctx.permissions = { campaigns_read: true, catalog_read: true, community_lives_read: false, financial_read: false };
+    ctx.user = { name: "Cliente", email: "c@marca.com" };
+    render(<Sidebar />);
+    expect(within(nav()).queryByRole("button", { name: "Criadores" })).not.toBeInTheDocument();
+  });
+
   it("a equipe Hype vê só o Backoffice (uma porta), não a estrutura inteira do Admin", async () => {
     render(<Sidebar />);
     const items = within(nav());

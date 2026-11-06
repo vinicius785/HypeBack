@@ -66,8 +66,8 @@ function fromStringArray(arr: string[]): WorkspacePermissions {
   for (const perm of arr) {
     if (PERMISSION_KEYS.has(perm)) base[perm] = true;
   }
-  // Compat aliases
-  if (base.influencers_read) base.catalog_read = true;
+  // Compat alias. `influencers_read` NÃO dá `catalog_read`: são permissões diferentes na API (ver os criadores de uma
+  // campanha x navegar no banco de criadores da agência). O alias antigo liberava "Criadores" para o Cliente.
   if (base.financial_read) base.billing_read = true;
   return base as unknown as WorkspacePermissions;
 }
