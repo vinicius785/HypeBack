@@ -56,6 +56,8 @@ import {
   deleteTaskComment,
   duplicateAgencyProject,
   getAgencyProject,
+  getCampaignBoard,
+  openCampaignBoard,
   getProjectTask,
   isAgencyProjectNotFound,
   isAgencyProjectsUnavailable,
@@ -85,6 +87,8 @@ export const AGENCY_PROJECTS_ROOT = "agency-projects";
 
 export const agencyProjectKeys = {
   list: (ws: string | undefined) => withWorkspaceKey([AGENCY_PROJECTS_ROOT, "list"], ws),
+  campaignBoard: (campaignId: string, ws: string | undefined) =>
+    withWorkspaceKey([AGENCY_PROJECTS_ROOT, "campaign-board", campaignId], ws),
   detail: (projectId: string, ws: string | undefined) => withWorkspaceKey([AGENCY_PROJECTS_ROOT, "detail", projectId], ws),
   tasks: (projectId: string, ws: string | undefined) => withWorkspaceKey([AGENCY_PROJECTS_ROOT, "tasks", projectId], ws),
   task: (projectId: string, taskId: string, ws: string | undefined) =>
@@ -129,6 +133,32 @@ export function useAgencyProject(projectId: string | undefined, options?: { enab
     // Vindo da lista, o cabeçalho aparece de imediato enquanto o detalhe atualiza.
     placeholderData: () =>
       queryClient.getQueryData<Project[]>(agencyProjectKeys.list(workspaceId))?.find((p) => p.id === projectId),
+  });
+}
+
+/**
+ * O quadro de tarefas da campanha. Lê o que existe (`null` = ainda sem quadro); quem pode escrever e abre a aba cria o
+ * quadro na primeira vez (`open`). Só busca em workspace de agência.
+ */
+export function useCampaignBoard(campaignId: string | undefined, options?: { enabled?: boolean }) {
+  const { workspaceId, enabled } = useProjectsEnabled(options);
+  return useQuery({
+    queryKey: agencyProjectKeys.campaignBoard(campaignId ?? "", workspaceId),
+    queryFn: () => getCampaignBoard(campaignId as string),
+    enabled: enabled && !!campaignId,
+    retry: retryProjectQuery,
+  });
+}
+
+export function useOpenCampaignBoard(campaignId: string) {
+  const workspaceId = useWorkspaceQueryKey();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => openCampaignBoard(campaignId),
+    onSuccess: (project) => {
+      queryClient.setQueryData<Project | null>(agencyProjectKeys.campaignBoard(campaignId, workspaceId), project);
+      queryClient.setQueryData<Project>(agencyProjectKeys.detail(project.id, workspaceId), project);
+    },
   });
 }
 

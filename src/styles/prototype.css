@@ -2903,3 +2903,22 @@
 @keyframes rc-grow { from { transform: scaleY(0); } }
 @media (prefers-reduced-motion: reduce) { .pv .rc-bars span { animation: none; transition: none; } }
 .pv .rc + .axis, .pv .rc .axis { padding-left: 38px; }
+
+/* Filtros do quadro (Gerenciamento): painel mais largo e arejado, grupos separados por linha, linha marcada com o roxo da marca e botão "Ver N criadores" sem quebrar. */
+.pv .fpop .popm.fpm { min-width: 352px; padding: 16px; gap: 0; border-radius: 24px; box-shadow: 0 24px 56px -16px rgba(5,5,5,.38), 0 0 0 1px rgba(5,5,5,.05); }
+.pv .fpm .fp-q { height: 44px; padding: 0 16px; box-shadow: inset 0 0 0 1.5px transparent; transition: box-shadow .15s; }
+.pv .fpm .fp-q input::placeholder { color: var(--muted); }
+.pv .fpm .fp-g { gap: 2px; margin-top: 14px; padding-top: 14px; border-top: 1.5px solid var(--line); }
+.pv .fpm .fp-g > small { padding: 0 10px 6px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.pv .fpm .fp-g > button { min-height: 42px; padding: 9px 12px 9px 12px; border-radius: 14px; font-size: 14px; font-weight: 500; transition: background .15s; }
+.pv .fpm .fp-g > button.on { background: var(--tint); font-weight: 600; }
+.pv .fpm .fp-g > button em { min-width: 28px; text-align: center; background: var(--bg); }
+.pv .fpm .fp-g > button.on em { background: #fff; }
+.pv .fpm .fp-g > button .ico { width: 16px; flex: none; }
+.pv .fpm .fp-chips { gap: 8px; padding: 2px 10px 0; }
+.pv .fpm .fp-chips button { padding: 8px 15px; font-weight: 600; box-shadow: inset 0 0 0 1.5px var(--hair); background: #fff; transition: background .15s, color .15s, box-shadow .15s; }
+.pv .fpm .fp-chips button:hover { background: var(--bg); }
+.pv .fpm .fp-chips button.on { background: var(--ink); color: #fff; box-shadow: none; }
+.pv .fpm .fp-f { margin-top: 16px; padding-top: 14px; }
+.pv .fpm .fp-f .lnk { font-size: 13.5px; font-weight: 600; padding: 8px 4px; }
+.pv .fpm .fp-f .btn { flex: none; width: auto; white-space: nowrap; height: 42px; padding: 0 20px; border-radius: 99px; }
