@@ -22,6 +22,7 @@ import {
   useUpdateWorkspaceMemberRole,
   useWorkspaceMembersQuery,
 } from "@/hooks/use-workspace-members";
+import { useAgencyBrands, useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
 import { useCancelWorkspaceInvite, useWorkspaceInvitesQuery } from "@/hooks/use-workspace-invites";
 import { useAccountTypeRequests } from "@/hooks/use-account-type-requests";
 import { useNiches } from "@/hooks/use-niches";
@@ -45,7 +46,7 @@ export const Route = createFileRoute("/(private)/(app)/workspace/settings")({
 type Tab = "brand" | "team" | "adv";
 const TAB_IDS: readonly Tab[] = ["brand", "team", "adv"];
 
-const NON_PRIVILEGED: WorkspaceRole[] = ["member", "aprovador", "observador", "juridico", "financeiro", "analista"];
+const NON_PRIVILEGED: WorkspaceRole[] = ["member", "aprovador", "observador", "juridico", "financeiro", "analista", "cliente"];
 
 function WorkspaceSettingsScreen() {
   const navigate = useNavigate();
@@ -148,6 +149,10 @@ function WorkspaceSettingsScreen() {
   });
 
   const inviteMutation = useInviteWorkspaceMember(workspaceId ?? "");
+  // Agência: o convite pode ser de Cliente, que acompanha só as marcas escolhidas aqui.
+  const isAgencyWs = useIsAgencyWorkspace();
+  const { data: agencyBrands = [] } = useAgencyBrands({ enabled: isAgencyWs });
+  const activeBrands = agencyBrands.filter((b) => b.status === "active").map((b) => ({ id: b.id, name: b.name }));
   const { data: pendingInvites = [] } = useWorkspaceInvitesQuery(workspaceId, canInvite);
   const cancelInviteMutation = useCancelWorkspaceInvite(workspaceId ?? "");
   const roleMutation = useUpdateWorkspaceMemberRole(workspaceId ?? "");
@@ -199,6 +204,7 @@ function WorkspaceSettingsScreen() {
         role: p.role,
         ...(p.mode === "new" ? { name: p.name } : {}),
         permissions: p.permissions,
+        ...(p.role === "cliente" ? { brand_ids: p.brandIds } : {}),
       },
       {
         onSuccess: (result) => {
@@ -388,6 +394,8 @@ function WorkspaceSettingsScreen() {
           pending={inviteMutation.isPending}
           canManagePermissions={canRoleWrite}
           forceNew={forceNew}
+          isAgency={isAgencyWs}
+          brands={activeBrands}
           onClose={() => setInviteOpen(false)}
           onSubmit={submitInvite}
         />

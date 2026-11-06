@@ -29,6 +29,7 @@ export const ROLE_LABEL: Record<WorkspaceRole, string> = {
   juridico: "Jurídico",
   financeiro: "Financeiro",
   analista: "Analista",
+  cliente: "Cliente",
 };
 
 const BRAND_COLORS = ["#9e2cfa", "#050505", "#7e7e7e"];

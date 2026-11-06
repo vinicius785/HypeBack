@@ -24,6 +24,7 @@ import {
   useIsAgencyWorkspace,
   useSetAgencyBrandStatus,
 } from "@/hooks/use-agency-brands";
+import { useIsClientRole } from "@/hooks/use-is-client-role";
 import type { AgencyBrand } from "@/shared/services/agency-brands";
 
 import "@/styles/agency-brands.css";
@@ -34,6 +35,7 @@ export const Route = createFileRoute("/(private)/(app)/brands")({
 
 function BrandsPage() {
   const isAgency = useIsAgencyWorkspace();
+  const isClient = useIsClientRole();
   const permissions = useWorkspacePermissions();
   const canWrite = permissions.workspace_settings_write;
   const { data: brands = [], isLoading, error } = useAgencyBrands();
@@ -53,6 +55,18 @@ function BrandsPage() {
       <PageContainer>{children}</PageContainer>
     </div>
   );
+
+  if (isClient) {
+    return wrap(
+      <div className="ov-empty big">
+        <span>
+          <I n="lock" />
+        </span>
+        <b>Você não tem acesso a Marcas</b>
+        <small>Esta área é da equipe da agência. Suas campanhas estão em Campanhas.</small>
+      </div>,
+    );
+  }
 
   if (!isAgency) {
     return wrap(

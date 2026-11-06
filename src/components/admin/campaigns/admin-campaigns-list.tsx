@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 
 import {
+  AdminActionMenu,
   AdminEntityCell,
   AdminFilterBar,
   AdminInfoPopover,
@@ -23,6 +24,9 @@ import { formatBRLFromCents, formatDate, formatDateTime, formatInt } from "@/lib
 import { FIGURE_KIND_HELP } from "@/lib/admin/labels";
 import type { AdminCampaignListItem, AdminWorkspaceRef } from "@/shared/admin-platform.types";
 
+import { useAdminCapabilities } from "@/hooks/admin/use-admin-team";
+
+import { AdminCampaignDeleteDialog } from "./admin-campaign-delete";
 import { campaignDetailLink, campaignWorkspaceLink } from "./campaign-links";
 import {
   CAMPAIGN_COLUMN_DEFINITIONS,
@@ -119,6 +123,10 @@ export function AdminCampaignsList() {
   useAdminPageClamp(list.page, meta?.total_pages, list.setPage);
 
   const definitions = meta?.definitions;
+
+  // Excluir campanha: só administrador da plataforma; o servidor confere de novo.
+  const capabilities = useAdminCapabilities();
+  const [deleting, setDeleting] = useState<AdminCampaignListItem | null>(null);
 
   // O workspace escolhido: o objeto (nome) que a pessoa acabou de escolher, ou o que a URL só conhece por id; o chip
   // do filtro usa o mesmo texto da pílula, sem uma segunda consulta.
@@ -308,6 +316,18 @@ export function AdminCampaignsList() {
         rows={query.data?.data}
         rowKey={(campaign) => campaign.id}
         rowLink={(campaign) => campaignDetailLink(campaign.id)}
+        rowActions={
+          capabilities.isAdmin
+            ? (campaign) => (
+                <AdminActionMenu
+                  iconOnly
+                  label="Ações"
+                  ariaLabel={`Ações da campanha ${campaign.title}`}
+                  items={[{ id: "delete", label: "Excluir campanha", icon: "trash", tone: "danger", onSelect: () => setDeleting(campaign) }]}
+                />
+              )
+            : undefined
+        }
         sort={{ by: list.sortBy, order: list.order }}
         onSort={(key) => list.toggleSort(key, key === "title" ? "asc" : "desc")}
         loading={query.isLoading}
@@ -340,6 +360,13 @@ export function AdminCampaignsList() {
           ) : undefined
         }
       />
+
+      {deleting ? (
+        <AdminCampaignDeleteDialog
+          campaign={{ id: deleting.id, title: deleting.title, workspaceName: deleting.workspace.name }}
+          onClose={() => setDeleting(null)}
+        />
+      ) : null}
     </AdminPage>
   );
 }

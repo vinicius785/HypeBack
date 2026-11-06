@@ -30,6 +30,7 @@ const ROLE_LABEL: Record<WorkspaceRole, string> = {
   juridico: "Jurídico",
   financeiro: "Financeiro",
   analista: "Analista",
+  cliente: "Cliente",
 };
 
 const initialsOf = (name: string) =>

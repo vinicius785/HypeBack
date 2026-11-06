@@ -32,7 +32,7 @@ function normalizeWorkspaceRow(row: unknown): Workspace | null {
     permissions = perms as WorkspacePermissions;
   }
   const roleRaw = o.role != null ? String(o.role).toLowerCase() : "";
-  const VALID_ROLES: WorkspaceRole[] = ["owner", "admin", "member", "aprovador", "observador", "juridico", "financeiro", "analista"];
+  const VALID_ROLES: WorkspaceRole[] = ["owner", "admin", "member", "aprovador", "observador", "juridico", "financeiro", "analista", "cliente"];
   const role: WorkspaceRole | undefined = VALID_ROLES.includes(roleRaw as WorkspaceRole)
     ? (roleRaw as WorkspaceRole)
     : undefined;
@@ -254,7 +254,7 @@ function normalizeWorkspaceMember(row: unknown): WorkspaceMember | null {
         : NaN;
   if (Number.isNaN(userId)) return null;
   const roleRaw = o.role != null ? String(o.role).toLowerCase() : "";
-  const VALID_ROLES_MEMBER: WorkspaceRole[] = ["owner", "admin", "member", "aprovador", "observador", "juridico", "financeiro", "analista"];
+  const VALID_ROLES_MEMBER: WorkspaceRole[] = ["owner", "admin", "member", "aprovador", "observador", "juridico", "financeiro", "analista", "cliente"];
   const role: WorkspaceRole = VALID_ROLES_MEMBER.includes(roleRaw as WorkspaceRole)
     ? (roleRaw as WorkspaceRole)
     : "member";
@@ -314,7 +314,9 @@ export async function listWorkspaceMembers(
 
 export interface InviteWorkspaceMemberInput {
   email: string;
-  role: "admin" | "member" | "aprovador" | "observador" | "juridico" | "financeiro" | "analista";
+  role: "admin" | "member" | "aprovador" | "observador" | "juridico" | "financeiro" | "analista" | "cliente";
+  /** Marcas (ids de `/agency/brands`) que o cliente enxerga: obrigatório com `role: "cliente"`. */
+  brand_ids?: string[];
   /**
    * Obrigatório na API se o e-mail ainda não tiver cadastro no backoffice.
    * @see API_BACKOFFICE_WORKSPACES_AND_PERMISSIONS.md seção 4.8
@@ -382,6 +384,7 @@ export async function inviteWorkspaceMember(
   const trimmedName = data.name?.trim();
   if (trimmedName) body.name = trimmedName;
   if (data.permissions && data.permissions.length > 0) body.permissions = data.permissions;
+  if (data.role === "cliente" && data.brand_ids) body.brand_ids = data.brand_ids;
 
   const request = await fetch(getApiUrl(`/workspaces/${workspaceId}/members`), {
     method: "POST",

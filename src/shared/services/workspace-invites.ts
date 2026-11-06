@@ -19,6 +19,8 @@ export interface PendingWorkspaceInvite {
   email: string;
   role: string;
   roleLabel: string;
+  /** Marcas do convite do papel cliente (ids públicos); `null` nos outros papéis. */
+  brandIds?: string[] | null;
   invitedByName: string | null;
   createdAt: string;
   expiresAt: string;
@@ -90,6 +92,7 @@ export async function listWorkspaceInvites(workspaceId: string): Promise<Pending
       email: String(r.email ?? ""),
       role: String(r.role ?? "member"),
       roleLabel: text(r.role_label) ?? "Membro",
+      brandIds: Array.isArray(r.brand_ids) ? r.brand_ids.map(String) : null,
       invitedByName: text(r.invited_by_name),
       createdAt: String(r.created_at ?? ""),
       expiresAt: String(r.expires_at ?? ""),

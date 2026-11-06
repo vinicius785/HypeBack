@@ -67,6 +67,7 @@ export const WORKSPACE_ROLE_LABEL: Record<AdminWorkspaceRole, string> = {
   juridico: "Jurídico",
   financeiro: "Financeiro",
   analista: "Analista",
+  cliente: "Cliente",
   custom: "Personalizado",
 };
 

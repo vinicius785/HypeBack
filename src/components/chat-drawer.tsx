@@ -1,3 +1,4 @@
+import { useIsClientRole } from "@/hooks/use-is-client-role";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
@@ -39,7 +40,13 @@ const TABS: { id: DrawerTab; label: string }[] = [
  * O contador do botão soma as duas; o socket da equipe (do `TeamChatProvider`, ou do próprio botão quando não há
  * provedor) fica ligado para o contador e o aviso chegarem com a gaveta fechada.
  */
+/** Botão de chat do topo. O Cliente da agência não usa o chat (nem com criadores nem com a equipe): não renderiza nada. */
 export function ChatDrawerButton() {
+  const isClient = useIsClientRole();
+  return isClient ? null : <ChatDrawerButtonInner />;
+}
+
+function ChatDrawerButtonInner() {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [tab, setTab] = useState<DrawerTab>("creators");

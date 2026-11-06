@@ -50,6 +50,7 @@ vi.mock("@/hooks/use-workspace-members", () => {
   };
 });
 vi.mock("@/hooks/use-niches", () => ({ useNiches: () => ({ data: [] }) }));
+vi.mock("@/hooks/use-agency-brands", () => ({ useIsAgencyWorkspace: () => false, useAgencyBrands: () => ({ data: [] }) }));
 vi.mock("@/lib/utils/api", () => ({
   getWorkspaceId: () => null,
   removeWorkspaceId: ctx.removeWorkspaceId,

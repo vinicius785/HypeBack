@@ -23,6 +23,7 @@ import { InfluencerSelectionTab } from "@/components/campaign-tabs/influencer-se
 import { ContractsTab } from "@/components/campaign-tabs/contracts-tab";
 import { MetricsTab } from "@/components/campaign-tabs/metrics-tab";
 import { GroupsTab } from "@/components/campaign-tabs/groups-tab";
+import { CampaignDeleteModal } from "@/components/campaign-delete-modal";
 import { ShareCampaignModal } from "@/components/share-campaign-modal";
 import { Modal } from "@/components/ui/modal";
 import { InputDate } from "@/components/ui/input-date";
@@ -87,6 +88,7 @@ function RouteComponent() {
   const [showMuralDateModal, setShowMuralDateModal] = useState(false);
   const [tempMuralEndDate, setTempMuralEndDate] = useState("");
   const [showUnpublishModal, setShowUnpublishModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   /** Deep links vindos de notificações — guardados antes de limpar a URL */
   const [pendingOpenChat, setPendingOpenChat] = useState<string | null>(null);
@@ -711,6 +713,8 @@ function RouteComponent() {
                 window.open(appUrl(`/campaigns/${campaignId}/invite`), "_blank", "noopener")
               }
               onShare={() => setIsShareModalOpen(true)}
+              canDelete={permissions.campaigns_delete}
+              onDelete={() => setShowDeleteModal(true)}
             >
               <nav className="dtabs" ref={dtabsRef}>
                 <i className="ind" />
@@ -782,6 +786,15 @@ function RouteComponent() {
           onClose={() => setIsShareModalOpen(false)}
           campaignId={campaignId}
           campaignTitle={campaign.title}
+        />
+      )}
+
+      {showDeleteModal && campaign && (
+        <CampaignDeleteModal
+          campaignId={campaignId}
+          title={campaign.title}
+          onClose={() => setShowDeleteModal(false)}
+          onDeleted={() => void navigate({ to: "/campaigns" })}
         />
       )}
 

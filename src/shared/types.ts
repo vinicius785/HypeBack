@@ -238,7 +238,9 @@ export type WorkspaceRole =
   | "observador"
   | "juridico"
   | "financeiro"
-  | "analista";
+  | "analista"
+  /** Cliente de uma marca da agência: acompanha e aprova só as campanhas das marcas dele. */
+  | "cliente";
 
 /** Permissões calculadas no servidor por workspace (UX; mutações ainda validam 403). */
 export interface WorkspacePermissions {

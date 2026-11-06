@@ -8,18 +8,21 @@
  */
 import type { UseQueryResult } from "@tanstack/react-query";
 
-import { adminPath, type AdminListResult, type AdminQuery } from "@/lib/admin/admin-client";
+import { adminPath, adminPost, type AdminListResult, type AdminQuery } from "@/lib/admin/admin-client";
 import {
   createAdminListSearchValidator,
   type AdminListSearch,
   type AdminListStateConfig,
 } from "@/lib/admin/list-query";
 import type {
+  AdminCampaignDeleteBody,
   AdminCampaignDetail,
   AdminCampaignListItem,
   AdminCampaignStatus,
 } from "@/shared/admin-platform.types";
 
+import { adminKeys } from "./admin-query-keys";
+import { useAdminMutation } from "./use-admin-mutation";
 import { useAdminItem, useAdminList } from "./use-admin-queries";
 
 export const ADMIN_CAMPAIGN_STATUSES = ["draft", "published", "finished"] as const satisfies readonly AdminCampaignStatus[];
@@ -83,5 +86,24 @@ export function useAdminCampaign(campaignId: string): UseQueryResult<AdminCampai
     id: campaignId,
     path: adminPath`/admin/campaigns/${campaignId}`,
     enabled: campaignId !== "",
+  });
+}
+
+/**
+ * Exclui a campanha para sempre (`POST /admin/campaigns/:campaignId/delete`, corpo com `reason` e `confirm_title`).
+ * A `Idempotency-Key` é uma por intenção. No sucesso saem do cache a lista e o detalhe da campanha, as campanhas do
+ * workspace, a trilha de auditoria, o feed de atividades e os números da visão geral.
+ */
+export function useAdminDeleteCampaign(campaignId: string) {
+  return useAdminMutation<{ id: string; title: string }, AdminCampaignDeleteBody>({
+    mutationFn: (body, idempotencyKey) =>
+      adminPost<{ id: string; title: string }>(adminPath`/admin/campaigns/${campaignId}/delete`, body, { idempotencyKey }),
+    invalidate: [
+      adminKeys.resource("campaigns"),
+      adminKeys.resource("workspaces"),
+      adminKeys.resource("audit-log"),
+      adminKeys.resource("activity"),
+      adminKeys.of("overview"),
+    ],
   });
 }
