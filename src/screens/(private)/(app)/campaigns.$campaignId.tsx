@@ -51,7 +51,9 @@ import {
 } from "@/shared/utils/campaign-status";
 import { useWorkspacePermissions } from "@/contexts/workspace-context";
 import { campaignTabsFor } from "@/components/campaign-tabs/tab-defs";
+import { useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
 import { useIsClientRole } from "@/hooks/use-is-client-role";
+import { CampaignTasksTab } from "@/components/campaign-tabs/tasks-tab";
 import { CAMPAIGN_BANNER_ASPECT } from "@/lib/campaign-banner";
 import { gendersToForm } from "@/shared/utils/campaign-segment";
 
@@ -98,7 +100,8 @@ function RouteComponent() {
   } = useCampaign(campaignId);
 
   const isClient = useIsClientRole();
-  const visibleTabs = useMemo(() => campaignTabsFor(permissions, isClient), [permissions, isClient]);
+  const isAgency = useIsAgencyWorkspace();
+  const visibleTabs = useMemo(() => campaignTabsFor(permissions, isClient, isAgency), [permissions, isClient, isAgency]);
 
   useEffect(() => {
     if (visibleTabs.length === 0) return;
@@ -380,7 +383,7 @@ function RouteComponent() {
   >(undefined);
 
   const dtabsRef = useRef<HTMLElement>(null);
-  const topTabKey = activeTab === "dashboard" ? "overview" : ["groups", "contracts", "metrics"].includes(activeTab) ? "gest" : "manage";
+  const topTabKey = activeTab === "dashboard" ? "overview" : ["tasks", "groups", "contracts", "metrics"].includes(activeTab) ? "gest" : "manage";
   useLayoutEffect(() => {
     const root = dtabsRef.current;
     if (!root) return;
@@ -605,6 +608,8 @@ function RouteComponent() {
             }))}
           />
         );
+      case "tasks":
+        return <CampaignTasksTab campaignId={campaignId} />;
       case "metrics":
         return (
           <MetricsTab
@@ -625,8 +630,9 @@ function RouteComponent() {
   const FLOWS = [
     "selection",
   ];
-  const GEST_IDS = ["groups", "contracts", "metrics"];
+  const GEST_IDS = ["tasks", "groups", "contracts", "metrics"];
   const GEST_LABEL: Record<string, string> = {
+    tasks: "Tarefas",
     groups: "Comunidade",
     contracts: "Contratos",
     metrics: "Métricas e conteúdos",

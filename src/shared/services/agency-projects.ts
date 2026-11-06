@@ -382,6 +382,16 @@ export function getAgencyProject(projectId: string): Promise<Project> {
   return guard(apiGet<Project>(`${BASE}/${enc(projectId)}`));
 }
 
+/** O quadro de tarefas da campanha (um projeto ligado a ela); `null` enquanto ainda não foi aberto. */
+export function getCampaignBoard(campaignId: string): Promise<Project | null> {
+  return guard(apiGet<Project | null>(`/agency/campaigns/${enc(campaignId)}/board`));
+}
+
+/** Abre o quadro da campanha: cria na primeira vez e depois devolve o mesmo. */
+export function openCampaignBoard(campaignId: string): Promise<Project> {
+  return guard(apiPost<Project>(`/agency/campaigns/${enc(campaignId)}/board`, {}));
+}
+
 export function createAgencyProject(input: ProjectInput): Promise<Project> {
   return guard(apiPost<Project>(BASE, input));
 }
