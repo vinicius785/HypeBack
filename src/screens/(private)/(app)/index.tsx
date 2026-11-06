@@ -608,8 +608,7 @@ function ReachChart({
   total: number;
   onOpenCampaigns: () => void;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [hover, setHover] = useState<{ x: number; y: number; i: number } | null>(null);
+  const [hover, setHover] = useState<number | null>(null);
 
   if (series.length < 2) {
     return (
@@ -632,71 +631,51 @@ function ReachChart({
     );
   }
 
-  const W = 560;
-  const H = 150;
-  const vals = series.map((s) => s.value);
-  const mx = Math.max(...vals);
-  const mn = Math.min(...vals);
-  const span = mx - mn || 1;
-  const pts = vals.map((y, i) => [
-    (i / (vals.length - 1)) * W,
-    H - 12 - ((y - mn) / span) * (H - 34),
-  ]);
-  let d = `M${pts[0][0]},${pts[0][1]}`;
-  for (let i = 1; i < pts.length; i++) {
-    const [x0, y0] = pts[i - 1];
-    const [x1, y1] = pts[i];
-    const cx = (x0 + x1) / 2;
-    d += ` C${cx},${y0} ${cx},${y1} ${x1},${y1}`;
-  }
-  const area = `${d} L${W},${H} L0,${H} Z`;
-
-  const onMove = (e: React.MouseEvent) => {
-    const r = ref.current?.getBoundingClientRect();
-    if (!r) return;
-    const x = Math.min(Math.max(e.clientX - r.left, 0), r.width);
-    const i = Math.round((x / r.width) * (vals.length - 1));
-    setHover({
-      x: (i / (vals.length - 1)) * r.width,
-      y: (pts[i][1] / H) * r.height,
-      i,
-    });
-  };
-
+  // Barras, uma por campanha em ordem de data: o alcance é de campanhas diferentes, não uma curva no tempo — linha suave
+  // inventava picos e quedas entre elas. A base é o zero (barras comparáveis) e as linhas de grade mostram a escala.
+  const bars = series.slice(-12);
+  const max = Math.max(...bars.map((s) => s.value), 1);
+  const ticks = [1, 0.5, 0];
   const fmt = (t: number) =>
     new Date(t).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "");
-  const axis = [0, Math.floor((series.length - 1) / 2), series.length - 1].map((i) => fmt(series[i].at));
+  const active = hover ?? bars.length - 1;
+  const cur = bars[active];
 
   return (
-    <>
-      <div
-        ref={ref}
-        className={`chart ${hover ? "hov" : ""}`}
-        onMouseMove={onMove}
-        onMouseLeave={() => setHover(null)}
-      >
-        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-          <path className="ar" d={area} fill="#9e2cfa" fillOpacity={0.08} />
-          <path className="ln" pathLength={1} d={d} fill="none" stroke="#9e2cfa" strokeWidth={3} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-        </svg>
-        <i className="cur" style={hover ? { left: hover.x, ["--y" as string]: `${hover.y}px` } : undefined} />
-        <b
-          className="tip"
-          style={
-            hover
-              ? { left: Math.min(Math.max(hover.x, 70), (ref.current?.clientWidth ?? 0) - 70) }
-              : undefined
-          }
-        >
-          {hover ? `${series[hover.i].label.slice(0, 22)} · ${compact(series[hover.i].value)}` : ""}
-        </b>
+    <div className="rc" onMouseLeave={() => setHover(null)}>
+      <div className="rc-head">
+        <b>{compact(cur.value)}</b>
+        <span title={cur.label}>{cur.label}</span>
+        <em>{fmt(cur.at)}</em>
+      </div>
+      <div className="rc-plot">
+        <div className="rc-grid" aria-hidden="true">
+          {ticks.map((t) => (
+            <span key={t} style={{ bottom: `${t * 100}%` }}>
+              <i>{t === 0 ? "0" : compact(max * t)}</i>
+            </span>
+          ))}
+        </div>
+        <ul className="rc-bars" aria-label="Alcance estimado por campanha">
+          {bars.map((b, i) => (
+            <li key={`${b.at}-${i}`} className={i === active ? "on" : undefined} onMouseEnter={() => setHover(i)}>
+              <button
+                type="button"
+                aria-label={`${b.label}: alcance ${b.value.toLocaleString("pt-BR")}`}
+                onFocus={() => setHover(i)}
+                onBlur={() => setHover(null)}
+              >
+                <span style={{ height: `${Math.max((b.value / max) * 100, 2)}%` }} />
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
       <div className="axis">
-        {axis.map((a, i) => (
-          <span key={i}>{a}</span>
-        ))}
+        <span>{fmt(bars[0].at)}</span>
+        <span>{fmt(bars[bars.length - 1].at)}</span>
       </div>
-    </>
+    </div>
   );
 }
 
