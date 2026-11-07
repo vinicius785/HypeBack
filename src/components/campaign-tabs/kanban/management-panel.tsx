@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Av, I } from "@/components/prototype/ui";
 import { getNetworkLabel } from "@/shared/constants/network-labels";
 import {
@@ -83,6 +85,7 @@ export function ManagementPanel({
   onReject,
   onReconsider,
 }: Props) {
+  const [collapsed, setCollapsed] = useState(false);
   const id = idToString(inf.id);
   const influencerId = String(inf.user_id ?? inf.id);
   const nav = panelNeighbours(orderedIds, id);
@@ -110,75 +113,90 @@ export function ManagementPanel({
 
   return (
     <section
-      className={`side2 mgp${expanded ? " mgp-open" : ""}`}
+      className={`isl isl-c mgp${collapsed ? "" : " isl-open"}${expanded ? " mgp-open" : ""}`}
       aria-label={`Detalhes de ${inf.name}`}
       data-testid="management-panel"
     >
-      {/* controles do painel: fixos no canto superior direito, mesmo quando o conteúdo rola */}
-    <div className="mgp-ctl">
-      <button
-        type="button"
-        className="round"
-        aria-label={expanded ? "Recolher detalhes" : "Expandir detalhes"}
-        aria-expanded={expanded}
-        onClick={onToggleExpanded}
-      >
-        <I n={expanded ? "shrink" : "expand"} cls="sm" />
-      </button>
-      <button type="button" className="round" aria-label="Fechar detalhes" onClick={onClose}>
-        <I n="x" cls="sm" />
-      </button>
-    </div>
-      <div className="mgp-row">
-        {/* ---------- esquerda: quem é, em que etapa, navegação ---------- */}
-        <div className="mgp-id">
-          <div className="mgp-who">
-            <Av name={inf.name} src={inf.avatar} size={48} />
-            <div className="mgp-t">
-              <h2>
-                {inf.name}
-                {inf.isExternal ? <em className="ext">Externo</em> : null}
-              </h2>
-              <p>{inf.username ? `@${inf.username}` : "Sem usuário"}</p>
-            </div>
-          </div>
-          <div className="mgp-st">
-            <span className={`pill ${hot ? "" : "p"}`}>{COLUMN_LABEL[column] ?? column}</span>
-            {stage ? <small>{STAGE_SHORT[stage[0]]}</small> : null}
-          </div>
-          {nets.length > 0 ? (
-            <ul className="mgp-nets" aria-label="Redes sociais">
-              {nets.map((n) => (
-                <li key={n.id}>
-                  <b>{getNetworkLabel(n.type, n.type)}</b>
-                  {typeof n.members === "number" && n.members > 0 ? <span>{formatFollowers(n.members)}</span> : null}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          <div className="mgp-nav" role="group" aria-label="Navegar entre criadores">
-            <button
-              type="button"
-              className="round"
-              aria-label="Criador anterior"
-              disabled={!nav.prevId}
-              onClick={() => nav.prevId && onSelect(nav.prevId)}
-            >
-              <I n="chevl" cls="sm" />
-            </button>
-            <span aria-live="polite">{nav.position > 0 ? `${nav.position} de ${nav.total}` : `${nav.total} no quadro`}</span>
-            <button
-              type="button"
-              className="round"
-              aria-label="Próximo criador"
-              disabled={!nav.nextId}
-              onClick={() => nav.nextId && onSelect(nav.nextId)}
-            >
-              <I n="chev" cls="sm" />
-            </button>
+      {/* a "ilha": a pílula é sempre visível (quem é, etapa, navegação e controles); o corpo abre e fecha por baixo */}
+      <header className="isl-h">
+        <div className="isl-who">
+          <Av name={inf.name} src={inf.avatar} size={40} />
+          <div className="isl-t">
+            <h2>
+              {inf.name}
+              {inf.isExternal ? <em className="ext">Externo</em> : null}
+            </h2>
+            <p>{inf.username ? `@${inf.username}` : "Sem usuário"}</p>
           </div>
         </div>
+        <div className="isl-st" data-hot={hot ? "" : undefined}>
+          <i aria-hidden />
+          <span>{COLUMN_LABEL[column] ?? column}</span>
+          {stage ? <small>{STAGE_SHORT[stage[0]]}</small> : null}
+        </div>
+        {late && collapsed ? <span className="isl-late">{idle} dias parado</span> : null}
+        {nets.length > 0 && !collapsed ? (
+          <ul className="isl-nets" aria-label="Redes sociais">
+            {nets.map((n) => (
+              <li key={n.id}>
+                <b>{getNetworkLabel(n.type, n.type)}</b>
+                {typeof n.members === "number" && n.members > 0 ? <span>{formatFollowers(n.members)}</span> : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <div className="isl-nav" role="group" aria-label="Navegar entre criadores">
+          <button
+            type="button"
+            className="isl-ib"
+            aria-label="Criador anterior"
+            disabled={!nav.prevId}
+            onClick={() => nav.prevId && onSelect(nav.prevId)}
+          >
+            <I n="chevl" cls="sm" />
+          </button>
+          <span aria-live="polite">{nav.position > 0 ? `${nav.position} de ${nav.total}` : `${nav.total} no quadro`}</span>
+          <button
+            type="button"
+            className="isl-ib"
+            aria-label="Próximo criador"
+            disabled={!nav.nextId}
+            onClick={() => nav.nextId && onSelect(nav.nextId)}
+          >
+            <I n="chev" cls="sm" />
+          </button>
+        </div>
+        <div className="isl-ctl">
+          {collapsed ? null : (
+            <button
+              type="button"
+              className="isl-ib"
+              aria-label={expanded ? "Recolher detalhes" : "Expandir detalhes"}
+              aria-expanded={expanded}
+              onClick={onToggleExpanded}
+            >
+              <I n={expanded ? "shrink" : "expand"} cls="sm" />
+            </button>
+          )}
+          <button
+            type="button"
+            className="isl-ib"
+            aria-label={collapsed ? "Abrir painel" : "Minimizar painel"}
+            aria-expanded={!collapsed}
+            onClick={() => setCollapsed((v) => !v)}
+          >
+            <I n={collapsed ? "chevdown" : "chevup"} cls="sm" />
+          </button>
+          <button type="button" className="isl-ib isl-x" aria-label="Fechar detalhes" onClick={onClose}>
+            <I n="x" cls="sm" />
+          </button>
+        </div>
+      </header>
 
+      <div className="isl-b" inert={collapsed}>
+       <div className="isl-bi">
+        <div className="isl-sheet">
+      <div className="mgp-row">
         {/* ---------- centro: indicadores, informação da etapa e decisão ---------- */}
         <div className="mgp-mid">
           <dl className="mgp-kpi">
@@ -349,6 +367,9 @@ export function ManagementPanel({
           ) : null}
         </div>
       ) : null}
+        </div>
+       </div>
+      </div>
     </section>
   );
 }
