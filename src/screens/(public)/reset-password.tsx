@@ -8,6 +8,7 @@ import { z } from "zod";
 import { resetPassword } from "@/shared/services/auth";
 
 import { Input } from "@/components/ui/input";
+import { ErrorMessage } from "@/components/ui/error-message";
 import { Button } from "@/components/ui/button";
 import { InputPassword } from "@/components/ui/input-password";
 import { toast } from "sonner";
@@ -40,6 +41,96 @@ const resetPasswordSchema = z
   });
 
 type ResetPasswordSchemaData = z.infer<typeof resetPasswordSchema>;
+
+const CODE_LENGTH = 6;
+
+/** Código de verificação em quadradinhos: um dígito por caixa, cola o código inteiro, Backspace volta e as setas andam. */
+function CodeBoxes({
+  label,
+  value,
+  error,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  error?: string;
+  onChange: (next: string) => void;
+}) {
+  const refs = React.useRef<Array<HTMLInputElement | null>>([]);
+  const labelId = React.useId();
+  const digits = Array.from({ length: CODE_LENGTH }, (_, i) => value[i] ?? "");
+
+  const focusBox = (i: number) => refs.current[Math.min(Math.max(i, 0), CODE_LENGTH - 1)]?.focus();
+
+  // Escreve `typed` a partir da caixa `from` (um dígito digitado, vários colados ou o código inteiro do SMS/e-mail).
+  const write = (from: number, typed: string) => {
+    const only = typed.replace(/\D/g, "");
+    if (!only) return;
+    const next = digits.slice();
+    let last = from;
+    for (let k = 0; k < only.length && from + k < CODE_LENGTH; k++) {
+      next[from + k] = only[k];
+      last = from + k;
+    }
+    onChange(next.join(""));
+    focusBox(last + 1);
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span id={labelId} className="text-[13px] font-semibold text-neutral-700">
+        {label}
+      </span>
+
+      <div role="group" aria-labelledby={labelId} className="grid grid-cols-6 gap-2">
+        {digits.map((digit, i) => (
+          <input
+            key={i}
+            ref={(el) => {
+              refs.current[i] = el;
+            }}
+            value={digit}
+            inputMode="numeric"
+            autoComplete={i === 0 ? "one-time-code" : "off"}
+            aria-label={`Dígito ${i + 1} de ${CODE_LENGTH}`}
+            aria-invalid={error ? true : undefined}
+            maxLength={CODE_LENGTH}
+            placeholder="·"
+            className="h-[56px] w-full min-w-0 rounded-2xl bg-[color:var(--au-field,#fff)] text-center text-[22px] font-semibold text-neutral-950 outline-none ring-2 ring-transparent transition-all duration-150 placeholder:text-neutral-300 focus:ring-primary-600 aria-[invalid=true]:ring-danger-500"
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => write(i, e.target.value)}
+            onPaste={(e) => {
+              e.preventDefault();
+              write(0, e.clipboardData.getData("text"));
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Backspace") {
+                e.preventDefault();
+                const next = digits.slice();
+                if (next[i]) {
+                  next[i] = "";
+                  onChange(next.join("").replace(/\s/g, ""));
+                } else if (i > 0) {
+                  next[i - 1] = "";
+                  onChange(next.join(""));
+                  focusBox(i - 1);
+                }
+              } else if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                focusBox(i - 1);
+              } else if (e.key === "ArrowRight") {
+                e.preventDefault();
+                focusBox(i + 1);
+              }
+            }}
+          />
+        ))}
+      </div>
+
+      {error && <ErrorMessage message={error} />}
+    </div>
+  );
+}
 
 function RouteComponent() {
   const navigate = useNavigate();
@@ -116,7 +207,7 @@ function RouteComponent() {
         </p>
       </div>
 
-      <div className="flex flex-col gap-4 mt-10">
+      <div className="flex flex-col gap-4">
         {email && (
           <Input
             label="E-mail"
@@ -128,23 +219,12 @@ function RouteComponent() {
           />
         )}
 
-        <Input
-          label="Código de verificação (6 dígitos)"
-          error={errors.code?.message}
-          placeholder="000000"
-          maxLength={6}
+        <CodeBoxes
+          label="Código de verificação"
           value={codeValue}
-          onChange={(e) => {
-            // Apenas números, máximo 6 dígitos
-            const value = e.target.value.replace(/\D/g, "").slice(0, 6);
-            setValue("code", value, { shouldValidate: true });
-          }}
+          error={errors.code?.message}
+          onChange={(next) => setValue("code", next, { shouldValidate: !!errors.code })}
         />
-        {!errors.code && (
-          <p className="text-xs text-neutral-600 -mt-2">
-            Digite o código de 6 dígitos enviado para seu email
-          </p>
-        )}
 
         <InputPassword
           label="Nova senha"
@@ -161,28 +241,25 @@ function RouteComponent() {
         />
       </div>
 
-      <div className="flex flex-col gap-4">
-        <Button type="submit" disabled={isResettingPassword}>
-          <p className="text-neutral-50 font-semibold">
-            {isResettingPassword ? "Redefinindo..." : "Redefinir senha"}
-          </p>
+      <div className="flex flex-col gap-5 w-full">
+        <Button type="submit" disabled={isResettingPassword} className="h-[58px] w-full min-w-full text-[15.5px]">
+          {isResettingPassword ? "Redefinindo..." : "Redefinir senha"}
         </Button>
 
-        <Link to="/forgot-password" className="text-center">
-          <span className="text-neutral-700 font-semibold">
+        <div className="flex flex-col gap-2 text-center text-[14.5px] text-neutral-500">
+          <p>
             Não recebeu o código?{" "}
-            <span className="text-primary-600 font-medium">
+            <Link to="/forgot-password" className="font-semibold text-primary-600 hover:underline">
               Solicitar novo código
-            </span>
-          </span>
-        </Link>
-
-        <Link to="/sign-in" className="text-center">
-          <span className="text-neutral-700 font-semibold">
+            </Link>
+          </p>
+          <p>
             Lembrou da sua senha?{" "}
-            <span className="text-primary-600 font-medium">Entrar</span>
-          </span>
-        </Link>
+            <Link to="/sign-in" className="font-semibold text-primary-600 hover:underline">
+              Entrar
+            </Link>
+          </p>
+        </div>
       </div>
     </form>
   );
