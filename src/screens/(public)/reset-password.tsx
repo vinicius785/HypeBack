@@ -96,7 +96,7 @@ function CodeBoxes({
             aria-invalid={error ? true : undefined}
             maxLength={CODE_LENGTH}
             placeholder="·"
-            className="h-[56px] w-full min-w-0 rounded-2xl bg-[color:var(--au-field,#fff)] text-center text-[22px] font-semibold text-neutral-950 outline-none ring-2 ring-transparent transition-all duration-150 placeholder:text-neutral-300 focus:ring-primary-600 aria-[invalid=true]:ring-danger-500"
+            className="h-[56px] w-full min-w-0 rounded-2xl bg-[color:var(--au-field,#fff)] text-center text-[22px] font-semibold text-neutral-950 outline-none ring-2 ring-transparent transition-all duration-150 placeholder:text-neutral-300 focus:ring-primary-600 aria-[invalid=true]:ring-danger-500 [&:-webkit-autofill]:!rounded-2xl"
             onFocus={(e) => e.target.select()}
             onChange={(e) => write(i, e.target.value)}
             onPaste={(e) => {
