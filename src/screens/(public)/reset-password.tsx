@@ -122,7 +122,9 @@ function RouteComponent() {
             label="E-mail"
             value={email}
             disabled
-            className="bg-neutral-100"
+            // `className` substitui o do <input> inteiro (o Input espalha as props depois): repete a base e só muda a cor do texto,
+            // senão o campo perde o fundo transparente e a altura e aparece como um bloco claro dentro da pílula.
+            className="w-full h-full rounded-full outline-none bg-transparent text-neutral-500 cursor-not-allowed"
           />
         )}
 
@@ -138,9 +140,11 @@ function RouteComponent() {
             setValue("code", value, { shouldValidate: true });
           }}
         />
-        <p className="text-xs text-neutral-600 -mt-2">
-          Digite o código de 6 dígitos enviado para seu email
-        </p>
+        {!errors.code && (
+          <p className="text-xs text-neutral-600 -mt-2">
+            Digite o código de 6 dígitos enviado para seu email
+          </p>
+        )}
 
         <InputPassword
           label="Nova senha"
