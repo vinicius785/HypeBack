@@ -931,5 +931,3 @@
 .pv .ov .kp2 b { font-size: 19px; }
 @media (max-width: 1100px) { .pv .ov .pg-top { grid-template-columns: 1fr; gap: 24px; } }
 
-/* topo, à direita: suporte, divisória cinza, chat e sino */
-.pv .top-sep { flex: none; width: 1.5px; height: 24px; margin: 0 4px; border-radius: 2px; background: rgba(5, 5, 5, .16); }

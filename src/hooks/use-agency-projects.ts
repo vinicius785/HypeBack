@@ -39,8 +39,10 @@
  *
  * Mensagem de erro para toast: `agencyProjectErrorMessage(error, "texto padrão")` (serviço).
  */
-import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
+import { isTaskOpen, isTaskOverdue } from "@/components/agency-projects/task-ui";
+import { todayInSaoPaulo } from "@/components/agency-projects/project-base";
 import { useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
 import { useWorkspaceQueryKey, withWorkspaceKey } from "@/hooks/use-workspace-query-key";
 import { shouldRetryQuery } from "@/lib/workspace-state/query-client";
@@ -170,6 +172,54 @@ export function useProjectTasks(projectId: string | undefined, options?: { enabl
     enabled: enabled && !!projectId,
     retry: retryProjectQuery,
   });
+}
+
+/** Tarefa aberta de primeiro nível atribuída à pessoa, com o nome do projeto para a lista da Início. */
+export interface MyTask extends Task {
+  project_name: string;
+}
+
+const MY_TASKS_PROJECT_LIMIT = 24;
+
+/**
+ * "Minhas tarefas": não há endpoint próprio, então lê as tarefas dos projetos ativos (a mesma consulta e cache do quadro
+ * de cada projeto) e fica com as abertas em que a pessoa é responsável. Atrasadas primeiro, depois por prazo.
+ */
+export function useMyOpenTasks(userId: number | undefined, options?: { enabled?: boolean }) {
+  const { workspaceId, enabled } = useProjectsEnabled(options);
+  const projects = useAgencyProjects(options);
+  const active = (projects.data ?? []).filter((p) => p.status === "ativo").slice(0, MY_TASKS_PROJECT_LIMIT);
+  const results = useQueries({
+    queries: active.map((project) => ({
+      queryKey: agencyProjectKeys.tasks(project.id, workspaceId),
+      queryFn: () => listProjectTasks(project.id),
+      enabled: enabled && userId != null,
+      retry: retryProjectQuery,
+    })),
+  });
+  const today = todayInSaoPaulo();
+  const tasks: MyTask[] = [];
+  results.forEach((result, i) => {
+    for (const task of result.data ?? []) {
+      if (task.parent_task_id || !isTaskOpen(task.status)) continue;
+      if (!task.assignees.some((a) => a.user_id === userId)) continue;
+      tasks.push({ ...task, project_name: active[i].name });
+    }
+  });
+  tasks.sort((a, b) => {
+    const ao = isTaskOverdue(a, today) ? 0 : 1;
+    const bo = isTaskOverdue(b, today) ? 0 : 1;
+    if (ao !== bo) return ao - bo;
+    if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
+    if (a.due_date) return -1;
+    if (b.due_date) return 1;
+    return b.updated_at.localeCompare(a.updated_at);
+  });
+  return {
+    tasks,
+    isLoading: projects.isLoading || (active.length > 0 && results.some((r) => r.isLoading)),
+    isError: projects.isError,
+  };
 }
 
 export function useProjectTask(projectId: string | undefined, taskId: string | null | undefined, options?: { enabled?: boolean }) {
