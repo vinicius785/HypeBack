@@ -2922,3 +2922,14 @@
 .pv .fpm .fp-f { margin-top: 16px; padding-top: 14px; }
 .pv .fpm .fp-f .lnk { font-size: 13.5px; font-weight: 600; padding: 8px 4px; }
 .pv .fpm .fp-f .btn { flex: none; width: auto; white-space: nowrap; height: 42px; padding: 0 20px; border-radius: 99px; }
+
+/* ===== Início: saudação maior, com entrada animada ===== */
+.pv .dash .hello { gap: 22px; }
+.pv .dash .hello .brand.big { width: 84px; height: 84px; font-size: 28px; animation: hello-pop .7s cubic-bezier(.22, 1, .36, 1) both; }
+.pv .dash .hello h1 { font-size: 48px; line-height: 1.04; letter-spacing: -.05em; margin: 0; }
+.pv .dash .hello h1 .hw { display: inline-block; animation: hello-in .75s cubic-bezier(.22, 1, .36, 1) both; animation-delay: calc(var(--w) * 110ms + 140ms); }
+.pv .dash .hello p { margin: 6px 0 0; font-size: 15px; animation: hello-in .7s cubic-bezier(.22, 1, .36, 1) .42s both; }
+@keyframes hello-in { from { opacity: 0; transform: translateY(14px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes hello-pop { from { opacity: 0; transform: scale(.7) rotate(-6deg); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pv .dash .hello .brand.big, .pv .dash .hello h1 .hw, .pv .dash .hello p { animation: none; } }
+@media (max-width: 640px) { .pv .dash .hello h1 { font-size: 34px; } .pv .dash .hello .brand.big { width: 64px; height: 64px; font-size: 22px; } }

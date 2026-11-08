@@ -30,3 +30,6 @@
 .pv .sup-done p { margin: 0; color: var(--muted, #7e7e7e); font-size: 14px; line-height: 1.5; max-width: 360px; }
 @keyframes sup-pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .pv .sup-done { animation: none; } }
+
+/* topo, à direita: suporte, divisória cinza, chat e sino */
+.pv .top-sep { flex: none; width: 2px; height: 26px; margin: 0 4px; border-radius: 2px; background: rgba(5, 5, 5, .2); }

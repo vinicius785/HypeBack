@@ -1,0 +1,51 @@
+/* Início › movimento: uma única cascata de entrada (saudação → indicadores → cartões → campanhas) e microinterações. */
+.pv .dash { --home-ease: cubic-bezier(.22, 1, .36, 1); }
+
+/* blocos da página entram em sequência, subindo e saindo de um leve desfoque */
+.pv .dash > .fade { animation: home-rise .8s var(--home-ease) both; }
+.pv .dash > .head.fade { animation: none; }            /* a saudação anima por dentro (foto, palavras, data) */
+.pv .dash > .cols.fade { animation: none; }            /* os dois cartões entram cada um no seu tempo */
+.pv .dash > .fade:nth-child(2) { animation-delay: .12s; }
+.pv .dash > .fade:nth-child(4) { animation-delay: .5s; }
+.pv .dash > .fade:nth-child(n+5) { animation-delay: .5s; }
+.pv .dash .cols > .tkcard { animation: home-rise .8s var(--home-ease) .26s both; }
+.pv .dash .cols > .mcard { animation: home-rise .8s var(--home-ease) .38s both; }
+@keyframes home-rise { from { opacity: 0; transform: translateY(24px) scale(.985); filter: blur(5px); } to { opacity: 1; transform: none; filter: blur(0); } }
+
+/* indicadores do topo: cada um entra em seguida e responde ao mouse */
+.pv .dash .stat { animation: home-pop .6s var(--home-ease) both; transition: transform .3s var(--home-ease), background .25s; border-radius: 18px; }
+.pv .dash .stat:nth-child(1) { animation-delay: .2s; }
+.pv .dash .stat:nth-child(2) { animation-delay: .27s; }
+.pv .dash .stat:nth-child(3) { animation-delay: .34s; }
+.pv .dash .stat:nth-child(4) { animation-delay: .41s; }
+.pv .dash .stat:nth-child(5) { animation-delay: .48s; }
+.pv .dash .stat:hover { transform: translateY(-3px); }
+.pv .dash .stat:active { transform: translateY(-1px) scale(.99); }
+.pv .dash .stat b { transition: color .25s; font-variant-numeric: tabular-nums; }
+.pv .dash .stat:hover b { color: var(--brand, #9e2cfa); }
+@keyframes home-pop { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+/* foto da saudação reage ao mouse */
+.pv .dash .hello .brand.big { transition: transform .5s var(--home-ease); }
+.pv .dash .hello .brand.big:hover { transform: scale(1.06) rotate(-3deg); }
+
+/* título "Campanhas" e cartões do carrossel */
+.pv .dash > .fade:last-child .card-h { animation: home-pop .6s var(--home-ease) .55s both; }
+
+/* troca entre "Minhas tarefas" e "Workspace": a lista é refeita e entra de novo, linha a linha; os números sobem */
+.pv .mw-tabs { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; }
+.pv .mw-tabs::before { content: ""; position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 2); border-radius: 99px; background: #fff; box-shadow: 0 2px 8px -2px rgba(0, 0, 0, .35); transition: transform .45s var(--home-ease, cubic-bezier(.22, 1, .36, 1)); }
+.pv .mw-tabs[data-tab="approvals"]::before { transform: translateX(100%); }
+.pv .mw-tabs button { position: relative; z-index: 1; justify-content: center; }
+.pv .mw-tabs button.on { background: transparent; }
+.pv .mw-n b { transition: opacity .2s; }
+.pv .mw-r { transition: background .2s, transform .25s var(--home-ease, cubic-bezier(.22, 1, .36, 1)); }
+.pv .mw-r:active { transform: scale(.992); }
+
+/* ranking de campanhas: barras crescem em sequência (já com --i) */
+.pv .mcard .rk-bar i { animation-delay: calc(var(--i, 0) * 70ms + .45s); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pv .dash > .fade, .pv .dash .cols > .tkcard, .pv .dash .cols > .mcard, .pv .dash .stat, .pv .dash > .fade:last-child .card-h { animation: none; }
+  .pv .dash .stat, .pv .dash .hello .brand.big, .pv .mw-tabs::before, .pv .mw-r { transition: none; }
+}

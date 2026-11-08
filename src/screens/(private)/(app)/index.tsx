@@ -16,14 +16,18 @@ import { getUploadUrl } from "@/lib/utils/api";
 import { Button } from "@/components/ui/button";
 import { NoWorkspaceState } from "@/components/onboarding/no-workspace-state";
 import { I } from "@/components/prototype/ui";
+import "@/styles/home-metrics.css";
+import "@/styles/home-motion.css";
+import { CountUp } from "@/components/home/count-up";
+import { MyWorkCard } from "@/components/home/my-work-card";
+import { MyTaskModal } from "@/components/home/my-task-modal";
+import { useMyOpenTasks } from "@/hooks/use-agency-projects";
 import { CampaignTile, type CampaignBrand } from "@/components/campaign-card";
 import { brandsByCampaignId, campaignBrand } from "@/lib/campaign-brand";
 
 export const Route = createFileRoute("/(private)/(app)/")({
   component: RouteComponent,
 });
-
-const TASKS_PAGE_SIZE = 3;
 
 type TableRow = {
   campaign: CampaignListItem;
@@ -44,6 +48,8 @@ function RouteComponent() {
   const { user } = useAuth();
   const isAgency = useIsAgencyWorkspace();
   const isClient = useIsClientRole();
+  const myTasks = useMyOpenTasks(user?.id, { enabled: isAgency });
+  const [openTask, setOpenTask] = useState<{ projectId: string; taskId: string } | null>(null);
   const tasksRef = useRef<HTMLElement>(null);
   const { data: campaignsData = [], isLoading, error } = useCampaigns({
     enabled: !!selectedWorkspace,
@@ -177,28 +183,6 @@ function RouteComponent() {
 
   const pendingTaskCount = tasks.reduce((acc, t) => acc + t.count, 0);
 
-  const [tasksPage, setTasksPage] = useState(1);
-  const tasksTotalPages = Math.max(
-    1,
-    Math.ceil(tasks.length / TASKS_PAGE_SIZE),
-  );
-
-  useEffect(() => {
-    setTasksPage((p) => Math.min(p, tasksTotalPages));
-  }, [tasksTotalPages]);
-
-  const paginatedTasks = useMemo(() => {
-    const start = (tasksPage - 1) * TASKS_PAGE_SIZE;
-    return tasks.slice(start, start + TASKS_PAGE_SIZE);
-  }, [tasks, tasksPage]);
-
-  const tasksRangeStart =
-    tasks.length === 0 ? 0 : (tasksPage - 1) * TASKS_PAGE_SIZE + 1;
-  const tasksRangeEnd = Math.min(
-    tasksPage * TASKS_PAGE_SIZE,
-    tasks.length,
-  );
-
   const bannerById = useMemo(() => {
     const m = new Map<string, string>();
     for (const c of campaignsData as Array<{ id?: string; banner?: string | null }>) {
@@ -216,6 +200,7 @@ function RouteComponent() {
     () =>
       displayedTableRows
         .map((r) => ({
+          id: r.campaign.id,
           label: r.campaign.title,
           at: new Date(r.campaign.updated_at || r.campaign.created_at || 0).getTime(),
           value: r.overview?.metrics.reach ?? 0,
@@ -282,24 +267,15 @@ function RouteComponent() {
             />
             <div>
               <h1>
-                {greeting}, {isAgency ? firstName : workspaceName}
+                <span className="hw" style={{ ["--w" as string]: 0 }}>
+                  {greeting},
+                </span>{" "}
+                <span className="hw" style={{ ["--w" as string]: 1 }}>
+                  {isAgency ? firstName : workspaceName}
+                </span>
               </h1>
               <p>{isAgency ? todayLabel() : "Acompanhe as campanhas, as métricas e as aprovações do seu workspace."}</p>
             </div>
-          </div>
-          <div className="btns">
-            {permissions.campaigns_read && (
-              <button type="button" className="btn out" onClick={() => navigate({ to: "/campaigns" })}>
-                <I n="grid" cls="sm" />
-                Campanhas
-              </button>
-            )}
-            {permissions.campaigns_create && (
-              <button type="button" className="btn" onClick={() => navigate({ to: "/campaigns/new" })}>
-                <I n="plus" cls="sm" />
-                Nova campanha
-              </button>
-            )}
           </div>
         </div>
 
@@ -316,7 +292,7 @@ function RouteComponent() {
                       onClick={() => tasksRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
                     >
                       <small>{l}</small>
-                      <b>{isOverviewLoading ? "—" : n}</b>
+                      <b>{isOverviewLoading ? "—" : <CountUp value={n} />}</b>
                       <span className="d">{d}</span>
                     </button>
                   ))}
@@ -350,105 +326,32 @@ function RouteComponent() {
 
         {showOverview && (
           <div className="cols fade">
-            <section className="tkcard" aria-labelledby="tasks-heading" ref={tasksRef}>
-              <div className="card-h" style={{ marginBottom: 22 }}>
-                <div>
-                  <h2 id="tasks-heading">{isAgency ? "Meu trabalho" : "Tarefas e aprovações"}</h2>
-                  <p className="sub">
-                    {isOverviewLoading ? "Carregando pendências…" : "O que precisa da sua decisão"}
-                  </p>
-                </div>
-              </div>
-              {isOverviewLoading ? (
-                <>
-                  <div className="sk dk" style={{ height: 64, width: 140 }} />
-                  <div className="tks">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="sk dk" style={{ height: 72, borderRadius: 22 }} />
-                    ))}
-                  </div>
-                </>
-              ) : overviewHasError ? (
-                <div className="empty dk">
-                  <b>Pendências indisponíveis</b>
-                  <p>Abra a campanha nas abas de aprovação para conferir.</p>
-                </div>
-              ) : tasks.length === 0 ? (
-                <>
-                  <div className="tk-n">
-                    <b>0</b>
-                    <span>itens pendentes</span>
-                  </div>
-                  <div className="tks">
-                    <div className="empty dk">
-                      <span className="ei">
-                        <I n="check" />
-                      </span>
-                      <b>Tudo em dia</b>
-                      <p>Sem conteúdos, roteiros ou participantes aguardando sua ação.</p>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="tk-n">
-                    <b>{pendingTaskCount}</b>
-                    <span>itens aguardando você</span>
-                  </div>
-                  <TaskBar tasks={tasks} />
-                  <div className="tks">
-                    {paginatedTasks.map((task, i) => (
-                      <button
-                        key={`${task.campaignId}-${task.kind}-${(tasksPage - 1) * TASKS_PAGE_SIZE + i}`}
-                        type="button"
-                        className="tk"
-                        style={{ ["--i" as string]: i }}
-                        onClick={() =>
-                          navigate({
-                            to: "/campaigns/$campaignId",
-                            params: { campaignId: task.campaignId },
-                            search: { tab: task.tab },
-                          })
-                        }
-                      >
-                        <span
-                          className="ti"
-                          style={{
-                            background: task.kind === "script" ? "#9e2cfa" : "#fff",
-                            color: task.kind === "script" ? "#fff" : "#050505",
-                          }}
-                        >
-                          <I n={task.kind === "script" ? "file" : task.kind === "content" ? "image" : "users"} />
-                        </span>
-                        <span className="tx">
-                          <b>{task.label}</b>
-                          <small>{task.campaignTitle}</small>
-                        </span>
-                        <span className="tk-c" aria-label={`${task.count} ${task.count === 1 ? "item" : "itens"}`}>
-                          {task.count}
-                        </span>
-                        <span className="go">Revisar</span>
-                      </button>
-                    ))}
-                  </div>
-                  {tasks.length > TASKS_PAGE_SIZE && (
-                    <div className="ctl" style={{ marginTop: 16, justifyContent: "space-between" }}>
-                      <small style={{ color: "var(--dim)" }}>
-                        {tasksRangeStart}–{tasksRangeEnd} de {tasks.length}
-                      </small>
-                      <span style={{ display: "inline-flex", gap: 8 }}>
-                        <button type="button" className="round" aria-label="Anterior" disabled={tasksPage <= 1} onClick={() => setTasksPage((p) => Math.max(1, p - 1))}>
-                          <I n="chev" cls="sm rot" />
-                        </button>
-                        <button type="button" className="round" aria-label="Próxima" disabled={tasksPage >= tasksTotalPages} onClick={() => setTasksPage((p) => Math.min(tasksTotalPages, p + 1))}>
-                          <I n="chev" cls="sm" />
-                        </button>
-                      </span>
-                    </div>
-                  )}
-                </>
-              )}
-            </section>
+            <MyWorkCard
+              sectionRef={tasksRef}
+              title={isAgency ? "Meu trabalho" : "Tarefas e aprovações"}
+              loading={isOverviewLoading}
+              error={overviewHasError}
+              approvals={tasks}
+              banners={bannerById}
+              onOpenApproval={(task) =>
+                navigate({
+                  to: "/campaigns/$campaignId",
+                  params: { campaignId: task.campaignId },
+                  search: { tab: task.tab },
+                })
+              }
+              onViewAll={(tab) => navigate({ to: tab === "tasks" ? "/projects" : "/campaigns" })}
+              personal={isAgency ? { tasks: myTasks.tasks, loading: myTasks.isLoading } : undefined}
+              onOpenTask={(task) => setOpenTask({ projectId: task.project_id, taskId: task.id })}
+            />
+            {openTask && (
+              <MyTaskModal
+                projectId={openTask.projectId}
+                taskId={openTask.taskId}
+                onOpenTask={(taskId) => setOpenTask({ projectId: openTask.projectId, taskId })}
+                onClose={() => setOpenTask(null)}
+              />
+            )}
 
             <section className="card mcard" aria-labelledby="metrics-heading">
               {isOverviewLoading ? (
@@ -478,7 +381,7 @@ function RouteComponent() {
                   <div className="big">
                     <div>
                       <small>Alcance estimado</small>
-                      <b>{aggregateMetrics.reach ? aggregateMetrics.reach.toLocaleString("pt-BR") : "—"}</b>
+                      <b>{aggregateMetrics.reach ? <CountUp value={aggregateMetrics.reach} duration={1200} /> : "—"}</b>
                       <span className="big-src">
                         {campaignsWithReach > 0
                           ? `Estimativa somada de ${campaignsWithReach} ${campaignsWithReach === 1 ? "campanha" : "campanhas"} com alcance medido.`
@@ -486,9 +389,10 @@ function RouteComponent() {
                       </span>
                     </div>
                   </div>
-                  <ReachChart
+                  <ReachRanking
                     series={reachSeries}
-                    total={stats.total}
+                    banners={bannerById}
+                    onOpenCampaign={(id) => navigate({ to: "/campaigns/$campaignId", params: { campaignId: id } })}
                     onOpenCampaigns={() => navigate({ to: "/campaigns" })}
                   />
                   <div className="msm">
@@ -568,115 +472,73 @@ function WorkspaceBrand({ name, photo }: { name: string; photo?: string }) {
   );
 }
 
-const TASK_STYLE: Record<string, [string, string]> = {
-  script: ["Roteiros", "#9e2cfa"],
-  content: ["Conteúdos", "#ffffff"],
-  participant: ["Inscrições", "#7e7e7e"],
-};
+const RANKING_SIZE = 4;
 
-function TaskBar({ tasks }: { tasks: Array<{ kind: string; count: number }> }) {
-  const totals = new Map<string, number>();
-  for (const t of tasks) totals.set(t.kind, (totals.get(t.kind) ?? 0) + t.count);
-  const entries = [...totals.entries()];
-  const style = (k: string) => TASK_STYLE[k] ?? [k, "rgba(255,255,255,.3)"];
-  return (
-    <>
-      <div className="tk-bar">
-        {entries.map(([k, n]) => (
-          <i key={k} style={{ flex: n, background: style(k)[1] }} title={`${style(k)[0]}: ${n}`} />
-        ))}
-      </div>
-      <div className="tk-leg">
-        {entries.map(([k, n]) => (
-          <span key={k}>
-            <i style={{ background: style(k)[1] }} />
-            {style(k)[0]} {n}
-          </span>
-        ))}
-      </div>
-    </>
-  );
-}
-
-/** Alcance por campanha — mesma linha/área e cursor do gráfico do protótipo. */
-function ReachChart({
+/** Campanhas que mais alcançaram: foto, nome, alcance e a fatia de cada uma no total, em lista (não há série no tempo). */
+function ReachRanking({
   series,
-  total,
+  banners,
+  onOpenCampaign,
   onOpenCampaigns,
 }: {
-  series: Array<{ label: string; at: number; value: number }>;
-  total: number;
+  series: Array<{ id: string; label: string; value: number }>;
+  banners: Map<string, string>;
+  onOpenCampaign: (id: string) => void;
   onOpenCampaigns: () => void;
 }) {
-  const [hover, setHover] = useState<number | null>(null);
-
-  if (series.length < 2) {
+  if (series.length === 0) {
     return (
-      <div className="mh-empty">
-        <span className="ei">
+      <div className="rk rk-empty">
+        <span>
           <I n="chart" />
         </span>
-        <div>
-          <b>Histórico de alcance ainda indisponível</b>
-          <p>
-            O gráfico compara o alcance entre campanhas e aparece quando pelo menos duas tiverem alcance medido
-            ({series.length} de {total} hoje).
-          </p>
-        </div>
-        <button type="button" className="link" onClick={onOpenCampaigns}>
-          Ver campanhas
-          <I n="chev" cls="sm" />
-        </button>
+        <p>As campanhas que mais alcançaram aparecem aqui quando houver alcance medido.</p>
       </div>
     );
   }
-
-  // Barras, uma por campanha em ordem de data: o alcance é de campanhas diferentes, não uma curva no tempo — linha suave
-  // inventava picos e quedas entre elas. A base é o zero (barras comparáveis) e as linhas de grade mostram a escala.
-  const bars = series.slice(-12);
-  const max = Math.max(...bars.map((s) => s.value), 1);
-  const ticks = [1, 0.5, 0];
-  const fmt = (t: number) =>
-    new Date(t).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "");
-  const active = hover ?? bars.length - 1;
-  const cur = bars[active];
-
+  const sorted = [...series].sort((a, b) => b.value - a.value);
+  const sum = sorted.reduce((n, r) => n + r.value, 0) || 1;
+  const top = sorted.slice(0, RANKING_SIZE);
+  const max = top[0].value || 1;
   return (
-    <div className="rc" onMouseLeave={() => setHover(null)}>
-      <div className="rc-head">
-        <b>{compact(cur.value)}</b>
-        <span title={cur.label}>{cur.label}</span>
-        <em>{fmt(cur.at)}</em>
+    <div className="rk">
+      <div className="rk-h">
+        <b>Campanhas que mais alcançaram</b>
+        {sorted.length > RANKING_SIZE && (
+          <button type="button" onClick={onOpenCampaigns}>
+            Ver todas
+            <I n="chev" cls="sm" />
+          </button>
+        )}
       </div>
-      <div className="rc-plot">
-        <div className="rc-grid" aria-hidden="true">
-          {ticks.map((t) => (
-            <span key={t} style={{ bottom: `${t * 100}%` }}>
-              <i>{t === 0 ? "0" : compact(max * t)}</i>
-            </span>
-          ))}
-        </div>
-        <ul className="rc-bars" aria-label="Alcance estimado por campanha">
-          {bars.map((b, i) => (
-            <li key={`${b.at}-${i}`} className={i === active ? "on" : undefined} onMouseEnter={() => setHover(i)}>
-              <button
-                type="button"
-                aria-label={`${b.label}: alcance ${b.value.toLocaleString("pt-BR")}`}
-                onFocus={() => setHover(i)}
-                onBlur={() => setHover(null)}
-              >
-                <span style={{ height: `${Math.max((b.value / max) * 100, 2)}%` }} />
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="axis">
-        <span>{fmt(bars[0].at)}</span>
-        <span>{fmt(bars[bars.length - 1].at)}</span>
-      </div>
+      <ul>
+        {top.map((r, i) => (
+          <li key={r.id} style={{ ["--i" as string]: i }}>
+            <button type="button" className="rk-r" onClick={() => onOpenCampaign(r.id)}>
+              <RankThumb banner={banners.get(r.id)} name={r.label} />
+              <span className="rk-tx">
+                <b title={r.label}>{r.label}</b>
+                <span className="rk-bar" aria-hidden="true">
+                  <i style={{ width: `${Math.max((r.value / max) * 100, 4)}%` }} />
+                </span>
+              </span>
+              <span className="rk-v">
+                <b>{compact(r.value)}</b>
+                <small>{Math.round((r.value / sum) * 100)}%</small>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
+}
+
+function RankThumb({ banner, name }: { banner?: string; name: string }) {
+  const [broken, setBroken] = useState(false);
+  const url = banner ? getUploadUrl(banner) : undefined;
+  if (!url || broken) return <span className="rk-ph">{initialsOf(name)}</span>;
+  return <img className="rk-ph" src={url} alt="" loading="lazy" onError={() => setBroken(true)} />;
 }
 
 function CampaignsCarousel({
