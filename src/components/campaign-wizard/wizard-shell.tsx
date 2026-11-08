@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { toast } from "sonner";
 
-import { TopActions } from "@/components/header";
+import { TopActions, TopSupport } from "@/components/header";
 import { I } from "@/components/prototype/ui";
 import { useNiches } from "@/hooks/use-niches";
 import type { CampaignFormData } from "@/shared/types";
@@ -141,6 +141,7 @@ export function WizardShell(p: WizardShellProps) {
     <div className="pv">
       <div className="wrap" style={{ maxWidth: "none" }}>
         <div className="top">
+          <TopSupport />
           <button type="button" className="back" onClick={p.onExit}>
             <span>
               <I n="back" cls="sm" />
