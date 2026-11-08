@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LifeBuoy } from "lucide-react";
+import { Headset } from "lucide-react";
 
 import { AdminDialog } from "@/components/admin/platform/admin-dialog";
 import { SUPPORT_CATEGORIES, SUPPORT_CATEGORY_LABEL, type SupportCategory } from "@/shared/services/admin-support";
@@ -19,7 +19,7 @@ export function SupportButton() {
   return (
     <>
       <button type="button" className="round" aria-label="Falar com o suporte" title="Falar com o suporte" aria-haspopup="dialog" onClick={() => setOpen(true)}>
-        <LifeBuoy className="ico" aria-hidden />
+        <Headset className="ico" aria-hidden />
       </button>
       {open ? <SupportDialog onClose={() => setOpen(false)} /> : null}
     </>
