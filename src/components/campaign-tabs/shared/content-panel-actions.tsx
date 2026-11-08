@@ -111,7 +111,7 @@ export function ContentPanelActions({
               <div className="kb2-r">
                 <button
                   type="button"
-                  className="btn"
+                  className="btn ok"
                   disabled={isApproving || isRejecting}
                   onClick={() =>
                     approve(

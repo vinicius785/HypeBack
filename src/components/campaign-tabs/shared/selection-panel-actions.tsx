@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useWorkspaceBalance } from "@/hooks/use-balance";
@@ -11,9 +11,9 @@ import {
   useCampaignInscriptions,
 } from "@/hooks/use-campaign-tab-influencers";
 import { getNetworkLabel } from "@/shared/constants/network-labels";
+import { formatEngagement, formatFollowers } from "../campaign-flow";
 
-import { RejectionModal } from "./rejection-modal";
-import { ReserveBalanceModal } from "./reserve-balance-modal";
+import { computeMovement } from "./reserve-balance-modal";
 import {
   computeApprovalCostCents,
   fmtBRL,
@@ -41,6 +41,8 @@ interface ProfileRow {
   type: string;
   label: string;
   username: string;
+  members?: number;
+  engagement?: number;
   prices?: Record<string, number>;
 }
 
@@ -85,6 +87,17 @@ export function SelectionPanelActions({
 
   const [reserveRow, setReserveRow] = useState<ProfileRow | null>(null);
   const [rejectRow, setRejectRow] = useState<ProfileRow | null>(null);
+  const [feedback, setFeedback] = useState("");
+  const lastConfirm = useRef<Record<string, "approve" | "reject">>({});
+  const rejectKey = rejectRow?.key;
+  useEffect(() => {
+    if (!rejectKey) return;
+    const t = window.setTimeout(
+      () => document.querySelector<HTMLTextAreaElement>('.kb2-m[data-mode="reject"] textarea')?.focus({ preventScroll: true }),
+      180,
+    );
+    return () => window.clearTimeout(t);
+  }, [rejectKey]);
 
   const showCost = !!paymentType && COST_METHODS.has(paymentType);
   const busy = isUpdating || isMoving;
@@ -128,6 +141,8 @@ export function SelectionPanelActions({
       type: p.type,
       label: getNetworkLabel(p.type, p.name || p.type),
       username: p.username || influencer.username,
+      members: p.members,
+      engagement: p.engagement,
       prices: p.prices,
     }));
   }, [influencer, matches, column]);
@@ -209,94 +224,162 @@ export function SelectionPanelActions({
       {rows.map((row) => {
         const cost = costOf(row);
         const blocked = cost != null && availableCents != null && cost > availableCents;
+        // O cartão da rede é UM elemento só: ele se transforma (escurece e cresce) na confirmação, em vez de abrir um modal.
+        const mode: "idle" | "approve" | "reject" =
+          reserveRow?.key === row.key ? "approve" : rejectRow?.key === row.key ? "reject" : "idle";
+        const m = computeMovement({ costCents: cost, availableCents, committedCents });
+        const ready = feedback.trim().length > 0;
+        // Ao fechar, o conteúdo da confirmação fica até o cartão terminar de voltar (sem "piscar" vazio).
+        if (mode !== "idle") lastConfirm.current[row.key] = mode;
+        const shown = mode !== "idle" ? mode : (lastConfirm.current[row.key] ?? null);
         return (
-          <div key={row.key} className="kb2-prof">
-            <div className="kb2-prof-h">
-              <b>{row.label}</b>
-              <small>@{row.username}</small>
-              {showCost && (
-                <em className={blocked ? "bad" : ""}>
-                  <span>Valor</span>
-                  {cost != null ? fmtBRL(cost) : "A definir"}
-                </em>
-              )}
+          <div key={row.key} className={`kb2-prof kb2-m${mode === "idle" ? "" : " is-confirm"}`} data-mode={mode}>
+            <div className="kb2-fold kb2-idle" inert={mode !== "idle"} aria-hidden={mode !== "idle"}>
+              <div className="kb2-fi">
+                <div className="kb2-prof-h">
+                  <b>{row.label}</b>
+                  <small title={`@${row.username}`}>@{row.username}</small>
+                  {row.type ? (
+                    <span className="kb2-st">
+                      <span>
+                        <b>{row.members ? formatFollowers(row.members) : "—"}</b> seguidores
+                      </span>
+                      <span>
+                        <b>{row.engagement ? formatEngagement(row.engagement) : "—"}</b> engajamento
+                      </span>
+                    </span>
+                  ) : null}
+                  {showCost && (
+                    <em className={blocked ? "bad" : ""}>
+                      <span>Valor</span>
+                      {cost != null ? fmtBRL(cost) : "A definir"}
+                    </em>
+                  )}
+                </div>
+                {blocked && (
+                  <small className="drw-hint bad">
+                    Saldo insuficiente: {fmtBRL(availableCents ?? 0)} disponível.
+                  </small>
+                )}
+                <div className="kb2-r">
+                  {(column === "applications" || column === "pre_selection") && (
+                    <button
+                      type="button"
+                      className="btn out"
+                      disabled={busy}
+                      onClick={() => toCuration(row)}
+                    >
+                      {column === "pre_selection" ? "Enviar p/ curadoria" : "Curadoria"}
+                    </button>
+                  )}
+                  {column !== "pre_selection" && (
+                    <button
+                      type="button"
+                      className="btn ok"
+                      disabled={busy || blocked}
+                      title={blocked ? "Saldo do workspace insuficiente para esta aprovação." : undefined}
+                      onClick={() => askApprove(row)}
+                    >
+                      Aprovar
+                    </button>
+                  )}
+                </div>
+                {column !== "pre_selection" && (
+                  <button
+                    type="button"
+                    className="btn out dng"
+                    disabled={busy}
+                    onClick={() => {
+                      setFeedback("");
+                      setRejectRow(row);
+                    }}
+                  >
+                    Recusar {row.type ? row.label : ""}
+                  </button>
+                )}
+              </div>
             </div>
-            {blocked && (
-              <small className="drw-hint bad">
-                Saldo insuficiente: {fmtBRL(availableCents ?? 0)} disponível.
-              </small>
-            )}
-            <div className="kb2-r">
-              {(column === "applications" || column === "pre_selection") && (
-                <button
-                  type="button"
-                  className="btn out"
-                  disabled={busy}
-                  onClick={() => toCuration(row)}
-                >
-                  {column === "pre_selection" ? "Enviar p/ curadoria" : "Curadoria"}
-                </button>
-              )}
-              {column !== "pre_selection" && (
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={busy || blocked}
-                  title={blocked ? "Saldo do workspace insuficiente para esta aprovação." : undefined}
-                  onClick={() => askApprove(row)}
-                >
-                  Aprovar
-                </button>
-              )}
+
+            <div className="kb2-fold kb2-conf" inert={mode === "idle"} aria-hidden={mode === "idle"}>
+              <div className="kb2-fi">
+                {shown === "reject" ? (
+                  <div className="kb2-cf" role="group" aria-label={`Confirmar recusa de ${row.label}`}>
+                    <div className="kb2-cf-h">
+                      <b>Recusar {row.label}</b>
+                      <small title={`@${row.username}`}>@{row.username}</small>
+                    </div>
+                    <label className="kb2-cf-t">
+                      <span>Motivo da recusa</span>
+                      <textarea
+                        rows={3}
+                        value={feedback}
+                        placeholder="Explique o motivo. Ele é enviado ao criador."
+                        onChange={(e) => setFeedback(e.target.value)}
+                      />
+                    </label>
+                    {!ready ? <small className="kb2-cf-req">Obrigatório para recusar.</small> : null}
+                    <div className="kb2-cf-a">
+                      <button
+                        type="button"
+                        className="cf-main cf-dng"
+                        disabled={!ready || isUpdating}
+                        onClick={() => reject(row, feedback.trim())}
+                      >
+                        {isUpdating ? "Recusando…" : "Confirmar recusa"}
+                      </button>
+                      <button type="button" className="cf-sec" disabled={isUpdating} onClick={() => setRejectRow(null)}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : shown === "approve" ? (
+                  <div className="kb2-cf" role="group" aria-label={`Confirmar aprovação de ${row.label}`}>
+                    <div className="kb2-cf-h">
+                      <b>Aprovar {row.label}</b>
+                      <small title={`@${row.username}`}>@{row.username}</small>
+                    </div>
+                    <dl className="kb2-cf-l">
+                      <div className="em">
+                        <dt>Custo de aprovação</dt>
+                        <dd>{cost != null ? fmtBRL(cost) : "A definir"}</dd>
+                      </div>
+                      <div>
+                        <dt>Disponível agora</dt>
+                        <dd>{availableCents != null ? fmtBRL(availableCents) : "—"}</dd>
+                      </div>
+                      <div>
+                        <dt>Disponível após</dt>
+                        <dd className={m.blocked ? "bad" : "ok"}>{m.availableAfter != null ? fmtBRL(m.availableAfter) : "—"}</dd>
+                      </div>
+                      {m.committedAfter != null ? (
+                        <div>
+                          <dt>Reservado após</dt>
+                          <dd className="warn">{fmtBRL(m.committedAfter)}</dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                    <p className="kb2-cf-p">
+                      {m.blocked
+                        ? "Saldo insuficiente para reservar esse valor. Adicione saldo antes de continuar."
+                        : !m.costKnown
+                          ? "O valor ainda não está definido (preço a combinar); a reserva é ajustada quando o preço for acordado."
+                          : "O valor sai do disponível e fica reservado. Você reembolsa se a parceria não avançar."}
+                    </p>
+                    <div className="kb2-cf-a">
+                      <button type="button" className="cf-main ok" disabled={m.blocked || isUpdating} onClick={() => approve(row)}>
+                        {isUpdating ? "Reservando…" : "Confirmar aprovação"}
+                      </button>
+                      <button type="button" className="cf-sec" disabled={isUpdating} onClick={() => setReserveRow(null)}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
-            {column !== "pre_selection" && (
-              <button
-                type="button"
-                className="btn out dng"
-                disabled={busy}
-                onClick={() => setRejectRow(row)}
-              >
-                Recusar {row.type ? row.label : ""}
-              </button>
-            )}
           </div>
         );
       })}
-
-      <RejectionModal
-        influencer={
-          rejectRow
-            ? {
-                id: influencer.id,
-                name: influencer.name,
-                username: influencer.username,
-                avatar: influencer.avatar,
-              }
-            : null
-        }
-        onConfirm={(feedback) => rejectRow && reject(rejectRow, feedback)}
-        onClose={() => setRejectRow(null)}
-      />
-
-      <ReserveBalanceModal
-        target={
-          reserveRow
-            ? {
-                name: influencer.name,
-                username: influencer.username,
-                avatar: influencer.avatar,
-              }
-            : null
-        }
-        costCents={reserveRow ? costOf(reserveRow) : null}
-        availableCents={availableCents}
-        committedCents={committedCents}
-        title="Reservar saldo para aprovar"
-        confirmLabel="Confirmar aprovação"
-        isSubmitting={isUpdating}
-        onConfirm={() => reserveRow && approve(reserveRow)}
-        onClose={() => setReserveRow(null)}
-      />
     </div>
   );
 }

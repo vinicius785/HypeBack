@@ -181,6 +181,7 @@ export function mapInscriptionApiRowToInfluencer(row: InscriptionApiRow): Influe
               sn.members != null && !Number.isNaN(Number(sn.members))
                 ? Number(sn.members)
                 : undefined,
+            engagement: resolveRowEngagement(row) || undefined,
             photo: networkPhoto || null,
             status: netStatus,
             prices: normalizePricesDict(sn.prices),

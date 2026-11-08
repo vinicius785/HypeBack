@@ -22,6 +22,18 @@ vi.mock("../shared/shipment-panel-actions", () => ({
   ShipmentPanelActions: () => <div>ACOES-ENVIO</div>,
   isShipmentColumn: (c: string) => c === "awaiting_shipment",
 }));
+vi.mock("./panel-profile", () => ({
+  PanelProfile: ({ onProfile, onChat }: { onProfile: () => void; onChat: () => void }) => (
+    <aside aria-label="Resumo do perfil">
+      <button type="button" onClick={onChat}>
+        Abrir chat
+      </button>
+      <button type="button" onClick={onProfile}>
+        Perfil completo
+      </button>
+    </aside>
+  ),
+}));
 vi.mock("../shared/price-negotiation-section", () => ({
   PriceNegotiationSection: () => <div>NEGOCIACAO</div>,
 }));
@@ -51,8 +63,6 @@ function setup(over: Partial<React.ComponentProps<typeof ManagementPanel>> = {})
     column: "applications",
     late: false,
     orderedIds: ["4", "5", "6"],
-    expanded: false,
-    onToggleExpanded: vi.fn(),
     onSelect: vi.fn(),
     onClose: vi.fn(),
     campaignId: "c1",
@@ -97,22 +107,22 @@ describe("ManagementPanel", () => {
     expect(screen.getByRole("button", { name: "Próximo criador" })).toBeEnabled();
   });
 
-  it("expandir, fechar, chat e perfil chamam os callbacks", async () => {
+  it("fechar, chat e perfil chamam os callbacks", async () => {
     const user = userEvent.setup();
     const p = setup();
-    await user.click(screen.getByRole("button", { name: "Expandir detalhes" }));
     await user.click(screen.getByRole("button", { name: "Fechar detalhes" }));
     await user.click(screen.getByRole("button", { name: /Abrir chat/ }));
     await user.click(screen.getByRole("button", { name: /Perfil completo/ }));
-    expect(p.onToggleExpanded).toHaveBeenCalledTimes(1);
     expect(p.onClose).toHaveBeenCalledTimes(1);
     expect(p.onChat).toHaveBeenCalledTimes(1);
     expect(p.onProfile).toHaveBeenCalledTimes(1);
   });
 
-  it("o botão expandir informa o estado (aria-expanded) e vira 'Recolher'", () => {
-    setup({ expanded: true });
-    expect(screen.getByRole("button", { name: "Recolher detalhes" })).toHaveAttribute("aria-expanded", "true");
+  it("não há botão de expandir; só histórico, minimizar e fechar", () => {
+    setup();
+    expect(screen.queryByRole("button", { name: /Expandir detalhes|Recolher detalhes/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ver histórico" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Minimizar painel" })).toBeInTheDocument();
   });
 
   describe("conteúdo por etapa", () => {
@@ -185,7 +195,8 @@ describe("ManagementPanel", () => {
     });
   });
 
-  it("o histórico compacto mostra só as últimas movimentações, com data, hora e origem", () => {
+  it("o histórico fica escondido atrás do ícone e abre com todas as movimentações, com data, hora e origem", async () => {
+    const user = userEvent.setup();
     setup({
       inf: inf({
         statusHistory: [
@@ -196,39 +207,23 @@ describe("ManagementPanel", () => {
         ],
       }),
     });
-    const log = screen.getByRole("complementary", { name: "Últimas movimentações" });
-    expect(within(log).getAllByRole("listitem")).toHaveLength(3);
+    expect(screen.queryByRole("complementary", { name: "Histórico de movimentações" })).not.toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: "Ver histórico" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
+    const log = screen.getByRole("complementary", { name: "Histórico de movimentações" });
+    expect(within(log).getAllByRole("listitem")).toHaveLength(4);
     expect(within(log).getByText("Proposta enviada")).toBeInTheDocument();
-    expect(within(log).queryByText("Inscrições")).not.toBeInTheDocument(); // a mais antiga fica só no histórico completo
+    expect(within(log).getByText("Inscrições")).toBeInTheDocument();
     expect(within(log).getByText(/Automático/)).toBeInTheDocument();
     expect(within(log).getAllByText(/Equipe/)).toHaveLength(2);
-    expect(within(log).getByRole("button", { name: /Ver histórico completo \(4\)/ })).toBeInTheDocument();
-  });
-
-  it("'Ver histórico completo' expande o painel; expandido mostra tudo e esconde o link", async () => {
-    const user = userEvent.setup();
-    const history = [1, 2, 3, 4].map((n) => ({ id: `h${n}`, status: "applications", timestamp: `2026-10-2${n}T10:00:00Z` }));
-    const p = setup({ inf: inf({ statusHistory: history }) });
-    await user.click(screen.getByRole("button", { name: /Ver histórico completo/ }));
-    expect(p.onToggleExpanded).toHaveBeenCalledTimes(1);
-  });
-
-  it("expandido: aparece o histórico anterior (sem repetir as últimas) e some o link", () => {
-    const history = [1, 2, 3, 4].map((n) => ({ id: `h${n}`, status: "applications", timestamp: `2026-10-2${n}T10:00:00Z` }));
-    setup({ expanded: true, inf: inf({ statusHistory: history }) });
-    expect(screen.getByRole("region", { name: "Histórico anterior" })).toBeInTheDocument(); // só as mais antigas (as 3 últimas já estão ao lado)
-    expect(screen.queryByRole("button", { name: /Ver histórico completo/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ocultar histórico" }));
+    expect(screen.queryByRole("complementary", { name: "Histórico de movimentações" })).not.toBeInTheDocument();
   });
 
   it("fora das etapas de proposta a negociação não aparece no compacto", () => {
     const neg = { proposed_price_cents: 1, counter_price_cents: null, agreed_price_cents: null, price_status: null, origin: null } as never;
     setup({ column: "script_pending", inf: inf({ price_negotiation: neg }) });
     expect(screen.queryByText("NEGOCIACAO")).not.toBeInTheDocument();
-  });
-
-  it("expandido mostra a negociação mesmo fora das etapas de proposta", () => {
-    const neg = { proposed_price_cents: 1, counter_price_cents: null, agreed_price_cents: null, price_status: null, origin: null } as never;
-    setup({ column: "script_pending", expanded: true, inf: inf({ price_negotiation: neg }) });
-    expect(screen.getByText("NEGOCIACAO")).toBeInTheDocument();
   });
 });

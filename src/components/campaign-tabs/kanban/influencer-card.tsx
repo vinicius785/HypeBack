@@ -147,7 +147,7 @@ export function InfluencerCardView({ influencer, column, moving, overlay, handle
         <div className="kc-n">
           <b title={influencer.name}>{influencer.name}</b>
           <small>
-            {influencer.username ? `@${influencer.username}` : "Sem usuário"}
+            {influencer.username ? <span className="kc-at">@{influencer.username}</span> : "Sem usuário"}
             {net ? <span className="kc-net"> · {net}</span> : null}
           </small>
         </div>

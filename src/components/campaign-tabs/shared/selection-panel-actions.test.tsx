@@ -6,7 +6,8 @@
  * disso a API devolve uma linha por criador E rede.
  */
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 const updateStatus = vi.fn();
 
@@ -32,7 +33,7 @@ vi.mock("@/hooks/use-campaign-influencers", () => ({
   useMoveToPreSelectionCuration: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 vi.mock("@/hooks/use-balance", () => ({
-  useWorkspaceBalance: () => ({ data: { available_cents: 0, committed_cents: 0 } }),
+  useWorkspaceBalance: () => ({ data: { available_cents: 500000, committed_cents: 100000 } }),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -66,5 +67,64 @@ describe("SelectionPanelActions", () => {
     );
 
     expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeInTheDocument();
+  });
+
+  it("sem custo (permuta) aprovar não reserva saldo: aprova direto aquela rede, sem confirmação", async () => {
+    const user = userEvent.setup();
+    updateStatus.mockClear();
+    render(
+      <SelectionPanelActions campaignId="c-1" influencerId="user-9" column="applications" paymentType="swap" />,
+    );
+    await user.click(screen.getAllByRole("button", { name: "Aprovar" })[1]);
+    expect(screen.queryByRole("group", { name: /Confirmar aprovação de/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(updateStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "approved", network_id: 2 }),
+      expect.anything(),
+    );
+  });
+
+  it("com reserva de saldo, a confirmação mostra o custo e a mudança do disponível", async () => {
+    const user = userEvent.setup();
+    render(
+      <SelectionPanelActions
+        campaignId="c-1"
+        influencerId="user-9"
+        column="applications"
+        paymentType="fixed"
+        phasesWithFormats={[]}
+      />,
+    );
+    await user.click(screen.getAllByRole("button", { name: "Aprovar" })[0]);
+    const confirm = screen.getByRole("group", { name: /Confirmar aprovação de/ });
+    expect(within(confirm).getByText("Custo de aprovação")).toBeInTheDocument();
+    expect(within(confirm).getByText("Disponível agora")).toBeInTheDocument();
+    expect(within(confirm).getByText("Disponível após")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    // só aquele cartão virou confirmação; o da outra rede segue com as ações normais
+    expect(screen.getAllByRole("button", { name: "Aprovar" })).toHaveLength(1);
+    await user.click(within(confirm).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("group", { name: /Confirmar aprovação de/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Aprovar" })).toHaveLength(2);
+  });
+
+  it("recusar pede o motivo no próprio cartão e só confirma com texto", async () => {
+    const user = userEvent.setup();
+    updateStatus.mockClear();
+    render(
+      <SelectionPanelActions campaignId="c-1" influencerId="user-9" column="applications" paymentType="swap" />,
+    );
+    await user.click(screen.getAllByRole("button", { name: /^Recusar/ })[0]);
+    const box = screen.getByRole("group", { name: /Confirmar recusa de/ });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const ok = within(box).getByRole("button", { name: "Confirmar recusa" });
+    expect(ok).toBeDisabled();
+    await user.type(within(box).getByRole("textbox"), "  Fora do nicho  ");
+    expect(ok).toBeEnabled();
+    await user.click(ok);
+    expect(updateStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "rejected", feedback: "Fora do nicho", network_id: 1 }),
+      expect.anything(),
+    );
   });
 });

@@ -366,17 +366,6 @@ function RouteComponent() {
   const needMeCount = flowParticipants.filter((p) =>
     NEEDME.includes(p.column),
   ).length;
-  const creatorsCount = flowParticipants.filter(
-    (p) =>
-      ![
-        "applications",
-        "pre_selection",
-        "pre_selection_curation",
-        "curation",
-        "invited",
-        "rejected",
-      ].includes(p.column),
-  ).length;
 
   const [boardFocus, setBoardFocus] = useState<
     { stage: StageKey; filter: "me" | "all"; nonce: number } | undefined
@@ -647,6 +636,20 @@ function RouteComponent() {
         : "manage";
   const inFlow = FLOWS.includes(activeTab);
 
+  // Brilho que desliza até a aba sob o mouse (nas abas principais e nas subabas de Gestão): guarda posição e largura em
+  // variáveis CSS do contêiner; o contorno e a transição ficam no CSS.
+  const glideTo = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const b = e.currentTarget;
+    const host = b.closest<HTMLElement>(".dsub") ?? b.closest<HTMLElement>(".dtabs");
+    if (!host) return;
+    host.style.setProperty("--hx", `${b.offsetLeft}px`);
+    host.style.setProperty("--hw", `${b.offsetWidth}px`);
+    host.style.setProperty("--ho", "1");
+  };
+  const glideOff = (e: React.MouseEvent<HTMLElement>) => {
+    e.currentTarget.style.setProperty("--ho", "0");
+  };
+
   const pickTop = (t: "overview" | "manage" | "gest") => {
     if (t === "overview") setActiveTab("dashboard");
     else if (t === "manage") setActiveTab("management");
@@ -679,10 +682,9 @@ function RouteComponent() {
               banner={campaign?.banner}
               status={statusValue}
               statusLabel={getCampaignStatusDisplayLabel(campaign?.status)}
-              creators={creatorsCount}
-              progress={progressPercentage}
               canWrite={canWriteCampaigns}
               checking={checkPublicationTrackingMutation.isPending}
+              hasPublished={flowParticipants.some((p) => p.column === "published")}
               onPublish={() => setShowMuralDateModal(true)}
               onUnpublish={() => setShowUnpublishModal(true)}
               onCheckPublications={() => checkPublicationTrackingMutation.mutate()}
@@ -699,7 +701,7 @@ function RouteComponent() {
               canDelete={permissions.campaigns_delete}
               onDelete={() => setShowDeleteModal(true)}
             >
-              <nav className="dtabs" ref={dtabsRef}>
+              <nav className="dtabs" ref={dtabsRef} onMouseLeave={glideOff}>
                 <i className="ind" />
                 {(
                   [
@@ -715,19 +717,21 @@ function RouteComponent() {
                         type="button"
                         data-dtab={id}
                         className={topTab === id ? "on" : ""}
+                        onMouseEnter={glideTo}
                         onClick={() => pickTop(id)}
                       >
                         {label}
                         {id === "manage" && needMeCount > 0 ? <em>{needMeCount}</em> : null}
                       </button>
                       {id === "gest" && (
-                        <span className={`dsub ${topTab === "gest" ? "open" : ""}`}>
+                        <span className={`dsub ${topTab === "gest" ? "open" : ""}`} onMouseLeave={glideOff}>
                           {gestSubs.map((k, j) => (
                             <button
                               key={k}
                               type="button"
                               className={activeTab === k ? "sel" : ""}
                               style={{ ["--j" as string]: j }}
+                              onMouseEnter={glideTo}
                               onClick={() => setActiveTab(k)}
                             >
                               {GEST_LABEL[k]}

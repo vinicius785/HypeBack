@@ -595,6 +595,8 @@ export interface Influencer {
     name: string;
     username?: string;
     members?: number;
+    /** Engajamento (%) do perfil nesta rede, quando a API informa */
+    engagement?: number;
     /** Foto do perfil na rede (URL/path da API) */
     photo?: string | null;
     status?: Influencer["status"];
