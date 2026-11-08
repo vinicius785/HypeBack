@@ -38,7 +38,7 @@ describe("Falar com o suporte", () => {
   it("envia com categoria e página, e mostra o número do pedido", async () => {
     mocks.apiPost.mockResolvedValue({ id: "u1", number: 1042 });
     const { user, dialog } = await openForm();
-    await user.selectOptions(dialog.getByLabelText("Sobre o que é?"), "bug");
+    await user.click(dialog.getByRole("radio", { name: "Erro" }));
     await user.type(dialog.getByLabelText("Assunto"), "  Erro ao convidar criador ");
     await user.type(dialog.getByLabelText("Mensagem"), "Ao clicar em convidar a tela trava.");
     await user.click(dialog.getByRole("button", { name: "Enviar pedido" }));
@@ -50,6 +50,21 @@ describe("Falar com o suporte", () => {
     expect(await dialog.findByText("Pedido #1042 enviado")).toBeInTheDocument();
     await user.click(dialog.getAllByRole("button", { name: "Fechar" }).at(-1) as HTMLElement);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("a categoria começa em Outro e pode ser trocada pelo teclado", async () => {
+    const { user, dialog } = await openForm();
+    expect(dialog.getByRole("radio", { name: "Outro" })).toBeChecked();
+    await user.click(dialog.getByRole("radio", { name: "Conta" }));
+    expect(dialog.getByRole("radio", { name: "Conta" })).toBeChecked();
+    expect(dialog.getByRole("radio", { name: "Outro" })).not.toBeChecked();
+  });
+
+  it("mostra o contador de caracteres do assunto e da mensagem", async () => {
+    const { user, dialog } = await openForm();
+    await user.type(dialog.getByLabelText("Assunto"), "Oi");
+    expect(dialog.getByText("2/120")).toBeInTheDocument();
+    expect(dialog.getByText("0/5000")).toBeInTheDocument();
   });
 
   it("erro da API aparece e o texto digitado continua lá", async () => {

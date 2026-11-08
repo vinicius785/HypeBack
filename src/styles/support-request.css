@@ -1,9 +1,32 @@
 /* "Falar com o suporte" (diálogo aberto pelo botão redondo do topo). */
-.pv .sup-form { display: flex; flex-direction: column; gap: 16px; }
-.pv .sup-form .nf > span { display: block; margin-bottom: 6px; font-size: 13.5px; font-weight: 600; }
-.pv .sup-form select.ni { appearance: none; padding-right: 38px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 22px) 50%, calc(100% - 16px) 50%; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; }
-.pv .sup-form .ni.ta { min-height: 140px; resize: vertical; font-family: inherit; }
+.pv .sup-form { display: flex; flex-direction: column; gap: 18px; }
+.pv .sup-form .nf { display: flex; flex-direction: column; gap: 6px; }
+.pv .sup-form .nf > label, .pv .sup-cat legend { display: block; margin: 0 0 8px; padding: 0; font-size: 13px; font-weight: 600; color: #52525b; letter-spacing: -.005em; }
+.pv .sup-form .nf > label { margin-bottom: 0; }
+.pv .sup-form .ni { font: inherit; font-size: 14.5px; width: 100%; box-sizing: border-box; border: 1.5px solid transparent; background: #f4f4f5; border-radius: 16px; padding: 13px 16px; outline: none; transition: background .2s, border-color .2s, box-shadow .2s; }
+.pv .sup-form .ni:focus { background: #fff; border-color: var(--ink, #0a0a0a); box-shadow: 0 0 0 4px rgba(10, 10, 10, .06); }
+.pv .sup-form .nf.err .ni { border-color: #dc2626; background: #fff; }
+.pv .sup-form .ni.ta { min-height: 150px; resize: vertical; line-height: 1.5; }
+.pv .sup-cat { border: 0; margin: 0; padding: 0; min-width: 0; }
+.pv .sup-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pv .sup-chip { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 14px; border-radius: 99px; background: #f4f4f5; font-size: 13.5px; font-weight: 600; color: #52525b; cursor: pointer; user-select: none; transition: background .2s, color .2s, transform .2s; }
+.pv .sup-chip:hover { background: #e9e9ec; color: var(--ink, #0a0a0a); }
+.pv .sup-chip:active { transform: scale(.97); }
+.pv .sup-chip input { position: absolute; inset: 0; opacity: 0; cursor: pointer; margin: 0; }
+.pv .sup-chip .ico { width: 15px; height: 15px; flex: none; }
+.pv .sup-chip.on { background: var(--ink, #0a0a0a); color: #fff; }
+.pv .sup-chip:has(input:focus-visible) { box-shadow: 0 0 0 3px rgba(158, 44, 250, .35); }
+.pv .sup-meta { display: flex; justify-content: space-between; gap: 12px; min-height: 16px; }
+.pv .sup-meta small { font-size: 12px; color: var(--muted, #7e7e7e); line-height: 16px; }
+.pv .sup-meta .nfe { color: #dc2626; font-weight: 600; }
+.pv .sup-count { margin-left: auto; font-variant-numeric: tabular-nums; }
+.pv .sup-ctx { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 14px; border-radius: 14px; background: #f4f4f5; color: var(--muted, #7e7e7e); font-size: 12.5px; line-height: 1.4; }
+.pv .sup-ctx .ico { width: 15px; height: 15px; flex: none; }
 .pv .sup-err { padding: 10px 14px; border-radius: 14px; background: #fdecec; color: #b91c1c; font-size: 13.5px; font-weight: 600; }
-.pv .sup-done { display: flex; flex-direction: column; gap: 6px; padding: 8px 0 4px; }
-.pv .sup-done b { font-size: 18px; letter-spacing: -.02em; }
-.pv .sup-done p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.pv .sup-done { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 18px 8px 8px; animation: sup-pop .5s cubic-bezier(.22, 1, .36, 1) both; }
+.pv .sup-ok { width: 56px; height: 56px; border-radius: 50%; background: var(--ink, #0a0a0a); color: #fff; display: grid; place-items: center; margin-bottom: 10px; box-shadow: 0 0 0 8px rgba(158, 44, 250, .14); }
+.pv .sup-ok .ico { width: 26px; height: 26px; stroke-width: 2.6; }
+.pv .sup-done b { font-size: 19px; letter-spacing: -.02em; }
+.pv .sup-done p { margin: 0; color: var(--muted, #7e7e7e); font-size: 14px; line-height: 1.5; max-width: 360px; }
+@keyframes sup-pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pv .sup-done { animation: none; } }

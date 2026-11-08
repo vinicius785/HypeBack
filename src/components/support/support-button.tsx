@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Headset } from "lucide-react";
+import { Bug, Check, CircleHelp, Headset, Lightbulb, Megaphone, Users, UserRound, Wallet, type LucideIcon } from "lucide-react";
 
 import { AdminDialog } from "@/components/admin/platform/admin-dialog";
 import { SUPPORT_CATEGORIES, SUPPORT_CATEGORY_LABEL, type SupportCategory } from "@/shared/services/admin-support";
@@ -12,6 +12,16 @@ import {
 } from "@/shared/services/support-requests";
 
 import "@/styles/support-request.css";
+
+const CATEGORY_ICON: Record<SupportCategory, LucideIcon> = {
+  account: UserRound,
+  billing: Wallet,
+  campaign: Megaphone,
+  creator: Users,
+  bug: Bug,
+  feature: Lightbulb,
+  other: CircleHelp,
+};
 
 /** Botão redondo "Falar com o suporte" do topo: abre o formulário que cria o pedido na fila do Suporte do Admin. */
 export function SupportButton() {
@@ -82,6 +92,9 @@ function SupportDialog({ onClose }: { onClose: () => void }) {
     >
       {sent ? (
         <div className="sup-done" role="status">
+          <span className="sup-ok" aria-hidden>
+            <Check className="ico" />
+          </span>
           <b>Pedido #{sent} enviado</b>
           <p>Recebemos o seu pedido. Quando a equipe responder, você recebe uma notificação aqui na plataforma.</p>
         </div>
@@ -95,19 +108,31 @@ function SupportDialog({ onClose }: { onClose: () => void }) {
             void submit();
           }}
         >
-          <label className="nf">
-            <span>Sobre o que é?</span>
-            <select className="ni" value={category} onChange={(e) => setCategory(e.target.value as SupportCategory)}>
-              {SUPPORT_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {SUPPORT_CATEGORY_LABEL[c]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className={`nf${tried && subjectError ? " err" : ""}`}>
-            <span>Assunto</span>
+          <fieldset className="sup-cat">
+            <legend>Sobre o que é?</legend>
+            <div className="sup-chips">
+              {SUPPORT_CATEGORIES.map((c) => {
+                const Icon = CATEGORY_ICON[c];
+                return (
+                  <label key={c} className={`sup-chip${category === c ? " on" : ""}`}>
+                    <input
+                      type="radio"
+                      name="support-category"
+                      value={c}
+                      checked={category === c}
+                      onChange={() => setCategory(c)}
+                    />
+                    <Icon className="ico" aria-hidden />
+                    {SUPPORT_CATEGORY_LABEL[c]}
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+          <div className={`nf${tried && subjectError ? " err" : ""}`}>
+            <label htmlFor="support-subject">Assunto</label>
             <input
+              id="support-subject"
               className="ni"
               data-adm-autofocus=""
               maxLength={SUPPORT_SUBJECT_MAX}
@@ -116,11 +141,17 @@ function SupportDialog({ onClose }: { onClose: () => void }) {
               aria-invalid={tried && subjectError ? true : undefined}
               onChange={(e) => setSubject(e.target.value)}
             />
-            {tried && subjectError ? <small className="nfe">{subjectError}</small> : null}
-          </label>
-          <label className={`nf${tried && messageError ? " err" : ""}`}>
-            <span>Mensagem</span>
+            <span className="sup-meta">
+              {tried && subjectError ? <small className="nfe">{subjectError}</small> : <small />}
+              <small className="sup-count">
+                {subject.length}/{SUPPORT_SUBJECT_MAX}
+              </small>
+            </span>
+          </div>
+          <div className={`nf${tried && messageError ? " err" : ""}`}>
+            <label htmlFor="support-message">Mensagem</label>
             <textarea
+              id="support-message"
               className="ni ta"
               rows={6}
               maxLength={SUPPORT_MESSAGE_MAX}
@@ -128,9 +159,24 @@ function SupportDialog({ onClose }: { onClose: () => void }) {
               value={message}
               aria-invalid={tried && messageError ? true : undefined}
               onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault();
+                  void submit();
+                }
+              }}
             />
-            {tried && messageError ? <small className="nfe">{messageError}</small> : null}
-          </label>
+            <span className="sup-meta">
+              {tried && messageError ? <small className="nfe">{messageError}</small> : <small>Quanto mais detalhe, mais rápido a equipe resolve.</small>}
+              <small className="sup-count">
+                {message.length}/{SUPPORT_MESSAGE_MAX}
+              </small>
+            </span>
+          </div>
+          <p className="sup-ctx">
+            <CircleHelp className="ico" aria-hidden />
+            Enviamos junto a página em que você está, para a equipe ver o mesmo que você.
+          </p>
           {error ? (
             <div className="sup-err" role="alert">
               {error}
