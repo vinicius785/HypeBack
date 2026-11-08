@@ -1,61 +1,51 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 
 import { ManagementSummary } from "./management-summary";
 import type { ExtendedInfluencer } from "../management-kanban-config";
 
-const late = [
-  {
-    id: "9",
-    name: "Bruno Vaz",
-    username: "bruno",
-    avatar: "",
-    statusHistory: [{ id: "h", status: "content_pending", timestamp: new Date(Date.now() - 5 * 86_400_000).toISOString() }],
-  } as unknown as ExtendedInfluencer,
+const late = [{ id: "9", name: "Bruno Vaz" } as unknown as ExtendedInfluencer];
+const deadlines: Array<[string, Date]> = [
+  ["Conteúdos", new Date(2026, 10, 23)],
+  ["Publicação", new Date(2026, 10, 27)],
 ];
 
-function setup() {
-  const onAttention = vi.fn();
-  const onCharge = vi.fn();
-  render(
+function setup(over: Partial<React.ComponentProps<typeof ManagementSummary>> = {}) {
+  return render(
     <ManagementSummary
       progress={41.6}
-      attention={[{ n: 2, label: "Roteiros para aprovar", stage: "rot" }]}
       attentionTotal={2}
       late={late}
-      deadlines={[["Conteúdos", new Date(Date.now() + 6 * 86_400_000)]]}
+      deadlines={deadlines}
       inDays={() => "em 6 dias"}
-      onAttention={onAttention}
-      onCharge={onCharge}
+      {...over}
     />,
   );
-  return { onAttention, onCharge };
 }
 
 describe("ManagementSummary (nenhum criador selecionado)", () => {
-  it("mostra progresso, pendências, atrasos e prazos", () => {
+  it("mostra tudo na pílula fechada: progresso, pendências, atrasos e o próximo prazo", () => {
     setup();
     expect(screen.getByText("42%")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Roteiros para aprovar/ })).toBeInTheDocument();
-    expect(screen.getByText("Conteúdos", { exact: false })).toBeInTheDocument();
-    expect(screen.getByText("em 6 dias")).toBeInTheDocument();
+    expect(screen.getByText("2 precisam da sua ação")).toBeInTheDocument();
+    expect(screen.getByText("1 em atraso")).toBeInTheDocument();
+    expect(screen.getByText("Conteúdos 23/11")).toBeInTheDocument();
+    expect(screen.queryByText(/Publicação/)).not.toBeInTheDocument(); // só o próximo prazo
   });
 
-  it("clicar numa pendência leva à etapa", async () => {
-    const user = userEvent.setup();
-    const { onAttention } = setup();
-    await user.click(screen.getByRole("button", { name: /Roteiros para aprovar/ }));
-    expect(onAttention).toHaveBeenCalledWith("rot");
+  it("não há nada para abrir: sem botões", () => {
+    setup();
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
 
-  it("os atrasados ficam recolhidos, abrem sob demanda e dão 'Cobrar'", async () => {
-    const user = userEvent.setup();
-    const { onCharge } = setup();
-    expect(screen.queryByRole("list", { name: "Criadores em atraso" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Ver o criador/ }));
-    expect(screen.getByText("Bruno Vaz")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Cobrar" }));
-    expect(onCharge).toHaveBeenCalledWith(late[0]);
+  it("estado tranquilo: nada pendente e em dia", () => {
+    setup({ attentionTotal: 0, late: [], deadlines: [] });
+    expect(screen.getByText("Nada pendente")).toBeInTheDocument();
+    expect(screen.getByText("Em dia")).toBeInTheDocument();
+  });
+
+  it("singular quando é só um criador", () => {
+    setup({ attentionTotal: 1 });
+    expect(screen.getByText("1 precisa da sua ação")).toBeInTheDocument();
   });
 });

@@ -335,7 +335,7 @@ export function ContractsTab({ influencers = [] }: ContractsTabProps) {
   return (
     <>
       <div className="pv">
-        <div className="mg">
+        <div className="mg flat">
           <div className="gwrap">
             <div className="gmain card gjm">
               <div className="gjh">

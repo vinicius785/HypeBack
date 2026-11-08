@@ -27,8 +27,8 @@ interface ReserveBalancePreviewProps {
   committedCents?: number | null;
 }
 
-/** Decompõe o movimento financeiro; reusado pelo preview e pelo gate do modal. */
-function computeMovement({
+/** Decompõe o movimento financeiro; reusado pelo preview, pelo gate do modal e pela confirmação no painel. */
+export function computeMovement({
   costCents,
   availableCents,
   committedCents,

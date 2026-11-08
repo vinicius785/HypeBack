@@ -26,10 +26,9 @@ function setup(props: Partial<CampaignHeaderProps> = {}) {
       description="Apresentar o produto ao público brasileiro"
       status="published"
       statusLabel="Publicado"
-      creators={0}
-      progress={50}
       canWrite
       checking={false}
+      hasPublished
       {...handlers}
       {...props}
     >
@@ -39,16 +38,62 @@ function setup(props: Partial<CampaignHeaderProps> = {}) {
   return { ...view, ...handlers };
 }
 
-describe("CampaignHeader: excluir", () => {
-  it("mostra Excluir só com permissão e com a ação ligada; o clique chama onDelete", () => {
+const openMenu = () => fireEvent.click(screen.getByRole("button", { name: "Mais ações da campanha" }));
+
+describe("CampaignHeader: menu ⋯ (Editar e Excluir)", () => {
+  it("Editar e Excluir ficam dentro do menu, não soltos no cartão", () => {
+    setup({ canDelete: true, onDelete: vi.fn() });
+    expect(screen.queryByRole("button", { name: "Editar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Excluir/ })).toBeNull();
+    expect(screen.queryByRole("menu")).toBeNull();
+    openMenu();
+    expect(screen.getByRole("menuitem", { name: "Editar" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /Excluir/ })).toBeInTheDocument();
+  });
+
+  it("mostra Excluir só com permissão e com a ação ligada; o clique chama onDelete e fecha o menu", () => {
     const onDelete = vi.fn();
     const { unmount } = setup({ canDelete: true, onDelete });
-    fireEvent.click(screen.getByRole("button", { name: /Excluir/ }));
+    openMenu();
+    fireEvent.click(screen.getByRole("menuitem", { name: /Excluir/ }));
     expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("menu")).toBeNull();
     unmount();
 
     setup({ canDelete: false, onDelete });
-    expect(screen.queryByRole("button", { name: /Excluir/ })).not.toBeInTheDocument();
+    openMenu();
+    expect(screen.queryByRole("menuitem", { name: /Excluir/ })).not.toBeInTheDocument();
+  });
+
+  it("Editar chama onEdit; Esc e clique fora fecham o menu", () => {
+    const { onEdit } = setup();
+    openMenu();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Editar" }));
+    expect(onEdit).toHaveBeenCalledTimes(1);
+
+    openMenu();
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("menu")).toBeNull();
+
+    openMenu();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("sem nenhuma permissão não existe o botão do menu", () => {
+    setup({ canWrite: false, canDelete: false });
+    expect(screen.queryByRole("button", { name: "Mais ações da campanha" })).toBeNull();
+  });
+});
+
+describe("CampaignHeader: Verificar publicações", () => {
+  it("só aparece quando há criador na etapa Publicado", () => {
+    const { unmount } = setup({ hasPublished: false });
+    expect(screen.queryByRole("button", { name: "Verificar publicações" })).toBeNull();
+    unmount();
+    setup({ hasPublished: true });
+    expect(screen.getByRole("button", { name: "Verificar publicações" })).toBeInTheDocument();
   });
 });
 
@@ -69,15 +114,52 @@ describe("CampaignHeader", () => {
     expect(container.querySelector(".chd-ph")).toHaveTextContent("SG");
   });
 
-  it("publicada: a etiqueta despublica para quem pode escrever e é só texto para quem não pode", () => {
+  it("o status é um seletor: abre um menu de opções (sem popup) e escolher a outra opção despublica/publica", () => {
     const { onUnpublish, unmount } = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Publicado" }));
+    const trigger = screen.getByRole("button", { name: "Publicado" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(trigger);
+    const list = screen.getByRole("listbox", { name: "Status da campanha" });
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("option", { name: "Publicado" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("option", { name: "Rascunho" })).toHaveAttribute("aria-selected", "false");
+    expect(onUnpublish).not.toHaveBeenCalled(); // só abrir o menu não dispara nada
+    fireEvent.click(screen.getByRole("option", { name: "Rascunho" }));
     expect(onUnpublish).toHaveBeenCalledTimes(1);
+    expect(list).not.toBeInTheDocument();
     unmount();
 
-    setup({ canWrite: false });
+    const { onPublish } = setup({ status: "draft", statusLabel: "Rascunho" });
+    fireEvent.click(screen.getByRole("button", { name: "Rascunho" }));
+    fireEvent.click(screen.getByRole("option", { name: "Publicado" }));
+    expect(onPublish).toHaveBeenCalledTimes(1);
+  });
+
+  it("escolher a opção que já está ativa só fecha o menu; Esc e clique fora também fecham", () => {
+    const { onUnpublish, onPublish } = setup();
+    fireEvent.click(screen.getByRole("button", { name: "Publicado" }));
+    fireEvent.click(screen.getByRole("option", { name: "Publicado" }));
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(onUnpublish).not.toHaveBeenCalled();
+    expect(onPublish).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Publicado" }));
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Publicado" }));
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  it("sem permissão de escrita (ou status encerrado) a etiqueta é só texto", () => {
+    const { unmount } = setup({ canWrite: false });
     expect(screen.queryByRole("button", { name: "Publicado" })).toBeNull();
     expect(screen.getByText("Publicado")).toBeInTheDocument();
+    unmount();
+
+    setup({ status: "finished", statusLabel: "Encerrada" });
+    expect(screen.queryByRole("button", { name: "Encerrada" })).toBeNull();
+    expect(screen.getByText("Encerrada")).toBeInTheDocument();
   });
 
   it("rascunho oferece Publicar e rebaixa Verificar publicações a secundário", () => {
@@ -88,14 +170,12 @@ describe("CampaignHeader", () => {
   });
 
   it("campanha publicada não oferece Publicar e Verificar publicações é a ação principal", () => {
-    const { onCheckPublications, onEdit } = setup();
+    const { onCheckPublications } = setup();
     expect(screen.queryByRole("button", { name: "Publicar" })).toBeNull();
     const verify = screen.getByRole("button", { name: "Verificar publicações" });
     expect(verify).not.toHaveClass("out");
     fireEvent.click(verify);
-    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
     expect(onCheckPublications).toHaveBeenCalledTimes(1);
-    expect(onEdit).toHaveBeenCalledTimes(1);
   });
 
   it("somente leitura: só convite e compartilhar, com o convite em destaque", () => {
@@ -113,16 +193,5 @@ describe("CampaignHeader", () => {
   it("verificando: troca o rótulo e desabilita o botão", () => {
     setup({ checking: true });
     expect(screen.getByRole("button", { name: "Verificando..." })).toBeDisabled();
-  });
-
-  it("concorda o plural de criadores e limita o progresso entre 0 e 100", () => {
-    const { unmount } = setup({ creators: 1, progress: 140 });
-    expect(screen.getByText("criador")).toBeInTheDocument();
-    expect(screen.getByText("100%")).toBeInTheDocument();
-    unmount();
-
-    setup({ creators: 12, progress: -5 });
-    expect(screen.getByText("criadores")).toBeInTheDocument();
-    expect(screen.getByText("0%")).toBeInTheDocument();
   });
 });

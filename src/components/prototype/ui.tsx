@@ -25,6 +25,7 @@ const MAP: Record<string, keyof typeof icons> = {
   clock: "Clock",
   share: "Share2",
   star: "Star",
+  pin: "MapPin",
   check: "Check",
   checks: "CheckCheck",
   search: "Search",

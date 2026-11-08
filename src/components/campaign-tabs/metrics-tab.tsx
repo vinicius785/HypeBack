@@ -258,18 +258,9 @@ export function MetricsTab({
       reach: sum((m) => m.reach),
       views: sum((m) => m.views),
       inter: sum((m) => m.likes + m.comments + m.shares),
-      shares: sum((m) => m.shares),
       eng,
     };
   }, [withMetrics]);
-
-  const inReview = useMemo(
-    () =>
-      contents.filter(
-        (c) => c.status !== "published" && c.status !== "rejected" && (phase === "all" || c.phase_id === phase)
-      ).length,
-    [contents, phase]
-  );
 
   const series = useMemo(() => {
     const today = startOfDay(new Date());
@@ -375,17 +366,12 @@ export function MetricsTab({
   const maxAge = Math.max(...(audience ? [...audience.ig, ...audience.yt] : [0]), 1);
   const topMax = topCreators[0]?.v || 1;
 
-  const kpis: Array<[string, string, string, string]> = [
-    ["Alcance total", mfmt(kpi.reach), "pessoas alcançadas", "eye"],
-    ["Visualizações", mfmt(kpi.views), "views totais", "video"],
-    [
-      "Engajamento médio",
-      kpi.eng ? kpi.eng.toFixed(1).replace(".", ",") + "%" : "—",
-      "média por conteúdo",
-      "trend",
-    ],
-    ["Interações", mfmt(kpi.inter), `${mfmt(kpi.shares)} compartilhamentos`, "heart"],
-    ["Conteúdos no ar", String(published.length), `${inReview} em andamento`, "check"],
+  const kpis: Array<[string, string, string]> = [
+    ["Alcance total", mfmt(kpi.reach), "eye"],
+    ["Visualizações", mfmt(kpi.views), "video"],
+    ["Engajamento médio", kpi.eng ? kpi.eng.toFixed(1).replace(".", ",") + "%" : "—", "trend"],
+    ["Interações", mfmt(kpi.inter), "heart"],
+    ["Conteúdos no ar", String(published.length), "check"],
   ];
 
   const sel = selected;
@@ -413,14 +399,13 @@ export function MetricsTab({
       <div className="pv">
         <div className="mx">
           <div className="mx-kp">
-            {kpis.map(([l, v, s, i], k) => (
+            {kpis.map(([l, v, i], k) => (
               <div key={l} className="mx-k" style={{ "--k": k } as React.CSSProperties}>
                 <span>
                   <I n={i} cls="sm" />
                 </span>
                 <small>{l}</small>
                 <b>{v}</b>
-                <em>{s}</em>
               </div>
             ))}
           </div>

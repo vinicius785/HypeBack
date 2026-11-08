@@ -3,13 +3,14 @@
  * clicar de novo no cartão recolhe, anterior/próximo trocam o criador sem fechar o painel.
  */
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 vi.mock("@tanstack/react-router", () => ({
   useParams: () => ({ campaignId: "c1" }),
   useNavigate: () => vi.fn(),
 }));
+vi.mock("./kanban/panel-profile", () => ({ PanelProfile: () => null }));
 vi.mock("@/hooks/use-niches", () => ({ useNiches: () => ({ data: [] }) }));
 vi.mock("@/hooks/use-campaign-influencers", () => ({
   useUpdateInfluencerStatus: () => ({ mutate: vi.fn(), isPending: false }),
@@ -82,7 +83,8 @@ describe("Gerenciamento: painel superior + quadro", () => {
     await user.click(screen.getByText("Carla Reis"));
     expect(panel()).toHaveAccessibleName("Detalhes de Carla Reis");
     await user.click(container.querySelector('[data-inf="3"] .kc-n')!);
-    expect(panel()).not.toBeInTheDocument();
+    // a ilha do criador se recolhe um instante antes de dar lugar ao resumo
+    await waitFor(() => expect(panel()).not.toBeInTheDocument());
     expect(screen.getByRole("region", { name: "Resumo da campanha" })).toBeInTheDocument();
   });
 
@@ -106,7 +108,8 @@ describe("Gerenciamento: painel superior + quadro", () => {
     setup();
     await user.click(screen.getByText("Ana Lima"));
     await user.click(screen.getByRole("button", { name: "Fechar detalhes" }));
-    expect(panel()).not.toBeInTheDocument();
+    await waitFor(() => expect(panel()).not.toBeInTheDocument());
+    expect(screen.getByRole("region", { name: "Resumo da campanha" })).toBeInTheDocument();
   });
 
   it("as ações da etapa aparecem no painel conforme a coluna do criador", async () => {

@@ -32,7 +32,19 @@ import {
   idleDaysOf,
   type CardHandlers,
 } from "./kanban/influencer-card";
+import { InfluencerProfileDrawer } from "@/components/influencer-profile/profile-drawer";
 import { ManagementPanel } from "./kanban/management-panel";
+import {
+  ENGAGEMENT_PRESETS,
+  FOLLOWER_PRESETS,
+  NO_ADVANCED,
+  SINCE_PRESETS,
+  advancedCount,
+  formatCompact,
+  matchesAdvanced,
+  parseCompact,
+  type AdvancedFilters,
+} from "./kanban/board-filters";
 import { ManagementSummary } from "./kanban/management-summary";
 import { nextPanelId, revealDelta } from "./kanban/panel-nav";
 import "@/styles/management-board.css";
@@ -128,7 +140,7 @@ function KanbanColumn({
   selectedId,
   movingId,
   dropState,
-  isDimmed,
+  hiddenCount,
   handlers,
 }: {
   column: KanbanColumn;
@@ -139,7 +151,8 @@ function KanbanColumn({
   movingId: string | null;
   /** Durante o arrasto: `ok` = o cartão pode ser solto aqui, `no` = movimento não permitido. */
   dropState?: "ok" | "no";
-  isDimmed: (inf: ExtendedInfluencer, column: string) => boolean;
+  /** Quantos criadores desta coluna os filtros escondem (some do quadro, não fica esmaecido). */
+  hiddenCount: number;
   handlers: CardHandlers;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
@@ -153,7 +166,7 @@ function KanbanColumn({
     >
       <header>
         <h4>{COLUMN_LABEL[column.id] ?? column.label}</h4>
-        <span>{influencers.length}</span>
+        <span className={influencers.length === 0 ? "zero" : ""}>{influencers.length}</span>
       </header>
       <SortableContext items={influencerIds} strategy={verticalListSortingStrategy}>
         <div className="kl">
@@ -162,7 +175,7 @@ function KanbanColumn({
               key={influencer.id}
               influencer={influencer}
               column={getCurrentStatus(influencer)}
-              dim={isDimmed(influencer, column.id)}
+              dim={false}
               selected={selectedId === idToString(influencer.id)}
               moving={movingId === idToString(influencer.id)}
               handlers={handlers}
@@ -174,7 +187,9 @@ function KanbanColumn({
                 ? "Solte aqui"
                 : dropState === "no"
                   ? "Movimento não permitido"
-                  : "Nenhum criador nesta etapa"}
+                  : hiddenCount > 0
+                    ? "Nenhum criador com esses filtros"
+                    : "Nenhum criador nesta etapa"}
             </div>
           )}
         </div>
@@ -304,21 +319,60 @@ export function ManagementTab({
   const [fpopOpen, setFpopOpen] = useState(false);
   const [q, setQ] = useState("");
   const [net, setNet] = useState<string>("all");
+  // Filtros de perfil: seguidores (mín./máx.), engajamento, nicho e data de inscrição.
+  const [adv, setAdv] = useState<AdvancedFilters>(NO_ADVANCED);
+  const [folMinTxt, setFolMinTxt] = useState("");
+  const [folMaxTxt, setFolMaxTxt] = useState("");
   const [movingId, setMovingId] = useState<string | null>(null);
   const [panelId, setPanelId] = useState<string | null>(null);
-  // Painel de detalhes: normal (cabe no conteúdo, até ~42% da altura) ou expandido.
-  const [panelExpanded, setPanelExpanded] = useState(false);
+  // Perfil completo: abre como gaveta SOBRE o quadro (fundo desfocado), sem sair do Gerenciamento.
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
   // Anterior/próximo e deep-links rolam o quadro até o cartão; o clique no cartão não precisa (ele já está à vista).
   const scrollToCardRef = useRef(false);
   const [stage, setStage] = useState<StageKey>("sel");
   const kbxRef = useRef<HTMLDivElement>(null);
   const kbwRef = useRef<HTMLDivElement>(null);
+  const jumpsRef = useRef<HTMLDivElement>(null);
+  // Durante a rolagem suave de um clique em etapa, a rolagem não pode "adivinhar" a etapa (a bolha pularia por todas as do meio).
+  const jumpLockRef = useRef(0);
+  const [jumpInd, setJumpInd] = useState<{ x: number; w: number } | null>(null);
   // Topo do quadro medido ANTES de abrir/fechar o painel, para o quadro não "pular" sob o cursor.
   const anchorTopRef = useRef<number | null>(null);
   const captureBoardTop = () => {
     anchorTopRef.current = kbwRef.current?.getBoundingClientRect().top ?? null;
   };
   const fpopRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  // A lupa abre o campo de busca A PARTIR DELA: ele cresce para a esquerda (por cima das setas) e para um pouco antes da última
+  // etapa ("Recusados"), sem tocar nas etapas. A largura do botão Filtros e o espaço livre são medidos ao abrir e ao redimensionar.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filterBtnW, setFilterBtnW] = useState(104);
+  const [searchW, setSearchW] = useState(280);
+  const measureSearch = () => {
+    const wrap = fpopRef.current;
+    if (!wrap) return;
+    const fw = wrap.querySelector<HTMLElement>(".fpop")?.getBoundingClientRect().width;
+    if (fw) setFilterBtnW(Math.round(fw));
+    const lupa = wrap.querySelector<HTMLElement>(".kbt-search")?.getBoundingClientRect();
+    const jumps = jumpsRef.current?.getBoundingClientRect();
+    if (lupa && jumps) setSearchW(Math.max(180, Math.round(lupa.right - jumps.right - 12)));
+  };
+  useEffect(() => {
+    if (!searchOpen) return;
+    window.addEventListener("resize", measureSearch);
+    return () => window.removeEventListener("resize", measureSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchOpen]);
+  const openSearch = () => {
+    measureSearch();
+    setFpopOpen(false);
+    setSearchOpen(true);
+    window.setTimeout(() => searchRef.current?.focus({ preventScroll: true }), 220);
+  };
+  const closeSearch = () => {
+    setSearchOpen(false);
+    searchRef.current?.blur();
+  };
 
   useEffect(() => {
     if (!fpopOpen) return;
@@ -327,8 +381,15 @@ export function ManagementTab({
         setFpopOpen(false);
       }
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFpopOpen(false);
+    };
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [fpopOpen]);
 
   const jumpStage = (k: StageKey) => {
@@ -336,6 +397,7 @@ export function ManagementTab({
     const g = x?.querySelector<HTMLElement>(`[data-grp="${k}"]`);
     if (!x || !g) return;
     setStage(k);
+    jumpLockRef.current = Date.now() + 900;
     x.scrollTo({ left: g.offsetLeft - x.offsetLeft - 4, behavior: "smooth" });
   };
 
@@ -768,6 +830,25 @@ export function ManagementTab({
       ? (extendedInfluencers.find((i) => idToString(i.id) === panelId) ?? null)
       : null;
 
+  // Ao desselecionar, a ilha do criador não some de uma vez: fica um instante "se recolhendo" e só então vira o resumo.
+  const [exiting, setExiting] = useState<ExtendedInfluencer | null>(null);
+  const lastPanelInfRef = useRef<ExtendedInfluencer | null>(null);
+  useEffect(() => {
+    if (panelInfluencer) lastPanelInfRef.current = panelInfluencer;
+  });
+  // Derivado no próprio render (não em efeito): senão o resumo aparece por um quadro antes da ilha começar a se recolher.
+  const [prevPanelId, setPrevPanelId] = useState(panelId);
+  if (panelId !== prevPanelId) {
+    setPrevPanelId(panelId);
+    setExiting(panelId == null ? lastPanelInfRef.current : null);
+  }
+  useEffect(() => {
+    if (!exiting) return;
+    const t = window.setTimeout(() => setExiting(null), 440);
+    return () => window.clearTimeout(t);
+  }, [exiting]);
+  const shownInfluencer = panelInfluencer ?? exiting;
+
   const isLateInf = (inf: ExtendedInfluencer) =>
     LATE_COLUMNS.includes(getCurrentStatus(inf)) &&
     (idleDaysOf(inf) ?? 0) >= LATE_AFTER_DAYS;
@@ -786,6 +867,7 @@ export function ManagementTab({
   const passes = (inf: ExtendedInfluencer, f: typeof flt) =>
     matchesQuery(inf) &&
     matchesNetwork(inf) &&
+    matchesAdvanced(inf, adv, net) &&
     (f === "all" ||
       (f === "me" && NEEDME.includes(getCurrentStatus(inf))) ||
       (f === "late" && isLateInf(inf)) ||
@@ -796,11 +878,20 @@ export function ManagementTab({
   const networksInUse = Array.from(
     new Set(extendedInfluencers.flatMap((i) => [...networkOf(i)])),
   ).sort();
-  const activeFilters = (flt !== "all" ? 1 : 0) + (net !== "all" ? 1 : 0) + (q.trim() ? 1 : 0);
+  const nichesInUse = Array.from(
+    new Set(extendedInfluencers.map((i) => i.nicheName).filter((n): n is string => !!n)),
+  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const activeFilters = (flt !== "all" ? 1 : 0) + (net !== "all" ? 1 : 0) + advancedCount(adv);
   const clearFilters = () => {
     setFlt("all");
     setNet("all");
-    setQ("");
+    setAdv(NO_ADVANCED);
+    setFolMinTxt("");
+    setFolMaxTxt("");
+  };
+  const setFolMin = (v: number | null) => {
+    setAdv((a) => ({ ...a, folMin: v }));
+    setFolMinTxt(v == null ? "" : formatCompact(v));
   };
 
   const FLT: Array<[typeof flt, string, string]> = [
@@ -841,7 +932,7 @@ export function ManagementTab({
       toast.error("Não foi possível abrir o perfil: usuário sem user_id.");
       return;
     }
-    navigate({ to: "/influencer/$influencerId", params: { influencerId: userId } });
+    setProfileUserId(userId);
   };
 
   const attention = [
@@ -914,6 +1005,20 @@ export function ManagementTab({
     else window.scrollBy(0, delta);
   }, [panelOpen]);
 
+  // A bolha branca do "dock" de etapas desliza até a etapa ativa (mede o botão ativo; refaz ao redimensionar).
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = jumpsRef.current?.querySelector<HTMLElement>("button.on");
+      setJumpInd((cur) => {
+        const next = el ? { x: el.offsetLeft, w: el.offsetWidth } : null;
+        return cur && next && cur.x === next.x && cur.w === next.w ? cur : next;
+      });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [stage, groups.length]);
+
   /** Setas do quadro: rolam quase uma tela, parando no começo de uma coluna. */
   const scrollBoard = (dir: -1 | 1) => {
     const board = kbxRef.current;
@@ -945,6 +1050,315 @@ export function ManagementTab({
     },
   };
 
+  // Resumo dos filtros ligados (cada um vira uma etiqueta que se remove com um clique) e o resultado atual.
+  const filterTags: Array<{ key: string; label: string; clear: () => void }> = [];
+  if (flt !== "all") {
+    filterTags.push({ key: "flt", label: FLT.find(([k]) => k === flt)?.[1] ?? "", clear: () => setFlt("all") });
+  }
+  if (net !== "all") filterTags.push({ key: "net", label: net, clear: () => setNet("all") });
+  if (adv.folMin != null || adv.folMax != null) {
+    const label =
+      adv.folMin != null && adv.folMax != null
+        ? `${formatCompact(adv.folMin)} – ${formatCompact(adv.folMax)} seguidores`
+        : adv.folMin != null
+          ? `Acima de ${formatCompact(adv.folMin)} seguidores`
+          : `Até ${formatCompact(adv.folMax as number)} seguidores`;
+    filterTags.push({
+      key: "fol",
+      label,
+      clear: () => {
+        setAdv((a) => ({ ...a, folMin: null, folMax: null }));
+        setFolMinTxt("");
+        setFolMaxTxt("");
+      },
+    });
+  }
+  if (adv.engMin != null) {
+    filterTags.push({ key: "eng", label: `Engajamento ≥ ${adv.engMin}%`, clear: () => setAdv((a) => ({ ...a, engMin: null })) });
+  }
+  if (adv.niche != null) filterTags.push({ key: "niche", label: adv.niche, clear: () => setAdv((a) => ({ ...a, niche: null })) });
+  if (adv.sinceDays != null) {
+    filterTags.push({
+      key: "since",
+      label: adv.sinceDays === 1 ? "Inscritos hoje" : `Inscritos nos últimos ${adv.sinceDays} dias`,
+      clear: () => setAdv((a) => ({ ...a, sinceDays: null })),
+    });
+  }
+  const filteredCount = extendedInfluencers.filter((i) => passes(i, flt)).length;
+
+  // Etapas, setas e filtros moram dentro da própria ilha (um só elemento no topo do quadro).
+  const stageBar = (
+              <div className="isl-dockwrap" ref={fpopRef}>
+                <div className="kbt isl-dock" style={{ ["--fw" as string]: `${filterBtnW}px`, ["--sxw" as string]: `${searchW}px` }}>
+                  <div className="jumps" ref={jumpsRef}>
+                    {jumpInd ? (
+                      <i
+                        className="jmp-ind"
+                        aria-hidden
+                        style={{ width: jumpInd.w, transform: `translateX(${jumpInd.x}px)` }}
+                      />
+                    ) : null}
+                    {groups.map((g) => (
+                      <button
+                        key={g.k}
+                        type="button"
+                        className={stage === g.k ? "on" : ""}
+                        onClick={() => jumpStage(g.k)}
+                      >
+                        {STAGE_SHORT[g.k]}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="kbt-r">
+                  <div className="kbt-arr" role="group" aria-label="Rolar o quadro">
+                    <button type="button" className="round" aria-label="Rolar o quadro para a esquerda" onClick={() => scrollBoard(-1)}>
+                      <I n="chevl" cls="sm" />
+                    </button>
+                    <button type="button" className="round" aria-label="Rolar o quadro para a direita" onClick={() => scrollBoard(1)}>
+                      <I n="chev" cls="sm" />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className={`kbt-search${q.trim() ? " act" : ""}`}
+                    aria-label={q.trim() ? "Busca ativa" : "Buscar criador"}
+                    aria-expanded={searchOpen}
+                    aria-controls="isl-sx"
+                    title="Buscar criador"
+                    onClick={openSearch}
+                  >
+                    <I n="search" cls="sm" />
+                  </button>
+                  <div className={`pop fpop ${fpopOpen ? "open" : ""}`}>
+                    <button
+                      type="button"
+                      className={`fbtn ${activeFilters > 0 ? "act" : ""}`}
+                      aria-label={activeFilters > 0 ? `Filtros (${activeFilters} ativos)` : "Filtros"}
+                      aria-expanded={fpopOpen}
+                      aria-controls="isl-filt"
+                      onClick={() => setFpopOpen((v) => !v)}
+                    >
+                      <I n="funnel" cls="sm" />
+                      <span id="fpl">Filtros</span>
+                      {activeFilters > 0 ? <em className="fcnt">{activeFilters}</em> : null}
+                    </button>
+                  </div>
+                  </div>
+
+                  <div id="isl-sx" className={`kbt-sx${searchOpen ? " open" : ""}`} role="search" inert={!searchOpen}>
+                    <I n="search" cls="sm" />
+                    <input
+                      ref={searchRef}
+                      type="search"
+                      value={q}
+                      placeholder="Nome ou @usuário"
+                      aria-label="Buscar criador"
+                      onChange={(e) => setQ(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          setQ("");
+                          closeSearch();
+                        }
+                      }}
+                    />
+                    {q.trim() ? (
+                      <span className="kbt-sx-n" aria-live="polite">
+                        {extendedInfluencers.filter((i) => passes(i, flt)).length} encontrados
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="kbt-sx-x"
+                      aria-label={q ? "Limpar busca" : "Fechar busca"}
+                      onClick={() => {
+                        if (q) {
+                          setQ("");
+                          searchRef.current?.focus();
+                        } else {
+                          closeSearch();
+                        }
+                      }}
+                    >
+                      <I n="x" cls="sm" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filtros: abrem DENTRO da ilha (ela cresce), em vez de um balão solto por cima do quadro. */}
+                <div id="isl-filt" className={`isl-filt${fpopOpen ? " open" : ""}`} inert={!fpopOpen}>
+                  <div className="isl-filt-i">
+                    <div className="isl-filt-c" role="dialog" aria-label="Filtros do quadro">
+                      <header className="fx-top">
+                        <div className="fx-title">
+                          <b>Filtros</b>
+                          <span aria-live="polite">
+                            {filteredCount} de {extendedInfluencers.length} criadores
+                          </span>
+                        </div>
+                        {filterTags.length > 0 ? (
+                          <ul className="fx-tags" aria-label="Filtros ativos">
+                            {filterTags.map((t) => (
+                              <li key={t.key}>
+                                <button type="button" title="Clique para desativar" aria-label={`Desativar filtro: ${t.label}`} onClick={t.clear}>
+                                  <span>{t.label}</span>
+                                  <I n="x" cls="sm" />
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        {activeFilters > 0 ? (
+                          <button type="button" className="fx-clear" onClick={clearFilters}>
+                            Limpar tudo
+                          </button>
+                        ) : null}
+                      </header>
+
+                      <div className="fx-groups">
+                        <div className="fx-g" role="group" aria-label="Situação">
+                          <div className="fx-gh"><i><I n="flag" cls="sm" /></i><small>Situação</small></div>
+                          <div className="fx-chips">
+                            {FLT.filter(([k]) => k !== "ext").map(([k, l]) => (
+                              <button key={k} type="button" className={flt === k ? "on" : ""} aria-pressed={flt === k} onClick={() => setFlt(k)}>
+                                {l}
+                                <em>{nfl(k)}</em>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="fx-g" role="group" aria-label="Origem">
+                          <div className="fx-gh"><i><I n="seal" cls="sm" /></i><small>Origem</small></div>
+                          <div className="fx-chips">
+                            <button
+                              type="button"
+                              className={flt === "ext" ? "on" : ""}
+                              aria-pressed={flt === "ext"}
+                              onClick={() => setFlt(flt === "ext" ? "all" : "ext")}
+                            >
+                              Criadores externos
+                              <em>{nfl("ext")}</em>
+                            </button>
+                          </div>
+                        </div>
+                        {networksInUse.length > 1 ? (
+                          <div className="fx-g" role="group" aria-label="Rede social">
+                            <div className="fx-gh"><i><I n="share" cls="sm" /></i><small>Rede social</small></div>
+                            <div className="fx-chips">
+                              {["all", ...networksInUse].map((n) => (
+                                <button key={n} type="button" className={net === n ? "on" : ""} aria-pressed={net === n} onClick={() => setNet(n)}>
+                                  {n === "all" ? "Todas" : n}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                        <div className="fx-g" role="group" aria-label="Inscrição">
+                          <div className="fx-gh"><i><I n="cal" cls="sm" /></i><small>Inscrição</small></div>
+                          <div className="fx-chips fx-seg">
+                            {SINCE_PRESETS.map(([d, l]) => (
+                              <button
+                                key={d}
+                                type="button"
+                                className={adv.sinceDays === d ? "on" : ""}
+                                aria-pressed={adv.sinceDays === d}
+                                onClick={() => setAdv((a) => ({ ...a, sinceDays: a.sinceDays === d ? null : d }))}
+                              >
+                                {l}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="fx-g" role="group" aria-label="Engajamento">
+                          <div className="fx-gh"><i><I n="trend" cls="sm" /></i><small>Engajamento mínimo</small></div>
+                          <div className="fx-chips fx-seg">
+                            {ENGAGEMENT_PRESETS.map(([n, l]) => (
+                              <button
+                                key={n}
+                                type="button"
+                                className={adv.engMin === n ? "on" : ""}
+                                aria-pressed={adv.engMin === n}
+                                onClick={() => setAdv((a) => ({ ...a, engMin: a.engMin === n ? null : n }))}
+                              >
+                                {l}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="fx-g fx-wide" role="group" aria-label="Seguidores">
+                          <div className="fx-gh"><i><I n="users" cls="sm" /></i><small>Seguidores{net !== "all" ? ` no ${net}` : ""}</small></div>
+                          <div className="fx-row">
+                            <div className="fx-chips fx-seg">
+                              {FOLLOWER_PRESETS.map(([n, l]) => (
+                                <button
+                                  key={n}
+                                  type="button"
+                                  className={adv.folMin === n && adv.folMax == null ? "on" : ""}
+                                  aria-pressed={adv.folMin === n && adv.folMax == null}
+                                  onClick={() => {
+                                    setFolMin(adv.folMin === n && adv.folMax == null ? null : n);
+                                    setAdv((a) => ({ ...a, folMax: null }));
+                                    setFolMaxTxt("");
+                                  }}
+                                >
+                                  {l}
+                                </button>
+                              ))}
+                            </div>
+                            <span className="fx-range">
+                              <label>
+                                <small>De</small>
+                                <input
+                                  inputMode="text"
+                                  aria-label="Seguidores mínimo"
+                                  placeholder="20k"
+                                  value={folMinTxt}
+                                  onChange={(e) => {
+                                    setFolMinTxt(e.target.value);
+                                    setAdv((a) => ({ ...a, folMin: parseCompact(e.target.value) }));
+                                  }}
+                                />
+                              </label>
+                              <label>
+                                <small>Até</small>
+                                <input
+                                  inputMode="text"
+                                  aria-label="Seguidores máximo"
+                                  placeholder="1m"
+                                  value={folMaxTxt}
+                                  onChange={(e) => {
+                                    setFolMaxTxt(e.target.value);
+                                    setAdv((a) => ({ ...a, folMax: parseCompact(e.target.value) }));
+                                  }}
+                                />
+                              </label>
+                            </span>
+                          </div>
+                        </div>
+                        {nichesInUse.length > 0 ? (
+                          <div className="fx-g fx-wide" role="group" aria-label="Nicho">
+                            <div className="fx-gh"><i><I n="tag" cls="sm" /></i><small>Nicho</small></div>
+                            <div className="fx-chips">
+                              {nichesInUse.map((n) => (
+                                <button
+                                  key={n}
+                                  type="button"
+                                  className={adv.niche === n ? "on" : ""}
+                                  aria-pressed={adv.niche === n}
+                                  onClick={() => setAdv((a) => ({ ...a, niche: a.niche === n ? null : n }))}
+                                >
+                                  {n}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+  );
+
   return (
     <>
       <div className="flex flex-col gap-4">
@@ -967,15 +1381,15 @@ export function ManagementTab({
             </div>
           ) : (
             <div className="mg mgv">
-              {panelInfluencer ? (
+              {shownInfluencer ? (
                 <ManagementPanel
-                  inf={panelInfluencer}
-                  column={getCurrentStatus(panelInfluencer)}
-                  late={isLateInf(panelInfluencer)}
-                  idle={idleDaysOf(panelInfluencer)}
+                  dock={stageBar}
+                  closing={!panelInfluencer}
+                  inf={shownInfluencer}
+                  column={getCurrentStatus(shownInfluencer)}
+                  late={isLateInf(shownInfluencer)}
+                  idle={idleDaysOf(shownInfluencer)}
                   orderedIds={navIds}
-                  expanded={panelExpanded}
-                  onToggleExpanded={() => setPanelExpanded((v) => !v)}
                   onSelect={selectFromPanel}
                   onClose={() => {
                     captureBoardTop();
@@ -985,119 +1399,26 @@ export function ManagementTab({
                   paymentType={paymentType}
                   phasesWithFormats={phasesWithFormats}
                   highlightContentId={panelHighlight}
-                  onChat={() => openChat(panelInfluencer)}
-                  onProfile={() => openProfile(panelInfluencer)}
-                  onStageAction={() => handleCardAction(panelInfluencer, getCurrentStatus(panelInfluencer))}
+                  onChat={() => openChat(shownInfluencer)}
+                  onProfile={() => openProfile(shownInfluencer)}
+                  onStageAction={() => handleCardAction(shownInfluencer, getCurrentStatus(shownInfluencer))}
                   onReject={() => {
-                    setSelectedInfluencer(panelInfluencer);
+                    setSelectedInfluencer(shownInfluencer);
                     setIsRejectModalOpen(true);
                   }}
-                  onReconsider={() => handleApprove(panelInfluencer, "applications")}
+                  onReconsider={() => handleApprove(shownInfluencer, "applications")}
                 />
               ) : (
                 <ManagementSummary
+                  dock={stageBar}
                   progress={progress}
-                  attention={attention}
                   attentionTotal={attentionTotal}
                   late={lateList}
                   deadlines={deadlines}
                   inDays={inDays}
-                  onAttention={(st) => {
-                    setFlt("me");
-                    jumpStage(st);
-                  }}
-                  onCharge={openChat}
                 />
               )}
               <div className="kbw" ref={kbwRef}>
-                <div className="kbt">
-                  <div className="jumps">
-                    {groups.map((g) => (
-                      <button
-                        key={g.k}
-                        type="button"
-                        className={stage === g.k ? "on" : ""}
-                        onClick={() => jumpStage(g.k)}
-                      >
-                        {STAGE_SHORT[g.k]}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="kbt-r">
-                  <div className="kbt-arr" role="group" aria-label="Rolar o quadro">
-                    <button type="button" className="round" aria-label="Rolar o quadro para a esquerda" onClick={() => scrollBoard(-1)}>
-                      <I n="chevl" cls="sm" />
-                    </button>
-                    <button type="button" className="round" aria-label="Rolar o quadro para a direita" onClick={() => scrollBoard(1)}>
-                      <I n="chev" cls="sm" />
-                    </button>
-                  </div>
-                  <div className={`pop fpop ${fpopOpen ? "open" : ""}`} ref={fpopRef}>
-                    <button
-                      type="button"
-                      className={`fbtn ${activeFilters > 0 ? "act" : ""}`}
-                      aria-label={activeFilters > 0 ? `Filtros (${activeFilters} ativos)` : "Filtros"}
-                      aria-expanded={fpopOpen}
-                      onClick={() => setFpopOpen((v) => !v)}
-                    >
-                      <I n="funnel" cls="sm" />
-                      <span id="fpl">Filtros</span>
-                      {activeFilters > 0 ? <em className="fcnt">{activeFilters}</em> : null}
-                    </button>
-                    <div className="popm fpm" role="dialog" aria-label="Filtros do quadro">
-                      <label className="fp-q">
-                        <I n="search" cls="sm" />
-                        <input
-                          type="search"
-                          value={q}
-                          placeholder="Buscar por nome ou @usuário"
-                          aria-label="Buscar criador"
-                          onChange={(e) => setQ(e.target.value)}
-                        />
-                      </label>
-                      <div className="fp-g" role="group" aria-label="Situação">
-                        <small>Situação</small>
-                        {FLT.filter(([k]) => k !== "ext").map(([k, l]) => (
-                          <button key={k} type="button" className={flt === k ? "on" : ""} onClick={() => setFlt(k)}>
-                            <span>{l}</span>
-                            <em>{nfl(k)}</em>
-                            <I n="check" cls="sm" />
-                          </button>
-                        ))}
-                      </div>
-                      <div className="fp-g" role="group" aria-label="Origem">
-                        <small>Origem</small>
-                        <button type="button" className={flt === "ext" ? "on" : ""} onClick={() => setFlt(flt === "ext" ? "all" : "ext")}>
-                          <span>Criadores externos</span>
-                          <em>{nfl("ext")}</em>
-                          <I n="check" cls="sm" />
-                        </button>
-                      </div>
-                      {networksInUse.length > 1 ? (
-                        <div className="fp-g" role="group" aria-label="Rede social">
-                          <small>Rede social</small>
-                          <div className="fp-chips">
-                            {["all", ...networksInUse].map((n) => (
-                              <button key={n} type="button" className={net === n ? "on" : ""} onClick={() => setNet(n)}>
-                                {n === "all" ? "Todas" : n}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                      <div className="fp-f">
-                        <button type="button" className="lnk" disabled={activeFilters === 0} onClick={clearFilters}>
-                          Limpar filtros
-                        </button>
-                        <button type="button" className="btn" onClick={() => setFpopOpen(false)}>
-                          Ver {extendedInfluencers.filter((i) => passes(i, flt)).length} criadores
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  </div>
-                </div>
-
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCorners}
@@ -1109,6 +1430,7 @@ export function ManagementTab({
                     className="kbx"
                     ref={kbxRef}
                     onScroll={(e) => {
+                      if (Date.now() < jumpLockRef.current) return;
                       const x = e.currentTarget;
                       let cur = groups[0]?.k;
                       x.querySelectorAll<HTMLElement>(".kg").forEach((g) => {
@@ -1120,8 +1442,8 @@ export function ManagementTab({
                     }}
                   >
                     {groups.map((g) => {
-                      const tot = extendedInfluencers.filter((i) =>
-                        g.cols.includes(getCurrentStatus(i)),
+                      const tot = extendedInfluencers.filter(
+                        (i) => g.cols.includes(getCurrentStatus(i)) && !isDimmed(i),
                       ).length;
                       return (
                         <div
@@ -1138,7 +1460,9 @@ export function ManagementTab({
                           <div className="kgc">
                             {g.cols.map((colId) => {
                               const column = columnById.get(colId)!;
-                              const list = getInfluencersByStatus(colId);
+                              const all = getInfluencersByStatus(colId);
+                              // Com filtro ativo quem não passa SAI do quadro (o painel aberto na ilha não depende do quadro).
+                              const list = all.filter((i) => !isDimmed(i));
                               return (
                                 <KanbanColumn
                                   key={colId}
@@ -1149,7 +1473,7 @@ export function ManagementTab({
                                   selectedId={panelId}
                                   movingId={movingId}
                                   dropState={dropStateFor(colId)}
-                                  isDimmed={isDimmed}
+                                  hiddenCount={all.length - list.length}
                                   handlers={cardHandlers}
                                 />
                               );
@@ -1498,6 +1822,11 @@ export function ManagementTab({
           </div>
         </Modal>
       )}
+      {profileUserId ? (
+        <div className="mgv-prof">
+          <InfluencerProfileDrawer influencerId={profileUserId} onClose={() => setProfileUserId(null)} />
+        </div>
+      ) : null}
     </>
   );
 }
