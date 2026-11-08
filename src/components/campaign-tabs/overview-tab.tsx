@@ -39,15 +39,6 @@ const SH: Record<string, string> = {
   ship: "Produto para enviar",
   app: "Inscrições novas",
 };
-const BT: Record<string, string> = {
-  scr: "Revisar",
-  cont: "Revisar",
-  ctr: "Responder",
-  pay: "Pagar",
-  cur: "Curar",
-  ship: "Enviar",
-  app: "Triar",
-};
 const ICON: Record<string, string> = {
   scr: "file",
   cont: "image",
