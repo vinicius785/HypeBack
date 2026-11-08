@@ -8,8 +8,6 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Av, I } from "@/components/prototype/ui";
 import { getUploadUrl } from "@/lib/utils/api";
 import {
@@ -96,57 +94,80 @@ export function GroupsTab({ campaignId, canWrite }: GroupsTabProps) {
 
   const groups = groupsQuery.data ?? [];
 
+  const createForm = (
+    <form
+      className="gnew-f"
+      onSubmit={(event) => {
+        event.preventDefault();
+        submit();
+      }}
+    >
+      <label>
+        <span>Nome</span>
+        <input
+          maxLength={80}
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="Ex.: Creators da campanha"
+          autoComplete="off"
+        />
+      </label>
+      <label>
+        <span>Descrição</span>
+        <textarea
+          maxLength={2000}
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          placeholder="Objetivo e regras essenciais do grupo"
+        />
+      </label>
+      <button
+        type="submit"
+        className="btn"
+        disabled={createMutation.isPending || name.trim().length < 2 || description.trim().length < 2}
+      >
+        {createMutation.isPending ? "Criando…" : "Criar e vincular"}
+      </button>
+    </form>
+  );
+
   return (
     <>
       {groups.length === 0 ? (
         <div className="pv">
-          <div className="empty" style={{ padding: "70px 20px", background: "#fff", borderRadius: 32 }}>
-            <span className="ei">
-              <I n="users" />
-            </span>
-            <b>Nenhum grupo vinculado</b>
-            <p>Crie um grupo privado para reunir os participantes desta campanha.</p>
-          </div>
+          <section className={`gnew ${canWrite ? "" : "solo"}`}>
+            <div className="gnew-i">
+              <span className="ei">
+                <I n="users" />
+              </span>
+              <b>Nenhum grupo vinculado</b>
+              <p>Crie um grupo privado para reunir os participantes desta campanha.</p>
+            </div>
+            {canWrite && createForm}
+          </section>
         </div>
       ) : (
-        groups.map((group) => (
-          <CampaignGroupPanel
-            key={group.id}
-            campaignId={campaignId}
-            group={group}
-            canWrite={canWrite}
-          />
-        ))
-      )}
-
-      {canWrite && (
-        <section className="mt-6 grid gap-3 rounded-[22px] bg-canvas p-4">
-          <h3 className="font-semibold text-neutral-900">Criar novo grupo</h3>
-          <Input
-            label="Nome"
-            maxLength={80}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Ex.: Creators da campanha"
-          />
-          <label className="flex flex-col gap-1 text-sm font-medium text-neutral-950">
-            Descrição
-            <textarea
-              className="min-h-24 resize-y rounded-2xl border border-transparent bg-white px-4 py-3 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
-              maxLength={2000}
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Objetivo e regras essenciais do grupo"
+        <>
+          {groups.map((group) => (
+            <CampaignGroupPanel
+              key={group.id}
+              campaignId={campaignId}
+              group={group}
+              canWrite={canWrite}
             />
-          </label>
-          <Button
-            className="w-fit"
-            disabled={createMutation.isPending}
-            onClick={submit}
-          >
-            {createMutation.isPending ? "Criando…" : "Criar e vincular"}
-          </Button>
-        </section>
+          ))}
+          {canWrite && (
+            <div className="pv">
+              <section className="gnew more">
+                <div className="gnew-i">
+                  <b>Criar novo grupo</b>
+                  <p>Outro grupo privado vinculado a esta campanha.</p>
+                </div>
+                {createForm}
+              </section>
+            </div>
+          )}
+        </>
       )}
     </>
   );
@@ -363,7 +384,7 @@ function CampaignGroupPanel({
 
   return (
     <div className="pv">
-      <div className="mg" style={{ marginBottom: 20 }}>
+      <div className="mg flat" style={{ marginBottom: 20 }}>
         <div className="gwrap">
           <div className="gmain card gjm">
             <div className="gjh">

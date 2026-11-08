@@ -88,7 +88,7 @@ export function CampaignTasksTab({ campaignId }: { campaignId: string }) {
   return (
     <div className="pv">
       <PageContainer>
-        <section className="apj-sec" aria-label="Tarefas da campanha">
+        <section className="apj-sec ctk-card" aria-label="Tarefas da campanha">
           <ProjectTasksBoard project={board} can={can} />
         </section>
       </PageContainer>

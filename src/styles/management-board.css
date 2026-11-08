@@ -783,3 +783,150 @@
 /* os menus do cabeçalho (status e ⋯) abrem POR CIMA das abas e subabas, que vêm depois no DOM e tinham z-index próprio */
 .pv .chd.chi .chi-h { position: relative; z-index: 5; }
 .pv .chd-sel, .pv .chd-menu { z-index: 6; }
+
+/* ===== Gestão › Comunidade: criar grupo ===== */
+.pv .gnew { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 36px; align-items: center; background: #fff; border-radius: 32px; padding: 40px 44px; animation: isl-in .5s var(--out) both; }
+.pv .gnew.solo { grid-template-columns: 1fr; }
+.pv .gnew.more { align-items: start; padding: 28px 32px; border-radius: 28px; margin-bottom: 20px; }
+.pv .gnew-i { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.pv .gnew.solo .gnew-i { align-items: center; text-align: center; }
+.pv .gnew-i .ei { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 16px; background: #f4f4f5; margin-bottom: 10px; }
+.pv .gnew-i b { font-size: 18px; letter-spacing: -.02em; }
+.pv .gnew-i p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; max-width: 320px; }
+.pv .gnew-f { display: flex; flex-direction: column; gap: 14px; }
+.pv .gnew-f label { display: flex; flex-direction: column; gap: 6px; }
+.pv .gnew-f label span { font-size: 12px; font-weight: 600; color: #52525b; }
+.pv .gnew-f input, .pv .gnew-f textarea { font: inherit; font-size: 14px; border: 1px solid transparent; background: #f4f4f5; border-radius: 16px; padding: 12px 16px; outline: none; resize: vertical; transition: border-color .2s, background .2s, box-shadow .2s; }
+.pv .gnew-f textarea { min-height: 84px; }
+.pv .gnew-f input:focus, .pv .gnew-f textarea:focus { background: #fff; border-color: #0a0a0a; box-shadow: 0 0 0 4px rgba(10, 10, 10, .06); }
+.pv .gnew-f .btn { align-self: flex-start; }
+.pv .gnew-f .btn:disabled { opacity: .4; cursor: not-allowed; }
+@media (max-width: 760px) { .pv .gnew { grid-template-columns: 1fr; padding: 28px 22px; } }
+
+/* ===== Gestão › Contratos/Comunidade: altura pelo conteúdo (o quadro fixo é só do Gerenciamento) ===== */
+.pv .mg.flat { height: auto; min-height: 0; grid-template-rows: auto; align-items: start; animation: isl-in .5s var(--out) both; }
+.pv .mg.flat .gscroll { max-height: calc(100vh - 380px); min-height: 200px; }
+.pv .mg.flat .gmain { min-height: 360px; }
+.pv .mg.flat .side2 { overflow: visible; position: sticky; top: 16px; }
+.pv .mg.flat .gscroll .empty { padding: 56px 20px; }
+@media (max-width: 1180px) { .pv .mg.flat .side2 { position: static; } }
+.pv .mg.flat .find.mini input { transition: opacity .25s; }
+.pv .mg.flat .find.mini:not(:focus-within):not(.has) input { opacity: 0; pointer-events: none; }
+.pv .mg.flat .gscroll .empty { background: var(--bg); border-radius: 24px; margin-top: 4px; }
+/* a busca cresce para a esquerda, sobre a barra de filtros, e nunca passa da borda direita do cartão */
+.pv .mg.flat .find.mini { position: relative; z-index: 3; margin-left: 0; transition: width .4s var(--out), margin-left .4s var(--out), background .25s, box-shadow .25s; }
+.pv .mg.flat .find.mini:focus-within, .pv .mg.flat .find.mini.has { width: 220px; margin-left: -180px; box-shadow: 0 0 0 1.5px var(--ink); background: #fff; }
+.pv .mg.flat .ctr-tools { flex: none; }
+.pv .mg.flat .find.mini:focus-within, .pv .mg.flat .find.mini.has { width: 200px; margin-left: -160px; }
+/* com a busca aberta, os filtros perdem o contador para dar lugar ao campo (nada fica por baixo dele) */
+.pv .mg.flat .gtools:has(.find.mini:focus-within, .find.mini.has) .gtabs em { display: none; }
+
+/* ===== Gestão › Métricas e conteúdos ===== */
+.pv .mx > * { animation: isl-in .55s var(--out) both; }
+.pv .mx > :nth-child(2) { animation-delay: .06s; } .pv .mx > :nth-child(3) { animation-delay: .12s; } .pv .mx > :nth-child(4) { animation-delay: .18s; } .pv .mx > :nth-child(n+5) { animation-delay: .24s; }
+/* estados vazios: placeholder suave dentro do cartão, em vez de um vão branco */
+.pv .mx .ov-empty { background: var(--bg); border-radius: 22px; padding: 32px 24px; margin-top: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+.pv .mx .ov-empty b { font-size: 14px; letter-spacing: -.01em; }
+.pv .mx .ov-empty small { color: var(--muted); font-size: 12.5px; line-height: 1.5; max-width: 420px; }
+.pv .mx .ov-empty.big { padding: 44px 24px; }
+.pv .mx-main #mxcw .ov-empty { flex: 1; min-height: 180px; margin-top: 10px; }
+.pv .mx-sd .mx-cd { display: flex; flex-direction: column; }
+.pv .mx-sd .mx-cd .ov-empty { flex: 1; }
+/* filtros do cartão: mesma resposta ao toque das abas da Gestão */
+.pv .mx .gtabs button, .pv .mx-mt button { transition: background .25s var(--out), color .25s var(--out), transform .25s var(--out); }
+.pv .mx .gtabs button:not(.on):hover, .pv .mx-mt button:not(.on):hover { transform: translateY(-1px); color: var(--ink); }
+.pv .mx-k:hover { transform: translateY(-2px); }
+
+/* ===== Gestão › Tarefas: o quadro dentro de um cartão branco, como as outras abas ===== */
+.pv .ctk-card { background: #fff; border-radius: 32px; padding: 24px; animation: isl-in .5s var(--out) both; position: relative; z-index: 2; }
+.pv .ctk-card .pg-search, .pv .ctk-card .pg-btn, .pv .ctk-card .pg-select, .pv .ctk-card .pg-view { background: var(--bg); }
+.pv .ctk-card .pg-btn:hover, .pv .ctk-card .pg-btn.on, .pv .ctk-card .pg-menu.open > .pg-btn { background: var(--ink); }
+.pv .ctk-card .pg-search:focus-within { background: #fff; }
+.pv .ctk-card .apj-kb-col { background: var(--bg); }
+.pv .ctk-card .apj-kb-col[data-over] { background: #efe3fb; }
+.pv .ctk-card .apj-count { color: var(--muted); font-size: 12.5px; }
+.pv .ctk-card .apj-kb-sum { display: none; }
+
+/* ===== Visão geral ===== */
+.pv .ov > * { animation: isl-in .55s var(--out) both; }
+.pv .ov > :nth-child(2) { animation-delay: .08s; }
+.pv .ov .ac { transition: transform .35s var(--out), box-shadow .35s var(--out); }
+.pv .ov .ac:hover { transform: translateY(-3px); box-shadow: 0 22px 34px -18px rgba(5, 5, 5, .45); }
+/* estados vazios em uma linha, em vez de caixas altas com pouco conteúdo */
+.pv .ov .empty { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "i t" "i p"; column-gap: 16px; row-gap: 2px; align-items: center; justify-items: start; text-align: left; padding: 20px 24px; background: var(--bg); border-radius: 24px; }
+.pv .ov .empty .ei { grid-area: i; margin: 0; width: 44px; height: 44px; border-radius: 14px; background: #fff; display: grid; place-items: center; }
+.pv .ov .empty b { grid-area: t; align-self: end; }
+.pv .ov .empty p { grid-area: p; align-self: start; margin: 0; color: var(--muted); font-size: 13px; }
+.pv .ov .empty.big { padding: 22px 26px; }
+@media (max-width: 560px) { .pv .ov .empty { grid-template-columns: 1fr; grid-template-areas: "i" "t" "p"; justify-items: center; text-align: center; } }
+
+/* ===== Visão geral › Precisa da sua ação: lista agrupada, no padrão de listas da Apple ===== */
+.pv .ov .al { list-style: none; margin: 0; padding: 0; background: var(--bg); border-radius: 24px; overflow: hidden; }
+.pv .ov .al li { animation: isl-in .5s var(--out) both; animation-delay: calc(var(--i) * 50ms + 120ms); }
+.pv .ov .al li + li { position: relative; }
+.pv .ov .al li + li::before { content: ""; position: absolute; top: 0; left: 76px; right: 0; height: 1px; background: rgba(5, 5, 5, .07); }
+.pv .ov .al-r { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; column-gap: 16px; padding: 14px 20px 14px 18px; text-align: left; background: transparent; transition: background .2s var(--out); }
+.pv .ov .al-r:hover { background: rgba(5, 5, 5, .04); }
+.pv .ov .al-r:active { background: rgba(5, 5, 5, .07); }
+.pv .ov .al-r:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--ink); }
+.pv .ov .al-ic { width: 42px; height: 42px; border-radius: 13px; background: #fff; display: grid; place-items: center; box-shadow: 0 1px 2px rgba(5, 5, 5, .06); }
+.pv .ov .al-ic .ico { width: 19px; height: 19px; }
+.pv .ov .al-tx { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pv .ov .al-tx b { font-size: 15px; font-weight: 600; letter-spacing: -.015em; }
+.pv .ov .al-tx small { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv .ov .al-st { display: flex; align-items: center; padding-left: 8px; }
+.pv .ov .al-av { display: block; margin-left: -9px; border-radius: 50%; box-shadow: 0 0 0 2.5px var(--bg); background: var(--bg); line-height: 0; transition: margin .3s var(--out); }
+.pv .ov .al-r:hover .al-av { margin-left: -5px; }
+.pv .ov .al-more { margin-left: -9px; height: 28px; min-width: 28px; padding: 0 7px; border-radius: 99px; background: #fff; box-shadow: 0 0 0 2.5px var(--bg); display: grid; place-items: center; font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.pv .ov .al-n { min-width: 28px; text-align: right; font-size: 22px; font-weight: 600; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.pv .ov .al-ch { color: rgba(5, 5, 5, .3); transition: transform .3s var(--out), color .2s; }
+.pv .ov .al-r:hover .al-ch { transform: translateX(3px); color: var(--ink); }
+@media (max-width: 640px) { .pv .ov .al-st { display: none; } .pv .ov .al-r { grid-template-columns: auto minmax(0, 1fr) auto auto; column-gap: 12px; } .pv .ov .al li + li::before { left: 70px; } }
+
+/* lista preta com luz roxa (mesma linguagem da ilha) */
+.pv .ov .al { position: relative; isolation: isolate; background: #0a0a0b; color: #fff; box-shadow: 0 24px 40px -26px rgba(5, 5, 5, .6); }
+.pv .ov .al::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(520px 220px at 100% 0%, rgba(137, 56, 255, .5), transparent 70%), radial-gradient(420px 200px at 0% 100%, rgba(137, 56, 255, .28), transparent 70%); }
+.pv .ov .al li + li::before { background: rgba(255, 255, 255, .09); }
+.pv .ov .al-r:hover { background: rgba(255, 255, 255, .06); }
+.pv .ov .al-r:active { background: rgba(255, 255, 255, .1); }
+.pv .ov .al-r:focus-visible { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .8); }
+.pv .ov .al-ic { background: rgba(255, 255, 255, .1); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
+.pv .ov .al-tx small { color: rgba(255, 255, 255, .55); }
+.pv .ov .al-av { box-shadow: 0 0 0 2.5px #121214; background: #121214; }
+.pv .ov .al-more { background: rgba(255, 255, 255, .14); color: #fff; box-shadow: 0 0 0 2.5px #121214; }
+.pv .ov .al-ch { color: rgba(255, 255, 255, .4); }
+.pv .ov .al-r:hover .al-ch { color: #fff; }
+
+/* ===== Visão geral › Progresso geral ===== */
+.pv .ov .pg { padding: 28px 30px 26px; gap: 28px; }
+.pv .ov .pg-top { grid-template-columns: minmax(200px, 250px) minmax(0, 1fr); gap: 56px; align-items: start; }
+.pv .ov .pg-l { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: -.005em; }
+.pv .ov .pg-n { flex-wrap: wrap; row-gap: 2px; margin-top: 8px; }
+.pv .ov .pg-n b { font-size: 64px; letter-spacing: -.065em; }
+.pv .ov .pg-n span { flex-basis: 100%; font-size: 13px; color: var(--muted); }
+.pv .ov .pg-bar { height: 6px; border-radius: 99px; background: var(--bg); overflow: hidden; margin-top: 16px; }
+.pv .ov .pg-bar i { display: block; height: 100%; width: var(--p); min-width: 6px; border-radius: 99px; background: linear-gradient(90deg, #7b2cff, var(--brand)); transform-origin: left; animation: pv-fill 1.1s var(--out) .25s both; }
+/* etapas: segmentos como numa barra de progresso, sem círculos nem linha de ligação */
+.pv .ov .tl { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; align-self: center; }
+.pv .ov .tl-s { display: flex; flex-direction: column; gap: 2px; min-width: 0; animation: isl-in .5s var(--out) both; animation-delay: calc(var(--i) * 60ms + 150ms); }
+.pv .ov .tl-b { display: block; height: 6px; border-radius: 99px; background: var(--bg); margin-bottom: 12px; position: relative; overflow: hidden; }
+.pv .ov .tl-s.done .tl-b { background: var(--ink); }
+.pv .ov .tl-s.cur .tl-b { background: rgba(158, 44, 250, .2); }
+.pv .ov .tl-s.cur .tl-b::after { content: ""; position: absolute; inset: 0; width: 38%; border-radius: 99px; background: linear-gradient(90deg, #7b2cff, var(--brand)); animation: tl-run 2.4s var(--out) infinite; }
+@keyframes tl-run { 0% { transform: translateX(-100%); } 70%, 100% { transform: translateX(270%); } }
+.pv .ov .tl-s b { display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 600; letter-spacing: -.015em; color: var(--muted); }
+.pv .ov .tl-s.done b, .pv .ov .tl-s.cur b { color: var(--ink); }
+.pv .ov .tl-s.cur b { color: var(--brand); }
+.pv .ov .tl-s b .ico { width: 13px; height: 13px; stroke-width: 3; }
+.pv .ov .tl-s small { font-size: 12px; color: var(--muted); min-height: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv .ov .tl-s em { font-style: normal; font-size: 12.5px; font-weight: 600; color: var(--ink); margin-top: 4px; white-space: nowrap; }
+.pv .ov .tl-s:not(.done):not(.cur) em { color: var(--muted); font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { .pv .ov .tl-s.cur .tl-b::after { animation: none; width: 38%; } }
+@media (max-width: 640px) { .pv .ov .tl { grid-template-columns: repeat(5, minmax(96px, 1fr)); overflow-x: auto; scrollbar-width: none; } }
+/* indicadores: quatro mosaicos suaves, sem divisórias */
+.pv .ov .kp2 { gap: 10px; border-top: 0; padding-top: 0; }
+.pv .ov .kp2 > div, .pv .ov .kp2 > div:first-child { background: var(--bg); border-left: 0; border-radius: 22px; padding: 14px 16px; gap: 12px; transition: background .25s var(--out), transform .3s var(--out); }
+.pv .ov .kp2 > div:hover { background: #e8e8e9; transform: translateY(-2px); }
+.pv .ov .kp2 .mi, .pv .ov .kp2 > div:nth-child(3) .mi { width: 38px; height: 38px; border-radius: 50%; background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(5, 5, 5, .06); }
+.pv .ov .kp2 b { font-size: 19px; }
+@media (max-width: 1100px) { .pv .ov .pg-top { grid-template-columns: 1fr; gap: 24px; } }

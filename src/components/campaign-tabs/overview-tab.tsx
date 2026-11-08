@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 
 import { Av, I } from "@/components/prototype/ui";
 import type { CampaignPhase } from "@/shared/types";
@@ -65,6 +65,14 @@ const fmtDate = (iso?: string) => {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 };
 
+/** "Márcia, Leydiane e mais 15" — quem está esperando, pelo primeiro nome. */
+const namesOf = (people: FlowParticipant[]) => {
+  const first = people.slice(0, 2).map((p) => p.raw.name.trim().split(/\s+/)[0]);
+  const rest = people.length - first.length;
+  if (rest <= 0) return first.join(" e ");
+  return `${first.join(", ")} e mais ${rest}`;
+};
+
 /** Visão geral — mesma estrutura do protótipo. */
 export function OverviewTab({
   participants,
@@ -86,15 +94,19 @@ export function OverviewTab({
   const attention = useMemo(
     () =>
       [
-        { k: "scr", n: count("script_pending"), tab: "scr" },
-        { k: "cont", n: count("pending_approval"), tab: "cont" },
-        { k: "ctr", n: count("price_countered"), tab: "prop" },
-        { k: "pay", n: count("payment_pending"), tab: "pay" },
-        { k: "cur", n: count("curation", "pre_selection_curation"), tab: "cur" },
-        { k: "ship", n: count("awaiting_shipment"), tab: "ship" },
-        { k: "app", n: count("applications"), tab: "apps" },
-      ].filter((a) => a.n > 0),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        { k: "scr", cols: ["script_pending"], tab: "scr" },
+        { k: "cont", cols: ["pending_approval"], tab: "cont" },
+        { k: "ctr", cols: ["price_countered"], tab: "prop" },
+        { k: "pay", cols: ["payment_pending"], tab: "pay" },
+        { k: "cur", cols: ["curation", "pre_selection_curation"], tab: "cur" },
+        { k: "ship", cols: ["awaiting_shipment"], tab: "ship" },
+        { k: "app", cols: ["applications"], tab: "apps" },
+      ]
+        .map((a) => {
+          const people = participants.filter((p) => a.cols.includes(p.column));
+          return { k: a.k, tab: a.tab, n: people.length, people };
+        })
+        .filter((a) => a.n > 0),
     [participants],
   );
   const total = attention.reduce((s, a) => s + a.n, 0);
@@ -142,48 +154,6 @@ export function OverviewTab({
   const curIdx = steps.findIndex((s) => !s[3]);
   const cur = curIdx === -1 ? steps.length - 1 : curIdx;
 
-  const acsRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const tr = acsRef.current;
-    if (!tr) return;
-    let down = false;
-    let sx = 0;
-    let sl = 0;
-    let moved = false;
-    const onDown = (e: PointerEvent) => {
-      if ((e.target as HTMLElement).closest("button")) return;
-      down = true;
-      moved = false;
-      sx = e.clientX;
-      sl = tr.scrollLeft;
-    };
-    const onMove = (e: PointerEvent) => {
-      if (!down) return;
-      const dx = e.clientX - sx;
-      if (Math.abs(dx) > 5) {
-        moved = true;
-        tr.classList.add("drag");
-      }
-      if (moved) tr.scrollLeft = sl - dx;
-    };
-    const onUp = () => {
-      if (!down) return;
-      down = false;
-      tr.classList.remove("drag");
-    };
-    tr.addEventListener("pointerdown", onDown);
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    return () => {
-      tr.removeEventListener("pointerdown", onDown);
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-  }, [attention.length, isLoading]);
-
-  const scrollAcs = (dir: -1 | 1) =>
-    acsRef.current?.scrollBy({ left: dir * 226, behavior: "smooth" });
-
   const kpis: Array<[string, string, string]> = [
     ["Criadores na campanha", String(P), "users"],
     ["Conteúdos no ar", `${pub} de ${P}`, "image"],
@@ -207,19 +177,35 @@ export function OverviewTab({
                 <b>{Math.round(progress)}%</b>
                 <span>{P === 0 ? "campanha ainda não iniciada" : "concluído"}</span>
               </div>
+              <div
+                className="pg-bar"
+                role="progressbar"
+                aria-label="Progresso geral da campanha"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(progress)}
+              >
+                <i style={{ ["--p" as string]: `${Math.max(0, Math.min(100, progress))}%` }} />
+              </div>
             </div>
-            <div className="jr" style={{ ["--w" as string]: P === 0 ? 0 : (cur / (steps.length - 1)) * 100 }}>
-              <i className="jl" />
-              <i className="jf" />
+            <ol className="tl" aria-label="Etapas da campanha">
               {steps.map(([t, d, c, done], k) => (
-                <div key={t} className={`js ${done ? "done" : k === cur ? "cur" : ""}`}>
-                  <span className="jd">{done ? <I n="check" cls="sm" /> : k + 1}</span>
-                  <b>{t}</b>
-                  <small>{d || " "}</small>
+                <li
+                  key={t}
+                  className={`tl-s ${done ? "done" : k === cur ? "cur" : ""}`}
+                  style={{ ["--i" as string]: k }}
+                  aria-current={!done && k === cur ? "step" : undefined}
+                >
+                  <i className="tl-b" />
+                  <b>
+                    {done && <I n="check" cls="sm" />}
+                    {t}
+                  </b>
+                  <small>{d || " "}</small>
                   <em>{c}</em>
-                </div>
+                </li>
               ))}
-            </div>
+            </ol>
           </div>
           <div className="kp2">
             {kpis.map(([l, v, i]) => (
@@ -238,66 +224,60 @@ export function OverviewTab({
       )}
 
       <section className="card attn">
-        <div className="card-h" style={{ marginBottom: 18 }}>
+        <div className="card-h" style={{ marginBottom: 14 }}>
           <div>
             <h2>Precisa da sua ação</h2>
             <p className="sub">
               {isLoading ? "Carregando…" : attention.length ? `${total} itens aguardando` : "Nada pendente"}
             </p>
           </div>
-          {attention.length > 3 && (
-            <div className="ctl">
-              <button className="round" aria-label="Anterior" onClick={() => scrollAcs(-1)}>
-                <I n="chev" cls="sm rot" />
-              </button>
-              <button className="round" aria-label="Próximo" onClick={() => scrollAcs(1)}>
-                <I n="chev" cls="sm" />
-              </button>
-            </div>
-          )}
         </div>
-        <div className="acs" ref={acsRef}>
-          {isLoading ? (
-            [1, 2, 3, 4].map((i) => (
-              <div key={i} className="sk" style={{ height: 230, borderRadius: 28 }} />
-            ))
-          ) : attention.length ? (
-            attention.map((a, k) => (
-              <article key={a.k} className={`ac ${k === 0 ? "first" : ""}`} style={{ ["--i" as string]: k }}>
-                <span className="aic">
-                  <I n={ICON[a.k]} />
-                </span>
-                <b className="aq">{a.n}</b>
-                <h3>{SH[a.k]}</h3>
-                <button className="ab2" onClick={() => onGoTile(a.tab)}>
-                  {BT[a.k]}
-                  <I n="chev" cls="sm" />
+        {isLoading ? (
+          <div className="sk" style={{ height: 168, borderRadius: 24 }} />
+        ) : attention.length ? (
+          <ul className="al">
+            {attention.map((a, k) => (
+              <li key={a.k} style={{ ["--i" as string]: k }}>
+                <button type="button" className="al-r" onClick={() => onGoTile(a.tab)}>
+                  <span className="al-ic">
+                    <I n={ICON[a.k]} />
+                  </span>
+                  <span className="al-tx">
+                    <b>{SH[a.k]}</b>
+                    <small>{namesOf(a.people)}</small>
+                  </span>
+                  <span className="al-st" aria-hidden="true">
+                    {a.people.slice(0, 4).map((p) => (
+                      <span key={p.raw.id} className="al-av">
+                        <Av name={p.raw.name} src={p.raw.avatar} size={28} />
+                      </span>
+                    ))}
+                    {a.n > 4 && <span className="al-more">+{a.n - 4}</span>}
+                  </span>
+                  <span className="al-n">{a.n}</span>
+                  <I n="chev" cls="sm al-ch" />
                 </button>
-              </article>
-            ))
-          ) : (
-            <div className="empty big ok" style={{ gridColumn: "1/-1" }}>
-              <span className="ei">
-                <I n="check" />
-              </span>
-              <b>Tudo em dia</b>
-              <p>Nenhum roteiro, conteúdo ou criador aguardando você agora.</p>
-            </div>
-          )}
-        </div>
-
-        <div className="late2">
-          <div className="card-h" style={{ marginBottom: 16 }}>
-            <div>
-              <h2>Em atraso</h2>
-              <p className="sub">
-                {isLoading ? "Carregando…" : late.length ? `${late.length} criadores fora do prazo` : "Prazos em dia"}
-              </p>
-            </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="empty big ok">
+            <span className="ei">
+              <I n="check" />
+            </span>
+            <b>Tudo em dia</b>
+            <p>Nenhum roteiro, conteúdo ou criador aguardando você agora.</p>
           </div>
-          {isLoading ? (
-            <div className="sk" style={{ height: 120 }} />
-          ) : late.length ? (
+        )}
+
+        {!isLoading && late.length > 0 && (
+          <div className="late2">
+            <div className="card-h" style={{ marginBottom: 16 }}>
+              <div>
+                <h2>Em atraso</h2>
+                <p className="sub">{late.length} criadores fora do prazo</p>
+              </div>
+            </div>
             <div className="lts">
               {late.map((p, k) => (
                 <div key={p.raw.id} className="lk" style={{ ["--i" as string]: k }}>
@@ -312,16 +292,8 @@ export function OverviewTab({
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="empty">
-              <span className="ei">
-                <I n="check" />
-              </span>
-              <b>Ninguém atrasado</b>
-              <p>Todos os criadores estão dentro do prazo.</p>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </section>
     </div>
     </div>
