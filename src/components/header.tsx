@@ -9,12 +9,21 @@ interface HeaderProps extends ComponentProps<"div"> {
   title?: string;
 }
 
-/** Ações do topo — chat, ajuda e sino redondos, como no protótipo. */
+/** Lado esquerdo do topo — suporte, separado do resto por uma divisória. */
+export function TopSupport() {
+  return (
+    <>
+      <SupportButton />
+      <span className="top-sep" aria-hidden="true" />
+    </>
+  );
+}
+
+/** Lado direito do topo — chat e sino redondos, como no protótipo. */
 export function TopActions() {
   return (
     <>
       <ChatDrawerButton />
-      <SupportButton />
       <NotificationsDropdown />
     </>
   );
@@ -24,6 +33,7 @@ export function Header({ title, ...props }: HeaderProps) {
   return (
     <div className="pv" {...props}>
       <div className="top">
+        <TopSupport />
         {title ? (
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 600, letterSpacing: "-.04em" }}>
             {title}

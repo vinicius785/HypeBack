@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 
 import { OverviewTab } from "@/components/campaign-tabs/overview-tab";
 import { I } from "@/components/prototype/ui";
-import { TopActions } from "@/components/header";
+import { TopActions, TopSupport } from "@/components/header";
 import { CampaignHeader } from "@/components/campaign-header";
 import {
   NEEDME,
@@ -466,6 +466,7 @@ function RouteComponent() {
         <div className="pv">
           <div className="wrap" style={{ maxWidth: "none" }}>
             <div className="top">
+              <TopSupport />
               <nav className="crumb" aria-label="Navegação">
                 <button
                   type="button"
@@ -662,6 +663,7 @@ function RouteComponent() {
         <div className="pv">
           <div className="wrap" style={{ maxWidth: "none" }}>
             <div className="top">
+              <TopSupport />
               <nav className="crumb" aria-label="Navegação">
                 <button
                   type="button"
