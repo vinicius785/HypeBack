@@ -1,3 +1,4 @@
+import { buildCpaDescription, cpaHasAmount } from "@/shared/utils/cpa-payment";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { discardCampaignDraft, readCampaignDraft, saveCampaignDraft } from "@/lib/campaign-draft";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -47,6 +48,9 @@ const initialFormData: CampaignFormData = {
   paymentSwapMarketValue: "",
   paymentCpaActions: "",
   paymentCpaValue: "",
+  paymentCpaMode: "value",
+  paymentCpaPercent: "",
+  paymentCpaNote: "",
   paymentCpmValue: "",
   benefitsBonus: "",
   benefits: "",
@@ -206,9 +210,17 @@ function CreateCampaignForm({ draftId }: { draftId?: string }) {
           }
           break;
         case "cpa":
-          baseDetails.description = `Ações que geram CPA: ${formData.paymentCpaActions || ""}${formData.paymentCpaValue ? ` - Valor: R$ ${formData.paymentCpaValue}` : ""
-            }`;
-          if (formData.paymentCpaValue) {
+          baseDetails.description = buildCpaDescription(
+            {
+              actions: formData.paymentCpaActions,
+              mode: formData.paymentCpaMode,
+              value: formData.paymentCpaValue,
+              percent: formData.paymentCpaPercent,
+              note: formData.paymentCpaNote,
+            },
+            "R$ ",
+          );
+          if (cpaHasAmount(formData.paymentCpaMode) && formData.paymentCpaValue) {
             baseDetails.amount = currencyToNumber(formData.paymentCpaValue);
             baseDetails.currency = "BRL";
           }

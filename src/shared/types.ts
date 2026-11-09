@@ -511,7 +511,11 @@ export interface CampaignFormData {
   paymentSwapItem: string; // Item oferecido (Permuta)
   paymentSwapMarketValue: string; // Valor de mercado (Permuta)
   paymentCpaActions: string; // Quais ações geram CPA
-  paymentCpaValue: string; // Valor do CPA
+  paymentCpaValue: string; // Valor do CPA (modalidade "valor")
+  /** Como o CPA é pago: valor em reais (padrão), percentual ou variável (texto explicativo). */
+  paymentCpaMode?: "value" | "percent" | "variable";
+  paymentCpaPercent?: string; // Percentual por ação (modalidade "percentual")
+  paymentCpaNote?: string; // Explicação da remuneração (modalidade "variável")
   paymentCpmValue: string; // Valor do CPM
   benefitsBonus?: string; // Descrição do bônus por performance (quando toggle ativo)
   benefits: string | string[]; // Aceita string (compatibilidade) ou array de strings

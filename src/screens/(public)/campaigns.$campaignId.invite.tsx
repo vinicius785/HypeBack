@@ -14,6 +14,7 @@ import {
 } from "@/shared/config/app-links";
 import { getNetworkLabel } from "@/shared/constants/network-labels";
 import type { PublicCampaignInviteData } from "@/shared/services/public-campaign-invite";
+import { cpaPublicView } from "@/shared/utils/cpa-payment";
 import { formatContentTypeLabel } from "@/shared/utils/social-profile-url";
 
 export const Route = createFileRoute("/(public)/campaigns/$campaignId/invite")({
@@ -310,6 +311,7 @@ function InviteView({
     ? PAYMENT_LABEL[data.payment_method.toLowerCase()] ?? "A combinar"
     : "";
   const paymentText = data.payment_method_details?.description?.trim();
+  const cpa = data.payment_method?.toLowerCase() === "cpa" ? cpaPublicView(paymentText, data.payment_method_details?.amount, brl) : null;
   const hasPay = Boolean(fixed != null || paymentLabel || paymentText);
 
   const hint = (net: string) => {
@@ -393,6 +395,11 @@ function InviteView({
                       <div className="pvx-pr">
                         <b>{brl(fixed)}</b>
                         <small>valor fixo</small>
+                      </div>
+                    ) : cpa ? (
+                      <div className="pvx-pr">
+                        <b>{cpa.headline}</b>
+                        <small>{cpa.caption}</small>
                       </div>
                     ) : paymentLabel ? (
                       <div className="pvx-pr">
@@ -531,9 +538,11 @@ function InviteView({
                 <div className="pvx-gn">
                   <div className="pvx-pay">
                     <small>Remuneração</small>
-                    <b className={fixed != null ? undefined : "txt"}>{fixed != null ? brl(fixed) : paymentLabel || "A combinar"}</b>
-                    <p>
-                      {paymentText ||
+                    <b className={fixed != null || (cpa && cpa.headline !== "Variável") ? undefined : "txt"}>
+                      {fixed != null ? brl(fixed) : cpa ? `${cpa.headline} ${cpa.caption}`.trim() : paymentLabel || "A combinar"}
+                    </b>
+                    <p style={cpa ? { whiteSpace: "pre-line" } : undefined}>
+                      {(cpa ? cpa.detail : paymentText) ||
                         (fixed != null
                           ? "Pagamento fixo por influenciador."
                           : "Os valores e condições são alinhados com a marca após a aprovação.")}

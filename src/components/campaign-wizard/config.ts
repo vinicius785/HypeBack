@@ -1,4 +1,5 @@
 import type { CampaignFormData } from "@/shared/types";
+import { isCpaIncomplete } from "@/shared/utils/cpa-payment";
 
 export const WIZARD_STEPS = ["Campanha", "Criadores", "Pagamento", "Fases"] as const;
 export const WIZARD_SUBS = [
@@ -30,6 +31,12 @@ export function wizardMissing(d: CampaignFormData): WizardMissing[] {
   if (!(parseInt((d.influencersCount ?? "").replace(/\D/g, ""), 10) > 0))
     m.push({ step: 2, field: "influencersCount", label: "Quantidade de influenciadores" });
   if (!d.paymentType?.trim()) m.push({ step: 3, field: "paymentType", label: "Tipo de remuneração" });
+  if (d.paymentType === "cpa" && isCpaIncomplete({ mode: d.paymentCpaMode, percent: d.paymentCpaPercent, note: d.paymentCpaNote }))
+    m.push({
+      step: 3,
+      field: d.paymentCpaMode === "percent" ? "paymentCpaPercent" : "paymentCpaNote",
+      label: d.paymentCpaMode === "percent" ? "Percentual do CPA" : "Explicação da remuneração variável",
+    });
   const phases = d.phases ?? [];
   if (!phases.length || phases.some((p) => !p.objective?.trim() || !p.postDate?.trim() || !p.formats?.length))
     m.push({ step: 4, field: "phases", label: "Fases da campanha" });
