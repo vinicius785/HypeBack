@@ -16,6 +16,7 @@ vi.mock("@/lib/utils/api", () => ({
 import {
   createCampaignGroupPost,
   listCampaignGroupPosts,
+  uploadCampaignGroupAttachment,
 } from "./campaign-groups";
 
 function jsonResponse(body: unknown, init: { ok?: boolean; status?: number } = {}) {
@@ -116,5 +117,36 @@ describe("createCampaignGroupPost", () => {
     expect(body.client_request_id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
     );
+  });
+});
+
+describe("anexos nas publicações do grupo", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("sobe o arquivo em multipart (campo `file`) sem Content-Type manual e devolve o anexo", async () => {
+    const attachment = { url: "/uploads/a.pdf", name: "a.pdf", mime_type: "application/pdf", size: 3 };
+    globalThis.fetch = vi.fn(async () => jsonResponse({ data: attachment })) as unknown as typeof fetch;
+    const file = new File(["abc"], "a.pdf", { type: "application/pdf" });
+
+    const result = await uploadCampaignGroupAttachment("camp-1", "group-abc", file);
+
+    const { url, init } = lastCall();
+    expect(url).toBe("https://api.test/api/backoffice/campaigns/camp-1/community-groups/group-abc/posts/attachments");
+    expect(init.method).toBe("POST");
+    const headers = init.headers as Record<string, string>;
+    expect(headers["Workspace-Id"]).toBe("workspace-9");
+    expect(headers["Content-Type"]).toBeUndefined();
+    expect((init.body as FormData).get("file")).toBeInstanceOf(File);
+    expect(result).toEqual(attachment);
+  });
+
+  it("a publicação leva `attachments` só quando há anexos", async () => {
+    globalThis.fetch = vi.fn(async () => jsonResponse({})) as unknown as typeof fetch;
+    await createCampaignGroupPost("camp-1", "group-abc", "oi");
+    expect(JSON.parse(String(lastCall().init.body))).not.toHaveProperty("attachments");
+
+    const attachments = [{ url: "/uploads/a.png", name: "a.png", mime_type: "image/png", size: 1 }];
+    await createCampaignGroupPost("camp-1", "group-abc", "", attachments);
+    expect(JSON.parse(String(lastCall().init.body))).toMatchObject({ content: "", attachments });
   });
 });

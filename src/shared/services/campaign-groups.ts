@@ -210,9 +210,19 @@ export async function bulkAddCampaignGroupMembers(
   return parse(response, "Falha ao adicionar participantes ao grupo");
 }
 
+/** Anexo de uma publicação do grupo (foto ou PDF), como devolvido pelo upload e repetido nas publicações. */
+export interface CampaignGroupAttachment {
+  url: string;
+  name: string;
+  mime_type: string;
+  size: number;
+}
+
 export interface CampaignGroupPost {
   id: string;
   content: string;
+  /** Fotos e PDFs enviados junto (ausente ou vazio em publicações só de texto). */
+  attachments?: CampaignGroupAttachment[];
   origin: string;
   created_at: string;
   author_name: string;
@@ -240,10 +250,46 @@ export async function listCampaignGroupPosts(
   );
 }
 
+/**
+ * Envia um arquivo (foto ou PDF) para anexar a uma publicação do grupo. Multipart, campo `file`; devolve o anexo para
+ * ir na lista `attachments` do `createCampaignGroupPost`.
+ */
+export async function uploadCampaignGroupAttachment(
+  campaignId: string,
+  groupId: string,
+  file: File,
+): Promise<CampaignGroupAttachment> {
+  const workspaceId = getWorkspaceId();
+  if (!workspaceId) throw new Error("Workspace ID é obrigatório");
+
+  const form = new FormData();
+  form.append("file", file);
+
+  const response = await fetch(
+    getApiUrl(`${base(campaignId)}/${encodeURIComponent(groupId)}/posts/attachments`),
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Client-Type": "backoffice",
+        Authorization: `Bearer ${getAuthToken() ?? ""}`,
+        "Workspace-Id": workspaceId,
+      },
+      body: form,
+    },
+  );
+  const body = await parse<{ data: CampaignGroupAttachment }>(
+    response,
+    "Não foi possível enviar o anexo",
+  );
+  return body.data;
+}
+
 export async function createCampaignGroupPost(
   campaignId: string,
   groupId: string,
   content: string,
+  attachments: CampaignGroupAttachment[] = [],
 ): Promise<void> {
   const clientRequestId =
     typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -260,6 +306,7 @@ export async function createCampaignGroupPost(
       headers: headers(true),
       body: JSON.stringify({
         content,
+        ...(attachments.length > 0 ? { attachments } : {}),
         client_request_id: clientRequestId,
       }),
     },
