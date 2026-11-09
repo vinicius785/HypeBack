@@ -386,7 +386,7 @@ function CampaignGroupPanel({
     <div className="pv">
       <div className="mg flat" style={{ marginBottom: 20 }}>
         <div className="gwrap">
-          <div className="gmain card gjm">
+          <div className={`gmain card gjm${selected.size > 0 ? " has-sel" : ""}`}>
             <div className="gjh">
               <div>
                 <h2>Participantes do grupo</h2>
@@ -537,6 +537,7 @@ function CampaignGroupPanel({
                                   bulkMutation.mutate([row.campaign_user_id])
                                 }
                               >
+                                <I n={st === "failed" ? "refresh" : "plus"} cls="sm" />
                                 {st === "failed" ? "Tentar de novo" : "Incluir"}
                               </button>
                             )}
@@ -603,31 +604,19 @@ function CampaignGroupPanel({
         </div>
 
         <aside className="side2 fade">
-          <div className="s2-top">
-            <small>Grupo privado da campanha</small>
-            {group.cover_url && (
-              <img
-                src={getUploadUrl(group.cover_url)}
-                alt=""
-                style={{
-                  display: "block",
-                  width: 56,
-                  height: 56,
-                  borderRadius: 16,
-                  objectFit: "cover",
-                  marginTop: 10,
-                }}
-              />
-            )}
-            <h3 className="gname">{group.name}</h3>
-            {group.description && (
-              <p className="s2-s" style={{ marginTop: 6 }}>
-                {group.description}
-              </p>
-            )}
-            <p className="s2-s" style={{ marginTop: 6 }}>
-              {group.members_count} participante(s) no grupo
-            </p>
+          <div className="s2-top gtop">
+            <small className="geye">Grupo privado da campanha</small>
+            <div className="gid">
+              {group.cover_url && <img className="gcv" src={getUploadUrl(group.cover_url)} alt="" />}
+              <div className="gid-t">
+                <h3 className="gname">{group.name}</h3>
+                <span className="gcount">
+                  <I n="users" cls="sm" />
+                  {group.members_count} participante{group.members_count === 1 ? "" : "s"} no grupo
+                </span>
+              </div>
+            </div>
+            {group.description && <p className="gdesc">{group.description}</p>}
             {canWrite && (
               <>
                 <input
@@ -637,17 +626,9 @@ function CampaignGroupPanel({
                   style={{ display: "none" }}
                   onChange={handleCoverSelect}
                 />
-                <button
-                  className="gact"
-                  style={{ marginTop: 10 }}
-                  disabled={coverMutation.isPending}
-                  onClick={() => coverInputRef.current?.click()}
-                >
-                  {coverMutation.isPending
-                    ? "Enviando..."
-                    : group.cover_url
-                      ? "Alterar capa"
-                      : "Adicionar capa"}
+                <button className="gact gcvb" disabled={coverMutation.isPending} onClick={() => coverInputRef.current?.click()}>
+                  <I n="image" cls="sm" />
+                  {coverMutation.isPending ? "Enviando..." : group.cover_url ? "Alterar capa" : "Adicionar capa"}
                 </button>
               </>
             )}

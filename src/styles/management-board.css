@@ -931,3 +931,61 @@
 .pv .ov .kp2 b { font-size: 19px; }
 @media (max-width: 1100px) { .pv .ov .pg-top { grid-template-columns: 1fr; gap: 24px; } }
 
+
+/* ===== Gestão › Comunidade: lista, painel do grupo e "Criar novo grupo" refinados ===== */
+/* Lista: o espaço do botão flutuante só existe com gente selecionada (antes sobrava um vão branco no fim do cartão). */
+.pv .mg.flat .gjm { padding: 24px 24px 10px; min-height: 0; }
+.pv .mg.flat .gjm .gscroll { margin: 0 -8px; padding: 0 8px 6px; max-height: calc(100vh - 340px); min-height: 0; }
+.pv .mg.flat .gjm.has-sel .gscroll { padding-bottom: 84px; }
+.pv .mg.flat .gjm .crh { padding: 0 14px 10px; font-size: 11px; letter-spacing: .05em; }
+.pv .mg.flat .gjm .cr { padding: 12px 14px; border-radius: 16px; }
+.pv .mg.flat .gjm .cr .crm b { font-size: 14.5px; }
+/* Situação em pílula suave (o ponto continua dizendo o estado). */
+.pv .mg.flat .gjm .cr .gs { padding: 5px 11px 5px 10px; border-radius: 99px; gap: 7px; font-size: 12.5px; background: var(--bg); }
+.pv .mg.flat .gjm .cr .gs.g-joined { background: #f3e5ff; color: var(--brand); }
+.pv .mg.flat .gjm .cr .gs.g-failed { background: rgba(220,38,38,.08); }
+.pv .mg.flat .gjm .cr .gs i { width: 7px; height: 7px; }
+/* Ação compacta, com ícone. */
+.pv .mg.flat .gjm .cr .cra .gact { min-width: 0; height: 34px; padding: 0 16px 0 13px; background: var(--bg); box-shadow: none; gap: 6px; }
+.pv .mg.flat .gjm .cr .cra .gact:hover:not(:disabled) { background: var(--ink); color: #fff; }
+.pv .mg.flat .gjm .cr .cra .gact .ico { width: 14px; height: 14px; }
+.pv .mg.flat .gjm .cr:not(:hover):not(.on) .cra .gact { background: var(--bg); }
+
+/* Painel do grupo: identidade enxuta (capa + nome + contagem), descrição curta e ajustes em lista limpa. */
+.pv .mg.flat .side2 { padding: 22px; gap: 0; }
+.pv .mg.flat .side2 .gtop { display: flex; flex-direction: column; gap: 12px; padding-bottom: 18px; }
+.pv .mg.flat .side2 .geye { color: var(--muted); font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.pv .mg.flat .side2 .gid { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.pv .mg.flat .side2 .gcv { flex: none; width: 56px; height: 56px; border-radius: 50%; object-fit: cover; }
+.pv .mg.flat .side2 .gid-t { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.pv .mg.flat .side2 .gname { margin: 0; font-size: 19px; line-height: 1.2; letter-spacing: -.03em; font-weight: 600; overflow-wrap: anywhere; }
+.pv .mg.flat .side2 .gcount { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 4px 10px 4px 8px; border-radius: 99px; background: var(--bg); color: var(--muted); font-size: 12px; font-weight: 600; }
+.pv .mg.flat .side2 .gcount .ico { width: 13px; height: 13px; }
+.pv .mg.flat .side2 .gdesc { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.pv .mg.flat .side2 .gcvb { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px 0 12px; background: var(--bg); box-shadow: none; }
+.pv .mg.flat .side2 .gcvb:hover:not(:disabled) { background: var(--ink); color: #fff; }
+.pv .mg.flat .side2 .gcvb .ico { width: 14px; height: 14px; }
+.pv .mg.flat .side2 .s2 { padding: 16px 0; gap: 0; }
+.pv .mg.flat .side2 .s2:last-child { padding-bottom: 0; }
+.pv .mg.flat .side2 .sw { gap: 16px; align-items: flex-start; }
+.pv .mg.flat .side2 .sw b { font-size: 13.5px; }
+.pv .mg.flat .side2 .sw small { display: block; margin-top: 3px; font-size: 12px; line-height: 1.45; }
+.pv .mg.flat .side2 .tgl { margin-top: 1px; }
+.pv .mg.flat .side2 .s2 h3 { font-size: 13.5px; margin-bottom: 10px; }
+.pv .mg.flat .side2 .lkb { margin-bottom: 0; }
+.pv .mg.flat .side2 .gpt { min-height: 76px; margin-bottom: 10px; }
+.pv .mg.flat .side2 .s2 .btn { height: 42px; }
+.pv .mg.flat .side2 .gposts { margin-top: 10px; }
+.pv .mg.flat .side2 .gp:first-child { border-top: 0; padding-top: 2px; }
+
+/* Criar novo grupo (segundo grupo): uma faixa só, com nome, descrição e ação lado a lado. */
+.pv .gnew.more { grid-template-columns: 240px minmax(0, 1fr); gap: 28px; align-items: center; padding: 22px 28px; }
+.pv .gnew.more .gnew-i b { font-size: 16px; }
+.pv .gnew.more .gnew-f { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto; gap: 12px; align-items: end; }
+.pv .gnew.more .gnew-f input, .pv .gnew.more .gnew-f textarea { height: 46px; min-height: 46px; padding: 12px 16px; resize: none; }
+.pv .gnew.more .gnew-f .btn { height: 46px; align-self: end; white-space: nowrap; }
+@media (max-width: 1100px) {
+  .pv .gnew.more { grid-template-columns: 1fr; gap: 16px; }
+  .pv .gnew.more .gnew-f { grid-template-columns: 1fr; }
+  .pv .gnew.more .gnew-f .btn { align-self: flex-start; }
+}
