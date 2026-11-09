@@ -1,3 +1,4 @@
+import { buildCpaDescription, cpaHasAmount, isCpaIncomplete } from "@/shared/utils/cpa-payment";
 import type { CampaignFormData } from "@/shared/types";
 import type { CampaignDetail, UpdateCampaignData } from "@/shared/services/campaign";
 import type { CampaignPhaseUpsertPayload, CreatePhaseData } from "@/shared/services/phase";
@@ -147,15 +148,23 @@ export function buildCampaignUpdatePayloadFromForm(
           baseDetails.currency = "BRL";
         }
         break;
-      case "cpa":
-        if (formData.paymentCpaActions && formData.paymentCpaValue) {
-          baseDetails.description = withBonus(
-            `Ações que geram CPA: ${formData.paymentCpaActions} - Valor: ${formData.paymentCpaValue}`,
-          );
-          baseDetails.amount = currencyToNumber(formData.paymentCpaValue);
-          baseDetails.currency = "BRL";
+      case "cpa": {
+        const fields = {
+          actions: formData.paymentCpaActions,
+          mode: formData.paymentCpaMode,
+          value: formData.paymentCpaValue,
+          percent: formData.paymentCpaPercent,
+          note: formData.paymentCpaNote,
+        };
+        if (formData.paymentCpaActions && !isCpaIncomplete(fields) && (!cpaHasAmount(formData.paymentCpaMode) || formData.paymentCpaValue)) {
+          baseDetails.description = withBonus(buildCpaDescription(fields));
+          if (cpaHasAmount(formData.paymentCpaMode)) {
+            baseDetails.amount = currencyToNumber(formData.paymentCpaValue);
+            baseDetails.currency = "BRL";
+          }
         }
         break;
+      }
       case "cpm":
         if (formData.paymentCpmValue) {
           baseDetails.amount = currencyToNumber(formData.paymentCpmValue);

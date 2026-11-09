@@ -2,9 +2,12 @@ import { useState } from "react";
 
 import { I } from "@/components/prototype/ui";
 import type { CampaignFormData, CampaignProductDraft } from "@/shared/types";
+import { CPA_MODES, sanitizePercent, type CpaMode } from "@/shared/utils/cpa-payment";
 
 import { Field, FieldError, ListBox, MoneyInput, SectionCard, ToggleRow } from "./fields";
 import type { WizardStepProps } from "./types";
+
+import "@/styles/cpa-modes.css";
 
 const PAYS: Array<[string, string, string]> = [
   ["fixed", "Valor fixo por conteúdo", "Você define quanto paga por conteúdo publicado"],
@@ -159,9 +162,64 @@ export function StepPayment({ formData, updateFormData, tried }: WizardStepProps
                 onChange={(e) => set("paymentCpaActions", e.target.value)}
               />
             </Field>
-            <Field label="Valor por ação">
-              <MoneyInput value={formData.paymentCpaValue ?? ""} onChange={(v) => set("paymentCpaValue", v)} />
-            </Field>
+            <div className="nf cpa-mode">
+              <label id="cpa-mode-l">Como o criador é pago por ação?</label>
+              <div className="cpa-seg" role="radiogroup" aria-labelledby="cpa-mode-l">
+                {CPA_MODES.map((m) => {
+                  const on = (formData.paymentCpaMode ?? "value") === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      className={on ? "on" : ""}
+                      onClick={() => set("paymentCpaMode", m.id as CpaMode)}
+                    >
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <small className="nfh">{CPA_MODES.find((m) => m.id === (formData.paymentCpaMode ?? "value"))?.hint}</small>
+            </div>
+            {(formData.paymentCpaMode ?? "value") === "value" && (
+              <Field label="Valor por ação">
+                <MoneyInput value={formData.paymentCpaValue ?? ""} onChange={(v) => set("paymentCpaValue", v)} />
+              </Field>
+            )}
+            {formData.paymentCpaMode === "percent" && (
+              <Field label="Percentual por ação" err={tried && !formData.paymentCpaPercent?.trim()}>
+                <div className="cpa-pct">
+                  <input
+                    className="ni"
+                    inputMode="decimal"
+                    placeholder="0"
+                    autoComplete="off"
+                    aria-label="Percentual por ação"
+                    value={formData.paymentCpaPercent ?? ""}
+                    onChange={(e) => set("paymentCpaPercent", sanitizePercent(e.target.value))}
+                  />
+                  <span>%</span>
+                </div>
+                <FieldError show={!!tried && !formData.paymentCpaPercent?.trim()}>Informe o percentual</FieldError>
+              </Field>
+            )}
+            {formData.paymentCpaMode === "variable" && (
+              <Field label="Explique como será a remuneração" err={tried && !formData.paymentCpaNote?.trim()}>
+                <textarea
+                  className="ni ta"
+                  rows={4}
+                  maxLength={600}
+                  aria-label="Explique como será a remuneração"
+                  placeholder="Ex.: R$ 5 por cadastro até 100 cadastros; acima disso, R$ 8 por cadastro. Pagamento até 15 dias após o fechamento."
+                  value={formData.paymentCpaNote ?? ""}
+                  onChange={(e) => set("paymentCpaNote", e.target.value)}
+                />
+                <small className="nfh">{(formData.paymentCpaNote ?? "").length}/600</small>
+                <FieldError show={!!tried && !formData.paymentCpaNote?.trim()}>Explique como o criador será pago</FieldError>
+              </Field>
+            )}
           </div>
         </div>
       );

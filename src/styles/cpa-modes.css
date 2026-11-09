@@ -1,0 +1,10 @@
+/* Assistente › Pagamento › CPA: modalidade (valor, percentual ou variável) e campo de percentual. */
+.pv .cpa-seg { display: inline-flex; gap: 2px; padding: 4px; border-radius: 99px; background: var(--bg, #efefef); align-self: flex-start; }
+.pv .cpa-seg button { height: 36px; padding: 0 18px; border-radius: 99px; font-size: 13.5px; font-weight: 600; color: var(--muted, #7e7e7e); transition: background .25s, color .25s, box-shadow .25s; }
+.pv .cpa-seg button:hover { color: var(--ink, #050505); }
+.pv .cpa-seg button.on { background: #fff; color: var(--ink, #050505); box-shadow: 0 2px 8px -2px rgba(5, 5, 5, .2); }
+.pv .cpa-seg button:focus-visible { outline: 2px solid var(--ink, #050505); outline-offset: 2px; }
+.pv .cpa-mode { gap: 8px; }
+.pv .cpa-pct { position: relative; display: flex; align-items: center; }
+.pv .cpa-pct .ni { padding-right: 40px; }
+.pv .cpa-pct span { position: absolute; right: 16px; font-weight: 600; color: var(--muted, #7e7e7e); pointer-events: none; }

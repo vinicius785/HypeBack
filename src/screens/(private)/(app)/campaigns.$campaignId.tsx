@@ -1,3 +1,4 @@
+import { parseCpaDescription } from "@/shared/utils/cpa-payment";
 import { appUrl } from "@/lib/utils/base-path";
 import { useState, useMemo, useEffect, useCallback, useLayoutEffect, useRef } from "react";
 import { createFileRoute, useNavigate, useParams, Outlet, useLocation } from "@tanstack/react-router";
@@ -307,15 +308,14 @@ function RouteComponent() {
       paymentSwapMarketValue: campaign.payment_method === "swap" && campaign.payment_method_details?.amount
         ? formatReais(campaign.payment_method_details.amount)
         : "",
-      paymentCpaActions: campaign.payment_method === "cpa" && campaign.payment_method_details?.description
-        ? campaign.payment_method_details.description
-          .replace("Ações que geram CPA:", "")
-          .split(" - Valor:")[0]
-          ?.trim() || ""
-        : "",
-      paymentCpaValue: campaign.payment_method === "cpa" && campaign.payment_method_details?.amount
-        ? formatReais(campaign.payment_method_details.amount)
-        : "",
+      paymentCpaActions: campaign.payment_method === "cpa" ? parseCpaDescription(campaign.payment_method_details?.description).actions : "",
+      paymentCpaValue:
+        campaign.payment_method === "cpa" && campaign.payment_method_details?.amount
+          ? formatReais(campaign.payment_method_details.amount)
+          : "",
+      paymentCpaMode: campaign.payment_method === "cpa" ? parseCpaDescription(campaign.payment_method_details?.description).mode : "value",
+      paymentCpaPercent: campaign.payment_method === "cpa" ? parseCpaDescription(campaign.payment_method_details?.description).percent : "",
+      paymentCpaNote: campaign.payment_method === "cpa" ? parseCpaDescription(campaign.payment_method_details?.description).note : "",
       paymentCpmValue: campaign.payment_method === "cpm" && campaign.payment_method_details?.amount
         ? formatReais(campaign.payment_method_details.amount)
         : "",

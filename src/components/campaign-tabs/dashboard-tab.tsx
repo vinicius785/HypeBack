@@ -1,3 +1,4 @@
+import { cpaSummary } from "@/shared/utils/cpa-payment";
 import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/ui/icon";
@@ -319,7 +320,14 @@ export function DashboardTab({ campaignId, campaign, metrics, progressPercentage
       return campaign.paymentSwapMarketValue ? `Valor de mercado: R$ ${campaign.paymentSwapMarketValue}` : null;
     }
     if (campaign.paymentType === "cpa") {
-      return campaign.paymentCpaValue ? `R$ ${campaign.paymentCpaValue} por ação` : null;
+      return (
+        cpaSummary({
+          mode: campaign.paymentCpaMode,
+          value: campaign.paymentCpaValue,
+          percent: campaign.paymentCpaPercent,
+          note: campaign.paymentCpaNote,
+        }) || null
+      );
     }
     if (campaign.paymentType === "cpm") {
       return campaign.paymentCpmValue ? `R$ ${campaign.paymentCpmValue} por mil` : null;
@@ -330,6 +338,9 @@ export function DashboardTab({ campaignId, campaign, metrics, progressPercentage
     campaign.paymentFixedAmount,
     campaign.paymentSwapMarketValue,
     campaign.paymentCpaValue,
+    campaign.paymentCpaMode,
+    campaign.paymentCpaPercent,
+    campaign.paymentCpaNote,
     campaign.paymentCpmValue,
   ]);
 
