@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
 import { AdminActionMenu } from "@/components/admin/platform/admin-action-menu";
-import { Av } from "@/components/prototype/ui";
+import { Av, I } from "@/components/prototype/ui";
 import { getUploadUrl } from "@/lib/utils/api";
 import type { Project } from "@/shared/services/agency-projects";
 
@@ -64,7 +64,10 @@ export function ProjectCard({ project, can, actions, closed = false, onOpen, onE
       <div className="apj-top">
         <ProjectCover project={project} />
         <div className="apj-id">
-          <b title={project.name}>{project.name}</b>
+          <div className="apj-nm">
+            <b title={project.name}>{project.name}</b>
+            <ToneBadge tone={PROJECT_STATUS_TONE[project.status]}>{PROJECT_STATUS_LABEL[project.status]}</ToneBadge>
+          </div>
           <div className="apj-who">
             {project.responsible ? (
               <>
@@ -86,28 +89,31 @@ export function ProjectCard({ project, can, actions, closed = false, onOpen, onE
         </div>
       </div>
 
-      <div className="apj-badges">
-        <ToneBadge tone={PROJECT_STATUS_TONE[project.status]}>{PROJECT_STATUS_LABEL[project.status]}</ToneBadge>
-        {project.health && project.health !== "saudavel" ? (
-          <ToneBadge tone={PROJECT_HEALTH_TONE[project.health]}>{PROJECT_HEALTH_LABEL[project.health]}</ToneBadge>
-        ) : null}
-      </div>
-
-      <div
-        className="apj-bar"
-        role={percent === null ? undefined : "progressbar"}
-        aria-hidden={percent === null ? true : undefined}
-        aria-label={percent === null ? undefined : `Progresso: ${taskSummaryText(stats)}`}
-        aria-valuemin={percent === null ? undefined : 0}
-        aria-valuemax={percent === null ? undefined : 100}
-        aria-valuenow={percent ?? undefined}
-      >
-        <i style={{ width: `${percent ?? 0}%` }} />
-      </div>
-
       <div className="apj-meta">
-        <span>{deliveryLabel(stats)}</span>
+        {project.health && project.health !== "saudavel" ? (
+          <span>
+            <ToneBadge tone={PROJECT_HEALTH_TONE[project.health]}>{PROJECT_HEALTH_LABEL[project.health]}</ToneBadge>
+          </span>
+        ) : null}
         <span>
+          <I n="cal" cls="sm" />
+          {deliveryLabel(stats)}
+        </span>
+        <span>
+          {percent === null ? (
+            <I n="check" cls="sm" />
+          ) : (
+            <span
+              className="apj-bar apj-bar-mini"
+              role="progressbar"
+              aria-label={`Progresso: ${taskSummaryText(stats)}`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={percent}
+            >
+              <i style={{ width: `${percent}%` }} />
+            </span>
+          )}
           {summary.progress}
           {summary.overdue ? (
             <>
@@ -218,14 +224,12 @@ export function ProjectCardSkeleton() {
   return (
     <div className="apj-card" aria-hidden="true">
       <div className="apj-top">
-        <span className="apj-sk" style={{ width: 48, height: 48, borderRadius: 14 }} />
+        <span className="apj-sk" style={{ width: 48, height: 48, borderRadius: "50%" }} />
         <div className="apj-id">
           <span className="apj-sk" style={{ width: "62%", height: 16, display: "block" }} />
           <span className="apj-sk" style={{ width: "40%", height: 12, display: "block", marginTop: 8 }} />
         </div>
       </div>
-      <span className="apj-sk" style={{ width: 64, height: 22, borderRadius: 99, display: "block" }} />
-      <span className="apj-sk" style={{ width: "100%", height: 6, borderRadius: 99, display: "block" }} />
       <div className="apj-meta">
         <span className="apj-sk" style={{ width: 96, height: 12, display: "block" }} />
         <span className="apj-sk" style={{ width: 120, height: 12, display: "block" }} />

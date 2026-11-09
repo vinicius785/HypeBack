@@ -49,7 +49,7 @@
 
 /* ---------- Grade e cartão ---------- */
 .pv .apj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: var(--pg-grid-gap, 20px); }
-.pv .apj-card { position: relative; background: #fff; border-radius: 28px; padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0;
+.pv .apj-card { position: relative; background: #fff; border-radius: 28px; padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0;
   transition: transform .3s var(--ease), box-shadow .3s var(--ease); }
 .pv .apj-card:hover { transform: translateY(-2px); box-shadow: 0 22px 36px -26px rgba(5,5,5,.4); }
 .pv .apj-card[data-closed="true"] { background: #f8f8f8; }
@@ -59,17 +59,25 @@
 .pv .apj-top { position: relative; display: flex; align-items: center; gap: 14px; min-width: 0; pointer-events: none; }
 .pv .apj-id { min-width: 0; flex: 1; }
 .pv .apj-id b { display: block; font-size: 16px; font-weight: 600; letter-spacing: -.025em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv .apj-who { display: flex; align-items: center; gap: 6px; margin-top: 4px; min-width: 0; color: var(--muted); font-size: 13px; }
+.pv .apj-who { display: flex; align-items: center; gap: 6px; margin-top: 3px; min-width: 0; color: var(--muted); font-size: 13px; }
 .pv .apj-who .iav { width: 18px; height: 18px; font-size: 9px; }
 .pv .apj-who-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pv .apj-who-x { flex: none; font-size: 12px; font-weight: 700; color: var(--muted); }
-.pv .apj-menu { position: relative; z-index: 2; pointer-events: auto; align-self: flex-start; flex: none; margin: -6px -8px 0 0; }
+.pv .apj-menu { position: relative; z-index: 2; pointer-events: auto; align-self: flex-start; flex: none; margin: 0; }
 .pv .apj-cover { flex: none; display: grid; place-items: center; overflow: hidden; border-radius: 14px; background: var(--bg); color: var(--muted); font-weight: 600; letter-spacing: -.02em; }
 .pv .apj-cover img { width: 100%; height: 100%; object-fit: cover; }
 .pv .apj-badges { position: relative; display: flex; flex-wrap: wrap; gap: 6px; min-height: 22px; pointer-events: none; }
 .pv .apj-bar { position: relative; height: 6px; border-radius: 99px; background: var(--bg); overflow: hidden; pointer-events: none; }
 .pv .apj-bar i { display: block; height: 100%; background: var(--brand); border-radius: 99px; transition: width .5s var(--ease); }
-.pv .apj-meta { position: relative; display: flex; flex-direction: column; gap: 4px; padding-top: 12px; border-top: 1.5px solid var(--line); color: var(--muted); font-size: 13px; pointer-events: none; }
+.pv .apj-meta { position: relative; min-height: 33px; display: flex; flex-wrap: wrap; gap: 6px 16px; padding-top: 12px; border-top: 1.5px solid var(--line); color: var(--muted); font-size: 13px; pointer-events: none; }
+.pv .apj-meta .ico { width: 14px; height: 14px; }
+.pv .apj-card .apj-meta span { display: inline-flex; align-items: center; gap: 6px; overflow: visible; }
+.pv .apj-card .apj-meta .apj-bar-mini { width: 40px; flex: none; }
+/* Mesmo desenho do cartão de Marcas: capa redonda e nome com o selo ao lado. */
+.pv .apj-card .apj-cover { border-radius: 50%; }
+.pv .apj-nm { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pv .apj-nm b { flex: 0 1 auto; min-width: 0; }
+.pv .apj-nm .apj-badge { height: 20px; padding: 0 9px; }
 .pv .apj-meta span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pv .apj-late { font-style: normal; font-weight: 700; color: var(--danger); }
 .pv .apj-sk { display: block; border-radius: 8px; background: linear-gradient(90deg, var(--bg), #f6f6f6, var(--bg)); background-size: 200% 100%; animation: apj-sh 1.2s linear infinite; }
