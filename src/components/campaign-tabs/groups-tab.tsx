@@ -14,13 +14,16 @@ import {
   bulkAddCampaignGroupMembers,
   createCampaignGroupPost,
   createCampaignGroup,
+  uploadCampaignGroupAttachment,
   listCampaignGroupParticipants,
   listCampaignGroupPosts,
   listCampaignGroups,
   updateCampaignGroupLink,
   uploadCampaignGroupCover,
   type CampaignCommunityGroup,
+  type CampaignGroupAttachment,
 } from "@/shared/services/campaign-groups";
+import { CountUp } from "@/components/home/count-up";
 
 interface GroupsTabProps {
   campaignId: string;
@@ -194,8 +197,15 @@ function CampaignGroupPanel({
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [postDraft, setPostDraft] = useState("");
   // Participantes abrem por um botão dentro do cartão; o menu "⋯" guarda a configuração do convite.
-  const [open, setOpen] = useState(false);
+  const [view, setView] = useState<"sum" | "part">("sum");
   const [menuOpen, setMenuOpen] = useState(false);
+  // Fotos e PDFs escolhidos para a próxima mensagem (sobem no envio).
+  const [files, setFiles] = useState<PendingFile[]>([]);
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const filesRef = useRef<PendingFile[]>([]);
+  filesRef.current = files;
+  useEffect(() => () => filesRef.current.forEach((f) => f.preview && URL.revokeObjectURL(f.preview)), []);
   const menuRef = useRef<HTMLDivElement>(null);
   const feedRef = useRef<HTMLDivElement>(null);
 
@@ -308,10 +318,16 @@ function CampaignGroupPanel({
     onError: (error: Error) => toast.error(error.message),
   });
   const postMutation = useMutation({
-    mutationFn: () =>
-      createCampaignGroupPost(campaignId, group.id, postDraft.trim()),
+    mutationFn: async () => {
+      const attachments = await Promise.all(
+        files.map((f) => uploadCampaignGroupAttachment(campaignId, group.id, f.file)),
+      );
+      await createCampaignGroupPost(campaignId, group.id, postDraft.trim(), attachments);
+    },
     onSuccess: async () => {
       setPostDraft("");
+      files.forEach((f) => f.preview && URL.revokeObjectURL(f.preview));
+      setFiles([]);
       await queryClient.invalidateQueries({ queryKey: postsKey });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -380,8 +396,38 @@ function CampaignGroupPanel({
     configMutation.mutate({ auto: a, remove: r });
   };
 
+  const canSend = (postDraft.trim().length > 0 || files.length > 0) && !postMutation.isPending;
   const submitPost = () => {
-    if (postDraft.trim() && !postMutation.isPending) postMutation.mutate();
+    if (canSend) postMutation.mutate();
+  };
+  const addFiles = (list: File[]) => {
+    const next = [...files];
+    for (const file of list) {
+      if (!ATTACH_TYPES.includes(file.type)) {
+        toast.error(`${file.name}: só fotos (JPG, PNG, WebP) e PDFs.`);
+        continue;
+      }
+      if (file.size > ATTACH_MAX_BYTES) {
+        toast.error(`${file.name}: o limite é de 10 MB por arquivo.`);
+        continue;
+      }
+      if (next.length >= ATTACH_MAX_FILES) {
+        toast.error(`No máximo ${ATTACH_MAX_FILES} arquivos por mensagem.`);
+        break;
+      }
+      next.push({
+        id: `${file.name}-${file.size}-${file.lastModified}-${next.length}`,
+        file,
+        preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+      });
+    }
+    setFiles(next);
+  };
+  const removeFile = (id: string) => {
+    setFiles((cur) => {
+      cur.filter((f) => f.id === id).forEach((f) => f.preview && URL.revokeObjectURL(f.preview));
+      return cur.filter((f) => f.id !== id);
+    });
   };
 
   const selectAllRef = useRef<HTMLInputElement>(null);
@@ -413,19 +459,21 @@ function CampaignGroupPanel({
   }, [chat.length]);
   const openAdd = () => {
     setStatus("pending");
-    setOpen(true);
+    setView("part");
   };
+  const pctIn = allTotal ? Math.min(100, Math.round((joinedCount / allTotal) * 100)) : 0;
+  const missing = allTotal !== undefined ? Math.max(0, allTotal - joinedCount) : undefined;
 
   const initials = group.name;
+  const logo = (size: number) =>
+    group.cover_url ? <img src={getUploadUrl(group.cover_url)} alt="" /> : <Av name={initials} size={size} />;
   return (
     <div className="pv">
       <div className="gcm">
-        <div className="gcm-l">
-          <section className="gcard">
-            <div className="gcard-top">
-              <span className="gcard-lg">
-                {group.cover_url ? <img src={getUploadUrl(group.cover_url)} alt="" /> : <Av name={initials} size={56} />}
-              </span>
+        <section className="gcard" data-view={view} aria-label={`Resumo do grupo ${group.name}`}>
+          <div className="gv gv-sum" inert={view !== "sum"}>
+            <div className="gcard-top" style={{ ["--i" as string]: 0 }}>
+              <span className="gcard-lg">{logo(64)}</span>
               <div className="gcard-id">
                 <h3 title={group.name}>{group.name}</h3>
                 <small>Grupo privado da campanha</small>
@@ -515,160 +563,218 @@ function CampaignGroupPanel({
               style={{ display: "none" }}
               onChange={handleCoverSelect}
             />
-            {group.description ? <p className="gdesc">{group.description}</p> : null}
+            {group.description ? (
+              <p className="gdesc" style={{ ["--i" as string]: 1 }}>
+                {group.description}
+              </p>
+            ) : null}
 
-            <div className="gcard-act">
-              <button
-                type="button"
-                className={`gview${open ? " on" : ""}`}
-                aria-expanded={open}
-                aria-controls={`gpart-${group.id}`}
-                onClick={() => setOpen((v) => !v)}
+            <div className="gsum" style={{ ["--i" as string]: 2 }}>
+              <div className="gsum-n">
+                <b>
+                  <CountUp value={joinedCount} />
+                </b>
+                <span>{allTotal !== undefined ? `de ${allTotal} aprovados no grupo` : "no grupo"}</span>
+                {allTotal ? <em>{pctIn}%</em> : null}
+              </div>
+              <div
+                className="gsum-bar"
+                role="progressbar"
+                aria-label="Aprovados que já entraram no grupo"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={pctIn}
               >
+                <i style={{ width: `${pctIn}%` }} />
+              </div>
+            </div>
+
+            <div className="gtiles" style={{ ["--i" as string]: 3 }}>
+              <div className="gtile">
+                <small>Faltam entrar</small>
+                <b>{missing === undefined ? "—" : <CountUp value={missing} />}</b>
+              </div>
+              <div className="gtile">
+                <small>Entrada automática</small>
+                <b className={autoJoin ? "on" : ""}>
+                  <i aria-hidden="true" />
+                  {autoJoin ? "Ligada" : "Desligada"}
+                </b>
+              </div>
+            </div>
+
+            <div className="gcard-act" style={{ ["--i" as string]: 4 }}>
+              <button type="button" className="gview" onClick={() => setView("part")}>
                 <I n="users" cls="sm" />
-                <span>{open ? "Ocultar lista" : "Ver participantes"}</span>
-                <em>
-                  {joinedCount}
-                  {allTotal !== undefined ? ` de ${allTotal}` : ""}
-                </em>
-                <I n="chevdown" cls="sm" />
+                <span>Ver participantes</span>
+                <I n="chev" cls="sm" />
               </button>
               {canWrite ? (
-                <button type="button" className="gadd" onClick={openAdd}>
+                <button type="button" className="gadd" onClick={openAdd} aria-label="Adicionar participantes ao grupo">
                   <I n="plus" cls="sm" />
                   Adicionar
                 </button>
               ) : null}
             </div>
+          </div>
 
-            <div className={`gpart${open ? " open" : ""}`} id={`gpart-${group.id}`} inert={!open}>
-              <div className="gpart-in">
-                <div className="gp-tabs" role="tablist" aria-label="Situação dos participantes">
-                  {tabs.map(([k, l]) => (
-                    <button key={k} type="button" role="tab" aria-selected={status === k} className={status === k ? "on" : ""} onClick={() => setStatus(k)}>
-                      {l}
-                      {status === k && participantsQuery.data ? <em>{total}</em> : null}
-                    </button>
-                  ))}
-                </div>
-                <label className="gp-find">
-                  <I n="search" cls="sm" />
-                  <input
-                    placeholder="Buscar participante"
-                    aria-label="Buscar participante"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    autoComplete="off"
-                  />
-                </label>
-
-                {participantsQuery.isLoading ? (
-                  <p className="gp-empty">Carregando participantes…</p>
-                ) : participantsQuery.error ? (
-                  <p className="gp-empty">{(participantsQuery.error as Error).message}</p>
-                ) : rows.length === 0 ? (
-                  <p className="gp-empty">Nenhum participante com este filtro.</p>
-                ) : (
-                  <div className="ctlist gpl">
-                    {showCb ? (
-                      <label className="gpl-all">
-                        <input
-                          ref={selectAllRef}
-                          type="checkbox"
-                          aria-label="Selecionar todos"
-                          checked={allSelected}
-                          onChange={(event) => toggleAll(event.target.checked)}
-                        />
-                        Selecionar todos os não incluídos
-                      </label>
-                    ) : null}
-                    {rows.map((row) => {
-                      const st = row.is_member ? "joined" : row.sync_status === "failed" ? "failed" : "pending";
-                      const attempts = row.sync_attempts ?? 0;
-                      return (
-                        <div key={row.campaign_user_id} className={`gpr${selected.has(row.campaign_user_id) ? " on" : ""}`}>
-                          <span className="gpr-c">
-                            {!row.is_member && canWrite ? (
-                              <input
-                                type="checkbox"
-                                aria-label={`Selecionar ${row.name}`}
-                                checked={selected.has(row.campaign_user_id)}
-                                onChange={(event) => toggleOne(row.campaign_user_id, event.target.checked)}
-                              />
-                            ) : null}
-                          </span>
-                          <Av name={row.name} size={36} />
-                          <div className="gpr-m">
-                            <b title={row.name}>{row.name}</b>
-                            <small title={row.sync_error ?? row.email}>
-                              {st === "failed" && attempts > 0 ? `${attempts} tentativa${attempts > 1 ? "s" : ""} sem sucesso` : row.email}
-                            </small>
-                          </div>
-                          {st === "joined" ? (
-                            <span className="gsp joined">
-                              <i />
-                              Incluído
-                            </span>
-                          ) : canWrite ? (
-                            <button
-                              type="button"
-                              className="gpr-a"
-                              disabled={bulkMutation.isPending}
-                              aria-label={`${st === "failed" ? "Tentar de novo" : "Incluir"} ${row.name}`}
-                              onClick={() => bulkMutation.mutate([row.campaign_user_id])}
-                            >
-                              <I n={st === "failed" ? "refresh" : "plus"} cls="sm" />
-                              {st === "failed" ? "Tentar" : "Incluir"}
-                            </button>
-                          ) : (
-                            <span className="gsp">{st === "failed" ? "Falhou" : "Não incluído"}</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {totalPages > 1 ? (
-                  <div className="gp-pg">
-                    <small>
-                      Página {page} de {totalPages} · {total}
-                    </small>
-                    <span>
-                      <button type="button" className="lnk" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                        Anterior
-                      </button>
-                      <button type="button" className="lnk" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-                        Próxima
-                      </button>
-                    </span>
-                  </div>
-                ) : null}
-
-                {selected.size > 0 ? (
-                  <div className="gp-bar">
-                    <span className="gbc">{selected.size}</span>
-                    <b>selecionado{selected.size > 1 ? "s" : ""}</b>
-                    <span style={{ flex: 1 }} />
-                    <button type="button" className="lnk" onClick={() => setSelected(new Set())}>
-                      Limpar
-                    </button>
-                    <button type="button" className="gbtn" disabled={bulkMutation.isPending} onClick={() => bulkMutation.mutate([...selected])}>
-                      <I n="plus" cls="sm" />
-                      {bulkMutation.isPending ? "Adicionando…" : "Incluir no grupo"}
-                    </button>
-                  </div>
-                ) : null}
+          <div className="gv gv-part" inert={view !== "part"} id={`gpart-${group.id}`}>
+            <header className="gpv-h">
+              <button type="button" className="gpv-back" onClick={() => setView("sum")} aria-label="Voltar ao resumo do grupo">
+                <I n="chevl" cls="sm" />
+              </button>
+              <div>
+                <b>Participantes</b>
+                <small>
+                  {joinedCount} no grupo{allTotal !== undefined ? ` · ${allTotal} aprovados` : ""}
+                </small>
               </div>
+            </header>
+            <div className="gp-tabs" role="tablist" aria-label="Situação dos participantes">
+              {tabs.map(([k, l]) => (
+                <button key={k} type="button" role="tab" aria-selected={status === k} className={status === k ? "on" : ""} onClick={() => setStatus(k)}>
+                  {l}
+                  {status === k && participantsQuery.data ? <em>{total}</em> : null}
+                </button>
+              ))}
             </div>
-          </section>
-        </div>
+            <label className="gp-find">
+              <I n="search" cls="sm" />
+              <input
+                placeholder="Buscar participante"
+                aria-label="Buscar participante"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                autoComplete="off"
+              />
+            </label>
 
-        <section className="gchat" aria-label={`Chat do grupo ${group.name}`}>
+            <div className="gpl-w">
+              {participantsQuery.isLoading ? (
+                <p className="gp-empty">Carregando participantes…</p>
+              ) : participantsQuery.error ? (
+                <p className="gp-empty">{(participantsQuery.error as Error).message}</p>
+              ) : rows.length === 0 ? (
+                <p className="gp-empty">Nenhum participante com este filtro.</p>
+              ) : (
+                <div className="ctlist gpl">
+                  {showCb ? (
+                    <label className="gpl-all">
+                      <input
+                        ref={selectAllRef}
+                        type="checkbox"
+                        aria-label="Selecionar todos"
+                        checked={allSelected}
+                        onChange={(event) => toggleAll(event.target.checked)}
+                      />
+                      Selecionar todos os não incluídos
+                    </label>
+                  ) : null}
+                  {rows.map((row) => {
+                    const st = row.is_member ? "joined" : row.sync_status === "failed" ? "failed" : "pending";
+                    const attempts = row.sync_attempts ?? 0;
+                    return (
+                      <div key={row.campaign_user_id} className={`gpr${selected.has(row.campaign_user_id) ? " on" : ""}`}>
+                        <span className="gpr-c">
+                          {!row.is_member && canWrite ? (
+                            <input
+                              type="checkbox"
+                              aria-label={`Selecionar ${row.name}`}
+                              checked={selected.has(row.campaign_user_id)}
+                              onChange={(event) => toggleOne(row.campaign_user_id, event.target.checked)}
+                            />
+                          ) : null}
+                        </span>
+                        <Av name={row.name} size={36} />
+                        <div className="gpr-m">
+                          <b title={row.name}>{row.name}</b>
+                          <small title={row.sync_error ?? row.email}>
+                            {st === "failed" && attempts > 0 ? `${attempts} tentativa${attempts > 1 ? "s" : ""} sem sucesso` : row.email}
+                          </small>
+                        </div>
+                        {st === "joined" ? (
+                          <span className="gsp joined">
+                            <i />
+                            Incluído
+                          </span>
+                        ) : canWrite ? (
+                          <button
+                            type="button"
+                            className="gpr-a"
+                            disabled={bulkMutation.isPending}
+                            aria-label={`${st === "failed" ? "Tentar de novo" : "Incluir"} ${row.name}`}
+                            onClick={() => bulkMutation.mutate([row.campaign_user_id])}
+                          >
+                            <I n={st === "failed" ? "refresh" : "plus"} cls="sm" />
+                            {st === "failed" ? "Tentar" : "Incluir"}
+                          </button>
+                        ) : (
+                          <span className="gsp">{st === "failed" ? "Falhou" : "Não incluído"}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {totalPages > 1 ? (
+              <div className="gp-pg">
+                <small>
+                  Página {page} de {totalPages} · {total}
+                </small>
+                <span>
+                  <button type="button" className="lnk" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                    Anterior
+                  </button>
+                  <button type="button" className="lnk" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                    Próxima
+                  </button>
+                </span>
+              </div>
+            ) : null}
+
+            <div className={`gp-bar${selected.size > 0 ? " show" : ""}`} aria-hidden={selected.size === 0}>
+              <span className="gbc">{selected.size}</span>
+              <b>selecionado{selected.size > 1 ? "s" : ""}</b>
+              <span style={{ flex: 1 }} />
+              <button type="button" className="lnk" tabIndex={selected.size ? 0 : -1} onClick={() => setSelected(new Set())}>
+                Limpar
+              </button>
+              <button
+                type="button"
+                className="gbtn"
+                tabIndex={selected.size ? 0 : -1}
+                disabled={bulkMutation.isPending}
+                onClick={() => bulkMutation.mutate([...selected])}
+              >
+                <I n="plus" cls="sm" />
+                {bulkMutation.isPending ? "Adicionando…" : "Incluir no grupo"}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section
+          className={`gchat${dragging ? " drag" : ""}`}
+          aria-label={`Chat do grupo ${group.name}`}
+          onDragOver={(event) => {
+            if (!canWrite) return;
+            event.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false);
+          }}
+          onDrop={(event) => {
+            if (!canWrite) return;
+            event.preventDefault();
+            setDragging(false);
+            addFiles(Array.from(event.dataTransfer.files));
+          }}
+        >
           <header className="gchat-h">
-            <span className="gchat-lg">
-              {group.cover_url ? <img src={getUploadUrl(group.cover_url)} alt="" /> : <Av name={initials} size={40} />}
-            </span>
+            <span className="gchat-lg">{logo(40)}</span>
             <div>
               <b title={group.name}>{group.name}</b>
               <small>
@@ -688,17 +794,25 @@ function CampaignGroupPanel({
                   <I n="msg" />
                 </span>
                 <b>Nenhuma mensagem ainda</b>
-                <small>Avisos, regras e links que você enviar aqui chegam a todos os participantes do grupo.</small>
+                <small>Avisos, regras, fotos e PDFs que você enviar aqui chegam a todos os participantes do grupo.</small>
               </div>
             ) : (
               chat.map((post, i) => {
                 const day = chatDay(post.created_at);
                 const newDay = i === 0 || chatDay(chat[i - 1].created_at) !== day;
+                const atts = post.attachments ?? [];
                 return (
                   <div key={post.id} className="gmsg-w">
                     {newDay ? <p className="gday">{day}</p> : null}
                     <div className="gmsg">
-                      <div className="gmsg-b">{renderChatContent(post.content)}</div>
+                      <div className={`gmsg-b${atts.length > 0 ? " has-att" : ""}`}>
+                        {atts.length > 0 ? (
+                          <div className={`gatt n${Math.min(atts.length, 4)}`}>
+                            {atts.map((a) => <AttachmentView key={a.url} attachment={a} />)}
+                          </div>
+                        ) : null}
+                        {post.content ? <div className="gmsg-t">{renderChatContent(post.content)}</div> : null}
+                      </div>
                       <small title={formatPostDate(post.created_at)}>
                         {post.author_name} · {chatTime(post.created_at)}
                         {post.origin === "backoffice" ? " · Plataforma" : ""}
@@ -718,35 +832,128 @@ function CampaignGroupPanel({
                 submitPost();
               }}
             >
-              <textarea
-                rows={1}
-                maxLength={2000}
-                value={postDraft}
-                aria-label="Mensagem para o grupo"
-                placeholder="Escreva uma mensagem, aviso ou link HTTPS…"
-                onChange={(event) => setPostDraft(event.target.value)}
-                onInput={(event) => {
-                  const el = event.currentTarget;
-                  el.style.height = "auto";
-                  el.style.height = `${Math.min(el.scrollHeight, 128)}px`;
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-                    event.preventDefault();
-                    submitPost();
-                  }
-                }}
-              />
-              <button type="submit" className="gsend" aria-label="Enviar mensagem" disabled={postMutation.isPending || postDraft.trim().length === 0}>
-                <I n="send" cls="sm" />
-              </button>
+              {files.length > 0 ? (
+                <ul className="gtray" aria-label="Arquivos a enviar">
+                  {files.map((f) => (
+                    <li key={f.id} className={f.preview ? "img" : "pdf"}>
+                      {f.preview ? <img src={f.preview} alt="" /> : <I n="file" />}
+                      {!f.preview ? (
+                        <span>
+                          <b title={f.file.name}>{f.file.name}</b>
+                          <small>PDF · {formatBytes(f.file.size)}</small>
+                        </span>
+                      ) : null}
+                      <button type="button" aria-label={`Remover ${f.file.name}`} disabled={postMutation.isPending} onClick={() => removeFile(f.id)}>
+                        <I n="x" cls="sm" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="gchat-r">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept={ATTACH_TYPES.join(",")}
+                  style={{ display: "none" }}
+                  onChange={(event) => {
+                    addFiles(Array.from(event.target.files ?? []));
+                    event.target.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  className="gclip"
+                  aria-label="Anexar fotos ou PDFs"
+                  title="Anexar fotos ou PDFs"
+                  disabled={postMutation.isPending || files.length >= ATTACH_MAX_FILES}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <I n="paperclip" cls="sm" />
+                </button>
+                <textarea
+                  rows={1}
+                  maxLength={2000}
+                  value={postDraft}
+                  aria-label="Mensagem para o grupo"
+                  placeholder={files.length > 0 ? "Legenda (opcional)…" : "Escreva uma mensagem, aviso ou link HTTPS…"}
+                  onChange={(event) => setPostDraft(event.target.value)}
+                  onInput={(event) => {
+                    const el = event.currentTarget;
+                    el.style.height = "auto";
+                    el.style.height = `${Math.min(el.scrollHeight, 128)}px`;
+                  }}
+                  onPaste={(event) => {
+                    const pasted = Array.from(event.clipboardData.files);
+                    if (pasted.length > 0) {
+                      event.preventDefault();
+                      addFiles(pasted);
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                      event.preventDefault();
+                      submitPost();
+                    }
+                  }}
+                />
+                <button type="submit" className="gsend" aria-label="Enviar mensagem" disabled={!canSend}>
+                  {postMutation.isPending ? <span className="gspin" aria-hidden="true" /> : <I n="send" cls="sm" />}
+                </button>
+              </div>
             </form>
           ) : (
             <p className="gchat-ro">Só quem gerencia a campanha envia mensagens ao grupo.</p>
           )}
+          {dragging ? (
+            <div className="gdrop" aria-hidden="true">
+              <I n="paperclip" />
+              <b>Solte para anexar</b>
+              <small>Fotos (JPG, PNG, WebP) e PDFs, até 10 MB cada</small>
+            </div>
+          ) : null}
         </section>
       </div>
     </div>
+  );
+}
+
+interface PendingFile {
+  id: string;
+  file: File;
+  preview?: string;
+}
+
+const ATTACH_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+const ATTACH_MAX_BYTES = 10 * 1024 * 1024;
+const ATTACH_MAX_FILES = 5;
+
+function formatBytes(n: number): string {
+  if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
+  return `${(n / (1024 * 1024)).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB`;
+}
+
+/** Foto (abre grande em outra aba) ou cartão de PDF (baixa/abre em outra aba). */
+function AttachmentView({ attachment }: { attachment: CampaignGroupAttachment }) {
+  const href = getUploadUrl(attachment.url) ?? attachment.url;
+  if (attachment.mime_type?.startsWith("image/")) {
+    return (
+      <a className="gatt-i" href={href} target="_blank" rel="noopener noreferrer" aria-label={`Abrir foto ${attachment.name}`}>
+        <img src={href} alt={attachment.name} loading="lazy" />
+      </a>
+    );
+  }
+  return (
+    <a className="gatt-f" href={href} target="_blank" rel="noopener noreferrer">
+      <span aria-hidden="true">
+        <I n="file" />
+      </span>
+      <span>
+        <b title={attachment.name}>{attachment.name}</b>
+        <small>PDF · {formatBytes(attachment.size)}</small>
+      </span>
+    </a>
   );
 }
 
