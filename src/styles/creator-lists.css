@@ -36,7 +36,18 @@
 
 /* Estados vazios e de erro (lista de listas e modal) */
 .pv .lst-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 40px 20px; }
-.pv .lst-empty.big { background: #fff; border-radius: 28px; padding: 64px 24px; }
+/* Estado grande: mesma faixa compacta do elenco (ícone, texto e ação em linha), logo abaixo das abas. */
+.pv .lst-empty.big { margin-top: 14px; background: #fff; border-radius: 28px; padding: 22px 24px; display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; grid-template-areas: "ic t ac" "ic d ac"; align-items: center; justify-items: start; text-align: left; column-gap: 18px; row-gap: 0; }
+.pv .lst-empty.big > span { grid-area: ic; width: 44px; height: 44px; margin: 0; }
+.pv .lst-empty.big > span .ico { width: 20px; height: 20px; }
+.pv .lst-empty.big b { grid-area: t; font-size: 16px; }
+.pv .lst-empty.big small { grid-area: d; margin: 4px 0 0; font-size: 14px; max-width: 60ch; }
+.pv .lst-empty.big .btn { grid-area: ac; justify-self: end; flex: none; }
+.pv .lst-empty.big .btn.out { background: var(--bg); }
+@media (max-width: 760px) {
+  .pv .lst-empty.big { padding: 18px; grid-template-columns: 44px minmax(0, 1fr); grid-template-areas: "ic t" "ic d" "ac ac"; row-gap: 0; column-gap: 14px; }
+  .pv .lst-empty.big .btn { justify-self: stretch; margin-top: 14px; justify-content: center; }
+}
 .pv .lst-empty.small { padding: 28px 20px; }
 .pv .lst-empty > span { width: 56px; height: 56px; border-radius: 50%; background: var(--bg); display: grid; place-items: center; margin-bottom: 6px; }
 .pv .lst-empty > span .ico { width: 24px; height: 24px; }
