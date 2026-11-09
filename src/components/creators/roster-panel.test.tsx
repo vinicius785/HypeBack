@@ -22,9 +22,9 @@ vi.mock("@/hooks/use-agency-roster", async (importOriginal) => ({
 }));
 vi.mock("@/styles/agency-roster.css", () => ({}));
 
-import { RosterPanel, type RosterSegment } from "./roster-panel";
+import { RosterPanel } from "./roster-panel";
 
-const Panel = ({ segment = "active" }: { segment?: RosterSegment }): ReactElement => <RosterPanel segment={segment} tabs={<div />} onFindCreators={h.navigate} />;
+const Panel = ({ status = "all" }: { status?: "all" | "active" | "invited" }): ReactElement => <RosterPanel status={status} onStatusChange={vi.fn()} tabs={<div />} onFindCreators={h.navigate} />;
 
 const member = (id: string, name: string, status: "active" | "invited", over: Record<string, unknown> = {}) => ({
   id,
@@ -49,19 +49,25 @@ beforeEach(() => {
   h.members = [member("m1", "Bia Alves", "active"), member("m2", "Caio Lima", "invited"), member("m3", "Duda Reis", "active", { exclusive: false })];
 });
 
-describe("Elenco dentro de Criadores (No elenco e Convites)", () => {
-  it("No elenco mostra quem aceitou, com a exclusividade de cada um; Convites mostra os pendentes", () => {
-    const { unmount } = render(<Panel />);
-    expect(screen.getByText("Bia Alves")).toBeInTheDocument();
-    expect(screen.getByText("Duda Reis")).toBeInTheDocument();
-    expect(screen.queryByText("Caio Lima")).not.toBeInTheDocument();
+describe("Meu elenco (aceitos e convites pendentes numa lista só)", () => {
+  it("mostra todos juntos, pendentes primeiro, cada um com a sua situação", () => {
+    render(<Panel />);
+    const names = Array.from(screen.getByRole("list", { name: "Meu elenco" }).querySelectorAll(":scope > li")).map((li) => li.querySelector(".rst-id b")?.textContent);
+    expect(names).toEqual(["Caio Lima", "Bia Alves", "Duda Reis"]);
+    expect(screen.getByText("Aguardando resposta")).toBeInTheDocument();
     expect(screen.getByText("Exclusivo da agência")).toBeInTheDocument();
     expect(screen.getByText("Aberto a outros workspaces")).toBeInTheDocument();
-    unmount();
-    render(<Panel segment="invited" />);
+  });
+
+  it("a subaba de situação separa pendentes e ativos", () => {
+    const { unmount } = render(<Panel status="invited" />);
     expect(screen.getByText("Caio Lima")).toBeInTheDocument();
     expect(screen.queryByText("Bia Alves")).not.toBeInTheDocument();
     expect(screen.getByText("Eles entram no elenco quando aceitarem o convite pelo app.")).toBeInTheDocument();
+    unmount();
+    render(<Panel status="active" />);
+    expect(screen.getByText("Bia Alves")).toBeInTheDocument();
+    expect(screen.queryByText("Caio Lima")).not.toBeInTheDocument();
   });
 
   it("alternar a exclusividade chama a API com o valor contrário", async () => {
@@ -89,7 +95,7 @@ describe("Elenco dentro de Criadores (No elenco e Convites)", () => {
 
   it("cancelar um convite pendente usa a mesma confirmação", async () => {
     const user = userEvent.setup();
-    render(<Panel segment="invited" />);
+    render(<Panel />);
     const card = screen.getByText("Caio Lima").closest("li") as HTMLElement;
     await user.click(within(card).getByRole("button", { name: "Cancelar convite" }));
     expect(within(card).getByRole("alert")).toHaveTextContent("Cancelar o convite para Caio Lima?");
@@ -121,7 +127,7 @@ describe("Elenco dentro de Criadores (No elenco e Convites)", () => {
       member("m2", "Caio Lima", "active", { creator: { id: 2, name: "Caio Lima", photo: null, username: "caiol", followers_total: 9000, networks: [{ type: "tiktok", username: "caiol", members: 9000 }] } }),
     ];
     render(<Panel />);
-    const names = () => Array.from(screen.getByRole("list", { name: "Criadores no elenco" }).querySelectorAll(":scope > li")).map((li) => li.querySelector(".rst-id b")?.textContent);
+    const names = () => Array.from(screen.getByRole("list", { name: "Meu elenco" }).querySelectorAll(":scope > li")).map((li) => li.querySelector(".rst-id b")?.textContent);
     await user.click(screen.getByRole("button", { name: /^Ordenar:/ }));
     await user.click(screen.getByRole("menuitemradio", { name: "Mais seguidores" }));
     expect(names()).toEqual(["Caio Lima", "Bia Alves"]);

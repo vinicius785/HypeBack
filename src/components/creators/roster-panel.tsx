@@ -11,11 +11,12 @@ import type { RosterMember } from "@/shared/services/agency-roster";
 
 import "@/styles/agency-roster.css";
 
-/** Os dois recortes do elenco: quem já aceitou e os convites que ainda esperam resposta. */
-export type RosterSegment = "active" | "invited";
-type Sort = "recent" | "followers" | "name";
+/** Filtro de situação dentro do elenco: todos, quem já aceitou e os convites que ainda esperam resposta. */
+export type RosterStatus = "all" | "active" | "invited";
+type Sort = "pending" | "recent" | "followers" | "name";
 
 const SORTS: [Sort, string][] = [
+  ["pending", "Pendentes primeiro"],
   ["recent", "Mais recentes"],
   ["followers", "Mais seguidores"],
   ["name", "Nome (A–Z)"],
@@ -168,7 +169,9 @@ function MemberRow({
 
 
 interface RosterPanelProps {
-  segment: RosterSegment;
+  /** Subaba escolhida em "Meu elenco" (as subabas ficam ao lado da aba, no cabeçalho da página). */
+  status: RosterStatus;
+  onStatusChange: (s: RosterStatus) => void;
   /** As abas da página (Todos, No elenco, Convites, Favoritos): ficam acima da barra, como em todos os recortes. */
   tabs: ReactNode;
   onFindCreators: () => void;
@@ -178,7 +181,7 @@ interface RosterPanelProps {
  * Elenco dentro de Criadores: "No elenco" (quem aceitou, com exclusividade e remoção) e "Convites" (enviados e
  * aguardando resposta, com cancelamento). A barra de pesquisa, filtro de rede e ordenação é a mesma do catálogo.
  */
-export function RosterPanel({ segment, tabs, onFindCreators }: RosterPanelProps) {
+export function RosterPanel({ status, onStatusChange, tabs, onFindCreators }: RosterPanelProps) {
   const permissions = useWorkspacePermissions();
   const canWrite = permissions.influencers_invite;
   const { data: members = [], isLoading, error, refetch } = useAgencyRoster();
@@ -187,10 +190,10 @@ export function RosterPanel({ segment, tabs, onFindCreators }: RosterPanelProps)
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [network, setNetwork] = useState("all");
-  const [sort, setSort] = useState<Sort>("recent");
-  const tab = segment;
+  const [sort, setSort] = useState<Sort>("pending");
 
-  const inTab = useMemo(() => members.filter((m) => m.status === tab), [members, tab]);
+  const roster = useMemo(() => members.filter((m) => m.status === "active" || m.status === "invited"), [members]);
+    const inTab = useMemo(() => (status === "all" ? roster : roster.filter((m) => m.status === status)), [roster, status]);
   const networks = useMemo(() => {
     const seen = new Map<string, string>();
     for (const m of inTab) for (const n of m.creator.networks) seen.set(n.type.toLowerCase(), getNetworkLabel(n.type, n.type));
@@ -205,11 +208,13 @@ export function RosterPanel({ segment, tabs, onFindCreators }: RosterPanelProps)
       return [c.name, c.username ?? "", ...c.networks.map((n) => n.username)].some((t) => norm(t).includes(q));
     });
     return [...rows].sort((a, b) => {
+      if (sort === "pending" && a.status !== b.status) return a.status === "invited" ? -1 : 1;
       if (sort === "followers") return b.creator.followers_total - a.creator.followers_total;
       if (sort === "name") return a.creator.name.localeCompare(b.creator.name, "pt-BR");
       return new Date(memberDate(b)).getTime() - new Date(memberDate(a)).getTime();
     });
   }, [inTab, network, query, sort]);
+  const filtering = query.trim() !== "" || network !== "all";
 
   const onRemove = (m: RosterMember) =>
     remove.mutate(m.id, {
@@ -233,7 +238,7 @@ export function RosterPanel({ segment, tabs, onFindCreators }: RosterPanelProps)
     <>
       <PageControls>
         {tabs}
-        {inTab.length > 0 && (
+        {roster.length > 0 && (
           <PageToolbar>
             <SearchInput value={query} onChange={setQuery} placeholder="Buscar criador por nome ou @" label="Buscar no elenco" />
             {networks.length > 1 && (
@@ -274,18 +279,14 @@ export function RosterPanel({ segment, tabs, onFindCreators }: RosterPanelProps)
             Tentar de novo
           </button>
         </div>
-      ) : inTab.length === 0 ? (
+      ) : roster.length === 0 ? (
         <div className="rst-state fade">
           <span className="rst-si">
             <I n="star" />
           </span>
           <div>
-            <b>{tab === "active" ? "Seu elenco começa aqui" : "Nenhum convite pendente"}</b>
-            <p>
-              {tab === "active"
-                ? "Os criadores que você convidar passam a integrar o elenco quando aceitam o convite pelo app."
-                : "Os convites que você enviar aparecem aqui até o criador responder."}
-            </p>
+            <b>Seu elenco começa aqui</b>
+            <p>Os criadores que você convidar passam a integrar o elenco quando aceitam o convite pelo app. Até lá, o convite fica aqui como pendente.</p>
           </div>
           <button type="button" className="btn" onClick={onFindCreators}>
             <I n="search" cls="sm" />
@@ -299,7 +300,7 @@ export function RosterPanel({ segment, tabs, onFindCreators }: RosterPanelProps)
           </span>
           <div>
             <b>Nenhum criador encontrado</b>
-            <p>Ajuste a busca ou o filtro de rede para ver mais resultados.</p>
+            <p>{filtering ? "Ajuste a busca ou o filtro de rede para ver mais resultados." : "Nenhum criador nesta situação."}</p>
           </div>
           <button
             type="button"
@@ -307,6 +308,7 @@ export function RosterPanel({ segment, tabs, onFindCreators }: RosterPanelProps)
             onClick={() => {
               setQuery("");
               setNetwork("all");
+              onStatusChange("all");
             }}
           >
             Limpar filtros
@@ -314,7 +316,7 @@ export function RosterPanel({ segment, tabs, onFindCreators }: RosterPanelProps)
         </div>
       ) : (
         <div className="rst-list fade">
-          {tab === "invited" && (
+          {status === "invited" && (
             <p className="rst-note">
               <I n="clock" cls="sm" />
               Eles entram no elenco quando aceitarem o convite pelo app.
@@ -324,10 +326,10 @@ export function RosterPanel({ segment, tabs, onFindCreators }: RosterPanelProps)
             <span>Criador</span>
             <span>Redes</span>
             <span className="r">Seguidores</span>
-            <span>{tab === "active" ? "No elenco" : "Convite"}</span>
-            <span>{tab === "active" ? "Exclusividade" : "Situação"}</span>
+            <span>Entrada</span>
+            <span>Situação</span>
           </div>
-          <ul aria-label={tab === "active" ? "Criadores no elenco" : "Convites enviados"}>
+          <ul aria-label="Meu elenco">
             {shown.map((m) => (
               <MemberRow
                 key={m.id}

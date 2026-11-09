@@ -24,7 +24,7 @@ import {
   useAddToInfluencerList,
 } from "@/hooks/use-creators-catalog";
 import { useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
-import { RosterPanel } from "@/components/creators/roster-panel";
+import { RosterPanel, type RosterStatus } from "@/components/creators/roster-panel";
 import { rosterErrorMessage, useAgencyRoster, useInviteToRoster, useRosterStatusMap } from "@/hooks/use-agency-roster";
 import { CityPicker } from "@/components/creators/city-picker";
 import { MapCreatorPanel } from "@/components/creators/map-creator-panel";
@@ -68,8 +68,8 @@ export const Route = createFileRoute("/(private)/(app)/creators")({
 // Types & constants
 // ---------------------------------------------------------------------------
 
-/** Recortes da página: Todos (catálogo), No elenco e Convites (agência), Favoritos (listas salvas). */
-type Segment = "all" | "roster" | "invites" | "favorites";
+/** Recortes da página: Todos (catálogo), Meu elenco (agência: aceitos e convites pendentes), Favoritos (listas salvas). */
+type Segment = "all" | "roster" | "favorites";
 type FilterKey = "net" | "niche" | "uf" | "gen" | "fol" | "eng";
 type Opt = [value: string, label: string];
 
@@ -1152,11 +1152,9 @@ function RouteComponent() {
   // `tab=lists` é o endereço antigo de "Minhas listas": agora é Favoritos.
   const requested = (search as Record<string, string>).tab;
   const segment: Segment =
-    requested === "roster" && isAgency
+    (requested === "roster" || requested === "invites") && isAgency
       ? "roster"
-      : requested === "invites" && isAgency
-        ? "invites"
-        : (requested === "favorites" || requested === "lists") && canLists
+      : (requested === "favorites" || requested === "lists") && canLists
           ? "favorites"
           : "all";
 
@@ -1165,6 +1163,8 @@ function RouteComponent() {
   const { isLoading: listsLoading } = useInfluencerLists();
   const membershipMap = useInfluencerMembershipMap();
   const { data: roster = [], isLoading: rosterLoading } = useAgencyRoster();
+  // Subaba de "Meu elenco": quem aceitou, convites pendentes ou todos juntos. Um convite recém-chegado abre em "Pendentes".
+  const [rosterStatus, setRosterStatus] = useState<RosterStatus>("all");
   const [visitedLists, setVisitedLists] = useState(segment === "favorites");
   useEffect(() => {
     if (segment === "favorites") setVisitedLists(true);
@@ -1197,15 +1197,25 @@ function RouteComponent() {
       ariaLabel="Recortes de criadores"
       value={segment}
       onChange={setSegment}
+      subValue={rosterStatus}
+      onSubChange={(id) => setRosterStatus(id as RosterStatus)}
       items={[
         { id: "all", label: "Todos", count: exploreCount },
+        ...(canLists ? [{ id: "favorites" as const, label: "Favoritos", count: !listsLoading ? membershipMap.size : undefined }] : []),
         ...(isAgency
           ? [
-              { id: "roster" as const, label: "No elenco", count: !rosterLoading ? inRoster : undefined },
-              { id: "invites" as const, label: "Convites", count: !rosterLoading ? invited : undefined },
+              {
+                id: "roster" as const,
+                label: "Meu elenco",
+                count: !rosterLoading ? inRoster + invited : undefined,
+                sub: [
+                  { id: "all", label: "Todos" },
+                  { id: "active", label: "Ativos", count: !rosterLoading ? inRoster : undefined },
+                  { id: "invited", label: "Pendentes", count: !rosterLoading ? invited : undefined },
+                ],
+              },
             ]
           : []),
-        ...(canLists ? [{ id: "favorites" as const, label: "Favoritos", count: !listsLoading ? membershipMap.size : undefined }] : []),
       ]}
     />
   );
@@ -1213,7 +1223,7 @@ function RouteComponent() {
   return (
     <PageShell>
       {/* Todos e Favoritos ficam montados (o visitado fica só oculto): trocar não refaz requisições, não mostra
-          skeleton nem repete a animação. Elenco e Convites são leituras leves e montam quando abertos. */}
+          skeleton nem repete a animação. O elenco é uma leitura leve e montam quando abertos. */}
       <div className="pg-panel" hidden={segment !== "all"}>
         <CatalogTab tabs={tabs} onTotal={setExploreCount} />
       </div>
@@ -1222,9 +1232,9 @@ function RouteComponent() {
           <ListsTab tabs={tabs} />
         </div>
       )}
-      {isAgency && (segment === "roster" || segment === "invites") && (
+      {isAgency && segment === "roster" && (
         <div className="pg-panel">
-          <RosterPanel key={segment} segment={segment === "roster" ? "active" : "invited"} tabs={tabs} onFindCreators={() => setSegment("all")} />
+          <RosterPanel status={rosterStatus} onStatusChange={setRosterStatus} tabs={tabs} onFindCreators={() => setSegment("all")} />
         </div>
       )}
     </PageShell>

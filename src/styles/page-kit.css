@@ -32,6 +32,22 @@
 .pgk .pg-tabs button:hover { color: var(--pg-ink); }
 .pgk .pg-tabs button.on { background: var(--pg-ink); color: #fff; }
 .pgk .pg-tabs em { font-style: normal; font-size: 11.5px; font-weight: 700; line-height: 1; padding: 3px 7px; border-radius: 99px; background: var(--pg-bg); color: var(--pg-ink); transition: background-color .25s, color .25s; }
+/* Subabas em linha (como a Gestão dentro da campanha): abrem ao lado da aba ativa, separadas por um fio, com a escolhida em cinza. */
+.pgk .pg-sub { display: inline-flex; align-items: center; gap: 2px; max-width: 0; opacity: 0; overflow: hidden; white-space: nowrap; margin-left: 0; padding-left: 0; border-left: 1.5px solid transparent; transition: max-width .6s var(--ease, cubic-bezier(.22, 1, .36, 1)), opacity .35s ease, margin .5s var(--ease, cubic-bezier(.22, 1, .36, 1)), padding .5s var(--ease, cubic-bezier(.22, 1, .36, 1)), border-color .3s; pointer-events: none; }
+.pgk .pg-sub.open { max-width: 520px; opacity: 1; margin-left: 8px; padding: 3px; border-left-color: transparent; pointer-events: auto; }
+.pgk .pg-sub { border-radius: 99px; background: transparent; transition-property: max-width, opacity, margin, padding, background-color; }
+.pgk .pg-sub.open { background: var(--pg-bg); }
+.pgk .pg-sub button { height: 32px; padding: 0 14px; font-size: 13.5px; color: var(--pg-muted); background: transparent; transform: translateX(-10px); opacity: 0; transition: background-color .25s, color .25s, transform .5s var(--ease, cubic-bezier(.22, 1, .36, 1)), opacity .35s ease; transition-delay: 0s, 0s, calc(var(--j, 0) * 60ms + 120ms), calc(var(--j, 0) * 60ms + 120ms); }
+.pgk .pg-sub.open button { transform: none; opacity: 1; }
+.pgk .pg-sub { position: relative; }
+.pgk .pg-sub::before { content: ""; position: absolute; left: 0; top: 50%; height: 32px; margin-top: -16px; width: var(--hw, 0px); transform: translateX(var(--hx, 0px)); opacity: var(--ho, 0); border-radius: 99px; background: rgba(5,5,5,.075); pointer-events: none; transition: transform .38s cubic-bezier(.22, 1, .36, 1), width .38s cubic-bezier(.22, 1, .36, 1), opacity .2s ease; }
+.pgk .pg-sub button { position: relative; z-index: 1; }
+.pgk .pg-sub button:hover:not(.sel) { background: transparent; color: var(--pg-ink); }
+.pgk .pg-sub button:active { transform: scale(.96); }
+.pgk .pg-sub button.sel { background: #fff; color: var(--pg-ink); box-shadow: 0 2px 8px -3px rgba(5,5,5,.28); }
+.pgk .pg-sub em { background: rgba(5,5,5,.08); }
+.pgk .pg-sub button.sel em { background: var(--pg-brand); color: #fff; }
+@media (prefers-reduced-motion: reduce) { .pgk .pg-sub, .pgk .pg-sub::before, .pgk .pg-sub button { transition: none; } }
 .pgk .pg-tabs button.on em { background: var(--pg-brand); color: #fff; }
 
 /* Barra de ferramentas: todos os controles com a mesma altura, raio e espaço. */
