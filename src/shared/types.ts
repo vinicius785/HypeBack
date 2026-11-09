@@ -338,6 +338,8 @@ export interface WorkspaceMember {
   email: string;
   role: WorkspaceRole;
   created_at: string;
+  /** Foto do membro, quando a API enviar (`avatar`, `photo` ou `avatar_url`). */
+  avatar?: string | null;
   /** Permissões customizadas do membro — array de strings retornado pela API. */
   permissions?: string[];
 }

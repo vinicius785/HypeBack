@@ -269,8 +269,12 @@ function normalizeWorkspaceMember(row: unknown): WorkspaceMember | null {
       .map(([k]) => k);
   }
 
+  const avatarRaw = o.avatar ?? o.photo ?? o.avatar_url ?? o.profile_photo;
+  const avatar = typeof avatarRaw === "string" && avatarRaw.trim() ? avatarRaw : null;
+
   return {
     user_id: userId,
+    avatar,
     name: String(o.name ?? ""),
     email: String(o.email ?? ""),
     role,
