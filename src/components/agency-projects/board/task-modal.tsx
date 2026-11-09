@@ -40,7 +40,7 @@ import {
   validateTaskTitle,
   type TaskDraft,
 } from "./task-logic";
-import { useWorkspacePeople, type PersonOption } from "./use-workspace-people";
+import { knownProjectPeople, useWorkspacePeople, type PersonOption } from "./use-workspace-people";
 
 import "@/styles/agency-projects.css";
 
@@ -149,7 +149,8 @@ function TaskEditorBody({
   const removeComment = useDeleteTaskComment(project.id);
   const upload = useUploadTaskAttachment(project.id);
   const removeAttachment = useDeleteTaskAttachment(project.id);
-  const people = useWorkspacePeople({ enabled: can.canWrite });
+  const known = useMemo(() => knownProjectPeople(project, tasks), [project, tasks]);
+  const people = useWorkspacePeople({ enabled: can.canWrite, known });
   const { confirm, dialog } = useProjectConfirm();
 
   const readOnly = !can.canWrite;

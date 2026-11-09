@@ -31,7 +31,10 @@ vi.mock("@/lib/utils/api", async (importOriginal) => ({
   getUploadUrl: (path?: string | null) => (path ? `https://cdn.test${path}` : undefined),
 }));
 vi.mock("@/contexts/auth-context", () => ({ useAuth: () => ({ user: h.user }) }));
-vi.mock("./use-workspace-people", () => ({ useWorkspacePeople: () => ({ people: h.people, isLoading: false, failed: h.peopleFailed }) }));
+vi.mock("./use-workspace-people", () => ({
+  useWorkspacePeople: () => ({ people: h.people, isLoading: false, failed: h.peopleFailed }),
+  knownProjectPeople: () => [],
+}));
 vi.mock("@/hooks/use-agency-projects", () => ({
   useProjectTask: () => ({ data: h.detail, error: h.detailError, isLoading: h.detailLoading, isFetching: false, refetch: h.refetch }),
   useUpdateProjectTask: () => ({ mutateAsync: h.update, isPending: h.pending }),

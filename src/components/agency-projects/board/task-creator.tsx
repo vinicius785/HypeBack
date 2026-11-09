@@ -10,7 +10,7 @@ import { TaskDialogShell } from "./task-dialog";
 import { TaskFields } from "./task-fields";
 import { draftToInput, emptyDraft, isDraftDirty, validateDueDate, validateTaskDescription, validateTaskTitle, type TaskDraft } from "./task-logic";
 import type { TaskModalProps } from "./task-modal";
-import { useWorkspacePeople } from "./use-workspace-people";
+import { knownProjectPeople, useWorkspacePeople } from "./use-workspace-people";
 
 import "@/styles/agency-projects.css";
 
@@ -21,7 +21,8 @@ export function TaskCreator({ project, can, defaultStatus, tasks, onClose }: Tas
   const [tried, setTried] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const create = useCreateProjectTask(project.id);
-  const people = useWorkspacePeople({ enabled: can.canWrite });
+  const known = useMemo(() => knownProjectPeople(project, tasks), [project, tasks]);
+  const people = useWorkspacePeople({ enabled: can.canWrite, known });
   const { confirm, dialog } = useProjectConfirm();
   const tagSuggestions = useMemo(() => deriveTaskTags(tasks), [tasks]);
   const busy = create.isPending;
