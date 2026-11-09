@@ -49,11 +49,19 @@ export function PageControls({ children }: { children: ReactNode }) {
   return <div className="pg-controls">{children}</div>;
 }
 
+export interface PageSubItem {
+  id: string;
+  label: string;
+  count?: number | null;
+}
+
 export interface PageTabItem<T extends string = string> {
   id: T;
   label: string;
   /** Contagem ao lado do nome (some quando ausente). */
   count?: number | null;
+  /** Subabas: abrem em linha ao lado da aba quando ela está ativa (como Gestão dentro da campanha). */
+  sub?: readonly PageSubItem[];
 }
 
 interface PageTabsProps<T extends string> {
@@ -61,19 +69,54 @@ interface PageTabsProps<T extends string> {
   value: T;
   onChange: (id: T) => void;
   ariaLabel: string;
+  /** Subaba ativa (das subabas da aba ativa). */
+  subValue?: string;
+  onSubChange?: (id: string) => void;
 }
 
-/** Navegação secundária (Explorar/Minhas listas, Todas/Ativas…, No elenco/Convites): a pílula branca com a aba ativa em preto. */
-export function PageTabs<T extends string>({ items, value, onChange, ariaLabel }: PageTabsProps<T>) {
+/** Navegação secundária (Explorar/Minhas listas, Todas/Ativas…, Meu elenco): a pílula branca com a aba ativa em preto. */
+export function PageTabs<T extends string>({ items, value, onChange, ariaLabel, subValue, onSubChange }: PageTabsProps<T>) {
   return (
     <div className="pg-tabs" role="tablist" aria-label={ariaLabel}>
       {items.map((t) => {
         const on = t.id === value;
         return (
-          <button key={t.id} type="button" role="tab" aria-selected={on} className={on ? "on" : ""} onClick={() => onChange(t.id)}>
-            {t.label}
-            {t.count != null ? <em>{t.count}</em> : null}
-          </button>
+          <span key={t.id} style={{ display: "contents" }}>
+            <button type="button" role="tab" aria-selected={on} className={on ? "on" : ""} onClick={() => onChange(t.id)}>
+              {t.label}
+              {t.count != null ? <em>{t.count}</em> : null}
+            </button>
+            {t.sub ? (
+              <span
+                className={`pg-sub${on ? " open" : ""}`}
+                onMouseLeave={(e) => e.currentTarget.style.setProperty("--ho", "0")}
+                role="group" aria-label={`${t.label}: situação`} aria-hidden={on ? undefined : true}>
+                {t.sub.map((k, j) => (
+                  <button
+                    key={k.id}
+                    type="button"
+                    aria-pressed={subValue === k.id}
+                    className={subValue === k.id ? "sel" : ""}
+                    tabIndex={on ? 0 : -1}
+                    style={{ ["--j" as string]: j }}
+                    onMouseEnter={(e) => {
+                      // Brilho que desliza até a subaba sob o mouse (como nas subabas de Gestão da campanha).
+                      const b = e.currentTarget;
+                      const host = b.parentElement;
+                      if (!host) return;
+                      host.style.setProperty("--hx", `${b.offsetLeft}px`);
+                      host.style.setProperty("--hw", `${b.offsetWidth}px`);
+                      host.style.setProperty("--ho", "1");
+                    }}
+                    onClick={() => onSubChange?.(k.id)}
+                  >
+                    {k.label}
+                    {k.count != null ? <em>{k.count}</em> : null}
+                  </button>
+                ))}
+              </span>
+            ) : null}
+          </span>
         );
       })}
     </div>
