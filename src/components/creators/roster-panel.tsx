@@ -96,7 +96,7 @@ function MemberRow({
               <li key={`${n.type}-${n.username}`} title={`${getNetworkLabel(n.type, n.type)} · @${n.username}`}>
                 <I n={NET_ICON[n.type.toLowerCase()] ?? "video"} cls="sm" />
                 <span className="sr-only">{getNetworkLabel(n.type, n.type)}</span>
-                <small>{fmtFollowers(n.members)}</small>
+                <small className={n.members > 0 ? undefined : "z"}>{n.members > 0 ? fmtFollowers(n.members) : "—"}</small>
               </li>
             ))}
           </ul>
@@ -114,7 +114,14 @@ function MemberRow({
           <b className="rst-nil">—</b>
         )}
       </div>
-      <div className="rst-dt">{dateLabel}</div>
+      <div className="rst-dt">
+        {date ? (
+          <>
+            <small>{active ? "Desde" : "Convidado em"}</small>
+            <b>{date}</b>
+          </>
+        ) : null}
+      </div>
       <div className="rst-ex">
         {active ? (
           <>
@@ -135,7 +142,10 @@ function MemberRow({
             ) : null}
           </>
         ) : (
-          <span className="rst-pend">Aguardando resposta</span>
+          <span className="rst-pend">
+            <i aria-hidden="true" />
+            Aguardando resposta
+          </span>
         )}
       </div>
       <div className="rst-ac">
@@ -304,7 +314,12 @@ export function RosterPanel({ segment, tabs, onFindCreators }: RosterPanelProps)
         </div>
       ) : (
         <div className="rst-list fade">
-          {tab === "invited" && <p className="rst-note">Eles entram no elenco quando aceitarem o convite pelo app.</p>}
+          {tab === "invited" && (
+            <p className="rst-note">
+              <I n="clock" cls="sm" />
+              Eles entram no elenco quando aceitarem o convite pelo app.
+            </p>
+          )}
           <div className="rst-hd" aria-hidden="true">
             <span>Criador</span>
             <span>Redes</span>
