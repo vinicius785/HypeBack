@@ -193,6 +193,27 @@ function CampaignGroupPanel({
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [postDraft, setPostDraft] = useState("");
+  // Participantes abrem por um botão dentro do cartão; o menu "⋯" guarda a configuração do convite.
+  const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const feedRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     setAutoJoin(group.auto_join_on_approval);
@@ -245,7 +266,9 @@ function CampaignGroupPanel({
   const postsQuery = useQuery({
     queryKey: postsKey,
     queryFn: () =>
-      listCampaignGroupPosts(campaignId, group.id, { page: 1, per_page: 5 }),
+      listCampaignGroupPosts(campaignId, group.id, { page: 1, per_page: 40 }),
+    // O chat se atualiza sozinho enquanto a aba está aberta.
+    refetchInterval: 15_000,
   });
 
   const configMutation = useMutation({
@@ -290,7 +313,6 @@ function CampaignGroupPanel({
     onSuccess: async () => {
       setPostDraft("");
       await queryClient.invalidateQueries({ queryKey: postsKey });
-      toast.success("Post publicado no grupo.");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -381,92 +403,175 @@ function CampaignGroupPanel({
     ["failed", "Com falha"],
   ];
   const posts = postsQuery.data?.data ?? [];
+  // A API devolve do mais novo para o mais antigo; o chat lê de cima para baixo, com a última mensagem embaixo.
+  const chat = useMemo(
+    () => [...posts].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
+    [posts],
+  );
+  useEffect(() => {
+    feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight });
+  }, [chat.length]);
+  const openAdd = () => {
+    setStatus("pending");
+    setOpen(true);
+  };
 
+  const initials = group.name;
   return (
     <div className="pv">
-      <div className="mg flat" style={{ marginBottom: 20 }}>
-        <div className="gwrap">
-          <div className={`gmain card gjm${selected.size > 0 ? " has-sel" : ""}`}>
-            <div className="gjh">
-              <div>
-                <h2>Participantes do grupo</h2>
-                <p className="sub">Inclusão em lote e situação de cada pessoa</p>
+      <div className="gcm">
+        <div className="gcm-l">
+          <section className="gcard">
+            <div className="gcard-top">
+              <span className="gcard-lg">
+                {group.cover_url ? <img src={getUploadUrl(group.cover_url)} alt="" /> : <Av name={initials} size={56} />}
+              </span>
+              <div className="gcard-id">
+                <h3 title={group.name}>{group.name}</h3>
+                <small>Grupo privado da campanha</small>
               </div>
-              <div className="gjp">
-                <b>
-                  {joinedCount}
-                  {allTotal !== undefined && <span> de {allTotal}</span>}
-                </b>
-                {allTotal !== undefined && allTotal > 0 && (
-                  <div className="cc-trk">
-                    <i
-                      style={
-                        {
-                          "--w": `${Math.min(100, Math.round((joinedCount / allTotal) * 100))}%`,
-                          "--i": 0,
-                        } as React.CSSProperties
-                      }
-                    />
+              <div className={`cfw bcd-menu gcard-menu${menuOpen ? " open" : ""}`} ref={menuRef}>
+                <button
+                  type="button"
+                  className="bcd-dots"
+                  aria-label={`Configurar o grupo ${group.name}`}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  onClick={() => setMenuOpen((v) => !v)}
+                >
+                  <I n="more" />
+                </button>
+                {menuOpen ? (
+                  <div className="cfm right gm" role="menu">
+                    <p className="gm-h">Convite e entrada</p>
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={autoJoin}
+                      className="gm-row"
+                      disabled={!canWrite}
+                      onClick={() => toggleConfig({ auto_join_on_approval: !autoJoin })}
+                    >
+                      <span>
+                        <b>Entrada automática</b>
+                        <small>Quem for aprovado entra sozinho. A aprovação não falha se o grupo estiver indisponível.</small>
+                      </span>
+                      <i className={`tgl${autoJoin ? " on" : ""}`} aria-hidden="true">
+                        <i />
+                      </i>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={removeOnExit}
+                      className="gm-row"
+                      disabled={!canWrite}
+                      onClick={() => toggleConfig({ remove_on_campaign_exit: !removeOnExit })}
+                    >
+                      <span>
+                        <b>Remover ao sair da campanha</b>
+                        <small>Desligado, mantém o participante no grupo.</small>
+                      </span>
+                      <i className={`tgl${removeOnExit ? " on" : ""}`} aria-hidden="true">
+                        <i />
+                      </i>
+                    </button>
+                    <hr />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="gm-it"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        void copyLink();
+                      }}
+                    >
+                      <I n="link" cls="sm" />
+                      Copiar link do convite
+                    </button>
+                    {canWrite ? (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="gm-it"
+                        disabled={coverMutation.isPending}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          coverInputRef.current?.click();
+                        }}
+                      >
+                        <I n="image" cls="sm" />
+                        {coverMutation.isPending ? "Enviando capa…" : group.cover_url ? "Alterar capa" : "Adicionar capa"}
+                      </button>
+                    ) : null}
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
-            <div className="gtools gjt">
-              <div className="gtabs" id="gtabs">
-                {tabs.map(([k, l]) => (
-                  <button
-                    key={k}
-                    className={status === k ? "on" : ""}
-                    onClick={() => setStatus(k)}
-                  >
-                    {l}
-                    {status === k && participantsQuery.data && (
-                      <em>{total}</em>
-                    )}
-                  </button>
-                ))}
-              </div>
-              <div className="ctr-tools">
-                <label className={`find mini ${search ? "has" : ""}`}>
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              style={{ display: "none" }}
+              onChange={handleCoverSelect}
+            />
+            {group.description ? <p className="gdesc">{group.description}</p> : null}
+
+            <div className="gcard-act">
+              <button
+                type="button"
+                className={`gview${open ? " on" : ""}`}
+                aria-expanded={open}
+                aria-controls={`gpart-${group.id}`}
+                onClick={() => setOpen((v) => !v)}
+              >
+                <I n="users" cls="sm" />
+                <span>{open ? "Ocultar lista" : "Ver participantes"}</span>
+                <em>
+                  {joinedCount}
+                  {allTotal !== undefined ? ` de ${allTotal}` : ""}
+                </em>
+                <I n="chevdown" cls="sm" />
+              </button>
+              {canWrite ? (
+                <button type="button" className="gadd" onClick={openAdd}>
+                  <I n="plus" cls="sm" />
+                  Adicionar
+                </button>
+              ) : null}
+            </div>
+
+            <div className={`gpart${open ? " open" : ""}`} id={`gpart-${group.id}`} inert={!open}>
+              <div className="gpart-in">
+                <div className="gp-tabs" role="tablist" aria-label="Situação dos participantes">
+                  {tabs.map(([k, l]) => (
+                    <button key={k} type="button" role="tab" aria-selected={status === k} className={status === k ? "on" : ""} onClick={() => setStatus(k)}>
+                      {l}
+                      {status === k && participantsQuery.data ? <em>{total}</em> : null}
+                    </button>
+                  ))}
+                </div>
+                <label className="gp-find">
                   <I n="search" cls="sm" />
                   <input
-                    placeholder="Buscar"
+                    placeholder="Buscar participante"
+                    aria-label="Buscar participante"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     autoComplete="off"
                   />
                 </label>
-              </div>
-            </div>
-            <div className="gscroll">
-              {participantsQuery.isLoading ? (
-                <div className="empty">
-                  <span className="ei">
-                    <I n="users" />
-                  </span>
-                  <b>Carregando participantes…</b>
-                </div>
-              ) : participantsQuery.error ? (
-                <div className="empty">
-                  <span className="ei">
-                    <I n="users" />
-                  </span>
-                  <b>Não foi possível carregar</b>
-                  <p>{(participantsQuery.error as Error).message}</p>
-                </div>
-              ) : rows.length === 0 ? (
-                <div className="empty">
-                  <span className="ei">
-                    <I n="users" />
-                  </span>
-                  <b>Ninguém por aqui</b>
-                  <p>Nenhum participante com este filtro.</p>
-                </div>
-              ) : (
-                <>
-                  <div className={`crh ${showCb ? "" : "nocb"}`}>
-                    <span className="crc">
-                      {showCb && (
+
+                {participantsQuery.isLoading ? (
+                  <p className="gp-empty">Carregando participantes…</p>
+                ) : participantsQuery.error ? (
+                  <p className="gp-empty">{(participantsQuery.error as Error).message}</p>
+                ) : rows.length === 0 ? (
+                  <p className="gp-empty">Nenhum participante com este filtro.</p>
+                ) : (
+                  <div className="ctlist gpl">
+                    {showCb ? (
+                      <label className="gpl-all">
                         <input
                           ref={selectAllRef}
                           type="checkbox"
@@ -474,274 +579,203 @@ function CampaignGroupPanel({
                           checked={allSelected}
                           onChange={(event) => toggleAll(event.target.checked)}
                         />
-                      )}
-                    </span>
-                    <span></span>
-                    <span>Participante</span>
-                    <span>Status</span>
-                    <span className="r">Ação</span>
-                  </div>
-                  <div className={`ctlist gt ${showCb ? "" : "nocb"}`}>
+                        Selecionar todos os não incluídos
+                      </label>
+                    ) : null}
                     {rows.map((row) => {
-                      const st = row.is_member
-                        ? "joined"
-                        : row.sync_status === "failed"
-                          ? "failed"
-                          : "pending";
+                      const st = row.is_member ? "joined" : row.sync_status === "failed" ? "failed" : "pending";
                       const attempts = row.sync_attempts ?? 0;
                       return (
-                        <div
-                          key={row.campaign_user_id}
-                          className={`cr ctt ${selected.has(row.campaign_user_id) ? "on" : ""}`}
-                        >
-                          <span className="crc">
-                            {!row.is_member && canWrite && (
+                        <div key={row.campaign_user_id} className={`gpr${selected.has(row.campaign_user_id) ? " on" : ""}`}>
+                          <span className="gpr-c">
+                            {!row.is_member && canWrite ? (
                               <input
                                 type="checkbox"
                                 aria-label={`Selecionar ${row.name}`}
                                 checked={selected.has(row.campaign_user_id)}
-                                onChange={(event) =>
-                                  toggleOne(
-                                    row.campaign_user_id,
-                                    event.target.checked,
-                                  )
-                                }
+                                onChange={(event) => toggleOne(row.campaign_user_id, event.target.checked)}
                               />
-                            )}
+                            ) : null}
                           </span>
-                          <Av name={row.name} size={44} />
-                          <div className="crm">
-                            <b>
-                              <span>{row.name}</span>
-                            </b>
-                            <small title={row.sync_error ?? undefined}>
-                              {st === "failed" && attempts > 0
-                                ? `${attempts} tentativa${attempts > 1 ? "s" : ""} sem sucesso`
-                                : row.email}
+                          <Av name={row.name} size={36} />
+                          <div className="gpr-m">
+                            <b title={row.name}>{row.name}</b>
+                            <small title={row.sync_error ?? row.email}>
+                              {st === "failed" && attempts > 0 ? `${attempts} tentativa${attempts > 1 ? "s" : ""} sem sucesso` : row.email}
                             </small>
                           </div>
-                          <span className={`gs g-${st}`}>
-                            <i></i>
-                            {st === "failed"
-                              ? "Falhou"
-                              : st === "joined"
-                                ? "Incluído"
-                                : "Não incluído"}
-                          </span>
-                          <span className="cra">
-                            {!row.is_member && canWrite && (
-                              <button
-                                className="gact"
-                                disabled={bulkMutation.isPending}
-                                onClick={() =>
-                                  bulkMutation.mutate([row.campaign_user_id])
-                                }
-                              >
-                                <I n={st === "failed" ? "refresh" : "plus"} cls="sm" />
-                                {st === "failed" ? "Tentar de novo" : "Incluir"}
-                              </button>
-                            )}
-                          </span>
+                          {st === "joined" ? (
+                            <span className="gsp joined">
+                              <i />
+                              Incluído
+                            </span>
+                          ) : canWrite ? (
+                            <button
+                              type="button"
+                              className="gpr-a"
+                              disabled={bulkMutation.isPending}
+                              aria-label={`${st === "failed" ? "Tentar de novo" : "Incluir"} ${row.name}`}
+                              onClick={() => bulkMutation.mutate([row.campaign_user_id])}
+                            >
+                              <I n={st === "failed" ? "refresh" : "plus"} cls="sm" />
+                              {st === "failed" ? "Tentar" : "Incluir"}
+                            </button>
+                          ) : (
+                            <span className="gsp">{st === "failed" ? "Falhou" : "Não incluído"}</span>
+                          )}
                         </div>
                       );
                     })}
                   </div>
-                </>
-              )}
-              {totalPages > 1 && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    paddingTop: 14,
-                  }}
-                >
-                  <small style={{ color: "var(--muted)" }}>
-                    Página {page} de {totalPages} · {total} participante(s)
-                  </small>
-                  <span style={{ display: "flex", gap: 6 }}>
-                    <button
-                      className="lnk"
-                      disabled={page <= 1}
-                      onClick={() => setPage((p) => p - 1)}
-                    >
-                      Anterior
+                )}
+
+                {totalPages > 1 ? (
+                  <div className="gp-pg">
+                    <small>
+                      Página {page} de {totalPages} · {total}
+                    </small>
+                    <span>
+                      <button type="button" className="lnk" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                        Anterior
+                      </button>
+                      <button type="button" className="lnk" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                        Próxima
+                      </button>
+                    </span>
+                  </div>
+                ) : null}
+
+                {selected.size > 0 ? (
+                  <div className="gp-bar">
+                    <span className="gbc">{selected.size}</span>
+                    <b>selecionado{selected.size > 1 ? "s" : ""}</b>
+                    <span style={{ flex: 1 }} />
+                    <button type="button" className="lnk" onClick={() => setSelected(new Set())}>
+                      Limpar
                     </button>
-                    <button
-                      className="lnk"
-                      disabled={page >= totalPages}
-                      onClick={() => setPage((p) => p + 1)}
-                    >
-                      Próxima
+                    <button type="button" className="gbtn" disabled={bulkMutation.isPending} onClick={() => bulkMutation.mutate([...selected])}>
+                      <I n="plus" cls="sm" />
+                      {bulkMutation.isPending ? "Adicionando…" : "Incluir no grupo"}
                     </button>
-                  </span>
-                </div>
-              )}
+                  </div>
+                ) : null}
+              </div>
             </div>
-            <div id="gbar">
-              {selected.size > 0 && (
-                <div className="gbar">
-                  <span className="gbc">{selected.size}</span>
-                  <b>selecionado{selected.size > 1 ? "s" : ""}</b>
-                  <span style={{ flex: 1 }}></span>
-                  <button className="lnk" onClick={() => setSelected(new Set())}>
-                    Limpar
-                  </button>
-                  <button
-                    className="gbtn"
-                    disabled={bulkMutation.isPending}
-                    onClick={() => bulkMutation.mutate([...selected])}
-                  >
-                    <I n="plus" cls="sm" />
-                    {bulkMutation.isPending ? "Adicionando…" : "Incluir no grupo"}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          </section>
         </div>
 
-        <aside className="side2 fade">
-          <div className="s2-top gtop">
-            <small className="geye">Grupo privado da campanha</small>
-            <div className="gid">
-              {group.cover_url && <img className="gcv" src={getUploadUrl(group.cover_url)} alt="" />}
-              <div className="gid-t">
-                <h3 className="gname">{group.name}</h3>
-                <span className="gcount">
-                  <I n="users" cls="sm" />
-                  {group.members_count} participante{group.members_count === 1 ? "" : "s"} no grupo
-                </span>
-              </div>
+        <section className="gchat" aria-label={`Chat do grupo ${group.name}`}>
+          <header className="gchat-h">
+            <span className="gchat-lg">
+              {group.cover_url ? <img src={getUploadUrl(group.cover_url)} alt="" /> : <Av name={initials} size={40} />}
+            </span>
+            <div>
+              <b title={group.name}>{group.name}</b>
+              <small>
+                {group.members_count} participante{group.members_count === 1 ? "" : "s"} · o que você enviar chega a todos
+              </small>
             </div>
-            {group.description && <p className="gdesc">{group.description}</p>}
-            {canWrite && (
-              <>
-                <input
-                  ref={coverInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  style={{ display: "none" }}
-                  onChange={handleCoverSelect}
-                />
-                <button className="gact gcvb" disabled={coverMutation.isPending} onClick={() => coverInputRef.current?.click()}>
-                  <I n="image" cls="sm" />
-                  {coverMutation.isPending ? "Enviando..." : group.cover_url ? "Alterar capa" : "Adicionar capa"}
-                </button>
-              </>
+          </header>
+
+          <div className="gchat-feed" ref={feedRef} role="log" aria-live="polite" aria-label="Mensagens do grupo">
+            {postsQuery.isLoading ? (
+              <p className="gchat-st">Carregando mensagens…</p>
+            ) : postsQuery.error ? (
+              <p className="gchat-st">{(postsQuery.error as Error).message}</p>
+            ) : chat.length === 0 ? (
+              <div className="gchat-empty">
+                <span>
+                  <I n="msg" />
+                </span>
+                <b>Nenhuma mensagem ainda</b>
+                <small>Avisos, regras e links que você enviar aqui chegam a todos os participantes do grupo.</small>
+              </div>
+            ) : (
+              chat.map((post, i) => {
+                const day = chatDay(post.created_at);
+                const newDay = i === 0 || chatDay(chat[i - 1].created_at) !== day;
+                return (
+                  <div key={post.id} className="gmsg-w">
+                    {newDay ? <p className="gday">{day}</p> : null}
+                    <div className="gmsg">
+                      <div className="gmsg-b">{renderChatContent(post.content)}</div>
+                      <small title={formatPostDate(post.created_at)}>
+                        {post.author_name} · {chatTime(post.created_at)}
+                        {post.origin === "backoffice" ? " · Plataforma" : ""}
+                      </small>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
 
-          <section className="s2">
-            <div className="sw">
-              <div>
-                <b>Entrada automática</b>
-                <small>
-                  Quem for aprovado entra sozinho no grupo. A aprovação não
-                  falha se o grupo estiver indisponível.
-                </small>
-              </div>
-              <button
-                className={`tgl ${autoJoin ? "on" : ""}`}
-                role="switch"
-                aria-checked={autoJoin}
-                aria-label="Entrada automática"
-                disabled={!canWrite}
-                onClick={() => toggleConfig({ auto_join_on_approval: !autoJoin })}
-              >
-                <i></i>
+          {canWrite ? (
+            <form
+              className="gchat-c"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitPost();
+              }}
+            >
+              <textarea
+                rows={1}
+                maxLength={2000}
+                value={postDraft}
+                aria-label="Mensagem para o grupo"
+                placeholder="Escreva uma mensagem, aviso ou link HTTPS…"
+                onChange={(event) => setPostDraft(event.target.value)}
+                onInput={(event) => {
+                  const el = event.currentTarget;
+                  el.style.height = "auto";
+                  el.style.height = `${Math.min(el.scrollHeight, 128)}px`;
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                    event.preventDefault();
+                    submitPost();
+                  }
+                }}
+              />
+              <button type="submit" className="gsend" aria-label="Enviar mensagem" disabled={postMutation.isPending || postDraft.trim().length === 0}>
+                <I n="send" cls="sm" />
               </button>
-            </div>
-          </section>
-
-          <section className="s2">
-            <div className="sw">
-              <div>
-                <b>Remover ao sair da campanha</b>
-                <small>Mantém o participante no grupo quando desligado.</small>
-              </div>
-              <button
-                className={`tgl ${removeOnExit ? "on" : ""}`}
-                role="switch"
-                aria-checked={removeOnExit}
-                aria-label="Remover ao sair da campanha"
-                disabled={!canWrite}
-                onClick={() =>
-                  toggleConfig({ remove_on_campaign_exit: !removeOnExit })
-                }
-              >
-                <i></i>
-              </button>
-            </div>
-          </section>
-
-          <section className="s2">
-            <h3>Link do grupo</h3>
-            <div className="lkb">
-              <span>{group.share_url}</span>
-              <button className="round" onClick={copyLink} aria-label="Copiar link">
-                <I n="copy" cls="sm" />
-              </button>
-            </div>
-          </section>
-
-          <section className="s2">
-            <h3>{canWrite ? "Publicar no grupo" : "Publicações"}</h3>
-            {canWrite && (
-              <>
-                <textarea
-                  className="gpt"
-                  maxLength={2000}
-                  value={postDraft}
-                  onChange={(event) => setPostDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-                      event.preventDefault();
-                      submitPost();
-                    }
-                  }}
-                  placeholder="Mensagem, aviso ou link HTTPS para os participantes"
-                />
-                <button
-                  className="btn"
-                  disabled={postMutation.isPending || postDraft.trim().length === 0}
-                  onClick={submitPost}
-                >
-                  {postMutation.isPending ? "Publicando…" : "Publicar"}
-                </button>
-              </>
-            )}
-            <div className="gposts">
-              {postsQuery.isLoading ? (
-                <div className="gp">
-                  <small>Carregando publicações…</small>
-                </div>
-              ) : postsQuery.error ? (
-                <div className="gp">
-                  <small>{(postsQuery.error as Error).message}</small>
-                </div>
-              ) : posts.length === 0 ? (
-                <div className="gp">
-                  <small>Nenhuma publicação enviada a este grupo ainda.</small>
-                </div>
-              ) : (
-                posts.map((post) => (
-                  <div className="gp" key={post.id}>
-                    <p style={{ whiteSpace: "pre-wrap" }}>{post.content}</p>
-                    <small>
-                      {post.author_name} · {formatPostDate(post.created_at)}
-                      {post.origin === "backoffice" ? " · Plataforma" : ""}
-                    </small>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-        </aside>
+            </form>
+          ) : (
+            <p className="gchat-ro">Só quem gerencia a campanha envia mensagens ao grupo.</p>
+          )}
+        </section>
       </div>
     </div>
+  );
+}
+
+const chatTime = (iso: string) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+};
+
+/** "Hoje", "Ontem" ou a data, para separar os dias no chat. */
+function chatDay(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((start(new Date()) - start(d)) / 86_400_000);
+  if (diff === 0) return "Hoje";
+  if (diff === 1) return "Ontem";
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
+}
+
+/** Texto da mensagem com os links https clicáveis (abrem em outra aba, sem repassar a origem). */
+function renderChatContent(text: string) {
+  return text.split(/(https:\/\/[^\s<]+)/g).map((part, i) =>
+    /^https:\/\//.test(part) ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer">
+        {part}
+      </a>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
   );
 }
 
