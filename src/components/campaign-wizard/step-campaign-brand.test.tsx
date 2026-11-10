@@ -33,7 +33,7 @@ describe("Campanha de agência — campo Marca", () => {
     // workspace ainda carregando: a consulta fica desligada (nem sucesso, nem erro) e a lista vem vazia
     const update = setup("b-1");
     expect(update).not.toHaveBeenCalledWith("brandId", "");
-    expect(screen.queryByText(/Crie uma marca/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Nenhuma marca disponível/)).not.toBeInTheDocument();
     expect(screen.getByText("Marca")).toBeInTheDocument();
   });
 
@@ -55,9 +55,10 @@ describe("Campanha de agência — campo Marca", () => {
     expect(update).toHaveBeenCalledWith("brandId", "b-2");
   });
 
-  it("lista carregada e vazia: orienta a criar uma marca", () => {
+  it("lista carregada e vazia: com o cadastro de marca desligado, orienta a pedir o cadastro à equipe", () => {
     q.state = { data: [], isSuccess: true, isError: false, isLoading: false };
     setup("");
-    expect(screen.getByText(/Crie uma marca/)).toBeInTheDocument();
+    expect(screen.getByText(/Nenhuma marca disponível/)).toBeInTheDocument();
+    expect(screen.queryByText(/Crie uma marca/)).not.toBeInTheDocument();
   });
 });

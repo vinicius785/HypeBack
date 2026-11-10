@@ -7,6 +7,7 @@ import {
   BrandFormDialog,
   brandErrorMessage,
 } from "@/components/agency/brand-form-dialog";
+import { BRAND_CREATION_ENABLED } from "@/shared/constants/brand-creation";
 import {
   DEFAULT_BRAND_FILTERS,
   brandStats,
@@ -38,6 +39,8 @@ function BrandsPage() {
   const isClient = useIsClientRole();
   const permissions = useWorkspacePermissions();
   const canWrite = permissions.workspace_settings_write;
+  // Cadastro de marca desligado por enquanto; editar, arquivar e reativar seguem normais.
+  const canCreate = canWrite && BRAND_CREATION_ENABLED;
   const { data: brands = [], isLoading, error } = useAgencyBrands();
   const setStatus = useSetAgencyBrandStatus();
   const [query, setQuery] = useState("");
@@ -167,7 +170,7 @@ function BrandsPage() {
         title="Marcas"
         subtitle="Todas as marcas da agência e as campanhas vinculadas em um só lugar."
         actions={
-          canWrite ? (
+          canCreate ? (
             <button type="button" className="btn" onClick={() => setEditing("new")}>
               <I n="plus" cls="sm" />
               Nova marca
@@ -234,10 +237,11 @@ function BrandsPage() {
           </span>
           <b>Nenhuma marca cadastrada ainda</b>
           <small>
-            Cadastre a primeira marca para começar a organizar as campanhas da
-            agência.
+            {canCreate
+              ? "Cadastre a primeira marca para começar a organizar as campanhas da agência."
+              : "As marcas da agência aparecem aqui assim que forem cadastradas."}
           </small>
-          {canWrite ? (
+          {canCreate ? (
             <button
               type="button"
               className="btn"
@@ -259,7 +263,7 @@ function BrandsPage() {
               {stats.archived === 1
                 ? "Há 1 marca arquivada."
                 : `Há ${stats.archived} marcas arquivadas.`}{" "}
-              Reative uma delas ou cadastre uma nova marca.
+              {canCreate ? "Reative uma delas ou cadastre uma nova marca." : "Reative uma delas para voltar a usá-la."}
             </small>
             <div className="btns">
               <button
@@ -271,7 +275,7 @@ function BrandsPage() {
               >
                 Ver arquivadas
               </button>
-              {canWrite ? (
+              {canCreate ? (
                 <button
                   type="button"
                   className="btn"
