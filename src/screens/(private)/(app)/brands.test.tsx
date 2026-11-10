@@ -7,6 +7,7 @@ const h = vi.hoisted(() => ({
   isAgency: true,
   role: "owner",
   canWrite: true,
+  creation: true,
   loading: false,
   brands: [] as unknown[],
   setStatus: vi.fn(),
@@ -36,6 +37,11 @@ vi.mock("@/components/agency/brand-form-dialog", () => ({
   brandErrorMessage: (_e: unknown, fallback: string) => fallback,
 }));
 vi.mock("@/styles/agency-brands.css", () => ({}));
+vi.mock("@/shared/constants/brand-creation", () => ({
+  get BRAND_CREATION_ENABLED() {
+    return h.creation;
+  },
+}));
 
 import { Route } from "./brands";
 
@@ -53,6 +59,7 @@ beforeEach(() => {
   h.isAgency = true;
   h.role = "owner";
   h.canWrite = true;
+  h.creation = true;
   h.loading = false;
   h.brands = [mk("b1", "Acme", "active", 3, "Cosméticos"), mk("b2", "Beta Moda", "active", 1), mk("b3", "Velha", "archived", 0)];
 });
@@ -193,6 +200,22 @@ describe("página Marcas", () => {
     render(<Page />);
     await user.click(screen.getAllByRole("button", { name: "Nova marca" })[0]);
     expect(screen.getByRole("dialog")).toHaveTextContent("Nova marca");
+  });
+
+  it("com o cadastro desligado: sem Nova marca em lugar nenhum, mas Editar e Arquivar seguem", async () => {
+    h.creation = false;
+    const user = userEvent.setup();
+    const { unmount } = render(<Page />);
+    expect(screen.queryByRole("button", { name: "Nova marca" })).not.toBeInTheDocument();
+    await user.click(within(cardOf("Acme")).getByRole("button", { name: "Mais ações para Acme" }));
+    expect(screen.getByRole("menuitem", { name: "Editar" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Arquivar" })).toBeInTheDocument();
+    unmount();
+
+    h.brands = [];
+    render(<Page />);
+    expect(screen.getByText("Nenhuma marca cadastrada ainda")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Nova marca" })).not.toBeInTheDocument();
   });
 
   it("Editar pelo menu abre o formulário da marca", async () => {

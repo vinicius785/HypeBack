@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
+import { BRAND_CREATION_ENABLED } from "@/shared/constants/brand-creation";
 import { I } from "@/components/prototype/ui";
 import { SquareCropModal } from "@/components/square-crop-modal";
 import { useAgencyBrands } from "@/hooks/use-agency-brands";
@@ -270,7 +271,7 @@ export function StepCampaign({ formData, updateFormData, fieldErrors, tried }: W
               <Field
                 label="Marca"
                 err={brandBad}
-                hint={brandsReady && brandOptions.length === 0 ? "Crie uma marca em Marcas antes de criar a campanha." : undefined}
+                hint={brandsReady && brandOptions.length === 0 ? (BRAND_CREATION_ENABLED ? "Crie uma marca em Marcas antes de criar a campanha." : "Nenhuma marca disponível. Peça o cadastro de uma marca à equipe antes de criar a campanha.") : undefined}
               >
                 <Dropdown
                   value={formData.brandId ?? ""}
