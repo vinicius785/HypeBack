@@ -210,19 +210,20 @@ export async function bulkAddCampaignGroupMembers(
   return parse(response, "Falha ao adicionar participantes ao grupo");
 }
 
-/** Anexo de uma publicação do grupo (foto ou PDF), como devolvido pelo upload e repetido nas publicações. */
-export interface CampaignGroupAttachment {
+/** Arquivo já enviado ao storage: a `url` vai na publicação; `name` é só para exibir (o storage guarda com UUID). */
+export interface CampaignGroupUpload {
   url: string;
   name: string;
-  mime_type: string;
   size: number;
 }
 
 export interface CampaignGroupPost {
   id: string;
   content: string;
-  /** Fotos e PDFs enviados junto (ausente ou vazio em publicações só de texto). */
-  attachments?: CampaignGroupAttachment[];
+  /** Foto da publicação (uma por mensagem); `null` ou ausente quando não há. */
+  image_url?: string | null;
+  /** URLs de PDFs anexados (até 3); `[]` quando não há. */
+  attachments: string[];
   origin: string;
   created_at: string;
   author_name: string;
@@ -244,21 +245,31 @@ export async function listCampaignGroupPosts(
     ),
     { headers: headers() },
   );
-  return parse<ApiPage<CampaignGroupPost>>(
+  const page = await parse<ApiPage<CampaignGroupPost>>(
     response,
     "Falha ao carregar publicações do grupo",
   );
+  // `attachments` é lista de URLs; tolera item como objeto `{ url }` e ausência do campo.
+  return {
+    ...page,
+    data: page.data.map((post) => ({
+      ...post,
+      attachments: ((post.attachments ?? []) as Array<string | { url?: string }>)
+        .map((a) => (typeof a === "string" ? a : (a?.url ?? "")))
+        .filter(Boolean),
+    })),
+  };
 }
 
 /**
- * Envia um arquivo (foto ou PDF) para anexar a uma publicação do grupo. Multipart, campo `file`; devolve o anexo para
- * ir na lista `attachments` do `createCampaignGroupPost`.
+ * Envia uma foto (JPG, PNG, WebP) ou um PDF para anexar a uma publicação do grupo. Multipart, campo `file`; devolve a
+ * `url`: a da foto vai em `image_url` e as dos PDFs em `attachments` do `createCampaignGroupPost`.
  */
 export async function uploadCampaignGroupAttachment(
   campaignId: string,
   groupId: string,
   file: File,
-): Promise<CampaignGroupAttachment> {
+): Promise<CampaignGroupUpload> {
   const workspaceId = getWorkspaceId();
   if (!workspaceId) throw new Error("Workspace ID é obrigatório");
 
@@ -278,7 +289,7 @@ export async function uploadCampaignGroupAttachment(
       body: form,
     },
   );
-  const body = await parse<{ data: CampaignGroupAttachment }>(
+  const body = await parse<{ data: CampaignGroupUpload }>(
     response,
     "Não foi possível enviar o anexo",
   );
@@ -289,7 +300,7 @@ export async function createCampaignGroupPost(
   campaignId: string,
   groupId: string,
   content: string,
-  attachments: CampaignGroupAttachment[] = [],
+  media: { imageUrl?: string | null; attachments?: string[] } = {},
 ): Promise<void> {
   const clientRequestId =
     typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -306,7 +317,8 @@ export async function createCampaignGroupPost(
       headers: headers(true),
       body: JSON.stringify({
         content,
-        ...(attachments.length > 0 ? { attachments } : {}),
+        ...(media.imageUrl ? { image_url: media.imageUrl } : {}),
+        ...(media.attachments && media.attachments.length > 0 ? { attachments: media.attachments } : {}),
         client_request_id: clientRequestId,
       }),
     },
