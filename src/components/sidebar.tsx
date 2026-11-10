@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
+import { SIGNUP_ENABLED } from "@/shared/constants/signup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Av, I } from "@/components/prototype/ui";
@@ -276,19 +277,21 @@ export function Sidebar({ scope = "workspace" }: { scope?: NavScope }) {
                   </span>
                   Configurações
                 </button>
-                <button
-                  type="button"
-                  className="wsa"
-                  onClick={() => {
-                    setOpen(false);
-                    go("/onboarding/create-workspace");
-                  }}
-                >
-                  <span className="wsi">
-                    <I n="plus" cls="sm" />
-                  </span>
-                  Novo workspace
-                </button>
+                {SIGNUP_ENABLED ? (
+                  <button
+                    type="button"
+                    className="wsa"
+                    onClick={() => {
+                      setOpen(false);
+                      go("/onboarding/create-workspace");
+                    }}
+                  >
+                    <span className="wsi">
+                      <I n="plus" cls="sm" />
+                    </span>
+                    Novo workspace
+                  </button>
+                ) : null}
               </div>
             </>
           ) : (

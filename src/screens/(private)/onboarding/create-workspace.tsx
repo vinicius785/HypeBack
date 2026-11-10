@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 
 import {
   createFileRoute,
+  redirect,
   useLocation,
   useNavigate,
   useRouter,
 } from "@tanstack/react-router";
+import { SIGNUP_ENABLED } from "@/shared/constants/signup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,6 +32,10 @@ import { Select } from "@/components/ui/select";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/(private)/onboarding/create-workspace")({
+  // Cadastro de marca fechado por enquanto: quem abre o endereço volta para o painel.
+  beforeLoad: () => {
+    if (!SIGNUP_ENABLED) throw redirect({ to: "/", replace: true });
+  },
   // `?etapa=empresa` é a segunda metade da criação (dados da empresa): com URL própria, a faixa de etapas e o botão
   // voltar do navegador acompanham a tela.
   validateSearch: (search: Record<string, unknown>): { etapa?: typeof COMPANY_STEP_SEARCH.etapa } =>

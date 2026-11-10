@@ -124,7 +124,8 @@ describe("MobileNav no escopo do workspace (app)", () => {
     for (const label of ["Workspaces", "Usuários", "Saúde da plataforma"]) {
       expect(sheet.queryByRole("button", { name: label })).not.toBeInTheDocument();
     }
-    expect(sheet.getByRole("button", { name: "Novo workspace" })).toBeInTheDocument();
+    // cadastro de marca fechado por enquanto: sem "Novo workspace"
+    expect(sheet.queryByRole("button", { name: "Novo workspace" })).not.toBeInTheDocument();
     expect(sheet.queryByRole("button", { name: "Voltar ao app" })).not.toBeInTheDocument();
   });
 

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 
+import { SIGNUP_ENABLED } from "@/shared/constants/signup";
 import { createFileRoute, Outlet, useLocation, Link } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
@@ -233,14 +234,18 @@ function RouteComponent() {
                 Nenhum workspace encontrado
               </p>
               <span className="text-neutral-600">
-                Crie uma marca (ou peça um convite a quem já tem uma) para começar a gerenciar suas campanhas.
+                {SIGNUP_ENABLED
+                  ? "Crie uma marca (ou peça um convite a quem já tem uma) para começar a gerenciar suas campanhas."
+                  : "Peça um convite a quem administra uma marca para começar a gerenciar suas campanhas."}
               </span>
             </div>
-            <Link to="/onboarding/create-workspace">
-              <Button>
-                <p className="text-neutral-50 font-semibold">Criar marca</p>
-              </Button>
-            </Link>
+            {SIGNUP_ENABLED ? (
+              <Link to="/onboarding/create-workspace">
+                <Button>
+                  <p className="text-neutral-50 font-semibold">Criar marca</p>
+                </Button>
+              </Link>
+            ) : null}
           </div>
         </div>
       );

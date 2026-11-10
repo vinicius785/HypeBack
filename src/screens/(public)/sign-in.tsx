@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SIGNUP_ENABLED } from "@/shared/constants/signup";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -114,12 +115,16 @@ function RouteComponent() {
           {isSigningIn ? "Entrando..." : "Entrar"}
         </Button>
 
-        <p className="text-center text-[14.5px] text-neutral-500">
-          Ainda não tem conta?{" "}
-          <Link to="/sign-up" className="font-semibold text-primary-600 hover:underline">
-            Criar conta
-          </Link>
-        </p>
+        {SIGNUP_ENABLED ? (
+          <p className="text-center text-[14.5px] text-neutral-500">
+            Ainda não tem conta?{" "}
+            <Link to="/sign-up" className="font-semibold text-primary-600 hover:underline">
+              Criar conta
+            </Link>
+          </p>
+        ) : (
+          <p className="text-center text-[14.5px] text-neutral-500">Novos cadastros estão temporariamente fechados.</p>
+        )}
       </div>
     </form>
   );
