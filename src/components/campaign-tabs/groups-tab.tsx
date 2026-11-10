@@ -21,7 +21,6 @@ import {
   updateCampaignGroupLink,
   uploadCampaignGroupCover,
   type CampaignCommunityGroup,
-  type CampaignGroupAttachment,
 } from "@/shared/services/campaign-groups";
 import { CountUp } from "@/components/home/count-up";
 
@@ -319,10 +318,14 @@ function CampaignGroupPanel({
   });
   const postMutation = useMutation({
     mutationFn: async () => {
-      const attachments = await Promise.all(
-        files.map((f) => uploadCampaignGroupAttachment(campaignId, group.id, f.file)),
+      // A foto vai em `image_url` (uma por mensagem) e os PDFs em `attachments` (até 3), como nos posts do app.
+      const uploaded = await Promise.all(
+        files.map(async (f) => ({ pdf: !f.preview, up: await uploadCampaignGroupAttachment(campaignId, group.id, f.file) })),
       );
-      await createCampaignGroupPost(campaignId, group.id, postDraft.trim(), attachments);
+      await createCampaignGroupPost(campaignId, group.id, postDraft.trim(), {
+        imageUrl: uploaded.find((u) => !u.pdf)?.up.url ?? null,
+        attachments: uploaded.filter((u) => u.pdf).map((u) => u.up.url),
+      });
     },
     onSuccess: async () => {
       setPostDraft("");
@@ -411,9 +414,14 @@ function CampaignGroupPanel({
         toast.error(`${file.name}: o limite é de 10 MB por arquivo.`);
         continue;
       }
-      if (next.length >= ATTACH_MAX_FILES) {
-        toast.error(`No máximo ${ATTACH_MAX_FILES} arquivos por mensagem.`);
-        break;
+      const isImage = file.type.startsWith("image/");
+      if (isImage && next.some((f) => f.preview)) {
+        toast.error("Só uma foto por mensagem.");
+        continue;
+      }
+      if (!isImage && next.filter((f) => !f.preview).length >= ATTACH_MAX_PDFS) {
+        toast.error(`No máximo ${ATTACH_MAX_PDFS} PDFs por mensagem.`);
+        continue;
       }
       next.push({
         id: `${file.name}-${file.size}-${file.lastModified}-${next.length}`,
@@ -800,15 +808,18 @@ function CampaignGroupPanel({
               chat.map((post, i) => {
                 const day = chatDay(post.created_at);
                 const newDay = i === 0 || chatDay(chat[i - 1].created_at) !== day;
-                const atts = post.attachments ?? [];
+                const hasMedia = Boolean(post.image_url) || post.attachments.length > 0;
                 return (
                   <div key={post.id} className="gmsg-w">
                     {newDay ? <p className="gday">{day}</p> : null}
                     <div className="gmsg">
-                      <div className={`gmsg-b${atts.length > 0 ? " has-att" : ""}`}>
-                        {atts.length > 0 ? (
-                          <div className={`gatt n${Math.min(atts.length, 4)}`}>
-                            {atts.map((a) => <AttachmentView key={a.url} attachment={a} />)}
+                      <div className={`gmsg-b${hasMedia ? " has-att" : ""}`}>
+                        {hasMedia ? (
+                          <div className={`gatt n${post.image_url ? 1 : 2}`}>
+                            {post.image_url ? <PhotoView url={post.image_url} /> : null}
+                            {post.attachments.map((url, n) => (
+                              <PdfView key={url} url={url} index={n + 1} total={post.attachments.length} />
+                            ))}
                           </div>
                         ) : null}
                         {post.content ? <div className="gmsg-t">{renderChatContent(post.content)}</div> : null}
@@ -867,7 +878,7 @@ function CampaignGroupPanel({
                   className="gclip"
                   aria-label="Anexar fotos ou PDFs"
                   title="Anexar fotos ou PDFs"
-                  disabled={postMutation.isPending || files.length >= ATTACH_MAX_FILES}
+                  disabled={postMutation.isPending || files.length >= ATTACH_MAX_PDFS + 1}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <I n="paperclip" cls="sm" />
@@ -910,7 +921,7 @@ function CampaignGroupPanel({
             <div className="gdrop" aria-hidden="true">
               <I n="paperclip" />
               <b>Solte para anexar</b>
-              <small>Fotos (JPG, PNG, WebP) e PDFs, até 10 MB cada</small>
+              <small>1 foto (JPG, PNG, WebP) e até 3 PDFs, 10 MB cada</small>
             </div>
           ) : null}
         </section>
@@ -927,31 +938,35 @@ interface PendingFile {
 
 const ATTACH_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 const ATTACH_MAX_BYTES = 10 * 1024 * 1024;
-const ATTACH_MAX_FILES = 5;
+/** Uma foto e até 3 PDFs por mensagem (o post guarda uma imagem e uma lista de PDFs). */
+const ATTACH_MAX_PDFS = 3;
 
 function formatBytes(n: number): string {
   if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
   return `${(n / (1024 * 1024)).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB`;
 }
 
-/** Foto (abre grande em outra aba) ou cartão de PDF (baixa/abre em outra aba). */
-function AttachmentView({ attachment }: { attachment: CampaignGroupAttachment }) {
-  const href = getUploadUrl(attachment.url) ?? attachment.url;
-  if (attachment.mime_type?.startsWith("image/")) {
-    return (
-      <a className="gatt-i" href={href} target="_blank" rel="noopener noreferrer" aria-label={`Abrir foto ${attachment.name}`}>
-        <img src={href} alt={attachment.name} loading="lazy" />
-      </a>
-    );
-  }
+/** Foto da mensagem (abre grande em outra aba). */
+function PhotoView({ url }: { url: string }) {
+  const href = getUploadUrl(url) ?? url;
+  return (
+    <a className="gatt-i" href={href} target="_blank" rel="noopener noreferrer" aria-label="Abrir foto">
+      <img src={href} alt="Foto enviada ao grupo" loading="lazy" />
+    </a>
+  );
+}
+
+/** PDF como cartão (abre em outra aba). O storage guarda o arquivo com UUID, então o cartão usa um título genérico. */
+function PdfView({ url, index, total }: { url: string; index: number; total: number }) {
+  const href = getUploadUrl(url) ?? url;
   return (
     <a className="gatt-f" href={href} target="_blank" rel="noopener noreferrer">
       <span aria-hidden="true">
         <I n="file" />
       </span>
       <span>
-        <b title={attachment.name}>{attachment.name}</b>
-        <small>PDF · {formatBytes(attachment.size)}</small>
+        <b>{total > 1 ? `Documento ${index}` : "Documento"}</b>
+        <small>PDF · toque para abrir</small>
       </span>
     </a>
   );
