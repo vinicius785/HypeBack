@@ -71,6 +71,14 @@ function RouteComponent() {
         <p className="text-[15.5px] leading-normal text-neutral-500">
           Digite seu email abaixo e enviaremos um código de 6 dígitos para redefinir sua senha
         </p>
+
+        <p className="text-[14px] leading-normal text-neutral-500">
+          Contas da equipe: peça a um admin para gerar um código para você e{" "}
+          <Link to="/staff-reset-password" className="font-semibold text-primary-600 hover:underline">
+            redefina com o código
+          </Link>
+          .
+        </p>
       </div>
 
       <div className="flex flex-col gap-4 mt-10">

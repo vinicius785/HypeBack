@@ -18,6 +18,7 @@ import type { AdminPlatformRoleInfo, AdminPlatformTeamMember } from "@/shared/ad
 
 import { userDetailLink } from "../users/admin-users-links";
 import { ADMIN_ONLY_TEXT, PERMISSION_TEXT, ROLE_FALLBACK_LABEL, ROLE_TONE } from "./team-labels";
+import { StaffRecoveryDialogs, type StaffRecoveryTarget } from "./staff-recovery-dialogs";
 import { AdminTeamRoleDialog, type TeamTarget } from "./team-role-dialog";
 
 import "@/styles/admin-team.css";
@@ -102,6 +103,7 @@ export function AdminTeamPage() {
   const capabilities = useAdminCapabilities();
   const { user } = useAuth();
   const [dialog, setDialog] = useState<{ target?: TeamTarget } | null>(null);
+  const [recovery, setRecovery] = useState<StaffRecoveryTarget | null>(null);
 
   const team = query.data;
   const roles = team?.roles ?? [];
@@ -137,16 +139,26 @@ export function AdminTeamPage() {
       header: "",
       headerLabel: "Ações",
       mobileLabel: "",
-      width: "160px",
+      width: "minmax(0, 330px)",
       align: "right",
       cell: (member) => {
         if (member.user_id === user?.id) return <span className="adm-team-self">Você</span>;
         if (!capabilities.isAdmin) return null;
-        // A única ação por pessoa é trocar o papel (tirar da equipe é uma opção do próprio diálogo): um botão, não um menu.
+        // Duas ações por pessoa, ambas só do administrador e nunca na própria linha: trocar o papel (tirar da equipe é uma
+        // opção do próprio diálogo) e gerar o código com que o colega redefine a senha.
         return (
-          <button type="button" className="btn out adm-btn-sm" onClick={() => changeRole(member)}>
-            Alterar papel
-          </button>
+          <div className="adm-team-acts">
+            <button type="button" className="btn out adm-btn-sm" onClick={() => changeRole(member)}>
+              Alterar papel
+            </button>
+            <button
+              type="button"
+              className="btn out adm-btn-sm"
+              onClick={() => setRecovery({ id: member.user_id, name: member.name, email: member.email })}
+            >
+              Gerar código de recuperação
+            </button>
+          </div>
         );
       },
     },
@@ -188,6 +200,7 @@ export function AdminTeamPage() {
       <RolesBlock loading={query.isLoading} roles={roles} members={members} />
 
       {dialog ? <AdminTeamRoleDialog target={dialog.target} roles={roles} onClose={() => setDialog(null)} /> : null}
+      <StaffRecoveryDialogs target={recovery} onClose={() => setRecovery(null)} />
     </AdminPage>
   );
 }

@@ -21,13 +21,14 @@ const mocks = vi.hoisted(() => ({
   adminGet: vi.fn(),
   adminList: vi.fn(),
   adminPatch: vi.fn(),
+  adminPost: vi.fn(),
   toastSuccess: vi.fn(),
   auth: { user: null as Record<string, unknown> | null },
 }));
 
 vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/admin/admin-client")>();
-  return { ...actual, adminGet: mocks.adminGet, adminList: mocks.adminList, adminPatch: mocks.adminPatch };
+  return { ...actual, adminGet: mocks.adminGet, adminList: mocks.adminList, adminPatch: mocks.adminPatch, adminPost: mocks.adminPost };
 });
 vi.mock("@/contexts/auth-context", () => ({ useAuth: () => ({ user: mocks.auth.user, setUser: vi.fn() }) }));
 vi.mock("sonner", () => ({ toast: { success: mocks.toastSuccess, error: vi.fn() } }));
@@ -82,7 +83,7 @@ async function renderPage() {
 const rowOf = (name: string) => screen.getByText(name).closest('[role="row"]') as HTMLElement;
 
 beforeEach(() => {
-  for (const mock of [mocks.adminGet, mocks.adminList, mocks.adminPatch, mocks.toastSuccess]) mock.mockReset();
+  for (const mock of [mocks.adminGet, mocks.adminList, mocks.adminPatch, mocks.adminPost, mocks.toastSuccess]) mock.mockReset();
   mocks.auth.user = ADMIN_USER;
   serve();
 });
@@ -133,6 +134,10 @@ describe("Equipe: papéis e pessoas", () => {
     expect(within(rowOf("Marina Alves")).getByText("Você")).toBeInTheDocument();
     expect(within(rowOf("Marina Alves")).queryByRole("button", { name: "Alterar papel" })).not.toBeInTheDocument();
     expect(within(rowOf("Caio Teodoro")).getByRole("button", { name: "Alterar papel" })).toBeInTheDocument();
+    // gerar código de recuperação: só para o administrador, em quem é da equipe e nunca na própria linha
+    expect(within(rowOf("Caio Teodoro")).getByRole("button", { name: "Gerar código de recuperação" })).toBeInTheDocument();
+    expect(within(rowOf("Leo Ramos")).getByRole("button", { name: "Gerar código de recuperação" })).toBeInTheDocument();
+    expect(within(rowOf("Marina Alves")).queryByRole("button", { name: "Gerar código de recuperação" })).not.toBeInTheDocument();
   });
 
   it("mostra a foto de quem tem; sem foto ficam as iniciais", async () => {
@@ -302,7 +307,14 @@ describe("Equipe: sem permissão de administrador", () => {
     await renderPage();
     expect(screen.queryByRole("button", { name: "Adicionar pessoa" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Alterar papel" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Gerar código de recuperação" })).not.toBeInTheDocument();
     expect(within(rowOf("Caio Teodoro")).getByText("Você")).toBeInTheDocument();
+  });
+
+  it("somente leitura também não vê 'Gerar código de recuperação'", async () => {
+    mocks.auth.user = { id: 8, name: "Leo Ramos", platform_role: "viewer" };
+    await renderPage();
+    expect(screen.queryByRole("button", { name: "Gerar código de recuperação" })).not.toBeInTheDocument();
   });
 
   it("erro ao carregar a equipe mostra o estado de erro com 'Tentar de novo'", async () => {

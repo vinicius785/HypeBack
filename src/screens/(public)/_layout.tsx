@@ -192,7 +192,7 @@ function AuthShell({ pathname }: { pathname: string }) {
 
   const cur = SLIDES[slide];
   // Cadastro entra pela direita, login pela esquerda.
-  const dir = /sign-up|forgot-password|reset-password/.test(pathname) ? "au-r" : "au-l";
+  const dir = /sign-up|forgot-password|reset-password|staff-reset-password/.test(pathname) ? "au-r" : "au-l";
 
   return (
     <div className="grid min-h-screen w-full grid-cols-1 gap-5 bg-neutral-950 p-5 text-white lg:h-screen lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">

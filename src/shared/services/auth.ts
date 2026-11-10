@@ -155,3 +155,70 @@ export async function logout(): Promise<void> {
     throw errorData || "Failed to logout";
     }
 }
+
+interface StaffResetPasswordRequestData {
+  email: string;
+  code: string;
+  password: string;
+}
+
+/** Falha da redefinição por código da equipe: só status, código de domínio e textos do servidor (nunca os dados enviados). */
+export class StaffResetError extends Error {
+  readonly status: number;
+  readonly code: string | null;
+  /** O `message` do servidor como lista (validação manda vários textos; os outros erros, um). */
+  readonly messages: string[];
+
+  constructor(init: { status: number; code: string | null; messages: string[] }) {
+    super(init.messages[0] ?? "Falha ao redefinir a senha");
+    this.name = "StaffResetError";
+    this.status = init.status;
+    this.code = init.code;
+    this.messages = init.messages;
+  }
+}
+
+/**
+ * Equipe da plataforma redefine a PRÓPRIA senha com o código gerado por outro admin
+ * (`POST /backoffice/auth/staff-reset-password`, pública: sem Authorization). Todas as sessões antigas da conta caem.
+ * Nada do que vai no corpo (e-mail, código, senha) é registrado em log.
+ */
+export async function staffResetPassword(data: StaffResetPasswordRequestData): Promise<{ message: string }> {
+  let request: Response;
+  try {
+    request = await fetch(getApiUrl("/auth/staff-reset-password"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "Client-Type": "backoffice",
+      },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    throw new StaffResetError({ status: 0, code: "NETWORK_ERROR", messages: [] });
+  }
+
+  if (!request.ok) {
+    let body: unknown = null;
+    try {
+      body = await request.json();
+    } catch {
+      body = null;
+    }
+    const record = (typeof body === "object" && body !== null ? body : {}) as { message?: unknown; error?: unknown };
+    const messages = Array.isArray(record.message)
+      ? record.message.filter((m): m is string => typeof m === "string")
+      : typeof record.message === "string"
+        ? [record.message]
+        : [];
+    throw new StaffResetError({
+      status: request.status,
+      code: typeof record.error === "string" ? record.error : null,
+      messages,
+    });
+  }
+
+  const response = await request.json();
+  return response.data;
+}

@@ -126,6 +126,7 @@ export const ADMIN_ERROR_CODES = [
   'LAST_OWNER', // 409
   'LAST_PLATFORM_ADMIN', // 409: tirar o papel do último administrador ativo da plataforma
   'IDEMPOTENCY_CONFLICT', // 409
+  'NOT_STAFF_ACCOUNT', // 400: gerar código de recuperação de senha para quem não é da equipe da plataforma
 ] as const;
 export type AdminErrorCode = (typeof ADMIN_ERROR_CODES)[number];
 
