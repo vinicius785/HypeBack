@@ -67,7 +67,7 @@ describe("listCampaignGroupPosts", () => {
     expect((init.headers as Record<string, string>)["Workspace-Id"]).toBe(
       "workspace-9",
     );
-    expect(result).toEqual(page);
+    expect(result).toEqual({ ...page, data: page.data.map((post) => ({ ...post, attachments: [] })) });
   });
 
   it("escapa o id do grupo na URL", async () => {
@@ -123,9 +123,9 @@ describe("createCampaignGroupPost", () => {
 describe("anexos nas publicações do grupo", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("sobe o arquivo em multipart (campo `file`) sem Content-Type manual e devolve o anexo", async () => {
-    const attachment = { url: "/uploads/a.pdf", name: "a.pdf", mime_type: "application/pdf", size: 3 };
-    globalThis.fetch = vi.fn(async () => jsonResponse({ data: attachment })) as unknown as typeof fetch;
+  it("sobe o arquivo em multipart (campo `file`) sem Content-Type manual e devolve a url", async () => {
+    const upload = { url: "https://cdn.test/community/documents/1/a.pdf", name: "a.pdf", size: 3 };
+    globalThis.fetch = vi.fn(async () => jsonResponse({ data: upload })) as unknown as typeof fetch;
     const file = new File(["abc"], "a.pdf", { type: "application/pdf" });
 
     const result = await uploadCampaignGroupAttachment("camp-1", "group-abc", file);
@@ -137,16 +137,37 @@ describe("anexos nas publicações do grupo", () => {
     expect(headers["Workspace-Id"]).toBe("workspace-9");
     expect(headers["Content-Type"]).toBeUndefined();
     expect((init.body as FormData).get("file")).toBeInstanceOf(File);
-    expect(result).toEqual(attachment);
+    expect(result).toEqual(upload);
   });
 
-  it("a publicação leva `attachments` só quando há anexos", async () => {
+  it("a publicação leva `image_url` e `attachments` (lista de URLs) só quando há anexos", async () => {
     globalThis.fetch = vi.fn(async () => jsonResponse({})) as unknown as typeof fetch;
     await createCampaignGroupPost("camp-1", "group-abc", "oi");
-    expect(JSON.parse(String(lastCall().init.body))).not.toHaveProperty("attachments");
+    const plain = JSON.parse(String(lastCall().init.body));
+    expect(plain).not.toHaveProperty("attachments");
+    expect(plain).not.toHaveProperty("image_url");
 
-    const attachments = [{ url: "/uploads/a.png", name: "a.png", mime_type: "image/png", size: 1 }];
-    await createCampaignGroupPost("camp-1", "group-abc", "", attachments);
-    expect(JSON.parse(String(lastCall().init.body))).toMatchObject({ content: "", attachments });
+    await createCampaignGroupPost("camp-1", "group-abc", "", { imageUrl: "https://cdn.test/a.png", attachments: ["https://cdn.test/a.pdf"] });
+    expect(JSON.parse(String(lastCall().init.body))).toMatchObject({
+      content: "",
+      image_url: "https://cdn.test/a.png",
+      attachments: ["https://cdn.test/a.pdf"],
+    });
+  });
+
+  it("na listagem, `attachments` sempre vira lista de URLs (aceita objeto com url e campo ausente)", async () => {
+    globalThis.fetch = vi.fn(async () =>
+      jsonResponse({
+        data: [
+          { id: "1", content: "a", origin: "backoffice", created_at: "2026-11-09T12:00:00Z", author_name: "A", attachments: ["https://cdn.test/a.pdf"] },
+          { id: "2", content: "b", origin: "backoffice", created_at: "2026-11-09T12:00:00Z", author_name: "A", attachments: [{ url: "https://cdn.test/b.pdf" }], image_url: "https://cdn.test/b.png" },
+          { id: "3", content: "c", origin: "backoffice", created_at: "2026-11-09T12:00:00Z", author_name: "A" },
+        ],
+        meta: { page: 1, per_page: 5, total: 3, total_pages: 1 },
+      }),
+    ) as unknown as typeof fetch;
+    const result = await listCampaignGroupPosts("camp-1", "group-abc", { page: 1, per_page: 5 });
+    expect(result.data.map((p) => p.attachments)).toEqual([["https://cdn.test/a.pdf"], ["https://cdn.test/b.pdf"], []]);
+    expect(result.data[1].image_url).toBe("https://cdn.test/b.png");
   });
 });
