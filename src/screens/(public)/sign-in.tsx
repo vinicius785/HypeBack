@@ -108,6 +108,13 @@ function RouteComponent() {
         >
           Esqueci a senha
         </Link>
+
+        <Link
+          to="/staff-reset-password"
+          className="self-end text-[13px] font-semibold text-primary-600 hover:underline"
+        >
+          Redefinir com código de um admin
+        </Link>
       </div>
 
       <div className="flex flex-col gap-3 w-full">

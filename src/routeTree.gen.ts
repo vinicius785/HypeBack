@@ -18,6 +18,7 @@ import { Route as publicForgotPasswordRouteImport } from './screens/(public)/for
 import { Route as publicResetPasswordRouteImport } from './screens/(public)/reset-password'
 import { Route as publicSignInRouteImport } from './screens/(public)/sign-in'
 import { Route as publicSignUpRouteImport } from './screens/(public)/sign-up'
+import { Route as publicStaffResetPasswordRouteImport } from './screens/(public)/staff-reset-password'
 import { Route as privateappIndexRouteImport } from './screens/(private)/(app)/index'
 import { Route as privateappBrandsRouteImport } from './screens/(private)/(app)/brands'
 import { Route as privateappCampaignsRouteImport } from './screens/(private)/(app)/campaigns'
@@ -105,6 +106,12 @@ const publicSignUpRoute = publicSignUpRouteImport.update({
   path: '/sign-up',
   getParentRoute: () => publicLayoutRoute,
 } as any)
+const publicStaffResetPasswordRoute =
+  publicStaffResetPasswordRouteImport.update({
+    id: '/staff-reset-password',
+    path: '/staff-reset-password',
+    getParentRoute: () => publicLayoutRoute,
+  } as any)
 const privateappIndexRoute = privateappIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -364,6 +371,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof publicResetPasswordRoute
   '/sign-in': typeof publicSignInRoute
   '/sign-up': typeof publicSignUpRoute
+  '/staff-reset-password': typeof publicStaffResetPasswordRoute
   '/brands': typeof privateappBrandsRoute
   '/campaigns': typeof privateappCampaignsRouteWithChildren
   '/creators': typeof privateappCreatorsRoute
@@ -415,6 +423,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof publicResetPasswordRoute
   '/sign-in': typeof publicSignInRoute
   '/sign-up': typeof publicSignUpRoute
+  '/staff-reset-password': typeof publicStaffResetPasswordRoute
   '/brands': typeof privateappBrandsRoute
   '/campaigns': typeof privateappCampaignsRouteWithChildren
   '/creators': typeof privateappCreatorsRoute
@@ -469,6 +478,7 @@ export interface FileRoutesById {
   '/(public)/reset-password': typeof publicResetPasswordRoute
   '/(public)/sign-in': typeof publicSignInRoute
   '/(public)/sign-up': typeof publicSignUpRoute
+  '/(public)/staff-reset-password': typeof publicStaffResetPasswordRoute
   '/(private)/(app)/brands': typeof privateappBrandsRoute
   '/(private)/(app)/campaigns': typeof privateappCampaignsRouteWithChildren
   '/(private)/(app)/creators': typeof privateappCreatorsRoute
@@ -523,6 +533,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/staff-reset-password'
     | '/brands'
     | '/campaigns'
     | '/creators'
@@ -574,6 +585,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/staff-reset-password'
     | '/brands'
     | '/campaigns'
     | '/creators'
@@ -627,6 +639,7 @@ export interface FileRouteTypes {
     | '/(public)/reset-password'
     | '/(public)/sign-in'
     | '/(public)/sign-up'
+    | '/(public)/staff-reset-password'
     | '/(private)/(app)/brands'
     | '/(private)/(app)/campaigns'
     | '/(private)/(app)/creators'
@@ -742,6 +755,13 @@ declare module '@tanstack/react-router' {
       path: '/sign-up'
       fullPath: '/sign-up'
       preLoaderRoute: typeof publicSignUpRouteImport
+      parentRoute: typeof publicLayoutRoute
+    }
+    '/(public)/staff-reset-password': {
+      id: '/(public)/staff-reset-password'
+      path: '/staff-reset-password'
+      fullPath: '/staff-reset-password'
+      preLoaderRoute: typeof publicStaffResetPasswordRouteImport
       parentRoute: typeof publicLayoutRoute
     }
     '/(private)/(app)/': {
@@ -1295,6 +1315,7 @@ interface publicLayoutRouteChildren {
   publicResetPasswordRoute: typeof publicResetPasswordRoute
   publicSignInRoute: typeof publicSignInRoute
   publicSignUpRoute: typeof publicSignUpRoute
+  publicStaffResetPasswordRoute: typeof publicStaffResetPasswordRoute
   publicUUsernameRoute: typeof publicUUsernameRoute
   publicCampaignsCampaignIdInviteRoute: typeof publicCampaignsCampaignIdInviteRoute
 }
@@ -1304,6 +1325,7 @@ const publicLayoutRouteChildren: publicLayoutRouteChildren = {
   publicResetPasswordRoute: publicResetPasswordRoute,
   publicSignInRoute: publicSignInRoute,
   publicSignUpRoute: publicSignUpRoute,
+  publicStaffResetPasswordRoute: publicStaffResetPasswordRoute,
   publicUUsernameRoute: publicUUsernameRoute,
   publicCampaignsCampaignIdInviteRoute: publicCampaignsCampaignIdInviteRoute,
 }
