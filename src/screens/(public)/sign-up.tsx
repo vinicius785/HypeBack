@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { SIGNUP_ENABLED } from "@/shared/constants/signup";
 import { signUp } from "@/shared/services/auth";
 import { saveAuthToken } from "@/lib/utils/api";
 import { readWorkspaceStateError } from "@/lib/workspace-state/lifecycle-errors";
@@ -16,6 +17,10 @@ import { InputPassword } from "@/components/ui/input-password";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/(public)/sign-up")({
+  // Cadastro fechado por enquanto: quem abre o endereço (link salvo, favorito) cai na tela de entrar.
+  beforeLoad: () => {
+    if (!SIGNUP_ENABLED) throw redirect({ to: "/sign-in", replace: true });
+  },
   component: RouteComponent,
 });
 

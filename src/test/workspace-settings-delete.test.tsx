@@ -189,13 +189,13 @@ describe("excluir com sucesso (como sempre)", () => {
     expect(ctx.toast.error).not.toHaveBeenCalled();
   });
 
-  it("era o último: limpa o id guardado e leva a criar um novo workspace", async () => {
+  it("era o último: limpa o id guardado e leva ao painel (cadastro de marca fechado por enquanto)", async () => {
     ctx.deleteWorkspace.mockResolvedValue(undefined);
     ctx.getMyWorkspaces.mockResolvedValue([]);
     const dialog = await openDeleteDialog();
     await userEvent.click(confirm(dialog));
 
-    await waitFor(() => expect(ctx.navigate).toHaveBeenCalledWith({ to: "/onboarding/create-workspace" }));
+    await waitFor(() => expect(ctx.navigate).toHaveBeenCalledWith({ to: "/" }));
     expect(ctx.removeWorkspaceId).toHaveBeenCalledTimes(1);
     expect(ctx.selectWorkspace).not.toHaveBeenCalled();
   });

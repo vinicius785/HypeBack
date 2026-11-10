@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { SIGNUP_ENABLED } from "@/shared/constants/signup";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -175,7 +176,7 @@ function WorkspaceSettingsScreen() {
         navigate({ to: "/" });
       } else {
         removeWorkspaceId();
-        navigate({ to: "/onboarding/create-workspace" });
+        navigate({ to: SIGNUP_ENABLED ? "/onboarding/create-workspace" : "/" });
       }
     },
     onError: (e) => {

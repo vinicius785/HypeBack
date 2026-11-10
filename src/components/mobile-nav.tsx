@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
+import { SIGNUP_ENABLED } from "@/shared/constants/signup";
 
 import { I } from "@/components/prototype/ui";
 import type { NavScope } from "@/components/navigation/nav-config";
@@ -192,12 +193,14 @@ export function MobileNav({ scope = "workspace" }: { scope?: NavScope }) {
                     </span>
                     Workspace
                   </button>
-                  <button type="button" className="bms-t" onClick={() => go("/onboarding/create-workspace")}>
-                    <span>
-                      <I n="plus" cls="sm" />
-                    </span>
-                    Novo workspace
-                  </button>
+                  {SIGNUP_ENABLED ? (
+                    <button type="button" className="bms-t" onClick={() => go("/onboarding/create-workspace")}>
+                      <span>
+                        <I n="plus" cls="sm" />
+                      </span>
+                      Novo workspace
+                    </button>
+                  ) : null}
                 </>
               )}
               <button type="button" className="bms-t out" onClick={() => doLogout()}>

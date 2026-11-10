@@ -197,15 +197,15 @@ describe("Criadores · elenco da agência", () => {
     expect(agency.invite).toHaveBeenCalledWith(3, expect.any(Object));
   });
 
-  it("agência: as abas são Todos, No elenco, Convites e Favoritos (com a contagem do elenco)", () => {
+  it("agência: as abas são Todos, Favoritos e Meu elenco (com a contagem do elenco)", () => {
     agency.is = true;
     agency.catalogWrite = true;
     agency.roster = new Map([[1, "active"], [2, "invited"], [3, "active"]]);
     render(<Page />);
     const tabs = within(screen.getByRole("tablist", { name: "Recortes de criadores" }));
-    expect(tabs.getAllByRole("tab").map((t) => t.textContent?.replace(/\d+$/, "").trim())).toEqual(["Todos", "No elenco", "Convites", "Favoritos"]);
-    expect(tabs.getByRole("tab", { name: /No elenco/ })).toHaveTextContent("2");
-    expect(tabs.getByRole("tab", { name: /Convites/ })).toHaveTextContent("1");
+    expect(tabs.getAllByRole("tab").map((t) => t.textContent?.replace(/\d+$/, "").trim())).toEqual(["Todos", "Favoritos", "Meu elenco"]);
+    // contagem = aceitos + convites pendentes; as subabas Ativos e Pendentes só abrem com Meu elenco ativo
+    expect(tabs.getByRole("tab", { name: /Meu elenco/ })).toHaveTextContent("3");
   });
 
   it("marca: só Todos e Favoritos (sem elenco nem convites); sem permissão de escrita, só Todos", () => {
