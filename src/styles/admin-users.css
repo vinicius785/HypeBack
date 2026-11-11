@@ -110,9 +110,8 @@
 .pv .adm-trust-list .adm-trust-reason[data-effect="positive"] b { color: var(--adm-ok); }
 .pv .adm-trust-list .adm-trust-reason[data-effect="negative"] b { color: var(--adm-bad); }
 
-/* filtro local da lista: vale só para as linhas da página carregada */
-.pv .adm-trust-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 12px; color: var(--adm-text-muted); font-size: 13px; }
-.pv .adm-trust-filter button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+/* aviso do filtro local da lista (só quando ligado): vale só para as linhas da página carregada */
+.pv .adm-trust-filter { margin: 0; color: var(--adm-text-muted); font-size: 13px; }
 
 /* ===== Lista de Usuários: colunas e linhas mais calmas ===== */
 /* Colunas de apoio (tipo, data) em cinza e menores: quem manda na linha é o nome. */

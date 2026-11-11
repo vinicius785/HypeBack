@@ -15,6 +15,9 @@ export const TRUST_LEVEL_TEXT: Record<AdminUserTrustLevel, string> = {
 /** Aviso fixo que acompanha o nível (ele é uma estimativa, não uma prova). */
 export const TRUST_DISCLAIMER = "Estimativa automática por sinais. Serve para priorizar a análise e não suspende a conta.";
 
+/** Nome do filtro local da lista (vale só para as linhas da página carregada, e o nome já diz isso). */
+export const TRUST_FILTER_LABEL = "Confiança 1–2 (só nesta página)";
+
 /** Quantos motivos cabem na dica da lista; o resto vira "+N". */
 export const TRUST_TIP_MAX_REASONS = 6;
 

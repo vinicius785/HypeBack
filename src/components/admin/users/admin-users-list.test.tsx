@@ -594,34 +594,40 @@ describe("lista de usuários: confiança", () => {
     expect(within(trustCell(4)).queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("o filtro 'Confiança: 1–2' vale só para a página carregada, diz isso e não chama a API de novo", async () => {
+  it("o filtro 'Confiança 1–2' fica na barra de filtros, vale só para a página carregada, diz isso e não chama a API de novo", async () => {
     serve({ rows: [SUSPECT, SUSPECT_2, UNSURE, REAL, NO_TRUST] as typeof USERS });
     const { user } = await renderList();
     await screen.findByText("Conta Suspeita Um");
-    expect(screen.getByText("Filtro só para os usuários da página carregada.")).toBeInTheDocument();
+    // o filtro está na barra, junto dos outros (não numa faixa separada), e o nome já diz que é só da página
+    const trustButton = screen.getByRole("button", { name: "Confiança 1–2 (só nesta página)" });
+    const typeFilter = screen.getByLabelText("Tipo");
+    expect(trustButton.closest(".adm-filters-row")).not.toBeNull();
+    expect(trustButton.closest(".adm-filters-row")).toBe(typeFilter.closest(".adm-filters-row"));
+    expect(screen.queryByText(/Mostrando \d+ de \d+ usuários desta página/)).not.toBeInTheDocument();
     const before = usersCalls().length;
 
-    await user.click(screen.getByRole("button", { name: "Confiança: 1–2 (suspeitos)" }));
-    expect(screen.getByRole("button", { name: "Confiança: 1–2 (suspeitos)" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("button", { name: "Confiança 1–2 (só nesta página)" }));
+    expect(screen.getByRole("button", { name: "Confiança 1–2 (só nesta página)" })).toHaveAttribute("aria-pressed", "true");
     expect(dataRows()).toHaveLength(2);
     expect(screen.getByText("Conta Suspeita Um")).toBeInTheDocument();
     expect(screen.getByText("Conta Suspeita Dois")).toBeInTheDocument();
     expect(screen.queryByText("Conta Real")).not.toBeInTheDocument();
     expect(screen.queryByText("Conta Sem Nivel")).not.toBeInTheDocument();
-    expect(screen.getByText("Mostrando 2 de 5 usuários desta página. O filtro vale só para a página carregada.")).toBeInTheDocument();
+    expect(screen.getByText(/Mostrando 2 de 5 usuários desta página/)).toHaveTextContent("O filtro de confiança vale só para a página carregada.");
     // filtro local: nenhum parâmetro novo na API
     expect(usersCalls()).toHaveLength(before);
     expect(JSON.stringify(lastUsersParams())).not.toMatch(/trust|confian/i);
 
-    await user.click(screen.getByRole("button", { name: "Confiança: 1–2 (suspeitos)" }));
+    await user.click(screen.getByRole("button", { name: "Confiança 1–2 (só nesta página)" }));
     expect(dataRows()).toHaveLength(5);
+    expect(screen.queryByText(/Mostrando \d+ de \d+ usuários desta página/)).not.toBeInTheDocument();
   });
 
   it("sem suspeitos na página: estado vazio próprio, com a saída 'Mostrar todos da página'", async () => {
     serve({ rows: [UNSURE, REAL] as typeof USERS });
     const { user } = await renderList();
     await screen.findByText("Conta Incerta");
-    await user.click(screen.getByRole("button", { name: "Confiança: 1–2 (suspeitos)" }));
+    await user.click(screen.getByRole("button", { name: "Confiança 1–2 (só nesta página)" }));
     expect(await screen.findByText("Nenhum suspeito nesta página")).toBeInTheDocument();
     expect(screen.getByText(/Nenhuma das 2 contas desta página tem confiança 1 ou 2/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Mostrar todos da página" }));
@@ -635,5 +641,16 @@ describe("lista de usuários: confiança", () => {
     const header = within(table()).getAllByRole("columnheader")[1];
     expect(header).not.toHaveAttribute("aria-sort");
     expect(within(header).getByRole("button", { name: /Como é calculado: Confiança/ })).toHaveAccessibleDescription(/não suspende a conta/);
+  });
+
+  it("ligado, o filtro vira chip e 'Limpar filtros' o desliga", async () => {
+    serve({ rows: [SUSPECT, UNSURE] as typeof USERS });
+    const { user } = await renderList();
+    await screen.findByText("Conta Suspeita Um");
+    await user.click(screen.getByRole("button", { name: "Confiança 1–2 (só nesta página)" }));
+    expect(dataRows()).toHaveLength(1);
+    await user.click(await screen.findByRole("button", { name: "Limpar filtros" }));
+    await waitFor(() => expect(dataRows()).toHaveLength(2));
+    expect(screen.getByRole("button", { name: "Confiança 1–2 (só nesta página)" })).toHaveAttribute("aria-pressed", "false");
   });
 });
