@@ -12,6 +12,8 @@ vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
 import { toAdminApiError } from "@/lib/admin/admin-client";
 import { createAdminListSearchValidator } from "@/lib/admin/list-query";
 
+import { forgetListSearch, recalledListSearch } from "@/lib/admin/list-memory";
+
 import { ADMIN_USERS_LIST_CONFIG } from "./admin-users-config";
 import { AdminUsersList } from "./admin-users-list";
 import {
@@ -125,6 +127,7 @@ beforeEach(() => {
   // Só a data é falsa: as esperas dos testes e o atraso da busca seguem reais.
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(NOW_ISO));
+  forgetListSearch("users");
   client.adminList.mockReset();
   client.adminGet.mockReset();
   // O seletor busca o nome do workspace quando só há o id (URL): por padrão, não existe.
@@ -689,4 +692,65 @@ describe("lista de usuários: confiança", () => {
     expect(within(header).getByRole("button", { name: /Como é calculado: Confiança/ })).toHaveAccessibleDescription(/não suspende a conta/);
   });
 
+});
+
+describe("lista de usuários: desmarcar a ordenação e lembrar o que ficou", () => {
+  const pickSort = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+    await user.click(screen.getByRole("button", { name: "Ordenar" }));
+    await user.click(await screen.findByRole("menuitem", { name }));
+  };
+
+  it("tocar na ordenação já escolhida a desmarca e volta ao padrão (cadastro, mais recentes)", async () => {
+    const { user, router } = await renderList();
+    await screen.findByText("Bernardo Medeiros Moraes");
+    await pickSort(user, "Nome: A–Z");
+    await waitFor(() => expect(currentSearch(router)).toEqual({ sort_by: "name", order: "asc" }));
+
+    await pickSort(user, "Nome: A–Z");
+    await waitFor(() => expect(currentSearch(router)).toEqual({}));
+    await waitFor(() => expect(lastUsersParams()).toMatchObject({ sort_by: "created_at", order: "desc", page: 1 }));
+    await user.click(screen.getByRole("button", { name: "Ordenar" }));
+    expect(await screen.findByRole("menuitem", { name: "Cadastro: mais recentes" })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("menuitem", { name: "Nome: A–Z" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("a ordenação padrão continua marcada ao tocar nela (não há o que desmarcar)", async () => {
+    const { user, router } = await renderList();
+    await screen.findByText("Bernardo Medeiros Moraes");
+    await pickSort(user, "Cadastro: mais recentes");
+    expect(currentSearch(router)).toEqual({});
+    await user.click(screen.getByRole("button", { name: "Ordenar" }));
+    expect(await screen.findByRole("menuitem", { name: "Cadastro: mais recentes" })).toHaveAttribute("aria-current", "true");
+  });
+
+  it("guarda filtros, ordenação, busca e página para a volta do detalhe, e apaga quando tudo volta ao padrão", async () => {
+    serve({ total: 80 });
+    const { user } = await renderList("/admin/users?kind=creator&status=active&sort_by=name&order=asc&page=2");
+    await screen.findByText("Bernardo Medeiros Moraes");
+    await waitFor(() => expect(recalledListSearch("users")).toEqual({ page: 2, sort_by: "name", order: "asc", kind: "creator", status: "active" }));
+
+    await pickSort(user, "Nome: A–Z");
+    await waitFor(() => expect(recalledListSearch("users")).toMatchObject({ kind: "creator", status: "active" }));
+    expect(recalledListSearch("users")).not.toHaveProperty("sort_by");
+  });
+});
+
+describe("lista de usuários: conta pendente (em cadastro)", () => {
+  it("mostra 'Em cadastro' (e não 'pending') no status, com a etapa em que a conta parou na dica", async () => {
+    const PENDING = makeUserListItem({
+      id: 61,
+      name: "Conta Em Cadastro",
+      email: "cadastro@x.com",
+      status: "pending",
+      pending_step: { code: "email_unconfirmed", label: "E-mail ainda não confirmado" },
+    });
+    serve({ rows: [BERNARDO, PENDING] as typeof USERS });
+    await renderList();
+    await screen.findByText("Conta Em Cadastro");
+    const row = dataRows()[1];
+    const status = within(row).getByText("Em cadastro");
+    expect(status).toBeInTheDocument();
+    expect(status.closest(".adm-badge")).toHaveAttribute("title", "E-mail ainda não confirmado");
+    expect(within(row).queryByText("pending")).not.toBeInTheDocument();
+  });
 });

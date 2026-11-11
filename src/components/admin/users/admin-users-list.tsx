@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   AdminActionMenu,
@@ -19,6 +19,8 @@ import {
 } from "@/components/admin/platform";
 import { useAdminListQueryState, useAdminPageClamp } from "@/hooks/admin/use-admin-list-query-state";
 import { useAdminUsers } from "@/hooks/admin/use-admin-users";
+import { rememberListSearch } from "@/lib/admin/list-memory";
+import { stateToSearch } from "@/lib/admin/list-query";
 import { EMPTY_TEXT, formatDate, formatDateTime } from "@/lib/admin/format";
 import { TRUST_DISCLAIMER } from "@/lib/admin/trust";
 import type { AdminUserListItem, AdminUserWorkspaceLink, AdminWorkspaceRef } from "@/shared/admin-platform.types";
@@ -31,7 +33,7 @@ import {
   ADMIN_USERS_STATUS_OPTIONS,
 } from "./admin-users-config";
 import { LAST_SESSION_EXPLANATION, approxSessionText, userKindText, workspaceRoleText } from "./admin-users-format";
-import { userDetailLink, workspaceDetailLink } from "./admin-users-links";
+import { USERS_LIST_MEMORY_KEY, userDetailLink, workspaceDetailLink } from "./admin-users-links";
 import { TrustBadge } from "./admin-user-trust";
 import { AdminWorkspacePicker, useAdminWorkspaceSelection } from "./admin-workspace-picker";
 
@@ -108,6 +110,11 @@ const EXPECTED_KIND: Record<string, string | undefined> = { brand: "brand", crea
  */
 export function AdminUsersList() {
   const state = useAdminListQueryState(ADMIN_USERS_LIST_CONFIG);
+  // Guarda o que está na URL (filtros, ordenação, busca, página) para o "voltar" do detalhe trazer a lista como estava.
+  const memorySearch = JSON.stringify(stateToSearch(state, ADMIN_USERS_LIST_CONFIG));
+  useEffect(() => {
+    rememberListSearch(USERS_LIST_MEMORY_KEY, JSON.parse(memorySearch) as Record<string, string | number>);
+  }, [memorySearch]);
   const users = useAdminUsers(state.params);
   const meta = users.data?.meta;
   useAdminPageClamp(state.page, meta?.total_pages, state.setPage);
@@ -186,7 +193,7 @@ export function AdminUsersList() {
       key: "status",
       header: "Status",
       width: "112px",
-      cell: (user) => <AdminStatusBadge kind="user" value={user.status} />,
+      cell: (user) => <AdminStatusBadge kind="user" value={user.status} title={user.pending_step?.label} />,
     },
     {
       key: "created",
@@ -282,7 +289,12 @@ export function AdminUsersList() {
               selected: state.sortBy === option.sortBy && state.order === option.order,
               group: option.group,
               shortLabel: option.shortLabel,
-              onSelect: () => state.setSort(option.sortBy, option.order),
+              // Tocar na opção que já está escolhida a desmarca: volta à ordenação padrão (a do cadastro, mais recentes).
+              onSelect: () => {
+                const chosen = state.sortBy === option.sortBy && state.order === option.order;
+                if (chosen) state.setSort(ADMIN_USERS_LIST_CONFIG.defaultSortBy, ADMIN_USERS_LIST_CONFIG.defaultOrder);
+                else state.setSort(option.sortBy, option.order);
+              },
             }))}
           />
         }

@@ -181,6 +181,18 @@ export type AdminUserKind = 'creator' | 'brand' | 'agency' | 'admin';
 /** `deleted` quando users.deleted_at está preenchido; `suspended` quando users.status = 'suspended'. */
 export type AdminUserStatus = 'active' | 'suspended' | 'deleted';
 
+/**
+ * Situação de uma conta nas listas de Usuários: as três de `AdminUserStatus` mais `pending` ("em cadastro": a pessoa criou a
+ * conta mas ainda não tem acesso ao app). Em `pending`, `pending_step` diz em qual etapa parou.
+ */
+export type AdminUserAccountStatus = AdminUserStatus | 'pending';
+
+/** Etapa em que uma conta `pending` parou (texto pronto, em português). */
+export interface AdminUserPendingStep {
+  code: 'email_unconfirmed' | (string & {});
+  label: string;
+}
+
 export interface AdminUserRef {
   user_id: number;
   name: string;
@@ -595,7 +607,9 @@ export interface AdminUserListItem {
   email: string;
   photo: string | null;
   kind: AdminUserKind;
-  status: AdminUserStatus;
+  status: AdminUserAccountStatus;
+  /** Em qual etapa a conta parou quando `status` é `pending`; `null` (ou ausente) nos outros. */
+  pending_step?: AdminUserPendingStep | null;
   is_platform_admin: boolean;
   created_at: string;
   /** Aproximação (±5 min): maior last_used_at das sessões. null após sair/sem sessão. */
@@ -620,7 +634,9 @@ export interface AdminUserDetail {
   document_masked: string | null;
   photo: string | null;
   kind: AdminUserKind;
-  status: AdminUserStatus;
+  status: AdminUserAccountStatus;
+  /** Em qual etapa a conta parou quando `status` é `pending`; `null` (ou ausente) nos outros. */
+  pending_step?: AdminUserPendingStep | null;
   is_platform_admin: boolean;
   created_at: string;
   suspension: {

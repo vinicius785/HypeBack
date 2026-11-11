@@ -33,3 +33,23 @@ describe("AdminStatusBadge kind='notification'", () => {
     expect(screen.getByText("Entregue")).toHaveAttribute("data-size", "sm");
   });
 });
+
+describe("AdminStatusBadge kind='user'", () => {
+  it.each([
+    ["active", "Ativo", "ok"],
+    ["suspended", "Suspenso", "warn"],
+    ["deleted", "Excluído", "bad"],
+    ["pending", "Em cadastro", "muted"],
+  ] as const)("%s aparece como %s (tom %s), em português", (value, label, tone) => {
+    render(<AdminStatusBadge kind="user" value={value} />);
+    const badge = screen.getByText(label);
+    expect(badge).toBeInTheDocument();
+    expect(badge.closest(".adm-badge")).toHaveAttribute("data-tone", tone);
+  });
+
+  it("'pending' nunca aparece em inglês, e a etapa em que a conta parou vai na dica", () => {
+    render(<AdminStatusBadge kind="user" value="pending" title="E-mail ainda não confirmado" />);
+    expect(screen.queryByText("pending")).not.toBeInTheDocument();
+    expect(screen.getByText("Em cadastro").closest(".adm-badge")).toHaveAttribute("title", "E-mail ainda não confirmado");
+  });
+});
