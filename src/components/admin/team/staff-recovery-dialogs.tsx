@@ -59,7 +59,7 @@ interface Props {
 
 /**
  * Gerar código de recuperação de senha de um colega da equipe: confirmação, chamada e o código em destaque, uma única
- * vez. Quem usa o código é o colega, na tela pública "Redefinir com código" (`/staff-reset-password`).
+ * vez. Quem usa o código é o colega, na tela "Redefinir senha" do "Esqueci a senha" (`/reset-password`), que aceita o código de admin.
  */
 export function StaffRecoveryDialogs({ target, onClose }: Props) {
   const mutation = useIssueStaffRecoveryCode();

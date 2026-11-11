@@ -2,10 +2,12 @@ import React from "react";
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { resetPassword } from "@/shared/services/auth";
+import { StaffResetError, resetPassword, staffResetPassword } from "@/shared/services/auth";
+import { describeStaffResetError, type StaffResetErrorText } from "@/lib/auth/staff-reset";
+import { EMAIL_PASSWORD_MIN, STAFF_PASSWORD_MAX, normalizeResetCode, passwordMinFor, resetCodeKind } from "@/lib/auth/reset-code";
 
 import { Input } from "@/components/ui/input";
 import { ErrorMessage } from "@/components/ui/error-message";
@@ -22,153 +24,86 @@ export const Route = createFileRoute("/(public)/reset-password")({
   },
 });
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const resetPasswordSchema = z
   .object({
-    code: z
-      .string()
-      .nonempty("Código é obrigatório")
-      .regex(/^\d{6}$/, "Código deve ter exatamente 6 dígitos"),
+    // Só é pedido quando falta (o "Esqueci a senha" já manda o e-mail na URL) e só vale para o código de admin.
+    email: z.string(),
+    code: z.string().nonempty("Código é obrigatório"),
     password: z
       .string()
       .nonempty("Senha é obrigatória")
-      .min(8, "Senha deve ter no mínimo 8 caracteres")
-      .max(255, "Senha deve ter no máximo 255 caracteres"),
+      .max(STAFF_PASSWORD_MAX, `Senha deve ter no máximo ${STAFF_PASSWORD_MAX} caracteres`),
     confirmPassword: z.string().nonempty("Confirmação de senha é obrigatória"),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "As senhas não coincidem",
-    path: ["confirmPassword"],
+  .superRefine((data, ctx) => {
+    const kind = resetCodeKind(data.code);
+    if (data.code && kind === "incomplete") {
+      ctx.addIssue({ code: "custom", path: ["code"], message: "Informe o código de 6 dígitos do e-mail ou o código de admin (XXXX-XXXX-XXXX)" });
+    }
+    if (data.password && data.password.length < passwordMinFor(kind)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["password"],
+        message: `Senha deve ter no mínimo ${passwordMinFor(kind)} caracteres${kind === "staff" ? " (conta da equipe)" : ""}`,
+      });
+    }
+    if (kind === "staff" && !EMAIL_RE.test(data.email.trim())) {
+      ctx.addIssue({ code: "custom", path: ["email"], message: "Informe o e-mail da sua conta" });
+    }
+    if (data.password !== data.confirmPassword) {
+      ctx.addIssue({ code: "custom", path: ["confirmPassword"], message: "As senhas não coincidem" });
+    }
   });
 
 type ResetPasswordSchemaData = z.infer<typeof resetPasswordSchema>;
 
-const CODE_LENGTH = 6;
-
-/** Código de verificação em quadradinhos: um dígito por caixa, cola o código inteiro, Backspace volta e as setas andam. */
-function CodeBoxes({
-  label,
-  value,
-  error,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  error?: string;
-  onChange: (next: string) => void;
-}) {
-  const refs = React.useRef<Array<HTMLInputElement | null>>([]);
-  const labelId = React.useId();
-  const digits = Array.from({ length: CODE_LENGTH }, (_, i) => value[i] ?? "");
-
-  const focusBox = (i: number) => refs.current[Math.min(Math.max(i, 0), CODE_LENGTH - 1)]?.focus();
-
-  // Escreve `typed` a partir da caixa `from` (um dígito digitado, vários colados ou o código inteiro do SMS/e-mail).
-  const write = (from: number, typed: string) => {
-    const only = typed.replace(/\D/g, "");
-    if (!only) return;
-    const next = digits.slice();
-    let last = from;
-    for (let k = 0; k < only.length && from + k < CODE_LENGTH; k++) {
-      next[from + k] = only[k];
-      last = from + k;
-    }
-    onChange(next.join(""));
-    focusBox(last + 1);
-  };
-
-  return (
-    <div className="flex flex-col gap-1">
-      <span id={labelId} className="text-[13px] font-semibold text-neutral-700">
-        {label}
-      </span>
-
-      <div role="group" aria-labelledby={labelId} className="grid grid-cols-6 gap-2">
-        {digits.map((digit, i) => (
-          <input
-            key={i}
-            ref={(el) => {
-              refs.current[i] = el;
-            }}
-            value={digit}
-            inputMode="numeric"
-            autoComplete={i === 0 ? "one-time-code" : "off"}
-            aria-label={`Dígito ${i + 1} de ${CODE_LENGTH}`}
-            aria-invalid={error ? true : undefined}
-            maxLength={CODE_LENGTH}
-            placeholder="·"
-            className="h-[56px] w-full min-w-0 rounded-2xl bg-[color:var(--au-field,#fff)] text-center text-[22px] font-semibold text-neutral-950 outline-none ring-2 ring-transparent transition-all duration-150 placeholder:text-neutral-300 focus:ring-primary-600 aria-[invalid=true]:ring-danger-500 [&:-webkit-autofill]:!rounded-2xl"
-            onFocus={(e) => e.target.select()}
-            onChange={(e) => write(i, e.target.value)}
-            onPaste={(e) => {
-              e.preventDefault();
-              write(0, e.clipboardData.getData("text"));
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Backspace") {
-                e.preventDefault();
-                const next = digits.slice();
-                if (next[i]) {
-                  next[i] = "";
-                  onChange(next.join("").replace(/\s/g, ""));
-                } else if (i > 0) {
-                  next[i - 1] = "";
-                  onChange(next.join(""));
-                  focusBox(i - 1);
-                }
-              } else if (e.key === "ArrowLeft") {
-                e.preventDefault();
-                focusBox(i - 1);
-              } else if (e.key === "ArrowRight") {
-                e.preventDefault();
-                focusBox(i + 1);
-              }
-            }}
-          />
-        ))}
-      </div>
-
-      {error && <ErrorMessage message={error} />}
-    </div>
-  );
-}
-
+/**
+ * Redefinir senha, para qualquer conta, numa tela só. O campo de código aceita o código de 6 dígitos enviado por e-mail OU o
+ * código de 12 caracteres que um admin gera para a equipe: o formato decide o endpoint, e a tela não revela de que tipo é a
+ * conta (a API responde igual a qualquer e-mail no "Esqueci a senha"). O código nunca vem da URL.
+ */
 function RouteComponent() {
   const navigate = useNavigate();
-  const { email } = useSearch({ from: "/(public)/reset-password" });
+  const { email: emailFromSearch } = useSearch({ from: "/(public)/reset-password" });
   const [success, setSuccess] = React.useState(false);
+  const [serverText, setServerText] = React.useState<StaffResetErrorText>({});
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
-    setValue,
     watch,
   } = useForm<ResetPasswordSchemaData>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
+      email: emailFromSearch,
       code: "",
       password: "",
       confirmPassword: "",
     },
   });
 
-  const codeValue = watch("code");
+  const kind = resetCodeKind(watch("code"));
 
-  const {
-    mutate: resetPasswordMutation,
-    isPending: isResettingPassword,
-  } = useMutation({
-    mutationFn: resetPassword,
+  const { mutate, isPending } = useMutation({
+    mutationFn: async (data: ResetPasswordSchemaData) =>
+      resetCodeKind(data.code) === "staff"
+        ? staffResetPassword({ email: data.email.trim(), code: data.code, password: data.password })
+        : resetPassword({ code: data.code, password: data.password }),
     onSuccess: (data) => {
       setSuccess(true);
       toast.success(data.message || "Senha redefinida com sucesso!");
-      // Redirecionar para login após 2 segundos
+      // Redirecionar para login após 2 segundos (as sessões antigas da conta caíram: é preciso entrar de novo)
       setTimeout(() => {
         navigate({ to: "/sign-in" });
       }, 2000);
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Erro ao redefinir senha");
+      if (error instanceof StaffResetError) setServerText(describeStaffResetError(error));
+      else toast.error(error.message || "Erro ao redefinir senha");
     },
   });
 
@@ -190,12 +125,11 @@ function RouteComponent() {
   return (
     <form
       className="max-w-[400px] w-full flex flex-col gap-7"
-      onSubmit={handleSubmit((data) =>
-        resetPasswordMutation({
-          code: data.code,
-          password: data.password,
-        })
-      )}
+      noValidate
+      onSubmit={handleSubmit((data) => {
+        setServerText({});
+        mutate(data);
+      })}
     >
       <div className="flex flex-col gap-2.5">
         <h1 className="text-[34px] font-semibold leading-[1.08] tracking-[-0.045em] text-neutral-950">
@@ -203,47 +137,79 @@ function RouteComponent() {
         </h1>
 
         <p className="text-[15.5px] leading-normal text-neutral-500">
-          Digite o código de 6 dígitos enviado para seu email e sua nova senha
+          Digite o código de 6 dígitos enviado para o seu e-mail e a nova senha. Conta da equipe? Use o código gerado por um admin.
         </p>
       </div>
 
       <div className="flex flex-col gap-4">
-        {email && (
+        {emailFromSearch ? (
           <Input
             label="E-mail"
-            value={email}
+            value={emailFromSearch}
             disabled
             // `className` substitui o do <input> inteiro (o Input espalha as props depois): repete a base e só muda a cor do texto,
             // senão o campo perde o fundo transparente e a altura e aparece como um bloco claro dentro da pílula.
             className="w-full h-full rounded-full outline-none bg-transparent text-neutral-500 cursor-not-allowed"
           />
+        ) : (
+          <Input
+            label="E-mail"
+            type="email"
+            autoComplete="username"
+            placeholder="Digite seu e-mail"
+            error={errors.email?.message ?? serverText.fields?.email}
+            {...register("email")}
+          />
         )}
 
-        <CodeBoxes
-          label="Código de verificação"
-          value={codeValue}
-          error={errors.code?.message}
-          onChange={(next) => setValue("code", next, { shouldValidate: !!errors.code })}
+        <Controller
+          control={control}
+          name="code"
+          render={({ field }) => (
+            <Input
+              label="Código"
+              autoComplete="one-time-code"
+              autoCapitalize="characters"
+              spellCheck={false}
+              placeholder="123456 ou XXXX-XXXX-XXXX"
+              maxLength={14}
+              error={errors.code?.message ?? serverText.fields?.code}
+              name={field.name}
+              ref={field.ref}
+              onBlur={field.onBlur}
+              value={field.value}
+              onChange={(event) => field.onChange(normalizeResetCode(event.target.value))}
+              onPaste={(event) => {
+                // Cola com ou sem hífens e em qualquer caixa: mostra já no formato certo.
+                event.preventDefault();
+                field.onChange(normalizeResetCode(event.clipboardData.getData("text")));
+              }}
+            />
+          )}
         />
 
         <InputPassword
           label="Nova senha"
-          placeholder="Mínimo 8 caracteres"
-          error={errors.password?.message}
+          autoComplete="new-password"
+          placeholder={`Mínimo ${kind === "staff" ? passwordMinFor("staff") : EMAIL_PASSWORD_MIN} caracteres`}
+          error={errors.password?.message ?? serverText.fields?.password}
           {...register("password")}
         />
 
         <InputPassword
           label="Confirmar senha"
+          autoComplete="new-password"
           placeholder="Digite a senha novamente"
           error={errors.confirmPassword?.message}
           {...register("confirmPassword")}
         />
       </div>
 
+      {serverText.form ? <ErrorMessage message={serverText.form} className="!text-[13.5px] !text-danger-600" /> : null}
+
       <div className="flex flex-col gap-5 w-full">
-        <Button type="submit" disabled={isResettingPassword} className="h-[58px] w-full min-w-full text-[15.5px]">
-          {isResettingPassword ? "Redefinindo..." : "Redefinir senha"}
+        <Button type="submit" disabled={isPending} className="h-[58px] w-full min-w-full text-[15.5px]">
+          {isPending ? "Redefinindo..." : "Redefinir senha"}
         </Button>
 
         <div className="flex flex-col gap-2 text-center text-[14.5px] text-neutral-500">
