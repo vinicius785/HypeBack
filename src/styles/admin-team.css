@@ -46,7 +46,6 @@
 .pv .adm-team-summary { margin: 0; }
 
 /* Ações de cada pessoa (alterar papel e gerar código de recuperação) lado a lado. */
-.pv .adm-team-acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 
 /* Código de recuperação em destaque (aparece uma única vez). */
 .pv .adm-team-code { display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: var(--adm-r-md); background: var(--bg); }

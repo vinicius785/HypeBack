@@ -45,11 +45,17 @@ const ISSUED = { code: "AB3D-9XK2-M7QP", expires_in_minutes: 15, user: { id: 7, 
 const ROUTES = [{ path: "/admin/team", component: AdminTeamPage }, stubRoute("/admin/users/$userId")];
 const rowOf = (name: string) => screen.getByText(name).closest('[role="row"]') as HTMLElement;
 
+/** Abre o menu "Ações" da linha da pessoa e escolhe "Gerar código de recuperação". */
+async function openRecoveryFromMenu(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(within(rowOf("Caio Teodoro")).getByRole("button", { name: "Ações de Caio Teodoro" }));
+  await user.click(await screen.findByRole("menuitem", { name: "Gerar código de recuperação" }));
+}
+
 async function openConfirm() {
   renderRoutes(ROUTES, "/admin/team");
   await screen.findByText("Caio Teodoro");
   const user = userEvent.setup();
-  await user.click(within(rowOf("Caio Teodoro")).getByRole("button", { name: "Gerar código de recuperação" }));
+  await openRecoveryFromMenu(user);
   const dialog = await screen.findByRole("dialog", { name: "Gerar código de recuperação" });
   return { user, dialog };
 }
@@ -119,7 +125,7 @@ describe("Gerar código de recuperação: confirmação e exibição única", ()
     expect(screen.queryByLabelText("Código gerado")).not.toBeInTheDocument();
     expect(document.body.textContent).not.toContain("AB3D-9XK2-M7QP");
 
-    await user.click(within(rowOf("Caio Teodoro")).getByRole("button", { name: "Gerar código de recuperação" }));
+    await openRecoveryFromMenu(user);
     expect(screen.queryByLabelText("Código gerado")).not.toBeInTheDocument();
     expect(document.body.textContent).not.toContain("AB3D-9XK2-M7QP");
     await submit(user);
@@ -212,7 +218,7 @@ describe("Gerar código de recuperação: código do Google Authenticator", () =
     expect(screen.queryByLabelText("Código do Google Authenticator")).not.toBeInTheDocument();
 
     // reabrir começa com o campo vazio
-    await user.click(within(rowOf("Caio Teodoro")).getByRole("button", { name: "Gerar código de recuperação" }));
+    await openRecoveryFromMenu(user);
     await screen.findByRole("dialog", { name: "Gerar código de recuperação" });
     expect(approvalField()).toHaveValue("");
   });
@@ -224,7 +230,7 @@ describe("Gerar código de recuperação: código do Google Authenticator", () =
     await user.click(generate());
     await screen.findByLabelText("Código gerado");
     await user.click(screen.getAllByRole("button", { name: "Fechar" }).at(-1) as HTMLElement);
-    await user.click(within(rowOf("Caio Teodoro")).getByRole("button", { name: "Gerar código de recuperação" }));
+    await openRecoveryFromMenu(user);
     await screen.findByRole("dialog", { name: "Gerar código de recuperação" });
     expect(approvalField()).toHaveValue("");
     expect(generate()).toBeDisabled();

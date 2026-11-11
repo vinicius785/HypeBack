@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import {
+  AdminActionMenu,
   AdminBadge,
   AdminEntityCell,
   AdminPage,
@@ -139,26 +140,29 @@ export function AdminTeamPage() {
       header: "",
       headerLabel: "Ações",
       mobileLabel: "",
-      width: "minmax(0, 330px)",
+      width: "88px",
       align: "right",
       cell: (member) => {
         if (member.user_id === user?.id) return <span className="adm-team-self">Você</span>;
         if (!capabilities.isAdmin) return null;
         // Duas ações por pessoa, ambas só do administrador e nunca na própria linha: trocar o papel (tirar da equipe é uma
-        // opção do próprio diálogo) e gerar o código com que o colega redefine a senha.
+        // opção do próprio diálogo) e gerar o código com que o colega redefine a senha. Num menu "⋯", como nos membros do workspace.
         return (
-          <div className="adm-team-acts">
-            <button type="button" className="btn out adm-btn-sm" onClick={() => changeRole(member)}>
-              Alterar papel
-            </button>
-            <button
-              type="button"
-              className="btn out adm-btn-sm"
-              onClick={() => setRecovery({ id: member.user_id, name: member.name, email: member.email })}
-            >
-              Gerar código de recuperação
-            </button>
-          </div>
+          <AdminActionMenu
+            iconOnly
+            variant="ghost"
+            label="Ações"
+            ariaLabel={`Ações de ${member.name}`}
+            items={[
+              { id: "role", label: "Alterar papel", icon: "users", onSelect: () => changeRole(member) },
+              {
+                id: "recovery",
+                label: "Gerar código de recuperação",
+                icon: "lock",
+                onSelect: () => setRecovery({ id: member.user_id, name: member.name, email: member.email }),
+              },
+            ]}
+          />
         );
       },
     },
