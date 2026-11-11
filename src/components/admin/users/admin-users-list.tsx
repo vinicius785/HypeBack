@@ -31,7 +31,6 @@ import {
   ADMIN_USERS_DEFAULT_STATUS,
   ADMIN_USERS_LIST_CONFIG,
   ADMIN_USERS_STATUS_OPTIONS,
-  ADMIN_USERS_SUSPECT_TRUST_MAX,
   usersApiParams,
 } from "./admin-users-config";
 import { LAST_SESSION_EXPLANATION, approxSessionText, userKindText, workspaceRoleText } from "./admin-users-format";
@@ -128,7 +127,7 @@ export function AdminUsersList() {
 
   const rows = users.data?.data;
   // A primeira consulta por confiança pode demorar (a API calcula e guarda as notas): avisa enquanto espera.
-  const slowTrust = users.isFetching && (state.sortBy === "trust" || !!state.filters.trust_max);
+  const slowTrust = users.isFetching && (state.sortBy === "trust");
 
   const lastSessionDefinition =
     meta?.definitions?.last_session_at ?? meta?.definitions?.last_session ?? LAST_SESSION_EXPLANATION;
@@ -229,14 +228,6 @@ export function AdminUsersList() {
   // "Tipo" e "Workspace" ficam sempre à vista na barra (contam em "Filtros (n)", viram chip e saem em "Limpar filtros");
   // o período de cadastro fica no painel.
   const filters: AdminFilterDef[] = [
-    {
-      kind: "toggle",
-      id: "suspects",
-      label: "Só suspeitos (nível 1-2)",
-      active: state.filters.trust_max === ADMIN_USERS_SUSPECT_TRUST_MAX,
-      onToggle: () => state.setFilter("trust_max", state.filters.trust_max === ADMIN_USERS_SUSPECT_TRUST_MAX ? "" : ADMIN_USERS_SUSPECT_TRUST_MAX),
-      onClear: () => state.setFilter("trust_max", ""),
-    },
     {
       kind: "select",
       key: "kind",
