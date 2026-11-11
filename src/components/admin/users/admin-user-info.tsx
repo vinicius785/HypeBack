@@ -7,6 +7,7 @@ import {
 import { formatDateTime } from "@/lib/admin/format";
 import type { AdminUserDetail } from "@/shared/admin-platform.types";
 
+import { platformsText } from "./admin-user-platforms";
 import { formatPhone } from "./admin-users-format";
 import { userDetailLink } from "./admin-users-links";
 
@@ -23,6 +24,7 @@ const EMAIL_NOT_VERIFIED_BRAND_HINT =
 export function AdminUserData({ user }: { user: AdminUserDetail }) {
   const items: AdminKeyValueItem[] = [
     { label: "Telefone", value: formatPhone(user.phone) },
+    { label: "Sistema do celular", value: platformsText(user.platforms) },
     {
       label: "E-mail verificado",
       value: user.email_verified ? "Sim" : "Não",

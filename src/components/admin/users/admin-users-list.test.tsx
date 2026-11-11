@@ -145,7 +145,7 @@ describe("lista de usuários: conteúdo", () => {
     expect(screen.getByText("Quem acessa a plataforma, em todos os workspaces.")).toBeInTheDocument();
     await screen.findByText("Bernardo Medeiros Moraes");
     expect(usersCalls()).toHaveLength(1);
-    expect(lastUsersParams()).toEqual({ page: 1, per_page: 25, sort_by: "created_at", order: "desc" });
+    expect(lastUsersParams()).toEqual({ page: 1, per_page: 25, sort_by: "created_at", order: "desc", status: "active,suspended" });
   });
 
   it("as colunas: usuário, confiança, workspaces, status, cadastro e última sessão (sem 'Tipo' enquanto o filtro é um tipo só)", async () => {
@@ -156,9 +156,10 @@ describe("lista de usuários: conteúdo", () => {
     expect(headers[0]).toBe("Usuário");
     expect(headers[1]).toMatch(/^Confiança/);
     expect(headers.slice(2, 5)).toEqual(["Workspaces", "Status", "Cadastrado em"]);
-    // a última leva o "i" da definição junto
+    // "Última sessão" leva o "i" da definição junto
     expect(headers[5]).toMatch(/^Última sessão/);
-    expect(headers).toHaveLength(6);
+    expect(headers[6]).toBe("Celular");
+    expect(headers).toHaveLength(7);
   });
 
   it("com 'Todos' os tipos, a coluna 'Tipo' volta (é onde os tipos diferem)", async () => {
@@ -299,7 +300,7 @@ describe("lista de usuários: estados", () => {
 
     await user.click(screen.getByRole("button", { name: "Limpar busca e filtros" }));
     await waitFor(() => expect(currentSearch(router)).toEqual({}));
-    await waitFor(() => expect(lastUsersParams()).toEqual({ page: 1, per_page: 25, sort_by: "created_at", order: "desc" }));
+    await waitFor(() => expect(lastUsersParams()).toEqual({ page: 1, per_page: 25, sort_by: "created_at", order: "desc", status: "active,suspended" }));
     expect(screen.getByRole("searchbox")).toHaveValue("");
   });
 
@@ -340,6 +341,7 @@ describe("lista de usuários: filtros na URL e na API", () => {
     for (const [label, value] of [
       ["Suspensos", "suspended"],
       ["Ativos", "active"],
+      ["Em cadastro", "pending"],
       ["Excluídos", "deleted"],
       ["Todos", "all"],
     ] as const) {
@@ -351,7 +353,7 @@ describe("lista de usuários: filtros na URL e na API", () => {
 
     await user.click(within(group).getByRole("button", { name: "Ativos e suspensos" }));
     await waitFor(() => expect(currentSearch(router)).toEqual({}));
-    await waitFor(() => expect(lastUsersParams()).not.toHaveProperty("status"));
+    await waitFor(() => expect(lastUsersParams()).toMatchObject({ status: "active,suspended" }));
   });
 
   it("estado fora do padrão conta como filtro: vira chip e 'Limpar filtros' o devolve a 'Ativos e suspensos'", async () => {
@@ -440,7 +442,7 @@ describe("lista de usuários: filtros na URL e na API", () => {
 
     await user.click(screen.getByRole("button", { name: "Limpar filtros" }));
     await waitFor(() => expect(currentSearch(router)).toEqual({}));
-    await waitFor(() => expect(lastUsersParams()).toEqual({ page: 1, per_page: 25, sort_by: "created_at", order: "desc" }));
+    await waitFor(() => expect(lastUsersParams()).toEqual({ page: 1, per_page: 25, sort_by: "created_at", order: "desc", status: "active,suspended" }));
   });
 
   it("'Limpar filtros' volta tipo, período, estado e workspace ao padrão, mas mantém a busca", async () => {
@@ -451,7 +453,7 @@ describe("lista de usuários: filtros na URL e na API", () => {
     await screen.findByText("Bernardo Medeiros Moraes");
     await user.click(screen.getByRole("button", { name: "Limpar filtros" }));
     await waitFor(() => expect(currentSearch(router)).toEqual({ search: "ana" }));
-    await waitFor(() => expect(lastUsersParams()).toEqual({ page: 1, per_page: 25, sort_by: "created_at", order: "desc", search: "ana" }));
+    await waitFor(() => expect(lastUsersParams()).toEqual({ page: 1, per_page: 25, sort_by: "created_at", order: "desc", search: "ana", status: "active,suspended" }));
   });
 
   it("todo o estado vem da URL: recarregar a página (ou abrir um link) reproduz a tela e a consulta", async () => {
@@ -486,7 +488,7 @@ describe("lista de usuários: filtros na URL e na API", () => {
   it("valores inválidos na URL caem no padrão (a barra de endereço é entrada de usuário)", async () => {
     await renderList("/admin/users?page=abc&per_page=7&sort_by=password&order=sideways");
     await screen.findByText("Bernardo Medeiros Moraes");
-    expect(lastUsersParams()).toEqual({ page: 1, per_page: 25, sort_by: "created_at", order: "desc" });
+    expect(lastUsersParams()).toEqual({ page: 1, per_page: 25, sort_by: "created_at", order: "desc", status: "active,suspended" });
   });
 });
 
@@ -515,15 +517,15 @@ describe("lista de usuários: ordenação", () => {
     expect(within(table()).getAllByRole("columnheader")[0]).toHaveAttribute("aria-sort", "ascending");
 
     await user.click(header("Usuário"));
-    await waitFor(() => expect(lastUsersParams()).toMatchObject({ sort_by: "name", order: "desc" }));
+    await waitFor(() => expect(lastUsersParams()).toMatchObject({ sort_by: "name", order: "desc", status: "active,suspended" }));
 
     await user.click(header("Última sessão"));
     await waitFor(() => expect(currentSearch(router)).toEqual({ sort_by: "last_session" }));
-    await waitFor(() => expect(lastUsersParams()).toMatchObject({ sort_by: "last_session", order: "desc" }));
+    await waitFor(() => expect(lastUsersParams()).toMatchObject({ sort_by: "last_session", order: "desc", status: "active,suspended" }));
 
     await user.click(header("Cadastrado em"));
     await waitFor(() => expect(currentSearch(router)).toEqual({}));
-    await waitFor(() => expect(lastUsersParams()).toMatchObject({ sort_by: "created_at", order: "desc" }));
+    await waitFor(() => expect(lastUsersParams()).toMatchObject({ sort_by: "created_at", order: "desc", status: "active,suspended" }));
 
     // a mesma coluna do padrão inverte
     await user.click(header("Cadastrado em"));
@@ -636,7 +638,7 @@ describe("lista de usuários: confiança", () => {
     const { user } = await renderList();
     await screen.findByText("Bernardo Medeiros Moraes");
     await pickSort(user, "Confiança: perfil real primeiro");
-    await waitFor(() => expect(lastUsersParams()).toMatchObject({ sort_by: "trust", order: "desc" }));
+    await waitFor(() => expect(lastUsersParams()).toMatchObject({ sort_by: "trust", order: "desc", status: "active,suspended" }));
 
     await user.click(within(table()).getByRole("button", { name: "Confiança" }));
     await waitFor(() => expect(lastUsersParams()).toMatchObject({ sort_by: "trust", order: "asc" }));
@@ -752,5 +754,69 @@ describe("lista de usuários: conta pendente (em cadastro)", () => {
     expect(status).toBeInTheDocument();
     expect(status.closest(".adm-badge")).toHaveAttribute("title", "E-mail ainda não confirmado");
     expect(within(row).queryByText("pending")).not.toBeInTheDocument();
+  });
+});
+
+describe("lista de usuários: confiança em toda a lista, celular e status novo", () => {
+  it("'Só suspeitos' manda trust_max=2 (junto do status explícito), vira chip e sai com 'Limpar filtros'", async () => {
+    const { router, user } = await renderList();
+    await screen.findByText("Bernardo Medeiros Moraes");
+    await user.click(screen.getByRole("button", { name: /^Filtros/ }));
+    await user.click(screen.getByRole("button", { name: "Só suspeitos (nível 1-2)" }));
+    await waitFor(() => expect(currentSearch(router)).toEqual({ trust_max: "2" }));
+    await waitFor(() => expect(lastUsersParams()).toMatchObject({ trust_max: "2", status: "active,suspended" }));
+    expect(screen.getByRole("button", { name: /Remover filtro.*Só suspeitos/ })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    await waitFor(() => expect(lastUsersParams()).not.toHaveProperty("trust_max"));
+  });
+
+  it("'Em cadastro' manda status=pending", async () => {
+    const { user } = await renderList();
+    await screen.findByText("Bernardo Medeiros Moraes");
+    await user.click(within(screen.getByRole("group", { name: "Status da conta" })).getByRole("button", { name: "Em cadastro" }));
+    await waitFor(() => expect(lastUsersParams()).toMatchObject({ status: "pending" }));
+  });
+
+  it("'Ativos' manda status=active e o padrão manda active,suspended (sem contas em cadastro)", async () => {
+    const { user } = await renderList();
+    await screen.findByText("Bernardo Medeiros Moraes");
+    expect(lastUsersParams()).toMatchObject({ status: "active,suspended" });
+    await user.click(within(screen.getByRole("group", { name: "Status da conta" })).getByRole("button", { name: "Ativos" }));
+    await waitFor(() => expect(lastUsersParams()).toMatchObject({ status: "active" }));
+  });
+
+  it("trust_max fora de 1-5 (400): mostra a mensagem do servidor", async () => {
+    client.adminList.mockRejectedValue(toAdminApiError(400, { message: ["trust_max deve estar entre 1 e 5"] }));
+    await renderList("/admin/users?trust_max=9");
+    expect(await screen.findByText(/trust_max deve estar entre 1 e 5/)).toBeInTheDocument();
+  });
+
+  it("celular: iOS, Android, os dois (o último usado primeiro) e '—' quando não se sabe", async () => {
+    serve({
+      rows: [
+        makeUserListItem({ id: 71, name: "Ios Pessoa", email: "i@x.com", platforms: ["ios"] }),
+        makeUserListItem({ id: 72, name: "Android Pessoa", email: "a@x.com", platforms: ["android"] }),
+        makeUserListItem({ id: 73, name: "Duas Pessoa", email: "d@x.com", platforms: ["android", "ios"] }),
+        makeUserListItem({ id: 74, name: "Sem Pessoa", email: "s@x.com", platforms: [] }),
+      ] as typeof USERS,
+    });
+    await renderList();
+    await screen.findByText("Ios Pessoa");
+    const phone = (i: number) => cellsOf(dataRows()[i])[6];
+    expect(phone(0)).toHaveTextContent("iOS");
+    expect(phone(1)).toHaveTextContent("Android");
+    expect(phone(2)).toHaveTextContent("Android e iOS");
+    expect(phone(3)).toHaveTextContent("—");
+    expect(phone(3)).not.toHaveTextContent("Android");
+  });
+
+  it("status e etapa desconhecidos não quebram a tela", async () => {
+    serve({
+      rows: [
+        makeUserListItem({ id: 75, name: "Futuro", email: "f@x.com", status: "novo_status" as never, pending_step: { code: "outra", label: "Etapa nova" } }),
+      ] as unknown as typeof USERS,
+    });
+    await renderList();
+    expect(await screen.findByText("Futuro")).toBeInTheDocument();
   });
 });

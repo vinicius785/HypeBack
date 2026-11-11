@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useParams } from "@tanstack/react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -152,6 +152,16 @@ describe("detalhe do usuário: cabeçalho e dados", () => {
     expect(valueOf(block, "Cadastrado em")).toHaveTextContent("10/03/2025 09:00");
     expect(valueOf(block, "Identificador")).toHaveTextContent("9");
     expect(within(block).queryByText("Excluída em")).not.toBeInTheDocument();
+  });
+
+  it("sistema do celular: iOS/Android (o último usado primeiro) e '—' quando não se sabe", async () => {
+    server.detail = makeUserDetail({ platforms: ["android", "ios"] });
+    await renderDetail();
+    expect(valueOf(dataBlock(), "Sistema do celular")).toHaveTextContent("Android e iOS");
+    cleanup();
+    server.detail = makeUserDetail({ platforms: [] });
+    await renderDetail();
+    expect(valueOf(dataBlock(), "Sistema do celular")).toHaveTextContent("—");
   });
 
   it("e-mail não verificado de conta de marca: explica que não indica problema", async () => {

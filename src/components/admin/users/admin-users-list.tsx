@@ -31,9 +31,12 @@ import {
   ADMIN_USERS_DEFAULT_STATUS,
   ADMIN_USERS_LIST_CONFIG,
   ADMIN_USERS_STATUS_OPTIONS,
+  ADMIN_USERS_SUSPECT_TRUST_MAX,
+  usersApiParams,
 } from "./admin-users-config";
 import { LAST_SESSION_EXPLANATION, approxSessionText, userKindText, workspaceRoleText } from "./admin-users-format";
 import { USERS_LIST_MEMORY_KEY, userDetailLink, workspaceDetailLink } from "./admin-users-links";
+import { UserPlatforms } from "./admin-user-platforms";
 import { TrustBadge } from "./admin-user-trust";
 import { AdminWorkspacePicker, useAdminWorkspaceSelection } from "./admin-workspace-picker";
 
@@ -115,7 +118,7 @@ export function AdminUsersList() {
   useEffect(() => {
     rememberListSearch(USERS_LIST_MEMORY_KEY, JSON.parse(memorySearch) as Record<string, string | number>);
   }, [memorySearch]);
-  const users = useAdminUsers(state.params);
+  const users = useAdminUsers(usersApiParams(state.params, state.filters.status));
   const meta = users.data?.meta;
   useAdminPageClamp(state.page, meta?.total_pages, state.setPage);
 
@@ -124,6 +127,8 @@ export function AdminUsersList() {
   const workspaceFilter = useAdminWorkspaceSelection(state.filters.workspace_id, { known: picked });
 
   const rows = users.data?.data;
+  // A primeira consulta por confiança pode demorar (a API calcula e guarda as notas): avisa enquanto espera.
+  const slowTrust = users.isFetching && (state.sortBy === "trust" || !!state.filters.trust_max);
 
   const lastSessionDefinition =
     meta?.definitions?.last_session_at ?? meta?.definitions?.last_session ?? LAST_SESSION_EXPLANATION;
@@ -212,11 +217,26 @@ export function AdminUsersList() {
       definition: lastSessionDefinition,
       cell: (user) => <LastSessionCell iso={user.last_session_at} />,
     },
+    {
+      key: "platforms",
+      header: "Celular",
+      width: "96px",
+      hideBelow: "md",
+      cell: (user) => <UserPlatforms platforms={user.platforms} />,
+    },
   ];
 
   // "Tipo" e "Workspace" ficam sempre à vista na barra (contam em "Filtros (n)", viram chip e saem em "Limpar filtros");
   // o período de cadastro fica no painel.
   const filters: AdminFilterDef[] = [
+    {
+      kind: "toggle",
+      id: "suspects",
+      label: "Só suspeitos (nível 1-2)",
+      active: state.filters.trust_max === ADMIN_USERS_SUSPECT_TRUST_MAX,
+      onToggle: () => state.setFilter("trust_max", state.filters.trust_max === ADMIN_USERS_SUSPECT_TRUST_MAX ? "" : ADMIN_USERS_SUSPECT_TRUST_MAX),
+      onClear: () => state.setFilter("trust_max", ""),
+    },
     {
       kind: "select",
       key: "kind",
@@ -302,6 +322,12 @@ export function AdminUsersList() {
           <AdminRefreshButton iconOnly loading={users.isFetching} onClick={() => void users.refetch()} />
         }
       />
+
+      {slowTrust ? (
+        <p className="adm-muted" role="status">
+          Calculando a confiança das contas… a primeira vez pode levar alguns segundos.
+        </p>
+      ) : null}
 
       <AdminTable
         caption="Usuários"

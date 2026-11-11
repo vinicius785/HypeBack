@@ -185,6 +185,8 @@ export type AdminUserStatus = 'active' | 'suspended' | 'deleted';
  * Situação de uma conta nas listas de Usuários: as três de `AdminUserStatus` mais `pending` ("em cadastro": a pessoa criou a
  * conta mas ainda não tem acesso ao app). Em `pending`, `pending_step` diz em qual etapa parou.
  */
+export type AdminUserPlatform = 'ios' | 'android';
+
 export type AdminUserAccountStatus = AdminUserStatus | 'pending';
 
 /** Etapa em que uma conta `pending` parou (texto pronto, em português). */
@@ -610,6 +612,8 @@ export interface AdminUserListItem {
   status: AdminUserAccountStatus;
   /** Em qual etapa a conta parou quando `status` é `pending`; `null` (ou ausente) nos outros. */
   pending_step?: AdminUserPendingStep | null;
+  /** Sistemas do celular, o usado por último primeiro. Vazio = não se sabe. */
+  platforms?: AdminUserPlatform[];
   is_platform_admin: boolean;
   created_at: string;
   /** Aproximação (±5 min): maior last_used_at das sessões. null após sair/sem sessão. */
@@ -637,6 +641,8 @@ export interface AdminUserDetail {
   status: AdminUserAccountStatus;
   /** Em qual etapa a conta parou quando `status` é `pending`; `null` (ou ausente) nos outros. */
   pending_step?: AdminUserPendingStep | null;
+  /** Sistemas do celular, o usado por último primeiro. Vazio = não se sabe. */
+  platforms?: AdminUserPlatform[];
   is_platform_admin: boolean;
   created_at: string;
   suspension: {
