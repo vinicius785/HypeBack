@@ -425,3 +425,47 @@ describe("AdminActionMenu: item destrutivo e separadores", () => {
     expect(screen.getByTestId("custom")).toBeInTheDocument();
   });
 });
+
+describe("AdminActionMenu: menu de ordenação (triggerIcon, round e selected)", () => {
+  it("o gatilho só-ícone pode trocar o ícone e ser redondo", () => {
+    const { items } = makeItems();
+    render(<AdminActionMenu items={items} iconOnly round triggerIcon="sort" ariaLabel="Ordenar" />);
+    const button = screen.getByRole("button", { name: "Ordenar" });
+    expect(button).toHaveAttribute("data-round", "true");
+    expect(button).toHaveAttribute("data-icon-only", "true");
+  });
+
+  it("a opção escolhida leva aria-current e um ✓; as outras não", async () => {
+    const { items } = makeItems({ archive: { selected: true } });
+    const user = userEvent.setup();
+    render(<AdminActionMenu items={items} />);
+    await user.click(trigger());
+    const chosen = await screen.findByRole("menuitem", { name: "Arquivar" });
+    expect(chosen).toHaveAttribute("aria-current", "true");
+    expect(chosen.querySelector(".adm-actmenu-sel")).not.toBeNull();
+    expect(screen.getByRole("menuitem", { name: "Editar" })).not.toHaveAttribute("aria-current");
+  });
+});
+
+describe("AdminActionMenu: grupos e texto curto", () => {
+  it("mostra o título do grupo uma vez, antes do primeiro item, e o texto curto (o nome acessível segue completo)", async () => {
+    const user = userEvent.setup();
+    render(
+      <AdminActionMenu
+        ariaLabel="Ordenar"
+        iconOnly
+        items={[
+          { id: "a", label: "Cadastro: mais recentes", shortLabel: "Mais recentes", group: "Cadastro", onSelect: vi.fn() },
+          { id: "b", label: "Cadastro: mais antigos", shortLabel: "Mais antigos", group: "Cadastro", onSelect: vi.fn() },
+          { id: "c", label: "Nome: A–Z", shortLabel: "A–Z", group: "Nome", onSelect: vi.fn() },
+        ]}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Ordenar" }));
+    const titles = Array.from(document.querySelectorAll(".adm-actmenu-group")).map((el) => el.textContent);
+    expect(titles).toEqual(["Cadastro", "Nome"]);
+    const first = await screen.findByRole("menuitem", { name: "Cadastro: mais recentes" });
+    expect(first).toHaveTextContent("Mais recentes");
+    expect(screen.getAllByRole("menuitem")).toHaveLength(3);
+  });
+});

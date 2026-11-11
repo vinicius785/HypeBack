@@ -495,8 +495,8 @@ describe("lista de usuários: ordenação", () => {
     expect(headers[4]).toHaveAttribute("aria-sort", "descending");
     expect(headers[0]).toHaveAttribute("aria-sort", "none");
     expect(headers[5]).toHaveAttribute("aria-sort", "none");
-    // as outras colunas não são ordenáveis (a confiança também não: a API ainda não ordena por ela)
-    expect(headers[1]).not.toHaveAttribute("aria-sort");
+    // as outras colunas não são ordenáveis (a confiança é: o servidor ordena por ela)
+    expect(headers[1]).toHaveAttribute("aria-sort", "none");
     expect(headers[2]).not.toHaveAttribute("aria-sort");
     expect(headers[3]).not.toHaveAttribute("aria-sort");
   });
@@ -594,63 +594,99 @@ describe("lista de usuários: confiança", () => {
     expect(within(trustCell(4)).queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("o filtro 'Confiança 1–2' fica na barra de filtros, vale só para a página carregada, diz isso e não chama a API de novo", async () => {
-    serve({ rows: [SUSPECT, SUSPECT_2, UNSURE, REAL, NO_TRUST] as typeof USERS });
-    const { user } = await renderList();
-    await screen.findByText("Conta Suspeita Um");
-    // o filtro está na barra, junto dos outros (não numa faixa separada), e o nome já diz que é só da página
-    const trustButton = screen.getByRole("button", { name: "Confiança 1–2 (só nesta página)" });
-    const typeFilter = screen.getByLabelText("Tipo");
-    expect(trustButton.closest(".adm-filters-row")).not.toBeNull();
-    expect(trustButton.closest(".adm-filters-row")).toBe(typeFilter.closest(".adm-filters-row"));
-    expect(screen.queryByText(/Mostrando \d+ de \d+ usuários desta página/)).not.toBeInTheDocument();
+  const sortMenu = () => screen.getByRole("button", { name: "Ordenar" });
+  const pickSort = async (user: ReturnType<typeof userEvent.setup>, name: string | RegExp) => {
+    await user.click(sortMenu());
+    await user.click(await screen.findByRole("menuitem", { name }));
+  };
+
+  it("confiança é um jeito de ORDENAR (menu de ordenar), não um filtro, e vale para TODA a lista: vai ao servidor (sort_by=trust) em vez de reordenar a página", async () => {
+    serve({ rows: [REAL, SUSPECT_2, NO_TRUST, SUSPECT, UNSURE] as typeof USERS });
+    const { user, router } = await renderList();
+    await screen.findByText("Conta Real");
+    // nada de filtro de confiança na barra nem no painel
+    expect(screen.queryByRole("button", { name: /Confiança 1–2/ })).not.toBeInTheDocument();
     const before = usersCalls().length;
 
-    await user.click(screen.getByRole("button", { name: "Confiança 1–2 (só nesta página)" }));
-    expect(screen.getByRole("button", { name: "Confiança 1–2 (só nesta página)" })).toHaveAttribute("aria-pressed", "true");
-    expect(dataRows()).toHaveLength(2);
-    expect(screen.getByText("Conta Suspeita Um")).toBeInTheDocument();
-    expect(screen.getByText("Conta Suspeita Dois")).toBeInTheDocument();
-    expect(screen.queryByText("Conta Real")).not.toBeInTheDocument();
-    expect(screen.queryByText("Conta Sem Nivel")).not.toBeInTheDocument();
-    expect(screen.getByText(/Mostrando 2 de 5 usuários desta página/)).toHaveTextContent("O filtro de confiança vale só para a página carregada.");
-    // filtro local: nenhum parâmetro novo na API
-    expect(usersCalls()).toHaveLength(before);
-    expect(JSON.stringify(lastUsersParams())).not.toMatch(/trust|confian/i);
+    await pickSort(user, "Confiança: suspeitos primeiro");
+    await waitFor(() => expect(lastUsersParams()).toMatchObject({ sort_by: "trust", order: "asc", page: 1 }));
+    expect(usersCalls().length).toBeGreaterThan(before);
+    await waitFor(() => expect(currentSearch(router)).toEqual({ sort_by: "trust", order: "asc" }));
+    // a ordem das linhas é a que o servidor devolveu (a tela não reordena a página por conta própria)
+    expect(dataRows().map((row) => row.textContent?.match(/Conta (Suspeita Um|Suspeita Dois|Incerta|Real|Sem Nivel)/)?.[0])).toEqual([
+      "Conta Real",
+      "Conta Suspeita Dois",
+      "Conta Sem Nivel",
+      "Conta Suspeita Um",
+      "Conta Incerta",
+    ]);
+    expect(screen.queryByText(/só nesta página/)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Confiança 1–2 (só nesta página)" }));
-    expect(dataRows()).toHaveLength(5);
-    expect(screen.queryByText(/Mostrando \d+ de \d+ usuários desta página/)).not.toBeInTheDocument();
+    // a opção escolhida leva o ✓
+    await user.click(sortMenu());
+    expect(await screen.findByRole("menuitem", { name: "Confiança: suspeitos primeiro" })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("menuitem", { name: "Cadastro: mais recentes" })).not.toHaveAttribute("aria-current");
+    await user.keyboard("{Escape}");
   });
 
-  it("sem suspeitos na página: estado vazio próprio, com a saída 'Mostrar todos da página'", async () => {
-    serve({ rows: [UNSURE, REAL] as typeof USERS });
+  it("'perfil real primeiro' manda order=desc, e o cabeçalho da coluna Confiança também ordena (começa pelos suspeitos)", async () => {
     const { user } = await renderList();
-    await screen.findByText("Conta Incerta");
-    await user.click(screen.getByRole("button", { name: "Confiança 1–2 (só nesta página)" }));
-    expect(await screen.findByText("Nenhum suspeito nesta página")).toBeInTheDocument();
-    expect(screen.getByText(/Nenhuma das 2 contas desta página tem confiança 1 ou 2/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Mostrar todos da página" }));
-    expect(await screen.findByText("Conta Real")).toBeInTheDocument();
+    await screen.findByText("Bernardo Medeiros Moraes");
+    await pickSort(user, "Confiança: perfil real primeiro");
+    await waitFor(() => expect(lastUsersParams()).toMatchObject({ sort_by: "trust", order: "desc" }));
+
+    await user.click(within(table()).getByRole("button", { name: "Confiança" }));
+    await waitFor(() => expect(lastUsersParams()).toMatchObject({ sort_by: "trust", order: "asc" }));
   });
 
-  it("a coluna não é ordenável (a API ainda não ordena por confiança) e a definição do cabeçalho explica a estimativa", async () => {
+  it("o menu de ordenar tem as opções do servidor (com ✓ na atual) e, separadas, as de confiança", async () => {
+    const { user } = await renderList();
+    await screen.findByText("Bernardo Medeiros Moraes");
+    await user.click(sortMenu());
+    const items = (await screen.findAllByRole("menuitem")).map((el) => el.getAttribute("aria-label") ?? el.textContent);
+    expect(items).toEqual([
+      "Cadastro: mais recentes",
+      "Cadastro: mais antigos",
+      "Nome: A–Z",
+      "Nome: Z–A",
+      "Última sessão: mais recente",
+      "Última sessão: mais antiga",
+      "Confiança: suspeitos primeiro",
+      "Confiança: perfil real primeiro",
+    ]);
+    expect(screen.getByRole("menuitem", { name: "Cadastro: mais recentes" })).toHaveAttribute("aria-current", "true");
+    // o que se vê: um título por grupo e o texto curto de cada opção
+    const groups = Array.from(document.querySelectorAll(".adm-actmenu-group")).map((el) => el.textContent);
+    expect(groups).toEqual(["Cadastro", "Nome", "Última sessão", "Confiança"]);
+    expect(screen.getByRole("menuitem", { name: "Cadastro: mais recentes" })).toHaveTextContent("Mais recentes");
+    expect(screen.getByRole("menuitem", { name: "Confiança: perfil real primeiro" })).toHaveTextContent("Perfil real primeiro");
+  });
+
+  it("a barra é só busca e dois ícones (ordenar e filtros), na linha das abas de estado, e os filtros ficam no painel", async () => {
+    const { user } = await renderList();
+    await screen.findByText("Bernardo Medeiros Moraes");
+    const bar = screen.getByRole("button", { name: "Ordenar" }).closest(".adm-filters") as HTMLElement;
+    expect(bar).toHaveAttribute("data-compact", "true");
+    // as abas de estado e a busca/ícones são irmãos da mesma barra (mesma linha)
+    expect(bar.querySelector(".seg")).not.toBeNull();
+    expect(bar.querySelector(".adm-filters-row")).not.toBeNull();
+    const filters = screen.getByRole("button", { name: "Filtros" });
+    expect(filters).toHaveAttribute("aria-expanded", "false");
+    await user.click(filters);
+    expect(filters).toHaveAttribute("aria-expanded", "true");
+    const panel = screen.getByRole("group", { name: "Filtros" });
+    expect(within(panel).getByLabelText("Tipo")).toBeInTheDocument();
+    expect(within(panel).getByRole("group", { name: "Cadastrado em" })).toBeInTheDocument();
+    expect(within(panel).queryByText(/Confiança/)).not.toBeInTheDocument();
+  });
+
+  it("a coluna é ordenável (pelo servidor) e a definição do cabeçalho explica a estimativa", async () => {
     serve({ rows: [SUSPECT] as typeof USERS });
     await renderList();
     await screen.findByText("Conta Suspeita Um");
     const header = within(table()).getAllByRole("columnheader")[1];
-    expect(header).not.toHaveAttribute("aria-sort");
+    expect(header).toHaveAttribute("aria-sort", "none");
     expect(within(header).getByRole("button", { name: /Como é calculado: Confiança/ })).toHaveAccessibleDescription(/não suspende a conta/);
   });
 
-  it("ligado, o filtro vira chip e 'Limpar filtros' o desliga", async () => {
-    serve({ rows: [SUSPECT, UNSURE] as typeof USERS });
-    const { user } = await renderList();
-    await screen.findByText("Conta Suspeita Um");
-    await user.click(screen.getByRole("button", { name: "Confiança 1–2 (só nesta página)" }));
-    expect(dataRows()).toHaveLength(1);
-    await user.click(await screen.findByRole("button", { name: "Limpar filtros" }));
-    await waitFor(() => expect(dataRows()).toHaveLength(2));
-    expect(screen.getByRole("button", { name: "Confiança 1–2 (só nesta página)" })).toHaveAttribute("aria-pressed", "false");
-  });
 });

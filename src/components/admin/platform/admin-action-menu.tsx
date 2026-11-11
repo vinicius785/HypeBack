@@ -21,6 +21,12 @@ export interface AdminActionMenuItem {
   disabledReason?: string;
   /** `danger`: vermelho (ação destrutiva). */
   tone?: "default" | "danger";
+  /** Opção escolhida (menu de ordenação): ganha um ✓ no fim e `aria-current`. */
+  selected?: boolean;
+  /** Título do grupo ("Cadastro", "Nome"): aparece uma vez, antes do primeiro item de cada grupo (só visual). */
+  group?: string;
+  /** Texto mais curto para ver quando o título do grupo já explica ("Mais recentes"); `label` segue sendo o nome acessível. */
+  shortLabel?: string;
   /** Linha fina antes do item. Sem valor, o primeiro item `danger` depois de itens normais ganha uma sozinho. */
   separatorBefore?: boolean;
 }
@@ -37,6 +43,10 @@ export interface AdminActionMenuProps {
   align?: "start" | "end";
   /** `secondary`: botão de contorno (branco). `ghost`: sem fundo. Padrão `secondary`. */
   variant?: "secondary" | "ghost";
+  /** Ícone do botão só-ícone (padrão `"more"`, o "⋯"): por exemplo `"sort"` num menu de ordenação. */
+  triggerIcon?: string;
+  /** Botão redondo (como o de "Filtros" da barra compacta) em vez de quadrado de cantos suaves. */
+  round?: boolean;
 }
 
 /** Tempo (ms) que a busca por inicial espera a próxima letra antes de recomeçar. */
@@ -57,7 +67,7 @@ const norm = (text: string) => text.normalize("NFD").replace(/\p{Diacritic}/gu, 
  * Ao escolher um item o foco volta ao botão ANTES de `onSelect` rodar: se a ação abrir um diálogo, é ao botão
  * que ele devolve o foco ao fechar (o item do menu já terá sumido).
  */
-export function AdminActionMenu({ items, label = "Mais", iconOnly = false, ariaLabel, align = "end", variant = "secondary" }: AdminActionMenuProps) {
+export function AdminActionMenu({ items, label = "Mais", iconOnly = false, ariaLabel, align = "end", variant = "secondary", triggerIcon = "more", round = false }: AdminActionMenuProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -199,6 +209,7 @@ export function AdminActionMenu({ items, label = "Mais", iconOnly = false, ariaL
         className={`btn${variant === "secondary" ? " out" : ""} adm-actmenu-btn`}
         data-variant={variant}
         data-icon-only={iconOnly ? "true" : undefined}
+        data-round={round ? "true" : undefined}
         aria-label={accessibleName}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -207,7 +218,7 @@ export function AdminActionMenu({ items, label = "Mais", iconOnly = false, ariaL
         onKeyDown={onTriggerKeyDown}
       >
         {iconOnly ? (
-          <I n="more" />
+          <I n={triggerIcon} />
         ) : (
           <>
             {label}
@@ -231,12 +242,18 @@ export function AdminActionMenu({ items, label = "Mais", iconOnly = false, ariaL
                   const disabled = !!item.disabled;
                   const danger = item.tone === "danger";
                   const previous = items[index - 1];
-                  const separator = index > 0 && (item.separatorBefore ?? (danger && previous?.tone !== "danger"));
+                  const groupTitle = item.group && item.group !== previous?.group ? item.group : undefined;
+                  const separator = !groupTitle && index > 0 && (item.separatorBefore ?? (danger && previous?.tone !== "danger"));
                   const reasonId = `${baseId}-why-${item.id}`;
                   const reason = disabled ? item.disabledReason : undefined;
                   return (
                     <Fragment key={item.id}>
                       {separator ? <div className="adm-actmenu-sep" role="separator" /> : null}
+                      {groupTitle ? (
+                        <div className="adm-actmenu-group" role="presentation" aria-hidden="true">
+                          {groupTitle}
+                        </div>
+                      ) : null}
                       <button
                         id={`${baseId}-item-${item.id}`}
                         type="button"
@@ -245,6 +262,8 @@ export function AdminActionMenu({ items, label = "Mais", iconOnly = false, ariaL
                         className="adm-actmenu-item"
                         data-tone={danger ? "danger" : undefined}
                         aria-disabled={disabled ? true : undefined}
+                        aria-current={item.selected ? true : undefined}
+                        aria-label={item.shortLabel ? item.label : undefined}
                         aria-describedby={reason ? reasonId : undefined}
                         onMouseMove={(event) => {
                           if (document.activeElement !== event.currentTarget) event.currentTarget.focus({ preventScroll: true });
@@ -257,7 +276,7 @@ export function AdminActionMenu({ items, label = "Mais", iconOnly = false, ariaL
                       >
                         {item.icon ? <span className="adm-actmenu-ico">{typeof item.icon === "string" ? <I n={item.icon} cls="sm" /> : item.icon}</span> : null}
                         <span className="adm-actmenu-txt">
-                          <span>{item.label}</span>
+                          <span>{item.shortLabel ?? item.label}</span>
                           {/* `aria-hidden`: o motivo não entra no nome do item, mas segue sendo a descrição dele */}
                           {reason ? (
                             <small id={reasonId} className="adm-actmenu-why" aria-hidden="true">
@@ -265,6 +284,11 @@ export function AdminActionMenu({ items, label = "Mais", iconOnly = false, ariaL
                             </small>
                           ) : null}
                         </span>
+                        {item.selected ? (
+                          <span className="adm-actmenu-sel" aria-hidden="true">
+                            <I n="check" cls="sm" />
+                          </span>
+                        ) : null}
                       </button>
                     </Fragment>
                   );

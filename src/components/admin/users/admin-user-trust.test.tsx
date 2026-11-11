@@ -9,7 +9,7 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import { TRUST_DISCLAIMER, formatTrustPoints, isSuspectTrust, splitTrustReasons, trustAriaLabel, usableTrust } from "@/lib/admin/trust";
+import { TRUST_DISCLAIMER, formatTrustPoints, splitTrustReasons, trustAriaLabel, usableTrust } from "@/lib/admin/trust";
 import type { AdminUserTrust, AdminUserTrustLevel, AdminUserTrustReason } from "@/shared/admin-platform.types";
 
 import { AdminUserTrustSection, TrustBadge } from "./admin-user-trust";
@@ -46,15 +46,13 @@ describe("regras de exibição", () => {
     expect(splitTrustReasons(MANY.slice(0, 6))).toEqual({ shown: MANY.slice(0, 6), hidden: 0 });
   });
 
-  it("'suspeito' é nível 1 ou 2; sem trust (ou nível fora de 1 a 5) não é suspeito nem utilizável", () => {
-    expect(isSuspectTrust(trust(1))).toBe(true);
-    expect(isSuspectTrust(trust(2))).toBe(true);
-    expect(isSuspectTrust(trust(3))).toBe(false);
-    expect(isSuspectTrust(null)).toBe(false);
-    expect(isSuspectTrust(undefined)).toBe(false);
+  it("nível fora de 1 a 5 (ou ausente) não é utilizável", () => {
+    expect(usableTrust(null)).toBeNull();
+    expect(usableTrust(undefined)).toBeNull();
     expect(usableTrust({ ...trust(3), level: 9 as AdminUserTrustLevel })).toBeNull();
     expect(usableTrust({ ...trust(3), level: 0 as AdminUserTrustLevel })).toBeNull();
   });
+
 });
 
 describe("selo na lista", () => {

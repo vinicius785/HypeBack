@@ -17,7 +17,8 @@ export const ADMIN_USERS_LIST_CONFIG = {
   filterKeys: ADMIN_USERS_FILTER_KEYS,
   // Igual ao padrão da API: sem mexer nos filtros nada vai na URL nem na consulta.
   defaultFilters: { status: ADMIN_USERS_DEFAULT_STATUS, kind: ADMIN_USERS_DEFAULT_KIND },
-  sortKeys: ["created_at", "name", "last_session"],
+  // `trust`: o servidor ordena por confiança em TODA a lista (nível e nota); asc = suspeitos primeiro.
+  sortKeys: ["created_at", "name", "last_session", "trust"],
   defaultSortBy: "created_at",
   defaultOrder: "desc",
 } as const satisfies AdminListStateConfig<AdminUsersFilterKey>;

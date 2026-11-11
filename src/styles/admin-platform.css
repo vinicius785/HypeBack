@@ -547,3 +547,38 @@
   .pv .adm-search-clear, .pv .adm-th-btn, .pv .adm-th-btn .ico, .pv .adm-tab em { transition: none; }
   .pv .adm-fig[data-link="true"]:hover .adm-fig-go { transform: none; }
 }
+
+/* ===== Barra de filtros compacta (`compact`): busca + ordenar + filtros, tudo num painel que o botão de filtro abre ===== */
+.pv .adm-filters-anchor { display: contents; }
+.pv .adm-filters-anchor[data-compact="true"] { display: block; position: relative; }
+.pv .adm-filters-toggle[data-compact="true"] { display: inline-flex; position: relative; width: var(--adm-hit); height: var(--adm-hit); padding: 0; justify-content: center; }
+.pv .adm-filters-toggle[data-compact="true"] em { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; display: grid; place-items: center; font-size: 11px; line-height: 1; }
+.pv .adm-filters-panel[data-compact="true"] { display: none; position: absolute; top: calc(100% + 8px); right: 0; z-index: 40; width: min(380px, calc(100vw - 32px)); flex-direction: column; align-items: stretch; gap: 12px; padding: 16px; border-radius: var(--adm-r-lg, 20px); background: var(--adm-surface); box-shadow: var(--adm-shadow-pop); }
+.pv .adm-filters-panel[data-compact="true"][data-open="true"] { display: flex; }
+.pv .adm-filters-panel[data-compact="true"] { gap: 14px; padding: 18px; border-radius: 22px; width: min(392px, calc(100vw - 32px)); }
+.pv .adm-filters-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pv .adm-filters-panel-head b { font-size: 16px; font-weight: 700; letter-spacing: -.02em; }
+.pv .adm-filters-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pv .adm-filters-field-k { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--adm-text-muted); }
+/* dentro do painel o nome do filtro vem em cima: o prefixo "Tipo:" de cada controle sai e sobra só o valor */
+.pv .adm-filters-panel[data-compact="true"] .adm-select-k, .pv .adm-filters-panel[data-compact="true"] .adm-ep-k, .pv .adm-filters-panel[data-compact="true"] .adm-daterange-k { display: none; }
+/* controles: fundo cinza, cantos suaves, mesma altura */
+.pv .adm-filters-panel[data-compact="true"] .adm-select, .pv .adm-filters-panel[data-compact="true"] .adm-daterange, .pv .adm-filters-panel[data-compact="true"] .adm-pill:not([aria-pressed="true"]), .pv .adm-filters-panel[data-compact="true"] .adm-ep:not([data-active="true"]) { width: 100%; background: var(--bg); border-radius: 14px; }
+.pv .adm-filters-panel[data-compact="true"] .adm-select[data-active="true"], .pv .adm-filters-panel[data-compact="true"] .adm-ep[data-active="true"] { border-radius: 14px; }
+.pv .adm-filters-panel[data-compact="true"] .adm-ep { display: flex; }
+.pv .adm-filters-panel[data-compact="true"] .adm-ep .adm-ep-trigger, .pv .adm-filters-panel[data-compact="true"] .adm-ep .adm-ep-trigger .ico { }
+.pv .adm-filters-panel[data-compact="true"] .adm-ep .adm-ep-trigger .ico, .pv .adm-filters-panel[data-compact="true"] .adm-select .ico { margin-left: auto; }
+.pv .adm-filters-panel[data-compact="true"] .adm-select-face { flex: 1; }
+.pv .adm-filters-panel[data-compact="true"] .adm-pill { justify-content: flex-start; height: 44px; padding: 0 16px; border-radius: 14px; }
+/* período: duas datas lado a lado, cada uma na sua caixa */
+.pv .adm-filters-panel[data-compact="true"] .adm-daterange { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; height: auto; min-height: 44px; padding: 6px; background: transparent; border-radius: 14px; }
+.pv .adm-filters-panel[data-compact="true"] .adm-daterange input { min-width: 0; height: 44px; padding: 0 10px; border-radius: 14px; background: var(--bg); font-size: 13.5px; }
+.pv .adm-filters-panel[data-compact="true"] .adm-daterange-sep { color: var(--adm-text-muted); }
+.pv .adm-filters-panel[data-compact="true"] .adm-daterange:focus-within { box-shadow: none; }
+@media (max-width: 560px) { .pv .adm-filters-panel[data-compact="true"] { position: fixed; left: 16px; right: 16px; top: auto; bottom: 16px; width: auto; max-height: 70vh; overflow-y: auto; } }
+
+/* barra compacta: o segmento de estado e a busca com os ícones de ordenar e filtrar ficam na MESMA linha (quebram só se faltar espaço) */
+.pv .adm-filters[data-compact="true"] { flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: 14px; row-gap: 12px; }
+.pv .adm-filters[data-compact="true"] .adm-filters-row { flex: 1 1 340px; flex-wrap: nowrap; }
+.pv .adm-filters[data-compact="true"] .adm-search { flex: 1 1 220px; max-width: none; min-width: 160px; }
+.pv .adm-filters[data-compact="true"] .adm-chips { flex: 1 1 100%; }

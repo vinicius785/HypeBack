@@ -15,14 +15,8 @@ export const TRUST_LEVEL_TEXT: Record<AdminUserTrustLevel, string> = {
 /** Aviso fixo que acompanha o nível (ele é uma estimativa, não uma prova). */
 export const TRUST_DISCLAIMER = "Estimativa automática por sinais. Serve para priorizar a análise e não suspende a conta.";
 
-/** Nome do filtro local da lista (vale só para as linhas da página carregada, e o nome já diz isso). */
-export const TRUST_FILTER_LABEL = "Confiança 1–2 (só nesta página)";
-
 /** Quantos motivos cabem na dica da lista; o resto vira "+N". */
 export const TRUST_TIP_MAX_REASONS = 6;
-
-/** Nível "suspeito" do filtro local: 1 e 2. */
-export const TRUST_SUSPECT_MAX_LEVEL: AdminUserTrustLevel = 2;
 
 /** `trust` utilizável (nível de 1 a 5); qualquer outra coisa vira `null` e a tela mostra "—". */
 export function usableTrust(trust: AdminUserTrust | null | undefined): AdminUserTrust | null {
@@ -48,10 +42,4 @@ export function splitTrustReasons(
   max: number = TRUST_TIP_MAX_REASONS,
 ): { shown: AdminUserTrustReason[]; hidden: number } {
   return { shown: reasons.slice(0, max), hidden: Math.max(0, reasons.length - max) };
-}
-
-/** A conta é "suspeita" (nível 1 ou 2)? Sem `trust` não é. */
-export function isSuspectTrust(trust: AdminUserTrust | null | undefined): boolean {
-  const usable = usableTrust(trust);
-  return usable !== null && usable.level <= TRUST_SUSPECT_MAX_LEVEL;
 }
