@@ -73,11 +73,7 @@ function RouteComponent() {
         </p>
 
         <p className="text-[14px] leading-normal text-neutral-500">
-          Contas da equipe: peça a um admin para gerar um código para você e{" "}
-          <Link to="/staff-reset-password" className="font-semibold text-primary-600 hover:underline">
-            redefina com o código
-          </Link>
-          .
+          Conta da equipe? Na próxima etapa, use o código gerado por um admin.
         </p>
       </div>
 
