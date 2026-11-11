@@ -19,6 +19,7 @@ import {
 import { useAdminListQueryState, useAdminPageClamp } from "@/hooks/admin/use-admin-list-query-state";
 import { useAdminUsers } from "@/hooks/admin/use-admin-users";
 import { EMPTY_TEXT, formatDate, formatDateTime } from "@/lib/admin/format";
+import { TRUST_DISCLAIMER, isSuspectTrust } from "@/lib/admin/trust";
 import type { AdminUserListItem, AdminUserWorkspaceLink, AdminWorkspaceRef } from "@/shared/admin-platform.types";
 
 import {
@@ -30,6 +31,7 @@ import {
 } from "./admin-users-config";
 import { LAST_SESSION_EXPLANATION, approxSessionText, userKindText, workspaceRoleText } from "./admin-users-format";
 import { userDetailLink, workspaceDetailLink } from "./admin-users-links";
+import { TrustBadge } from "./admin-user-trust";
 import { AdminWorkspacePicker, useAdminWorkspaceSelection } from "./admin-workspace-picker";
 
 import "@/styles/admin-users.css";
@@ -100,6 +102,11 @@ export function AdminUsersList() {
   const [picked, setPicked] = useState<AdminWorkspaceRef | null>(null);
   const workspaceFilter = useAdminWorkspaceSelection(state.filters.workspace_id, { known: picked });
 
+  // Filtro LOCAL de confiança (a API ainda não filtra nem ordena por ela): só afeta as linhas da página carregada.
+  const [onlySuspects, setOnlySuspects] = useState(false);
+  const pageRows = users.data?.data;
+  const rows = onlySuspects ? pageRows?.filter((user) => isSuspectTrust(user.trust)) : pageRows;
+
   const lastSessionDefinition =
     meta?.definitions?.last_session_at ?? meta?.definitions?.last_session ?? LAST_SESSION_EXPLANATION;
 
@@ -146,6 +153,17 @@ export function AdminUsersList() {
           } satisfies AdminTableColumn<AdminUserListItem>,
         ]
       : []),
+    {
+      key: "trust",
+      header: "Confiança",
+      width: "96px",
+      definition: (
+        <>
+          {TRUST_DISCLAIMER} De 1 (muito provável bot) a 5 (perfil real). Passe o mouse, ou foque o número, para ver os motivos.
+        </>
+      ),
+      cell: (user) => <TrustBadge trust={user.trust} />,
+    },
     {
       key: "workspaces",
       header: "Workspaces",
@@ -246,10 +264,23 @@ export function AdminUsersList() {
         }
       />
 
+      {pageRows ? (
+        <div className="adm-trust-filter">
+          <button type="button" className="btn out adm-btn-sm" aria-pressed={onlySuspects} onClick={() => setOnlySuspects((on) => !on)}>
+            Confiança: 1–2 (suspeitos)
+          </button>
+          <span role="status">
+            {onlySuspects
+              ? `Mostrando ${rows?.length ?? 0} de ${pageRows.length} usuários desta página. O filtro vale só para a página carregada.`
+              : "Filtro só para os usuários da página carregada."}
+          </span>
+        </div>
+      ) : null}
+
       <AdminTable
         caption="Usuários"
         columns={columns}
-        rows={users.data?.data}
+        rows={rows}
         rowKey={(user) => user.id}
         rowLink={(user) => userDetailLink(user.id)}
         sort={{ by: state.sortBy, order: state.order }}
@@ -260,7 +291,17 @@ export function AdminUsersList() {
         onRetry={() => void users.refetch()}
         retrying={users.isFetching}
         empty={
-          filtering
+          onlySuspects && pageRows && pageRows.length > 0
+            ? {
+                title: "Nenhum suspeito nesta página",
+                description: `Nenhuma das ${pageRows.length} contas desta página tem confiança 1 ou 2. As outras páginas podem ter.`,
+                action: (
+                  <button type="button" className="btn out adm-btn-sm" onClick={() => setOnlySuspects(false)}>
+                    Mostrar todos da página
+                  </button>
+                ),
+              }
+            : filtering
             ? {
                 title: "Nenhum usuário encontrado",
                 description: "Nenhum usuário corresponde à busca e aos filtros atuais.",

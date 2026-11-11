@@ -23,6 +23,7 @@ import type { AdminUserDetail } from "@/shared/admin-platform.types";
 import { AdminUserActionNotice, AdminUserActions } from "./admin-user-actions";
 import { AdminUserActivityTab } from "./admin-user-activity-tab";
 import { AdminUserData, AdminUserSuspension } from "./admin-user-info";
+import { AdminUserTrustSection } from "./admin-user-trust";
 import { AdminUserLinksTab } from "./admin-user-links-tab";
 import { AdminUserSessionsTab } from "./admin-user-sessions-tab";
 import { userKindText } from "./admin-users-format";
@@ -119,6 +120,7 @@ function AdminUserDetailView({ user }: { user: AdminUserDetail }) {
 
       <AdminTabs tabs={tabs} value={tab} onChange={setTab} ariaLabel="Seções do usuário" idPrefix="admin-user" />
       <AdminTabPanel idPrefix="admin-user" id="summary" active={tab === "summary"}>
+        <AdminUserTrustSection trust={user.trust} />
         <AdminUserData user={user} />
       </AdminTabPanel>
       <AdminTabPanel idPrefix="admin-user" id="links" active={tab === "links"}>

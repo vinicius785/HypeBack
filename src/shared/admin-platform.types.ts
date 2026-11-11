@@ -563,6 +563,29 @@ export interface AdminUserWorkspaceLink {
   joined_at: string;
 }
 
+/** Nível de confiança da conta: 1 = muito provável bot/atacante · 2 = suspeito · 3 = incerto · 4 = provável pessoa real · 5 = perfil real. */
+export type AdminUserTrustLevel = 1 | 2 | 3 | 4 | 5;
+
+/** Um sinal que pesou no nível (positivo soma pontos, negativo tira). Do maior peso para o menor. */
+export interface AdminUserTrustReason {
+  code: string;
+  /** Texto pronto para a tela, em português. */
+  label: string;
+  effect: 'positive' | 'negative';
+  points: number;
+}
+
+/**
+ * Estimativa automática (por sinais, não uma prova) de que a conta é de uma pessoa real. Serve para a equipe priorizar
+ * o que olhar e NUNCA suspende nada sozinha. `null` na conta excluída ou quando o cálculo falhou na hora.
+ */
+export interface AdminUserTrust {
+  level: AdminUserTrustLevel;
+  /** 0 a 100. */
+  score: number;
+  reasons: AdminUserTrustReason[];
+}
+
 export interface AdminUserListItem {
   id: number;
   name: string;
@@ -577,6 +600,8 @@ export interface AdminUserListItem {
   workspaces_count: number;
   /** Até 5 vínculos, o resto vem no detalhe. */
   workspaces: AdminUserWorkspaceLink[];
+  /** Nível de confiança da conta; `null` (ou ausente) quando não há cálculo. */
+  trust?: AdminUserTrust | null;
 }
 
 export type AdminUserListResponse = AdminListResponse<AdminUserListItem>;
@@ -608,6 +633,8 @@ export interface AdminUserDetail {
     /** 'backoffice' | 'mobile-app' */
     clients: string[];
   };
+  /** Nível de confiança da conta; `null` (ou ausente) quando não há cálculo. */
+  trust?: AdminUserTrust | null;
 }
 
 /** POST /admin/users/:userId/suspend | /reactivate | /revoke-sessions */
