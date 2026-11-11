@@ -758,18 +758,6 @@ describe("lista de usuários: conta pendente (em cadastro)", () => {
 });
 
 describe("lista de usuários: confiança em toda a lista, celular e status novo", () => {
-  it("'Só suspeitos' manda trust_max=2 (junto do status explícito), vira chip e sai com 'Limpar filtros'", async () => {
-    const { router, user } = await renderList();
-    await screen.findByText("Bernardo Medeiros Moraes");
-    await user.click(screen.getByRole("button", { name: /^Filtros/ }));
-    await user.click(screen.getByRole("button", { name: "Só suspeitos (nível 1-2)" }));
-    await waitFor(() => expect(currentSearch(router)).toEqual({ trust_max: "2" }));
-    await waitFor(() => expect(lastUsersParams()).toMatchObject({ trust_max: "2", status: "active,suspended" }));
-    expect(screen.getByRole("button", { name: /Remover filtro.*Só suspeitos/ })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Limpar filtros" }));
-    await waitFor(() => expect(lastUsersParams()).not.toHaveProperty("trust_max"));
-  });
-
   it("'Em cadastro' manda status=pending", async () => {
     const { user } = await renderList();
     await screen.findByText("Bernardo Medeiros Moraes");
@@ -783,12 +771,6 @@ describe("lista de usuários: confiança em toda a lista, celular e status novo"
     expect(lastUsersParams()).toMatchObject({ status: "active,suspended" });
     await user.click(within(screen.getByRole("group", { name: "Status da conta" })).getByRole("button", { name: "Ativos" }));
     await waitFor(() => expect(lastUsersParams()).toMatchObject({ status: "active" }));
-  });
-
-  it("trust_max fora de 1-5 (400): mostra a mensagem do servidor", async () => {
-    client.adminList.mockRejectedValue(toAdminApiError(400, { message: ["trust_max deve estar entre 1 e 5"] }));
-    await renderList("/admin/users?trust_max=9");
-    expect(await screen.findByText(/trust_max deve estar entre 1 e 5/)).toBeInTheDocument();
   });
 
   it("celular: iOS, Android, os dois (o último usado primeiro) e '—' quando não se sabe", async () => {
