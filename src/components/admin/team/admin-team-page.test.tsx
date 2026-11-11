@@ -132,12 +132,11 @@ describe("Equipe: papéis e pessoas", () => {
     expect(within(rowOf("Caio Teodoro")).getByText("Suporte")).toBeInTheDocument();
     expect(within(rowOf("Leo Ramos")).getByText("Suspenso")).toBeInTheDocument();
     expect(within(rowOf("Marina Alves")).getByText("Você")).toBeInTheDocument();
-    expect(within(rowOf("Marina Alves")).queryByRole("button", { name: "Alterar papel" })).not.toBeInTheDocument();
-    expect(within(rowOf("Caio Teodoro")).getByRole("button", { name: "Alterar papel" })).toBeInTheDocument();
-    // gerar código de recuperação: só para o administrador, em quem é da equipe e nunca na própria linha
-    expect(within(rowOf("Caio Teodoro")).getByRole("button", { name: "Gerar código de recuperação" })).toBeInTheDocument();
-    expect(within(rowOf("Leo Ramos")).getByRole("button", { name: "Gerar código de recuperação" })).toBeInTheDocument();
-    expect(within(rowOf("Marina Alves")).queryByRole("button", { name: "Gerar código de recuperação" })).not.toBeInTheDocument();
+    // as ações (alterar papel e gerar código de recuperação) ficam num menu "Ações" por pessoa: só para o administrador,
+    // em quem é da equipe e nunca na própria linha
+    expect(within(rowOf("Marina Alves")).queryByRole("button", { name: /^Ações de/ })).not.toBeInTheDocument();
+    expect(within(rowOf("Caio Teodoro")).getByRole("button", { name: "Ações de Caio Teodoro" })).toBeInTheDocument();
+    expect(within(rowOf("Leo Ramos")).getByRole("button", { name: "Ações de Leo Ramos" })).toBeInTheDocument();
   });
 
   it("mostra a foto de quem tem; sem foto ficam as iniciais", async () => {
@@ -151,7 +150,8 @@ describe("Equipe: papéis e pessoas", () => {
 describe("Equipe: alterar papel (administrador)", () => {
   async function openEdit(name = "Caio Teodoro") {
     const ctx = await renderPage();
-    await ctx.user.click(within(rowOf(name)).getByRole("button", { name: "Alterar papel" }));
+    await ctx.user.click(within(rowOf(name)).getByRole("button", { name: `Ações de ${name}` }));
+    await ctx.user.click(await screen.findByRole("menuitem", { name: "Alterar papel" }));
     const dialog = await screen.findByRole("dialog", { name: `Papel de ${name}` });
     return { ...ctx, dialog };
   }
@@ -306,15 +306,22 @@ describe("Equipe: sem permissão de administrador", () => {
     mocks.auth.user = { id: 7, name: "Caio Teodoro", platform_role: "support" };
     await renderPage();
     expect(screen.queryByRole("button", { name: "Adicionar pessoa" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Alterar papel" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Gerar código de recuperação" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Ações de/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Alterar papel" })).not.toBeInTheDocument();
     expect(within(rowOf("Caio Teodoro")).getByText("Você")).toBeInTheDocument();
   });
 
   it("somente leitura também não vê 'Gerar código de recuperação'", async () => {
     mocks.auth.user = { id: 8, name: "Leo Ramos", platform_role: "viewer" };
     await renderPage();
-    expect(screen.queryByRole("button", { name: "Gerar código de recuperação" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Ações de/ })).not.toBeInTheDocument();
+  });
+
+  it("o menu de ações do administrador traz 'Alterar papel' e 'Gerar código de recuperação'", async () => {
+    const { user } = await renderPage();
+    await user.click(within(rowOf("Caio Teodoro")).getByRole("button", { name: "Ações de Caio Teodoro" }));
+    expect(await screen.findByRole("menuitem", { name: "Alterar papel" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Gerar código de recuperação" })).toBeInTheDocument();
   });
 
   it("erro ao carregar a equipe mostra o estado de erro com 'Tentar de novo'", async () => {
