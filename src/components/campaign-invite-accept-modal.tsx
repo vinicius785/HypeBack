@@ -13,6 +13,7 @@ import { I } from "@/components/prototype/ui";
 import {
   confirmInstagramVerify,
   getBackendOrigin,
+  isTrustedPopupMessage,
   getSocialConnectRedirect,
   postPublicCampaignInvitePreRegister,
   startInstagramVerify,
@@ -56,6 +57,13 @@ function connectViaPopup(
   network: "tiktok" | "youtube",
 ): Promise<VerifiedAccount> {
   return new Promise<VerifiedAccount>((resolve, reject) => {
+    // Sem a origem do backend não há como validar de quem vem a resposta do popup: nem abre.
+    const backendOrigin = getBackendOrigin();
+    if (!backendOrigin) {
+      reject(new Error("Não foi possível conectar a conta: o endereço do servidor não está configurado."));
+      return;
+    }
+
     const popup = window.open(
       "",
       "hypeapp-social-connect",
@@ -66,7 +74,6 @@ function connectViaPopup(
       return;
     }
 
-    const backendOrigin = getBackendOrigin();
     let settled = false;
 
     const cleanup = () => {
@@ -76,7 +83,7 @@ function connectViaPopup(
 
     const onMessage = (event: MessageEvent) => {
       // Só aceita mensagens da página de callback servida pelo backend.
-      if (backendOrigin && event.origin !== backendOrigin) return;
+      if (!isTrustedPopupMessage(event.origin, backendOrigin)) return;
       const data = event.data as SocialConnectMessage | undefined;
       if (!data || data.type !== "hypeapp:social-connect") return;
       if (data.network && data.network !== network) return;
