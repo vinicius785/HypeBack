@@ -77,7 +77,7 @@ export function AdminUserTrustSection({ trust: raw }: { trust: AdminUserTrust | 
     <AdminSection title="Confiança da conta" description={TRUST_DISCLAIMER}>
       {trust ? (
         <div className="adm-trust-detail">
-          <div className="adm-trust-summary">
+          <div className="adm-trust-summary" data-level={trust.level}>
             <span className="adm-trust" data-level={trust.level} role="img" aria-label={trustAriaLabel(trust.level)}>
               <span>{trust.level}</span>
               <TrustMeter level={trust.level} />
@@ -87,6 +87,16 @@ export function AdminUserTrustSection({ trust: raw }: { trust: AdminUserTrust | 
               <span>
                 Nota <span className="adm-num">{trust.score}</span>/100
               </span>
+            </span>
+            <span
+              className="adm-trust-bar"
+              role="meter"
+              aria-label="Nota de confiança"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.max(0, Math.min(100, trust.score))}
+            >
+              <i style={{ width: `${Math.max(0, Math.min(100, trust.score))}%` }} />
             </span>
           </div>
           {trust.reasons.length === 0 ? (

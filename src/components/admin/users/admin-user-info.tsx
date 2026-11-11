@@ -36,7 +36,7 @@ export function AdminUserData({ user }: { user: AdminUserDetail }) {
 
   return (
     <AdminSection title="Dados da conta">
-      <AdminKeyValueList items={items} columns={2} />
+      <AdminKeyValueList items={items} />
     </AdminSection>
   );
 }

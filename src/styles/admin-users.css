@@ -90,10 +90,15 @@
 .pv .adm-trust-reason { display: grid; grid-template-columns: 34px minmax(0, 1fr); column-gap: 8px; align-items: baseline; }
 .pv .adm-trust-reason b { text-align: right; font-weight: 700; }
 
-/* detalhe */
-.pv .adm-trust-detail { display: flex; flex-direction: column; gap: 16px; }
-.pv .adm-trust-summary { display: flex; align-items: center; gap: 14px; }
-.pv .adm-trust-summary .adm-trust { height: 38px; padding: 0 16px 0 14px; gap: 12px; font-size: 20px; }
+/* detalhe: selo grande, nota com barra e os motivos em chips de pontos (verde a favor, vermelho contra) */
+.pv .adm-trust-detail { display: flex; flex-direction: column; gap: 18px; }
+.pv .adm-trust-summary { --tb: var(--adm-text-muted); display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "badge text" "bar bar"; align-items: center; gap: 12px 14px; padding: 14px 16px; border-radius: var(--adm-r-md); background: var(--bg); }
+.pv .adm-trust-summary[data-level="1"] { --tb: var(--adm-bad); }
+.pv .adm-trust-summary[data-level="2"] { --tb: var(--adm-warn); }
+.pv .adm-trust-summary[data-level="3"] { --tb: var(--ink); }
+.pv .adm-trust-summary[data-level="4"], .pv .adm-trust-summary[data-level="5"] { --tb: var(--adm-ok); }
+.pv .adm-trust-summary .adm-trust { grid-area: badge; height: 38px; padding: 0 16px 0 14px; gap: 12px; font-size: 20px; }
+.pv .adm-trust-summary .adm-trust[data-level="3"] { background: var(--adm-surface); }
 .pv .adm-trust-summary .adm-trust-meter { height: 18px; gap: 3px; }
 .pv .adm-trust-summary .adm-trust-meter i { width: 5px; }
 .pv .adm-trust-summary .adm-trust-meter i:nth-child(1) { height: 8px; }
@@ -101,14 +106,25 @@
 .pv .adm-trust-summary .adm-trust-meter i:nth-child(3) { height: 14px; }
 .pv .adm-trust-summary .adm-trust-meter i:nth-child(4) { height: 16px; }
 .pv .adm-trust-summary .adm-trust-meter i:nth-child(5) { height: 18px; }
-.pv .adm-trust-text { display: flex; flex-direction: column; gap: 2px; color: var(--adm-text-muted); font-size: 13px; }
-.pv .adm-trust-text b { color: var(--ink); font-size: 15px; text-transform: capitalize; }
+.pv .adm-trust-text { grid-area: text; display: flex; flex-direction: column; gap: 2px; color: var(--adm-text-muted); font-size: 13px; }
+.pv .adm-trust-text b { color: var(--ink); font-size: 16px; text-transform: capitalize; }
+.pv .adm-trust-bar { grid-area: bar; display: block; height: 6px; border-radius: 999px; background: var(--adm-surface); overflow: hidden; }
+.pv .adm-trust-bar i { display: block; height: 100%; border-radius: 999px; background: var(--tb); transition: width .5s ease; }
 .pv .adm-trust-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.pv .adm-trust-list li { padding: 9px 0; border-top: 1px solid var(--line); }
+.pv .adm-trust-list li { padding: 8px 0; border-top: 1px solid var(--line); }
 .pv .adm-trust-list li:first-child { border-top: 0; }
-.pv .adm-trust-list .adm-trust-reason { grid-template-columns: 44px minmax(0, 1fr); font-size: 14px; }
-.pv .adm-trust-list .adm-trust-reason[data-effect="positive"] b { color: var(--adm-ok); }
-.pv .adm-trust-list .adm-trust-reason[data-effect="negative"] b { color: var(--adm-bad); }
+.pv .adm-trust-list .adm-trust-reason { grid-template-columns: 52px minmax(0, 1fr); align-items: center; column-gap: 12px; font-size: 14px; }
+.pv .adm-trust-list .adm-trust-reason b { display: inline-grid; place-items: center; height: 24px; padding: 0 8px; border-radius: 999px; font-size: 12.5px; text-align: center; }
+.pv .adm-trust-list .adm-trust-reason[data-effect="positive"] b { background: var(--adm-ok-bg); color: var(--adm-ok); }
+.pv .adm-trust-list .adm-trust-reason[data-effect="negative"] b { background: var(--adm-bad-bg); color: var(--adm-bad); }
+
+/* resumo do usuário: confiança e dados lado a lado em tela larga; cada cartão com a altura do seu conteúdo */
+.pv .adm-users-summary { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (min-width: 1280px) { .pv .adm-users-summary { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
+
+/* cabeçalho: e-mail e etiquetas na mesma linha, abaixo do nome */
+.pv .adm-users-id { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.pv .adm-users-id-badges { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 
 /* aviso do filtro local da lista (só quando ligado): vale só para as linhas da página carregada */
 .pv .adm-trust-filter { margin: 0; color: var(--adm-text-muted); font-size: 13px; }
