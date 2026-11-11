@@ -100,17 +100,20 @@ function AdminUserDetailView({ user }: { user: AdminUserDetail }) {
         breadcrumb={[LIST_CRUMB, { label: user.name }]}
         leading={<AdminAvatar name={user.name} photo={user.photo} size={64} />}
         title={user.name}
-        subtitle={user.email}
-        badges={
-          <>
-            <AdminStatusBadge kind="user" value={user.status} />
-            <AdminBadge>{userKindText(user.kind)}</AdminBadge>
-            {user.is_platform_admin ? (
-              <AdminBadge tone="brand" title="Tem acesso ao Admin da plataforma">
-                Admin da plataforma
-              </AdminBadge>
-            ) : null}
-          </>
+        // O nome fica sozinho na linha do título; o e-mail e as etiquetas (estado, tipo, admin) vêm juntos logo abaixo.
+        subtitle={
+          <span className="adm-users-id">
+            <span className="adm-users-id-email">{user.email}</span>
+            <span className="adm-users-id-badges">
+              <AdminStatusBadge kind="user" value={user.status} />
+              <AdminBadge>{userKindText(user.kind)}</AdminBadge>
+              {user.is_platform_admin ? (
+                <AdminBadge tone="brand" title="Tem acesso ao Admin da plataforma">
+                  Admin da plataforma
+                </AdminBadge>
+              ) : null}
+            </span>
+          </span>
         }
         actions={<AdminUserActions user={user} selfId={me?.id} />}
       />
@@ -120,8 +123,11 @@ function AdminUserDetailView({ user }: { user: AdminUserDetail }) {
 
       <AdminTabs tabs={tabs} value={tab} onChange={setTab} ariaLabel="Seções do usuário" idPrefix="admin-user" />
       <AdminTabPanel idPrefix="admin-user" id="summary" active={tab === "summary"}>
-        <AdminUserTrustSection trust={user.trust} />
-        <AdminUserData user={user} />
+        {/* Em tela larga a confiança e os dados ficam lado a lado (sem os vãos de um cartão de largura inteira). */}
+        <div className="adm-users-summary">
+          <AdminUserTrustSection trust={user.trust} />
+          <AdminUserData user={user} />
+        </div>
       </AdminTabPanel>
       <AdminTabPanel idPrefix="admin-user" id="links" active={tab === "links"}>
         <AdminUserLinksTab user={user} />
