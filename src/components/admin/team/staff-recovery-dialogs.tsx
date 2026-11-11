@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { AdminConfirmDialog, AdminDialog, adminToast } from "@/components/admin/platform";
 import { I } from "@/components/prototype/ui";
@@ -21,6 +21,15 @@ interface IssuedCode {
   name: string;
   /** Instante em que vence (ms desde a época), calculado no navegador a partir de `expires_in_minutes`. */
   expiresAt: number;
+}
+
+/** O código do Authenticator tem 6 dígitos: tira tudo que não é número e corta no sexto. */
+export function normalizeApproval(raw: string): string {
+  return raw.replace(/\D/g, "").slice(0, 6);
+}
+
+export function isApprovalComplete(code: string): boolean {
+  return /^\d{6}$/.test(code);
 }
 
 /** `mm:ss` do tempo que falta (0 quando venceu). */
@@ -56,31 +65,44 @@ export function StaffRecoveryDialogs({ target, onClose }: Props) {
   const mutation = useIssueStaffRecoveryCode();
   const [issued, setIssued] = useState<IssuedCode | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Código do Google Authenticator de quem aprova (segundo fator): só em estado local, nunca em storage, URL ou log.
+  const [approval, setApproval] = useState("");
+  const approvalId = useId();
   const sending = useRef(false);
 
   const close = () => {
-    // Descarta o segredo: estado local zerado e o resultado da mutação esquecido.
+    // Descarta os segredos: estado local zerado (inclusive o código do Authenticator) e o resultado da mutação esquecido.
     setIssued(null);
     setError(null);
+    setApproval("");
     mutation.reset();
     onClose();
   };
 
   const generate = () => {
     // Sem duplo clique: a segunda chamada gerada antes da resposta invalidaria o código que a pessoa vai ver.
-    if (!target || sending.current) return;
+    // Cada código do Authenticator vale uma vez só, então um segundo envio com o mesmo código seria recusado.
+    if (!target || sending.current || !isApprovalComplete(approval)) return;
     sending.current = true;
     setError(null);
-    mutation.mutate(target.id, {
-      onSuccess: (data) => {
-        sending.current = false;
-        setIssued({ code: data.code, name: data.user.name || target.name, expiresAt: Date.now() + data.expires_in_minutes * 60_000 });
+    mutation.mutate(
+      { userId: target.id, approvalCode: approval },
+      {
+        onSuccess: (data) => {
+          sending.current = false;
+          setApproval("");
+          setIssued({ code: data.code, name: data.user.name || target.name, expiresAt: Date.now() + data.expires_in_minutes * 60_000 });
+        },
+        onError: (err) => {
+          sending.current = false;
+          // O código já foi gasto (ou recusado): limpa o campo e mantém o diálogo aberto para digitar o próximo.
+          setApproval("");
+          setError(describeStaffRecoveryError(err));
+        },
+        // Esquece o que foi enviado (o código digitado fica nas variáveis da mutação até aqui).
+        onSettled: () => mutation.reset(),
       },
-      onError: (err) => {
-        sending.current = false;
-        setError(describeStaffRecoveryError(err));
-      },
-    });
+    );
   };
 
   if (!target) return null;
@@ -97,9 +119,33 @@ export function StaffRecoveryDialogs({ target, onClose }: Props) {
         pending={mutation.isPending}
         pendingLabel="Gerando…"
         error={error}
+        confirmDisabled={!isApprovalComplete(approval)}
+        dirty={approval.length > 0}
         onConfirm={generate}
         onClose={close}
-      />
+      >
+        <div className="adm-field">
+          <label htmlFor={approvalId}>Código do Google Authenticator</label>
+          <input
+            id={approvalId}
+            className="adm-input adm-team-approval"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            spellCheck={false}
+            placeholder="000000"
+            data-adm-autofocus
+            value={approval}
+            disabled={mutation.isPending}
+            aria-describedby={`${approvalId}-hint`}
+            onChange={(event) => setApproval(normalizeApproval(event.target.value))}
+          />
+          <div className="adm-field-foot" id={`${approvalId}-hint`}>
+            Abra o app Google Authenticator e digite o código de 6 dígitos de “HypeApp recuperação”.
+          </div>
+        </div>
+      </AdminConfirmDialog>
       {issued ? <IssuedCodeDialog issued={issued} onClose={close} /> : null}
     </>
   );

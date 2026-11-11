@@ -1,8 +1,9 @@
 /**
  * Código de recuperação de senha da equipe (`POST /admin/users/:userId/staff-recovery-code`).
  *
- * O código sai UMA vez nesta resposta e é segredo: o resultado NÃO fica no cache do React Query (`gcTime: 0`), nem em
- * storage, URL, log ou analytics. Quem chama guarda o código só em estado local do diálogo e o descarta ao fechar.
+ * Exige o código de 6 dígitos do Google Authenticator de quem aprova (`approval_code`, uso único). O código de recuperação
+ * sai UMA vez nesta resposta e é segredo: o resultado NÃO fica no cache do React Query (`gcTime: 0`), nem em storage, URL,
+ * log ou analytics; o código do Authenticator digitado também não. Quem chama guarda o código só em estado local do diálogo e o descarta ao fechar.
  */
 import { useMutation } from "@tanstack/react-query";
 
@@ -19,11 +20,18 @@ export function staffRecoveryCodePath(userId: number): string {
   return adminPath`/admin/users/${userId}/staff-recovery-code`;
 }
 
+/** Quem recebe o código e o código do Google Authenticator (6 dígitos) de quem aprova: o segundo fator da geração. */
+export interface IssueStaffRecoveryInput {
+  userId: number;
+  approvalCode: string;
+}
+
 export function useIssueStaffRecoveryCode() {
-  return useMutation<StaffRecoveryCode, unknown, number>({
-    // Nada de guardar o segredo no cache de mutações depois que o diálogo o recebe.
+  return useMutation<StaffRecoveryCode, unknown, IssueStaffRecoveryInput>({
+    // Nada de guardar segredo no cache de mutações (nem o código gerado, nem o do Authenticator digitado).
     gcTime: 0,
     // Cada clique é uma intenção nova: gerar outro código invalida o anterior, então a chave nunca é reaproveitada.
-    mutationFn: (userId) => adminPost<StaffRecoveryCode>(staffRecoveryCodePath(userId), undefined, { idempotencyKey: newIdempotencyKey() }),
+    mutationFn: ({ userId, approvalCode }) =>
+      adminPost<StaffRecoveryCode>(staffRecoveryCodePath(userId), { approval_code: approvalCode }, { idempotencyKey: newIdempotencyKey() }),
   });
 }
