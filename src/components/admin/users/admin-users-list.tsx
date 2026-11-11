@@ -19,7 +19,7 @@ import {
 import { useAdminListQueryState, useAdminPageClamp } from "@/hooks/admin/use-admin-list-query-state";
 import { useAdminUsers } from "@/hooks/admin/use-admin-users";
 import { EMPTY_TEXT, formatDate, formatDateTime } from "@/lib/admin/format";
-import { TRUST_DISCLAIMER, isSuspectTrust } from "@/lib/admin/trust";
+import { TRUST_DISCLAIMER, TRUST_FILTER_LABEL, isSuspectTrust } from "@/lib/admin/trust";
 import type { AdminUserListItem, AdminUserWorkspaceLink, AdminWorkspaceRef } from "@/shared/admin-platform.types";
 
 import {
@@ -228,10 +228,21 @@ export function AdminUsersList() {
       ),
     },
     { kind: "date-range", label: "Cadastrado em", fromKey: "created_from", toKey: "created_to" },
+    // Filtro LOCAL (a API ainda não filtra por confiança): fica na barra como os outros, conta em "Filtros", vira chip e sai
+    // em "Limpar filtros". O nome já diz que vale só para as linhas da página carregada.
+    {
+      kind: "toggle",
+      id: "trust",
+      label: TRUST_FILTER_LABEL,
+      active: onlySuspects,
+      onToggle: () => setOnlySuspects((on) => !on),
+      onClear: () => setOnlySuspects(false),
+      inline: true,
+    },
   ];
 
   // `hasActiveFilters` já conta estado, tipo, workspace e período fora do padrão (não conta a busca).
-  const filtering = state.hasActiveFilters || !!state.search;
+  const filtering = state.hasActiveFilters || !!state.search || onlySuspects;
 
   return (
     <AdminPage>
@@ -264,17 +275,10 @@ export function AdminUsersList() {
         }
       />
 
-      {pageRows ? (
-        <div className="adm-trust-filter">
-          <button type="button" className="btn out adm-btn-sm" aria-pressed={onlySuspects} onClick={() => setOnlySuspects((on) => !on)}>
-            Confiança: 1–2 (suspeitos)
-          </button>
-          <span role="status">
-            {onlySuspects
-              ? `Mostrando ${rows?.length ?? 0} de ${pageRows.length} usuários desta página. O filtro vale só para a página carregada.`
-              : "Filtro só para os usuários da página carregada."}
-          </span>
-        </div>
+      {onlySuspects && pageRows ? (
+        <p className="adm-trust-filter" role="status">
+          Mostrando {rows?.length ?? 0} de {pageRows.length} usuários desta página. O filtro de confiança vale só para a página carregada.
+        </p>
       ) : null}
 
       <AdminTable
