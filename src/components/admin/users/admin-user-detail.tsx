@@ -42,7 +42,8 @@ export function validateAdminUserSearch(raw: Record<string, unknown>): { tab?: A
   return tab && tab !== "summary" ? { tab } : {};
 }
 
-const LIST_CRUMB: AdminCrumb = { label: "Usuários", to: usersListLink() };
+/** Migalha de volta à lista: calculada a cada render, para levar os filtros e a ordenação que a pessoa deixou. */
+const listCrumb = (): AdminCrumb => ({ label: "Usuários", to: usersListLink() });
 
 /** O id da URL precisa ser um inteiro positivo; qualquer outra coisa nem vai ao servidor. */
 const VALID_USER_ID = /^[1-9]\d{0,17}$/;
@@ -51,7 +52,7 @@ function DetailSkeleton() {
   return (
     <AdminPage>
       <AdminPageHeader
-        breadcrumb={[LIST_CRUMB, { label: "Usuário" }]}
+        breadcrumb={[listCrumb(), { label: "Usuário" }]}
         leading={<AdminSkeleton width={64} height={64} radius="50%" />}
         title={
           <>
@@ -74,7 +75,7 @@ function DetailSkeleton() {
 function DetailError({ error, onRetry, retrying }: { error: unknown; onRetry?: () => void; retrying?: boolean }) {
   return (
     <AdminPage>
-      <AdminPageHeader breadcrumb={[LIST_CRUMB, { label: "Usuário" }]} title="Usuário" />
+      <AdminPageHeader breadcrumb={[listCrumb(), { label: "Usuário" }]} title="Usuário" />
       {isAdminApiError(error, "NOT_FOUND") ? (
         <AdminNotFound entity="usuário" backTo={usersListLink()} />
       ) : (
@@ -98,7 +99,7 @@ function AdminUserDetailView({ user }: { user: AdminUserDetail }) {
   return (
     <AdminPage>
       <AdminPageHeader
-        breadcrumb={[LIST_CRUMB, { label: user.name }]}
+        breadcrumb={[listCrumb(), { label: user.name }]}
         leading={<AdminAvatar name={user.name} photo={user.photo} size={64} />}
         title={user.name}
         // O nome fica sozinho na linha do título; o e-mail e as etiquetas (estado, tipo, admin) vêm juntos logo abaixo.
@@ -106,7 +107,9 @@ function AdminUserDetailView({ user }: { user: AdminUserDetail }) {
           <span className="adm-users-id">
             <span className="adm-users-id-email">{user.email}</span>
             <span className="adm-users-id-badges">
-              <AdminStatusBadge kind="user" value={user.status} />
+              <AdminStatusBadge kind="user" value={user.status} title={user.pending_step?.label} />
+              {/* conta em cadastro: o texto que a API já manda sobre a etapa em que ela parou fica à vista, ao lado */}
+              {user.status === "pending" && user.pending_step?.label ? <span className="adm-muted">{user.pending_step.label}</span> : null}
               <AdminBadge>{userKindText(user.kind)}</AdminBadge>
               {user.is_platform_admin ? (
                 <AdminBadge tone="brand" title="Tem acesso ao Admin da plataforma">

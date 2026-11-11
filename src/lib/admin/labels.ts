@@ -11,7 +11,7 @@ import type {
   AdminFigureKind,
   AdminMovementType,
   AdminUserKind,
-  AdminUserStatus,
+  AdminUserAccountStatus,
   AdminWorkspaceActivity,
   AdminWorkspaceKind,
   AdminWorkspaceRole,
@@ -45,10 +45,13 @@ export const WORKSPACE_KIND_LABEL: Record<AdminWorkspaceKind, string> = {
   orphan: "Sem membros",
 };
 
-export const USER_STATUS_LABEL: Record<AdminUserStatus, string> = {
+export const USER_STATUS_LABEL: Record<AdminUserAccountStatus, string> = {
   active: "Ativo",
   suspended: "Suspenso",
   deleted: "Excluído",
+  // Criou a conta (ou foi importada/convidada) mas ainda não tem acesso ao app. A etapa em que parou vem pronta da API em
+  // `pending_step.label` ("E-mail ainda não confirmado", "Convite recebido: a pessoa ainda não criou a senha"…).
+  pending: "Em cadastro",
 };
 
 export const USER_KIND_LABEL: Record<AdminUserKind, string> = {

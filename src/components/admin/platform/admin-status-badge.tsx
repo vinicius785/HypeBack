@@ -18,7 +18,7 @@ import type {
   AdminAlertSeverity,
   AdminCampaignStatus,
   AdminCreatorRegistrationState,
-  AdminUserStatus,
+  AdminUserAccountStatus,
   AdminWorkspaceActivity,
   AdminWorkspaceKind,
   AdminWorkspaceStatus,
@@ -62,10 +62,12 @@ const WORKSPACE_TONE: Record<AdminWorkspaceStatus, AdminBadgeTone> = {
   deleted: "bad",
 };
 
-const USER_TONE: Record<AdminUserStatus, AdminBadgeTone> = {
+const USER_TONE: Record<AdminUserAccountStatus, AdminBadgeTone> = {
   active: "ok",
   suspended: "warn",
   deleted: "bad",
+  // "em cadastro": ainda não tem acesso, nem é problema (cinza)
+  pending: "muted",
 };
 
 const CAMPAIGN_TONE: Record<AdminCampaignStatus, AdminBadgeTone> = {
@@ -100,7 +102,7 @@ const WORKSPACE_KIND_TONE: Record<AdminWorkspaceKind, AdminBadgeTone> = {
 
 type AdminStatusBadgeProps = (
   | { kind: "workspace"; value: AdminWorkspaceStatus }
-  | { kind: "user"; value: AdminUserStatus }
+  | { kind: "user"; value: AdminUserAccountStatus }
   | { kind: "campaign"; value: AdminCampaignStatus }
   | { kind: "severity"; value: AdminAlertSeverity }
   /** Atividade real do workspace (não é o status do ciclo de vida). `windowDays` entra na dica. */

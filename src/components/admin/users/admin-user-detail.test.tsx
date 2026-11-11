@@ -21,6 +21,8 @@ vi.mock("sonner", () => ({ toast: { success: mocks.toastSuccess, error: vi.fn() 
 import { AdminApiError, toAdminApiError } from "@/lib/admin/admin-client";
 import type { AdminAuditLogEntry, AdminCreatorListItem, AdminUserDetail } from "@/shared/admin-platform.types";
 
+import { forgetListSearch, rememberListSearch } from "@/lib/admin/list-memory";
+
 import { AdminUserDetailScreen, validateAdminUserSearch } from "./admin-user-detail";
 import {
   HOUR,
@@ -103,6 +105,7 @@ beforeEach(() => {
   server.actor = [];
   server.creators = [];
   server.creatorsError = false;
+  forgetListSearch("users");
   serve();
 });
 
@@ -1066,5 +1069,50 @@ describe("detalhe do usuário: redes sociais do criador", () => {
     await renderDetail();
     expect(screen.queryByRole("region", { name: "Redes sociais" })).not.toBeInTheDocument();
     expect(mocks.adminList.mock.calls.some((c) => c[0] === "/admin/creators")).toBe(false);
+  });
+});
+
+describe("detalhe do usuário: voltar à lista do jeito que ficou", () => {
+  it("a migalha 'Usuários' leva os filtros, a ordenação e a página que a pessoa deixou", async () => {
+    rememberListSearch("users", { kind: "creator", sort_by: "trust", order: "asc", page: 2 });
+    await renderDetail();
+    const crumbs = screen.getByRole("navigation", { name: "Navegação" });
+    const href = within(crumbs).getByRole("link", { name: "Usuários" }).getAttribute("href") ?? "";
+    const url = new URL(href, "http://x");
+    expect(url.pathname).toBe("/admin/users");
+    expect(Object.fromEntries(url.searchParams)).toEqual({ kind: "creator", sort_by: "trust", order: "asc", page: "2" });
+  });
+
+  it("sem nada guardado a migalha leva à lista no padrão", async () => {
+    await renderDetail();
+    const crumbs = screen.getByRole("navigation", { name: "Navegação" });
+    expect(within(crumbs).getByRole("link", { name: "Usuários" })).toHaveAttribute("href", "/admin/users");
+  });
+});
+
+describe("detalhe do usuário: conta pendente", () => {
+  it("o cabeçalho mostra 'Em cadastro', com a etapa na dica", async () => {
+    server.detail = makeUserDetail({ status: "pending", pending_step: { code: "email_unconfirmed", label: "E-mail ainda não confirmado" } });
+    await renderDetail();
+    const header = pageHeader();
+    expect(within(header).getByText("Em cadastro").closest(".adm-badge")).toHaveAttribute("title", "E-mail ainda não confirmado");
+    expect(within(header).queryByText("pending")).not.toBeInTheDocument();
+    // e o texto da etapa também fica à vista, ao lado
+    expect(within(header).getByText("E-mail ainda não confirmado")).toBeInTheDocument();
+  });
+
+  it.each([
+    "Perfil importado: a pessoa ainda não criou a conta",
+    "Convite recebido: a pessoa ainda não criou a senha",
+  ])("mostra o texto da etapa como a API manda: %s", async (label) => {
+    server.detail = makeUserDetail({ status: "pending", pending_step: { code: "outra", label } });
+    await renderDetail();
+    expect(within(pageHeader()).getByText(label)).toBeInTheDocument();
+  });
+
+  it("conta ativa não mostra texto de etapa", async () => {
+    server.detail = makeUserDetail({ status: "active", pending_step: null });
+    await renderDetail();
+    expect(within(pageHeader()).queryByText(/ainda não/)).not.toBeInTheDocument();
   });
 });
