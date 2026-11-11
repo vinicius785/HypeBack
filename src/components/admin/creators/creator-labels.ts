@@ -29,6 +29,21 @@ export function formatHandle(username: string): string {
   return handle ? `@${handle}` : "sem usuário";
 }
 
+/**
+ * Endereço do perfil público da rede (para abrir em outra aba). `undefined` quando a rede não tem endereço conhecido ou o
+ * usuário está vazio: o `@` então aparece como texto, sem link.
+ */
+export function networkProfileUrl(type: string, username: string): string | undefined {
+  const handle = username.trim().replace(/^@+/, "");
+  if (!handle) return undefined;
+  const raw = type.toLowerCase();
+  const user = encodeURIComponent(handle);
+  if (raw.includes("instagram")) return `https://www.instagram.com/${user}/`;
+  if (raw.includes("tiktok")) return `https://www.tiktok.com/@${user}`;
+  if (raw.includes("youtube")) return `https://www.youtube.com/@${user}`;
+  return undefined;
+}
+
 export const NETWORK_FILTER_OPTIONS: readonly AdminFilterOption[] = [
   { value: "", label: "Todas" },
   ...ADMIN_CREATOR_NETWORKS.map((value) => ({ value, label: networkLabel(value) })),

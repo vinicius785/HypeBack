@@ -19,7 +19,7 @@ vi.mock("@/contexts/auth-context", () => ({ useAuth: () => ({ user: mocks.auth.u
 vi.mock("sonner", () => ({ toast: { success: mocks.toastSuccess, error: vi.fn() } }));
 
 import { AdminApiError, toAdminApiError } from "@/lib/admin/admin-client";
-import type { AdminAuditLogEntry, AdminUserDetail } from "@/shared/admin-platform.types";
+import type { AdminAuditLogEntry, AdminCreatorListItem, AdminUserDetail } from "@/shared/admin-platform.types";
 
 import { AdminUserDetailScreen, validateAdminUserSearch } from "./admin-user-detail";
 import {
@@ -55,6 +55,9 @@ const server = {
   detail: makeUserDetail() as AdminUserDetail,
   target: [makeAuditEntry()] as AdminAuditLogEntry[],
   actor: [] as AdminAuditLogEntry[],
+  /** Linhas que a lista de criadores devolve (as redes do criador vêm de lá). */
+  creators: [] as AdminCreatorListItem[],
+  creatorsError: false,
 };
 
 function serve() {
@@ -63,6 +66,10 @@ function serve() {
     throw toAdminApiError(404, { message: "Usuário não encontrado." });
   });
   mocks.adminList.mockImplementation(async (path: string, params?: Record<string, unknown>) => {
+    if (path === "/admin/creators") {
+      if (server.creatorsError) throw toAdminApiError(500, { message: "falhou" });
+      return listResult(server.creators, server.creators.length, { page: 1, per_page: 10 });
+    }
     if (path !== "/admin/audit-log") throw new Error(`rota inesperada: ${path}`);
     const rows = params?.actor_user_id !== undefined ? server.actor : server.target;
     return listResult(rows, rows.length, { page: Number(params?.page ?? 1), per_page: Number(params?.per_page ?? 10) });
@@ -94,6 +101,8 @@ beforeEach(() => {
   server.detail = makeUserDetail();
   server.target = [makeAuditEntry()];
   server.actor = [];
+  server.creators = [];
+  server.creatorsError = false;
   serve();
 });
 
@@ -972,5 +981,90 @@ describe("detalhe do usuário: confiança", () => {
     server.detail = makeUserDetail({ trust: null });
     await renderDetail();
     expect(screen.getByRole("region", { name: "Confiança da conta" })).toHaveTextContent("Sem cálculo para esta conta");
+  });
+});
+
+describe("detalhe do usuário: redes sociais do criador", () => {
+  const creatorRow = (over: Partial<AdminCreatorListItem> = {}): AdminCreatorListItem =>
+    ({
+      id: 9,
+      name: "Bernardo Medeiros Moraes",
+      email: "bernardo@cafeserraverde.com.br",
+      photo: null,
+      status: "active",
+      created_at: "2025-03-10T12:00:00.000Z",
+      registration: { state: "complete", flags: {} as never, missing: [] },
+      networks: [
+        { type: "instagram", username: "bernardo.cafe", followers: 12500, disabled: false },
+        { type: "tiktok", username: "@bernardocafe", followers: 3400, disabled: false },
+        { type: "youtube", username: "bernardo", followers: 900, disabled: true },
+      ],
+      followers_total: 15900,
+      has_ugc: true,
+      campaigns_count: 2,
+      first_campaign: null,
+      ...over,
+    }) as AdminCreatorListItem;
+
+  it("mostra cada rede com @usuário (sem duplicar o arroba), link para o perfil, seguidores e o total das ativas", async () => {
+    server.detail = makeUserDetail({ kind: "creator" });
+    server.creators = [creatorRow({ id: 77, email: "outro@x.com" }), creatorRow()];
+    await renderDetail();
+    const block = await screen.findByRole("region", { name: "Redes sociais" });
+    const list = await within(block).findByRole("list", { name: "Redes sociais conectadas" });
+    const rows = within(list).getAllByRole("listitem");
+    expect(rows).toHaveLength(3);
+
+    const insta = within(list).getByRole("link", { name: "@bernardo.cafe no Instagram (abre em outra aba)" });
+    expect(insta).toHaveAttribute("href", "https://www.instagram.com/bernardo.cafe/");
+    expect(insta).toHaveAttribute("target", "_blank");
+    expect(insta).toHaveAttribute("rel", "noopener noreferrer");
+    expect(within(list).getByRole("link", { name: "@bernardocafe no TikTok (abre em outra aba)" })).toHaveAttribute("href", "https://www.tiktok.com/@bernardocafe");
+    expect(within(list).getByRole("link", { name: /@bernardo no YouTube/ })).toHaveAttribute("href", "https://www.youtube.com/@bernardo");
+    expect(rows[0]).toHaveTextContent("12.500");
+    expect(rows[2]).toHaveTextContent("inativa");
+    expect(block).toHaveTextContent("15.900 seguidores nas redes ativas");
+    // a busca é pelo e-mail, e só vale a linha com o mesmo id (a outra conta da lista não entra)
+    const call = mocks.adminList.mock.calls.find((c) => c[0] === "/admin/creators");
+    expect(call?.[1]).toMatchObject({ search: "bernardo@cafeserraverde.com.br" });
+    expect(within(block).queryByText("outro@x.com")).not.toBeInTheDocument();
+  });
+
+  it("UGC não é rede social: não vira linha", async () => {
+    server.detail = makeUserDetail({ kind: "creator" });
+    server.creators = [creatorRow({ networks: [{ type: "ugc", username: "x", followers: 1, disabled: false }, { type: "instagram", username: "a", followers: 5, disabled: false }] })];
+    await renderDetail();
+    const list = await screen.findByRole("list", { name: "Redes sociais conectadas" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("criador sem redes diz isso; criador que a lista não traz também", async () => {
+    server.detail = makeUserDetail({ kind: "creator" });
+    server.creators = [creatorRow({ networks: [], followers_total: 0 })];
+    const { unmount } = await renderDetail();
+    expect(await screen.findByText("Nenhuma rede social conectada.")).toBeInTheDocument();
+    unmount();
+
+    server.creators = [];
+    await renderDetail();
+    expect(await screen.findByText("Perfil de criador não encontrado na lista de criadores.")).toBeInTheDocument();
+  });
+
+  it("falha ao carregar mostra o aviso com 'Tentar de novo'", async () => {
+    server.detail = makeUserDetail({ kind: "creator" });
+    server.creatorsError = true;
+    const { user } = await renderDetail();
+    expect(await screen.findByText(/Não foi possível carregar as redes/)).toBeInTheDocument();
+    server.creatorsError = false;
+    server.creators = [creatorRow()];
+    await user.click(screen.getByRole("button", { name: "Tentar de novo" }));
+    expect(await screen.findByRole("list", { name: "Redes sociais conectadas" })).toBeInTheDocument();
+  });
+
+  it("conta que não é de criador não mostra o bloco nem consulta a lista de criadores", async () => {
+    server.detail = makeUserDetail({ kind: "brand" });
+    await renderDetail();
+    expect(screen.queryByRole("region", { name: "Redes sociais" })).not.toBeInTheDocument();
+    expect(mocks.adminList.mock.calls.some((c) => c[0] === "/admin/creators")).toBe(false);
   });
 });
