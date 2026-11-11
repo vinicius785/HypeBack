@@ -127,6 +127,7 @@ describe("configuração da lista", () => {
       ["active,suspended", "Ativos e suspensos"],
       ["active", "Ativos"],
       ["suspended", "Suspensos"],
+      ["pending", "Em cadastro"],
       ["deleted", "Excluídos"],
       ["all", "Todos"],
     ]);
