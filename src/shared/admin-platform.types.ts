@@ -127,6 +127,9 @@ export const ADMIN_ERROR_CODES = [
   'LAST_PLATFORM_ADMIN', // 409: tirar o papel do último administrador ativo da plataforma
   'IDEMPOTENCY_CONFLICT', // 409
   'NOT_STAFF_ACCOUNT', // 400: gerar código de recuperação de senha para quem não é da equipe da plataforma
+  'APPROVAL_CODE_REQUIRED', // 400: faltou o código do Google Authenticator de quem aprova
+  'APPROVAL_CODE_INVALID', // 403: código do Authenticator errado ou já usado
+  'APPROVAL_CODE_LOCKED', // 429: tentativas demais com o código do Authenticator
 ] as const;
 export type AdminErrorCode = (typeof ADMIN_ERROR_CODES)[number];
 
