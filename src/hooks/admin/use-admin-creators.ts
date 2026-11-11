@@ -166,6 +166,28 @@ export function useAdminCreators(params: AdminQuery): UseQueryResult<AdminListRe
   return useAdminList<AdminCreatorListItem>({ resource: "creators", path: "/admin/creators", params });
 }
 
+/**
+ * As redes de UM criador, para o detalhe do usuário. A API não tem rota de um criador só (nem manda as redes no detalhe do
+ * usuário), então busca na lista pelo e-mail e pega a linha com o mesmo id. Só consulta para conta de criador.
+ */
+export function useAdminCreatorNetworks(user: { id: number; email: string; kind: string }): {
+  creator: AdminCreatorListItem | null;
+  isLoading: boolean;
+  error: unknown;
+  refetch: () => void;
+} {
+  const enabled = user.kind === "creator";
+  const query = useAdminList<AdminCreatorListItem>({
+    resource: "creators",
+    path: "/admin/creators",
+    params: { search: user.email, page: 1, per_page: 10 },
+    scope: ["user-networks", user.id],
+    enabled,
+  });
+  const creator = query.data?.data.find((item) => item.id === user.id) ?? null;
+  return { creator, isLoading: enabled && query.isLoading, error: enabled ? query.error : null, refetch: () => void query.refetch() };
+}
+
 /** `GET /admin/creators/duplicates`: grupos de possíveis duplicados (só leitura). */
 export function useAdminCreatorDuplicates(
   params: AdminQuery,

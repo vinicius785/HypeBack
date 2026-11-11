@@ -23,6 +23,7 @@ import type { AdminUserDetail } from "@/shared/admin-platform.types";
 import { AdminUserActionNotice, AdminUserActions } from "./admin-user-actions";
 import { AdminUserActivityTab } from "./admin-user-activity-tab";
 import { AdminUserData, AdminUserSuspension } from "./admin-user-info";
+import { AdminUserNetworks } from "./admin-user-networks";
 import { AdminUserTrustSection } from "./admin-user-trust";
 import { AdminUserLinksTab } from "./admin-user-links-tab";
 import { AdminUserSessionsTab } from "./admin-user-sessions-tab";
@@ -126,7 +127,10 @@ function AdminUserDetailView({ user }: { user: AdminUserDetail }) {
         {/* Em tela larga a confiança e os dados ficam lado a lado (sem os vãos de um cartão de largura inteira). */}
         <div className="adm-users-summary">
           <AdminUserTrustSection trust={user.trust} />
-          <AdminUserData user={user} />
+          <div className="adm-users-summary-col">
+            <AdminUserData user={user} />
+            <AdminUserNetworks user={user} />
+          </div>
         </div>
       </AdminTabPanel>
       <AdminTabPanel idPrefix="admin-user" id="links" active={tab === "links"}>
