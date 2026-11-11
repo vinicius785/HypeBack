@@ -432,6 +432,15 @@ export function getBackendOrigin(): string {
 }
 
 /**
+ * A mensagem do popup veio mesmo da página de callback do backend? FALHA FECHADA: sem origem do backend configurada
+ * (`VITE_SERVER_URL` ausente ou inválida) NENHUMA mensagem é aceita. Antes, a checagem só rodava quando a origem
+ * existia, e sem ela qualquer página que abrisse mensagem para esta janela era aceita.
+ */
+export function isTrustedPopupMessage(eventOrigin: string, backendOrigin: string): boolean {
+  return backendOrigin !== "" && eventOrigin === backendOrigin;
+}
+
+/**
  * Pede a URL de autorização OAuth (TikTok/YouTube) para conectar a conta no
  * convite. O front abre `auth_url` num popup.
  */
