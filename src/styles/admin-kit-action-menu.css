@@ -72,3 +72,13 @@
   .pv .adm-actmenu-list { animation: none; }
   .pv .adm-actmenu-chev { transition: none; }
 }
+
+/* botão só-ícone redondo (par do botão "Filtros" da barra compacta) e a opção escolhida de um menu de ordenação */
+.pv .btn.adm-actmenu-btn[data-icon-only="true"][data-round="true"] { border-radius: 999px; }
+.pv .adm-actmenu-sel { margin-left: auto; padding-left: 12px; display: inline-flex; flex: none; color: var(--ink); }
+.pv .adm-actmenu-item[aria-current="true"] { font-weight: 600; }
+
+/* títulos de grupo do menu (ordenação): pequenos, em caixa alta, e o item escolhido com fundo suave */
+.pv .adm-actmenu-group { padding: 10px 12px 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--adm-text-muted); }
+.pv .adm-actmenu-group:first-child { padding-top: 6px; }
+.pv .adm-actmenu-item[aria-current="true"] { background: var(--adm-hover); }

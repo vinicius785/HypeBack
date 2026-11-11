@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import {
+  AdminActionMenu,
   AdminBadge,
   AdminEntityCell,
   AdminFilterBar,
@@ -19,7 +20,7 @@ import {
 import { useAdminListQueryState, useAdminPageClamp } from "@/hooks/admin/use-admin-list-query-state";
 import { useAdminUsers } from "@/hooks/admin/use-admin-users";
 import { EMPTY_TEXT, formatDate, formatDateTime } from "@/lib/admin/format";
-import { TRUST_DISCLAIMER, TRUST_FILTER_LABEL, isSuspectTrust } from "@/lib/admin/trust";
+import { TRUST_DISCLAIMER } from "@/lib/admin/trust";
 import type { AdminUserListItem, AdminUserWorkspaceLink, AdminWorkspaceRef } from "@/shared/admin-platform.types";
 
 import {
@@ -35,6 +36,19 @@ import { TrustBadge } from "./admin-user-trust";
 import { AdminWorkspacePicker, useAdminWorkspaceSelection } from "./admin-workspace-picker";
 
 import "@/styles/admin-users.css";
+
+/** Opções do menu de ordenação (o mesmo `sort_by`/`order` da URL e dos cabeçalhos da tabela). */
+const USERS_SORT_OPTIONS = [
+  { sortBy: "created_at", order: "desc", group: "Cadastro", shortLabel: "Mais recentes", label: "Cadastro: mais recentes" },
+  { sortBy: "created_at", order: "asc", group: "Cadastro", shortLabel: "Mais antigos", label: "Cadastro: mais antigos" },
+  { sortBy: "name", order: "asc", group: "Nome", shortLabel: "A–Z", label: "Nome: A–Z" },
+  { sortBy: "name", order: "desc", group: "Nome", shortLabel: "Z–A", label: "Nome: Z–A" },
+  { sortBy: "last_session", order: "desc", group: "Última sessão", shortLabel: "Mais recente", label: "Última sessão: mais recente" },
+  { sortBy: "last_session", order: "asc", group: "Última sessão", shortLabel: "Mais antiga", label: "Última sessão: mais antiga" },
+  // Confiança: ordenada pelo servidor em TODA a lista (não só na página).
+  { sortBy: "trust", order: "asc", group: "Confiança", shortLabel: "Suspeitos primeiro", label: "Confiança: suspeitos primeiro" },
+  { sortBy: "trust", order: "desc", group: "Confiança", shortLabel: "Perfil real primeiro", label: "Confiança: perfil real primeiro" },
+] as const;
 
 /** Quantos vínculos aparecem na linha; o resto vira "+N". */
 const VISIBLE_WORKSPACES = 2;
@@ -102,10 +116,7 @@ export function AdminUsersList() {
   const [picked, setPicked] = useState<AdminWorkspaceRef | null>(null);
   const workspaceFilter = useAdminWorkspaceSelection(state.filters.workspace_id, { known: picked });
 
-  // Filtro LOCAL de confiança (a API ainda não filtra nem ordena por ela): só afeta as linhas da página carregada.
-  const [onlySuspects, setOnlySuspects] = useState(false);
-  const pageRows = users.data?.data;
-  const rows = onlySuspects ? pageRows?.filter((user) => isSuspectTrust(user.trust)) : pageRows;
+  const rows = users.data?.data;
 
   const lastSessionDefinition =
     meta?.definitions?.last_session_at ?? meta?.definitions?.last_session ?? LAST_SESSION_EXPLANATION;
@@ -156,6 +167,7 @@ export function AdminUsersList() {
     {
       key: "trust",
       header: "Confiança",
+      sortKey: "trust",
       width: "96px",
       definition: (
         <>
@@ -204,13 +216,11 @@ export function AdminUsersList() {
       label: "Tipo",
       options: ADMIN_USERS_KIND_OPTIONS,
       defaultValue: ADMIN_USERS_DEFAULT_KIND,
-      inline: true,
     },
     {
       kind: "custom",
       id: "workspace",
       label: "Workspace",
-      inline: true,
       summary: workspaceFilter.summary,
       // Tanto o × do chip quanto o "Limpar filtros" usam a atualização funcional da URL: um não sobrescreve o outro.
       onClear: () => state.setFilter("workspace_id", ""),
@@ -228,21 +238,10 @@ export function AdminUsersList() {
       ),
     },
     { kind: "date-range", label: "Cadastrado em", fromKey: "created_from", toKey: "created_to" },
-    // Filtro LOCAL (a API ainda não filtra por confiança): fica na barra como os outros, conta em "Filtros", vira chip e sai
-    // em "Limpar filtros". O nome já diz que vale só para as linhas da página carregada.
-    {
-      kind: "toggle",
-      id: "trust",
-      label: TRUST_FILTER_LABEL,
-      active: onlySuspects,
-      onToggle: () => setOnlySuspects((on) => !on),
-      onClear: () => setOnlySuspects(false),
-      inline: true,
-    },
   ];
 
   // `hasActiveFilters` já conta estado, tipo, workspace e período fora do padrão (não conta a busca).
-  const filtering = state.hasActiveFilters || !!state.search || onlySuspects;
+  const filtering = state.hasActiveFilters || !!state.search;
 
   return (
     <AdminPage>
@@ -270,16 +269,27 @@ export function AdminUsersList() {
         values={state.filters}
         onChange={state.setFilters}
         onClear={state.clearFilters}
+        compact
+        beforeFilters={
+          <AdminActionMenu
+            iconOnly
+            round
+            triggerIcon="sort"
+            ariaLabel="Ordenar"
+            items={USERS_SORT_OPTIONS.map((option) => ({
+              id: `${option.sortBy}:${option.order}`,
+              label: option.label,
+              selected: state.sortBy === option.sortBy && state.order === option.order,
+              group: option.group,
+              shortLabel: option.shortLabel,
+              onSelect: () => state.setSort(option.sortBy, option.order),
+            }))}
+          />
+        }
         trailing={
           <AdminRefreshButton iconOnly loading={users.isFetching} onClick={() => void users.refetch()} />
         }
       />
-
-      {onlySuspects && pageRows ? (
-        <p className="adm-trust-filter" role="status">
-          Mostrando {rows?.length ?? 0} de {pageRows.length} usuários desta página. O filtro de confiança vale só para a página carregada.
-        </p>
-      ) : null}
 
       <AdminTable
         caption="Usuários"
@@ -288,24 +298,14 @@ export function AdminUsersList() {
         rowKey={(user) => user.id}
         rowLink={(user) => userDetailLink(user.id)}
         sort={{ by: state.sortBy, order: state.order }}
-        onSort={(key) => state.toggleSort(key, key === "name" ? "asc" : "desc")}
+        onSort={(key) => state.toggleSort(key, key === "name" || key === "trust" ? "asc" : "desc")}
         loading={users.isLoading}
         refreshing={users.isFetching && !users.isLoading}
         error={users.error}
         onRetry={() => void users.refetch()}
         retrying={users.isFetching}
         empty={
-          onlySuspects && pageRows && pageRows.length > 0
-            ? {
-                title: "Nenhum suspeito nesta página",
-                description: `Nenhuma das ${pageRows.length} contas desta página tem confiança 1 ou 2. As outras páginas podem ter.`,
-                action: (
-                  <button type="button" className="btn out adm-btn-sm" onClick={() => setOnlySuspects(false)}>
-                    Mostrar todos da página
-                  </button>
-                ),
-              }
-            : filtering
+          filtering
             ? {
                 title: "Nenhum usuário encontrado",
                 description: "Nenhum usuário corresponde à busca e aos filtros atuais.",

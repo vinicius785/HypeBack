@@ -592,3 +592,85 @@ describe("AdminFilterBar: filtro liga/desliga (kind: 'toggle')", () => {
     expect(second.container.querySelector(".adm-filters-panel")).toContainElement(screen.getByRole("button", { name: "Excluídos" }));
   });
 });
+
+describe("AdminFilterBar: barra compacta (compact)", () => {
+  const compactFilters: AdminFilterDef[] = [FILTERS[0], { ...FILTERS[1], inline: true } as AdminFilterDef, FILTERS[2]];
+  const compactBar = (props: Partial<React.ComponentProps<typeof AdminFilterBar>> = {}) =>
+    renderBar({
+      compact: true,
+      segment: { ariaLabel: "Estado", options: STATUS, value: "", onChange: vi.fn() },
+      search: <AdminSearchInput value="" onSearch={vi.fn()} />,
+      searchLabel: "Buscar",
+      beforeFilters: <button type="button">Ordenar</button>,
+      filters: compactFilters,
+      ...props,
+    });
+
+  it("a busca, o que vem antes dos filtros (ordenar) e o botão só-ícone de filtros ficam numa linha, ao lado do segmento", () => {
+    const { container } = compactBar();
+    const root = container.querySelector(".adm-filters") as HTMLElement;
+    expect(root).toHaveAttribute("data-compact", "true");
+    expect(root.querySelector(":scope > .seg")).not.toBeNull();
+    const row = root.querySelector(":scope > .adm-filters-row") as HTMLElement;
+    const kids = Array.from(row.children).map((el) => el.className || el.tagName);
+    expect(within(row).getByRole("button", { name: "Ordenar" })).toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: "Filtros" })).toBeInTheDocument();
+    expect(kids.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("todos os filtros (inline ou não) ficam dentro do painel, fechado até o botão abrir", async () => {
+    const { user, container } = compactBar();
+    const toggle = screen.getByRole("button", { name: "Filtros" });
+    const panel = screen.getByRole("group", { name: "Filtros" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(panel).not.toHaveAttribute("data-open");
+    expect(container.querySelector(".adm-filters-inline")).toBeNull();
+    expect(within(panel).getByLabelText("Atividade")).toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: "Instagram" })).toBeInTheDocument();
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(panel).toHaveAttribute("data-open", "true");
+  });
+
+  it("o botão diz quantos filtros estão ativos, no nome e no selo", () => {
+    compactBar({ values: { activity: "never", network: "tiktok" } });
+    const toggle = screen.getByRole("button", { name: "Filtros, 2 ativos" });
+    expect(toggle).toHaveTextContent("2");
+  });
+
+  it("Escape e clique fora fecham o painel (o foco volta ao botão com Escape)", async () => {
+    const { user } = compactBar();
+    const toggle = screen.getByRole("button", { name: "Filtros" });
+    await user.click(toggle);
+    await user.keyboard("{Escape}");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveFocus();
+    await user.click(toggle);
+    await user.click(document.body);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("dentro do painel cada filtro tem o nome em cima, e 'Limpar' (com filtro ativo) fica no topo do painel", async () => {
+    const onClear = vi.fn();
+    const { user } = compactBar({ values: { activity: "never" }, onClear });
+    const panel = screen.getByRole("group", { name: "Filtros" });
+    const labels = Array.from(panel.querySelectorAll(".adm-filters-field-k")).map((el) => el.textContent);
+    expect(labels).toEqual(["Atividade", "Criado em", "Rede"]);
+    await user.click(within(panel).getByRole("button", { name: "Limpar filtros" }));
+    expect(onClear).toHaveBeenCalledTimes(1);
+    // na barra compacta o "Limpar filtros" não fica solto ao lado dos ícones
+    expect(screen.getAllByRole("button", { name: "Limpar filtros" })).toHaveLength(1);
+  });
+
+  it("sem filtro ativo o painel não mostra 'Limpar'", () => {
+    compactBar();
+    expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
+  });
+
+  it("sem `compact` nada disso muda: botão com texto 'Filtros' e filtros inline na linha", () => {
+    const { container } = renderBar({ filters: [{ ...FILTERS[0], inline: true } as AdminFilterDef, FILTERS[2]] });
+    expect(container.querySelector(".adm-filters")).not.toHaveAttribute("data-compact");
+    expect(container.querySelector(".adm-filters-inline")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Filtros" })).toHaveTextContent("Filtros");
+  });
+});

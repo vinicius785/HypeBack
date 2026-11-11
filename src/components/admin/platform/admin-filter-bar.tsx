@@ -170,6 +170,13 @@ interface AdminFilterBarProps {
   onClear?: () => void;
   /** Fim da barra, depois de "Limpar filtros" (botão de atualizar, exportar…). */
   trailing?: ReactNode;
+  /**
+   * Barra enxuta: busca e dois botões só-ícone. Todos os filtros (`inline` ou não) ficam num painel que o botão de
+   * filtro abre (com o número de filtros ativos), em qualquer largura. `beforeFilters` entra entre a busca e o botão de
+   * filtro (por exemplo o menu de ordenação). Os chips e o "Limpar filtros" continuam iguais.
+   */
+  compact?: boolean;
+  beforeFilters?: ReactNode;
 }
 
 /** Valor de um filtro de escolha única; chave ausente de `values` é o valor padrão do filtro. */
@@ -320,15 +327,42 @@ export function AdminFilterBar({
   onChange = NOOP,
   onClear,
   trailing,
+  compact = false,
+  beforeFilters,
 }: AdminFilterBarProps) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   /** Pedido de foco: índice do chip removido (`null` = "Limpar filtros", vai para o primeiro controle). Vale só se o foco se perdeu. */
   const refocus = useRef<{ chipIndex: number | null } | null>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
 
-  const inlineDefs = filters.filter((f) => f.inline);
-  const panelDefs = filters.filter((f) => !f.inline);
+  // Barra compacta: o painel é um popover. Fecha ao clicar fora e com Escape (o foco volta ao botão de filtro).
+  useEffect(() => {
+    if (!compact || !open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (target && rootRef.current?.querySelector(".adm-filters-anchor")?.contains(target)) return;
+      // Os seletores e o calendário abrem camadas fora do painel (portal): clicar nelas não é "fora".
+      if (target instanceof Element && target.closest("[data-adm-layer]")) return;
+      setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      setOpen(false);
+      toggleRef.current?.focus();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [compact, open]);
+
+  const inlineDefs = compact ? [] : filters.filter((f) => f.inline);
+  const panelDefs = compact ? filters : filters.filter((f) => !f.inline);
   // No painel: seletores, datas e filtros próprios na ordem em que vieram, depois as pílulas.
   const panelOrdered = [...panelDefs.filter((f) => f.kind !== "pills"), ...panelDefs.filter((f) => f.kind === "pills")];
   const activeDefs = filters.filter((f) => isFilterActive(f, values));
@@ -439,35 +473,59 @@ export function AdminFilterBar({
   };
 
   return (
-    <div className="adm-filters" ref={rootRef}>
+    <div className="adm-filters" ref={rootRef} data-compact={compact ? "true" : undefined}>
       {segment ? <AdminSegmentedControl {...segment} /> : null}
 
       {search || hasInline || hasPanel || trailing || canClear ? (
         <div className="adm-filters-row">
           {labelledSearch(search, searchLabel)}
+          {compact ? beforeFilters : null}
           {hasPanel ? (
-            <button
-              type="button"
-              className="adm-filters-toggle"
-              aria-expanded={open}
-              aria-controls={panelId}
-              onClick={() => setOpen((v) => !v)}
-            >
-              <I n="funnel" cls="sm" />
-              Filtros
-              {activeCount > 0 ? <em>{activeCount}</em> : null}
-            </button>
+            <div className="adm-filters-anchor" data-compact={compact ? "true" : undefined}>
+              <button
+                ref={toggleRef}
+                type="button"
+                className="adm-filters-toggle"
+                data-compact={compact ? "true" : undefined}
+                aria-expanded={open}
+                aria-controls={panelId}
+                aria-label={compact ? (activeCount > 0 ? `Filtros, ${activeCount} ${activeCount === 1 ? "ativo" : "ativos"}` : "Filtros") : undefined}
+                onClick={() => setOpen((v) => !v)}
+              >
+                <I n="funnel" cls="sm" />
+                {compact ? null : "Filtros"}
+                {activeCount > 0 ? <em aria-hidden={compact ? "true" : undefined}>{activeCount}</em> : null}
+              </button>
+              {compact ? (
+                <div className="adm-filters-panel" id={panelId} data-compact="true" data-open={open ? "true" : undefined} role="group" aria-label="Filtros">
+                  <div className="adm-filters-panel-head">
+                    <b aria-hidden="true">Filtros</b>
+                    {canClear ? (
+                      <button type="button" className="adm-textbtn" aria-label="Limpar filtros" onClick={clearAll}>
+                        Limpar
+                      </button>
+                    ) : null}
+                  </div>
+                  {panelOrdered.map((def) => (
+                    <div className="adm-filters-field" key={`field:${def.kind}:${"key" in def ? def.key : "id" in def ? def.id : def.label}`}>
+                      {def.kind === "toggle" ? null : <span className="adm-filters-field-k">{def.label}</span>}
+                      {renderDef(def, false)}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           ) : null}
           {/* depois do botão "Filtros" (escondido no desktop): no celular a linha própria dos inline vem abaixo dele, e a ordem de Tab acompanha a visual */}
           {hasInline ? <div className="adm-filters-inline">{inlineDefs.map((def) => renderDef(def, true))}</div> : null}
-          {hasPanel ? (
+          {hasPanel && !compact ? (
             <div className="adm-filters-panel" id={panelId} data-open={open ? "true" : undefined}>
               {panelOrdered.map((def) => renderDef(def, false))}
             </div>
           ) : null}
-          {trailing || canClear ? (
+          {trailing || (canClear && !compact) ? (
             <div className="adm-filters-trail">
-              {canClear ? (
+              {canClear && !compact ? (
                 <button type="button" className="adm-textbtn" onClick={clearAll}>
                   Limpar filtros
                 </button>
