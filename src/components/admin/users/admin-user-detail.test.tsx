@@ -944,3 +944,33 @@ describe("detalhe do usuário: encerrar sessões", () => {
     expect(mocks.adminPost).not.toHaveBeenCalled();
   });
 });
+
+describe("detalhe do usuário: confiança", () => {
+  it("o resumo mostra o bloco de confiança com nota, motivos e o aviso de que é estimativa", async () => {
+    server.detail = makeUserDetail({
+      trust: {
+        level: 1,
+        score: 8,
+        reasons: [
+          { code: "blocked_domain", label: "Domínio de e-mail usado em ataque", effect: "negative", points: -45 },
+          { code: "email_verified", label: "E-mail verificado", effect: "positive", points: 15 },
+        ],
+      },
+    });
+    await renderDetail();
+    const block = screen.getByRole("region", { name: "Confiança da conta" });
+    expect(within(block).getByRole("img", { name: "Confiança 1 de 5: muito provável bot" })).toBeInTheDocument();
+    expect(block).toHaveTextContent("Nota 8/100");
+    expect(block).toHaveTextContent("−45Domínio de e-mail usado em ataque");
+    expect(block).toHaveTextContent("+15E-mail verificado");
+    expect(block).toHaveTextContent("Estimativa automática por sinais. Serve para priorizar a análise e não suspende a conta.");
+    // o nível não vira ação: as ações da conta continuam as de sempre
+    expect(within(block).queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("conta sem trust (excluída ou cálculo indisponível) mostra '—' no bloco", async () => {
+    server.detail = makeUserDetail({ trust: null });
+    await renderDetail();
+    expect(screen.getByRole("region", { name: "Confiança da conta" })).toHaveTextContent("Sem cálculo para esta conta");
+  });
+});

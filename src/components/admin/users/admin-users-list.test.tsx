@@ -145,21 +145,27 @@ describe("lista de usuários: conteúdo", () => {
     expect(lastUsersParams()).toEqual({ page: 1, per_page: 25, sort_by: "created_at", order: "desc" });
   });
 
-  it("as colunas: usuário, workspaces, status, cadastro e última sessão (sem 'Tipo' enquanto o filtro é um tipo só)", async () => {
+  it("as colunas: usuário, confiança, workspaces, status, cadastro e última sessão (sem 'Tipo' enquanto o filtro é um tipo só)", async () => {
     await renderList();
     await screen.findByText("Bernardo Medeiros Moraes");
     const headers = within(table()).getAllByRole("columnheader").map((h) => h.textContent ?? "");
-    expect(headers.slice(0, 4)).toEqual(["Usuário", "Workspaces", "Status", "Cadastrado em"]);
+    // "Confiança" leva o "i" da definição junto
+    expect(headers[0]).toBe("Usuário");
+    expect(headers[1]).toMatch(/^Confiança/);
+    expect(headers.slice(2, 5)).toEqual(["Workspaces", "Status", "Cadastrado em"]);
     // a última leva o "i" da definição junto
-    expect(headers[4]).toMatch(/^Última sessão/);
-    expect(headers).toHaveLength(5);
+    expect(headers[5]).toMatch(/^Última sessão/);
+    expect(headers).toHaveLength(6);
   });
 
   it("com 'Todos' os tipos, a coluna 'Tipo' volta (é onde os tipos diferem)", async () => {
     await renderList("/admin/users?kind=all");
     await screen.findByText("Bernardo Medeiros Moraes");
     const headers = within(table()).getAllByRole("columnheader").map((h) => h.textContent ?? "");
-    expect(headers.slice(0, 5)).toEqual(["Usuário", "Tipo", "Workspaces", "Status", "Cadastrado em"]);
+    // a coluna "Confiança" vem logo depois de "Tipo"
+    expect(headers.slice(0, 2)).toEqual(["Usuário", "Tipo"]);
+    expect(headers[2]).toMatch(/^Confiança/);
+    expect(headers.slice(3, 6)).toEqual(["Workspaces", "Status", "Cadastrado em"]);
     const [, kind] = cellsOf(dataRows()[1]);
     expect(kind).toHaveTextContent("Agência");
     // sem a etiqueta de tipo junto do nome: o tipo já está na coluna
@@ -169,7 +175,7 @@ describe("lista de usuários: conteúdo", () => {
   it("linha de uma conta de marca ativa com sessão", async () => {
     await renderList();
     await screen.findByText("Bernardo Medeiros Moraes");
-    const [user, workspaces, status, created, session] = cellsOf(dataRows()[0]);
+    const [user, , workspaces, status, created, session] = cellsOf(dataRows()[0]);
 
     expect(user).toHaveTextContent("Bernardo Medeiros Moraes");
     expect(user).toHaveTextContent("bernardo@cafeserraverde.com.br");
@@ -197,7 +203,7 @@ describe("lista de usuários: conteúdo", () => {
   it("conta suspensa de agência sem sessão: status, a etiqueta do tipo junto do nome e o texto visível sem sessão", async () => {
     await renderList();
     await screen.findByText("Larissa Ribeiro");
-    const [user, workspaces, status, , session] = cellsOf(dataRows()[1]);
+    const [user, , workspaces, status, , session] = cellsOf(dataRows()[1]);
     // o filtro é "Marca": agência destoa e ganha etiqueta junto do nome
     expect(within(user).getByText("Agência")).toBeInTheDocument();
     // o selo é o `badge` do AdminEntityCell: fica na linha do nome, não numa caixa solta ao lado da célula
@@ -213,7 +219,7 @@ describe("lista de usuários: conteúdo", () => {
   it("administrador da plataforma leva a etiqueta junto do nome; sem vínculo, '—' em Workspaces", async () => {
     await renderList();
     await screen.findByText("Rafael Teixeira");
-    const [user, workspaces, , , session] = cellsOf(dataRows()[2]);
+    const [user, , workspaces, , , session] = cellsOf(dataRows()[2]);
     expect(within(user).getByText("Administrador")).toBeInTheDocument();
     expect(within(user).getByText("Admin da plataforma")).toBeInTheDocument();
     expect(workspaces).toHaveTextContent("—");
@@ -245,7 +251,7 @@ describe("lista de usuários: conteúdo", () => {
     await renderList();
     await screen.findByText("Bernardo Medeiros Moraes");
     // nem a última sessão nem o "+N" dos workspaces dependem de `title` (o nome da pessoa tem o seu, que é do kit)
-    const [, workspaces, , , session] = cellsOf(dataRows()[0]);
+    const [, , workspaces, , , session] = cellsOf(dataRows()[0]);
     expect(session.querySelector("[title]")).toBeNull();
     expect(workspaces.querySelector("[title]")).toBeNull();
   });
@@ -486,12 +492,13 @@ describe("lista de usuários: ordenação", () => {
     await renderList();
     await screen.findByText("Bernardo Medeiros Moraes");
     const headers = within(table()).getAllByRole("columnheader");
-    expect(headers[3]).toHaveAttribute("aria-sort", "descending");
+    expect(headers[4]).toHaveAttribute("aria-sort", "descending");
     expect(headers[0]).toHaveAttribute("aria-sort", "none");
-    expect(headers[4]).toHaveAttribute("aria-sort", "none");
-    // as outras colunas não são ordenáveis
+    expect(headers[5]).toHaveAttribute("aria-sort", "none");
+    // as outras colunas não são ordenáveis (a confiança também não: a API ainda não ordena por ela)
     expect(headers[1]).not.toHaveAttribute("aria-sort");
     expect(headers[2]).not.toHaveAttribute("aria-sort");
+    expect(headers[3]).not.toHaveAttribute("aria-sort");
   });
 
   it("nome começa de A a Z e alterna; cadastro e última sessão começam do mais recente", async () => {
@@ -563,5 +570,70 @@ describe("lista de usuários: paginação", () => {
     const pager = screen.getByRole("navigation", { name: "Paginação" });
     expect(pager).toHaveTextContent("1–3 de 3");
     expect(within(pager).queryByRole("button", { name: "Próxima página" })).not.toBeInTheDocument();
+  });
+});
+
+describe("lista de usuários: confiança", () => {
+  const trustOf = (level: 1 | 2 | 3 | 4 | 5) => ({ level, score: level * 20 - 10, reasons: [{ code: "x", label: "Motivo", effect: "negative" as const, points: -10 }] });
+  const SUSPECT = makeUserListItem({ id: 31, name: "Conta Suspeita Um", email: "um@x.com", trust: trustOf(1) });
+  const SUSPECT_2 = makeUserListItem({ id: 32, name: "Conta Suspeita Dois", email: "dois@x.com", trust: trustOf(2) });
+  const UNSURE = makeUserListItem({ id: 33, name: "Conta Incerta", email: "tres@x.com", trust: trustOf(3) });
+  const REAL = makeUserListItem({ id: 34, name: "Conta Real", email: "cinco@x.com", trust: trustOf(5) });
+  const NO_TRUST = makeUserListItem({ id: 35, name: "Conta Sem Nivel", email: "nulo@x.com", trust: null });
+
+  it("a coluna mostra o selo certo de cada nível e '—' quando trust é nulo", async () => {
+    serve({ rows: [SUSPECT, SUSPECT_2, UNSURE, REAL, NO_TRUST] as typeof USERS });
+    await renderList();
+    await screen.findByText("Conta Suspeita Um");
+    const trustCell = (i: number) => cellsOf(dataRows()[i])[1];
+    expect(within(trustCell(0)).getByRole("button", { name: "Confiança 1 de 5: muito provável bot" })).toHaveTextContent("1");
+    expect(within(trustCell(1)).getByRole("button", { name: "Confiança 2 de 5: suspeito" })).toHaveTextContent("2");
+    expect(within(trustCell(2)).getByRole("button", { name: "Confiança 3 de 5: incerto" })).toHaveTextContent("3");
+    expect(within(trustCell(3)).getByRole("button", { name: "Confiança 5 de 5: perfil real" })).toHaveTextContent("5");
+    expect(trustCell(4)).toHaveTextContent("—");
+    expect(within(trustCell(4)).queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("o filtro 'Confiança: 1–2' vale só para a página carregada, diz isso e não chama a API de novo", async () => {
+    serve({ rows: [SUSPECT, SUSPECT_2, UNSURE, REAL, NO_TRUST] as typeof USERS });
+    const { user } = await renderList();
+    await screen.findByText("Conta Suspeita Um");
+    expect(screen.getByText("Filtro só para os usuários da página carregada.")).toBeInTheDocument();
+    const before = usersCalls().length;
+
+    await user.click(screen.getByRole("button", { name: "Confiança: 1–2 (suspeitos)" }));
+    expect(screen.getByRole("button", { name: "Confiança: 1–2 (suspeitos)" })).toHaveAttribute("aria-pressed", "true");
+    expect(dataRows()).toHaveLength(2);
+    expect(screen.getByText("Conta Suspeita Um")).toBeInTheDocument();
+    expect(screen.getByText("Conta Suspeita Dois")).toBeInTheDocument();
+    expect(screen.queryByText("Conta Real")).not.toBeInTheDocument();
+    expect(screen.queryByText("Conta Sem Nivel")).not.toBeInTheDocument();
+    expect(screen.getByText("Mostrando 2 de 5 usuários desta página. O filtro vale só para a página carregada.")).toBeInTheDocument();
+    // filtro local: nenhum parâmetro novo na API
+    expect(usersCalls()).toHaveLength(before);
+    expect(JSON.stringify(lastUsersParams())).not.toMatch(/trust|confian/i);
+
+    await user.click(screen.getByRole("button", { name: "Confiança: 1–2 (suspeitos)" }));
+    expect(dataRows()).toHaveLength(5);
+  });
+
+  it("sem suspeitos na página: estado vazio próprio, com a saída 'Mostrar todos da página'", async () => {
+    serve({ rows: [UNSURE, REAL] as typeof USERS });
+    const { user } = await renderList();
+    await screen.findByText("Conta Incerta");
+    await user.click(screen.getByRole("button", { name: "Confiança: 1–2 (suspeitos)" }));
+    expect(await screen.findByText("Nenhum suspeito nesta página")).toBeInTheDocument();
+    expect(screen.getByText(/Nenhuma das 2 contas desta página tem confiança 1 ou 2/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Mostrar todos da página" }));
+    expect(await screen.findByText("Conta Real")).toBeInTheDocument();
+  });
+
+  it("a coluna não é ordenável (a API ainda não ordena por confiança) e a definição do cabeçalho explica a estimativa", async () => {
+    serve({ rows: [SUSPECT] as typeof USERS });
+    await renderList();
+    await screen.findByText("Conta Suspeita Um");
+    const header = within(table()).getAllByRole("columnheader")[1];
+    expect(header).not.toHaveAttribute("aria-sort");
+    expect(within(header).getByRole("button", { name: /Como é calculado: Confiança/ })).toHaveAccessibleDescription(/não suspende a conta/);
   });
 });

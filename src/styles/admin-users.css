@@ -62,3 +62,39 @@
   .pv .adm-users-activity { padding: 0 20px 20px; }
   .pv .adm-users-diff-row { grid-template-columns: minmax(0, 1fr); gap: 2px; }
 }
+
+/* ===== Confiança da conta (nível 1 a 5) ===== */
+/* O número sempre aparece; a cor só reforça. Os extremos são chapados (texto branco) para o contraste não depender do tom claro. */
+.pv .adm-trust { --tl-bg: var(--bg); --tl-fg: var(--ink); display: inline-grid; place-items: center; min-width: 28px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--tl-bg); color: var(--tl-fg); font-size: 13px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; cursor: default; }
+.pv button.adm-trust { cursor: help; }
+.pv button.adm-trust:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+.pv .adm-trust[data-level="1"] { --tl-bg: var(--adm-bad); --tl-fg: #fff; }
+.pv .adm-trust[data-level="2"] { --tl-bg: var(--adm-warn-bg); --tl-fg: var(--adm-warn); box-shadow: inset 0 0 0 1.5px var(--adm-warn); }
+.pv .adm-trust[data-level="3"] { --tl-bg: var(--bg); --tl-fg: var(--ink); box-shadow: inset 0 0 0 1.5px var(--adm-rule); }
+.pv .adm-trust[data-level="4"] { --tl-bg: var(--adm-ok-bg); --tl-fg: var(--adm-ok); box-shadow: inset 0 0 0 1.5px var(--adm-ok); }
+.pv .adm-trust[data-level="5"] { --tl-bg: var(--adm-ok); --tl-fg: #fff; }
+.pv button.adm-trust[data-level="2"]:focus-visible, .pv button.adm-trust[data-level="3"]:focus-visible, .pv button.adm-trust[data-level="4"]:focus-visible { box-shadow: var(--adm-ring); }
+
+/* dica da lista: uma linha por motivo, com sinal e pontos */
+.pv .adm-trust-tip { display: flex; flex-direction: column; gap: 4px; text-align: left; }
+.pv .adm-trust-tip-h { font-weight: 700; }
+.pv .adm-trust-tip-none, .pv .adm-trust-tip-more { opacity: .75; }
+.pv .adm-trust-reason { display: grid; grid-template-columns: 34px minmax(0, 1fr); column-gap: 8px; align-items: baseline; }
+.pv .adm-trust-reason b { text-align: right; font-weight: 700; }
+
+/* detalhe */
+.pv .adm-trust-detail { display: flex; flex-direction: column; gap: 16px; }
+.pv .adm-trust-summary { display: flex; align-items: center; gap: 14px; }
+.pv .adm-trust-summary .adm-trust { min-width: 44px; height: 40px; font-size: 20px; }
+.pv .adm-trust-text { display: flex; flex-direction: column; gap: 2px; color: var(--adm-text-muted); font-size: 13px; }
+.pv .adm-trust-text b { color: var(--ink); font-size: 15px; text-transform: capitalize; }
+.pv .adm-trust-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.pv .adm-trust-list li { padding: 9px 0; border-top: 1px solid var(--line); }
+.pv .adm-trust-list li:first-child { border-top: 0; }
+.pv .adm-trust-list .adm-trust-reason { grid-template-columns: 44px minmax(0, 1fr); font-size: 14px; }
+.pv .adm-trust-list .adm-trust-reason[data-effect="positive"] b { color: var(--adm-ok); }
+.pv .adm-trust-list .adm-trust-reason[data-effect="negative"] b { color: var(--adm-bad); }
+
+/* filtro local da lista: vale só para as linhas da página carregada */
+.pv .adm-trust-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 12px; color: var(--adm-text-muted); font-size: 13px; }
+.pv .adm-trust-filter button[aria-pressed="true"] { background: var(--ink); color: #fff; }
