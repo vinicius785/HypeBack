@@ -64,16 +64,24 @@
 }
 
 /* ===== Confiança da conta (nível 1 a 5) ===== */
-/* O número sempre aparece; a cor só reforça. Os extremos são chapados (texto branco) para o contraste não depender do tom claro. */
-.pv .adm-trust { --tl-bg: var(--bg); --tl-fg: var(--ink); display: inline-grid; place-items: center; min-width: 28px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--tl-bg); color: var(--tl-fg); font-size: 13px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; cursor: default; }
+/* Um desenho só: o NÚMERO e um medidor de 5 barras (quantas acesas = o nível), num tom suave por nível. A cor reforça, mas o
+   nível se lê pelo número e pelas barras. Texto escuro sobre fundo claro em todos os níveis (contraste acima de 6:1). */
+.pv .adm-trust { --tl-bg: var(--bg); --tl-fg: var(--ink); --tl-bar: var(--adm-text-muted); display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 11px 0 10px; border-radius: 999px; background: var(--tl-bg); color: var(--tl-fg); font-size: 12.5px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; cursor: default; transition: box-shadow .15s; }
 .pv button.adm-trust { cursor: help; }
 .pv button.adm-trust:focus-visible { outline: none; box-shadow: var(--adm-ring); }
-.pv .adm-trust[data-level="1"] { --tl-bg: var(--adm-bad); --tl-fg: #fff; }
-.pv .adm-trust[data-level="2"] { --tl-bg: var(--adm-warn-bg); --tl-fg: var(--adm-warn); box-shadow: inset 0 0 0 1.5px var(--adm-warn); }
-.pv .adm-trust[data-level="3"] { --tl-bg: var(--bg); --tl-fg: var(--ink); box-shadow: inset 0 0 0 1.5px var(--adm-rule); }
-.pv .adm-trust[data-level="4"] { --tl-bg: var(--adm-ok-bg); --tl-fg: var(--adm-ok); box-shadow: inset 0 0 0 1.5px var(--adm-ok); }
-.pv .adm-trust[data-level="5"] { --tl-bg: var(--adm-ok); --tl-fg: #fff; }
-.pv button.adm-trust[data-level="2"]:focus-visible, .pv button.adm-trust[data-level="3"]:focus-visible, .pv button.adm-trust[data-level="4"]:focus-visible { box-shadow: var(--adm-ring); }
+.pv .adm-trust-meter { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+.pv .adm-trust-meter i { display: block; width: 3.5px; border-radius: 2px; background: var(--tl-bar); opacity: .22; }
+.pv .adm-trust-meter i:nth-child(1) { height: 5px; }
+.pv .adm-trust-meter i:nth-child(2) { height: 7px; }
+.pv .adm-trust-meter i:nth-child(3) { height: 9px; }
+.pv .adm-trust-meter i:nth-child(4) { height: 11px; }
+.pv .adm-trust-meter i:nth-child(5) { height: 12px; }
+.pv .adm-trust-meter i[data-on="true"] { opacity: 1; }
+.pv .adm-trust[data-level="1"] { --tl-bg: var(--adm-bad-bg); --tl-fg: var(--adm-bad); --tl-bar: var(--adm-bad); }
+.pv .adm-trust[data-level="2"] { --tl-bg: var(--adm-warn-bg); --tl-fg: var(--adm-warn); --tl-bar: var(--adm-warn); }
+.pv .adm-trust[data-level="3"] { --tl-bg: var(--bg); --tl-fg: var(--ink); --tl-bar: var(--ink); }
+.pv .adm-trust[data-level="4"] { --tl-bg: color-mix(in srgb, var(--adm-ok-bg) 55%, #fff); --tl-fg: var(--adm-ok); --tl-bar: color-mix(in srgb, var(--adm-ok) 78%, #fff); }
+.pv .adm-trust[data-level="5"] { --tl-bg: var(--adm-ok-bg); --tl-fg: var(--adm-ok); --tl-bar: var(--adm-ok); }
 
 /* dica da lista: uma linha por motivo, com sinal e pontos */
 .pv .adm-trust-tip { display: flex; flex-direction: column; gap: 4px; text-align: left; }
@@ -85,7 +93,14 @@
 /* detalhe */
 .pv .adm-trust-detail { display: flex; flex-direction: column; gap: 16px; }
 .pv .adm-trust-summary { display: flex; align-items: center; gap: 14px; }
-.pv .adm-trust-summary .adm-trust { min-width: 44px; height: 40px; font-size: 20px; }
+.pv .adm-trust-summary .adm-trust { height: 38px; padding: 0 16px 0 14px; gap: 12px; font-size: 20px; }
+.pv .adm-trust-summary .adm-trust-meter { height: 18px; gap: 3px; }
+.pv .adm-trust-summary .adm-trust-meter i { width: 5px; }
+.pv .adm-trust-summary .adm-trust-meter i:nth-child(1) { height: 8px; }
+.pv .adm-trust-summary .adm-trust-meter i:nth-child(2) { height: 11px; }
+.pv .adm-trust-summary .adm-trust-meter i:nth-child(3) { height: 14px; }
+.pv .adm-trust-summary .adm-trust-meter i:nth-child(4) { height: 16px; }
+.pv .adm-trust-summary .adm-trust-meter i:nth-child(5) { height: 18px; }
 .pv .adm-trust-text { display: flex; flex-direction: column; gap: 2px; color: var(--adm-text-muted); font-size: 13px; }
 .pv .adm-trust-text b { color: var(--ink); font-size: 15px; text-transform: capitalize; }
 .pv .adm-trust-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -98,3 +113,14 @@
 /* filtro local da lista: vale só para as linhas da página carregada */
 .pv .adm-trust-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 12px; color: var(--adm-text-muted); font-size: 13px; }
 .pv .adm-trust-filter button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+
+/* ===== Lista de Usuários: colunas e linhas mais calmas ===== */
+/* Colunas de apoio (tipo, data) em cinza e menores: quem manda na linha é o nome. */
+.pv .adm-users-sub { color: var(--adm-text-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+/* Workspaces: o nome do vínculo sem sublinhado fixo (aparece ao passar o mouse e no foco), o papel em cinza ao lado. */
+.pv .adm-users-ws-item .adm-textlink { text-decoration: none; font-weight: 600; }
+.pv .adm-users-ws-item .adm-textlink:hover, .pv .adm-users-ws-item .adm-textlink:focus-visible { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.pv .adm-users-ws-role::before { content: "· "; }
+/* Última sessão: a aproximação em destaque e o instante exato, pequeno, embaixo. */
+.pv .adm-users-session > span { font-size: 13.5px; }
+.pv .adm-users-session small { font-size: 12px; font-variant-numeric: tabular-nums; }

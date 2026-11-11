@@ -12,6 +12,17 @@ import type { AdminUserTrust, AdminUserTrustReason } from "@/shared/admin-platfo
 
 import "@/styles/admin-users.css";
 
+/** Medidor de 5 barras: as acesas mostram o nível (o número ao lado continua sendo o que se lê). */
+function TrustMeter({ level }: { level: number }) {
+  return (
+    <span className="adm-trust-meter" aria-hidden="true">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <i key={n} data-on={n <= level} />
+      ))}
+    </span>
+  );
+}
+
 /** Uma linha de motivo: sinal e pontos, depois o texto. Positivo e negativo se distinguem também pelo sinal, não só pela cor. */
 function ReasonLine({ reason }: { reason: AdminUserTrustReason }) {
   return (
@@ -49,7 +60,8 @@ export function TrustBadge({ trust: raw }: { trust: AdminUserTrust | null | unde
   return (
     <AdminTooltip content={<TrustTip trust={trust} />} placement="top" delay={250} describe>
       <button type="button" className="adm-trust" data-level={trust.level} aria-label={trustAriaLabel(trust.level)}>
-        {trust.level}
+        <span>{trust.level}</span>
+        <TrustMeter level={trust.level} />
       </button>
     </AdminTooltip>
   );
@@ -67,7 +79,8 @@ export function AdminUserTrustSection({ trust: raw }: { trust: AdminUserTrust | 
         <div className="adm-trust-detail">
           <div className="adm-trust-summary">
             <span className="adm-trust" data-level={trust.level} role="img" aria-label={trustAriaLabel(trust.level)}>
-              {trust.level}
+              <span>{trust.level}</span>
+              <TrustMeter level={trust.level} />
             </span>
             <span className="adm-trust-text">
               <b>{TRUST_LEVEL_TEXT[trust.level]}</b>

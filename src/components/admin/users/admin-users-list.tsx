@@ -149,7 +149,7 @@ export function AdminUsersList() {
             header: "Tipo",
             width: "minmax(112px, 1fr)",
             hideBelow: "md",
-            cell: (user: AdminUserListItem) => userKindText(user.kind),
+            cell: (user: AdminUserListItem) => <span className="adm-users-sub">{userKindText(user.kind)}</span>,
           } satisfies AdminTableColumn<AdminUserListItem>,
         ]
       : []),
@@ -180,9 +180,9 @@ export function AdminUsersList() {
       key: "created",
       header: "Cadastrado em",
       sortKey: "created_at",
-      width: "108px",
+      width: "132px",
       nowrap: true,
-      cell: (user) => formatDate(user.created_at),
+      cell: (user) => <span className="adm-users-sub">{formatDate(user.created_at)}</span>,
     },
     {
       key: "last_session",
