@@ -582,3 +582,8 @@
 .pv .adm-filters[data-compact="true"] .adm-filters-row { flex: 1 1 340px; flex-wrap: nowrap; }
 .pv .adm-filters[data-compact="true"] .adm-search { flex: 1 1 220px; max-width: none; min-width: 160px; }
 .pv .adm-filters[data-compact="true"] .adm-chips { flex: 1 1 100%; }
+
+/* Painel compacto: o seletor ativo mantém o fundo claro do painel, então o texto continua escuro. */
+.pv .adm-filters-panel[data-compact="true"] .adm-select[data-active="true"] { color: var(--ink); }
+.pv .adm-filters-panel[data-compact="true"] .adm-select[data-active="true"] .ico { color: var(--adm-text-muted); }
+.pv .adm-filters[data-compact="true"] .adm-filters-row > .adm-pill[data-toggle="true"] { height: var(--adm-hit, 44px); padding: 0 16px; white-space: nowrap; }

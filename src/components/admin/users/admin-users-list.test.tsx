@@ -761,8 +761,8 @@ describe("lista de usuários: confiança em toda a lista, celular e status novo"
   it("'Só suspeitos' manda trust_max=2 (junto do status explícito), vira chip e sai com 'Limpar filtros'", async () => {
     const { router, user } = await renderList();
     await screen.findByText("Bernardo Medeiros Moraes");
-    await user.click(screen.getByRole("button", { name: /^Filtros/ }));
-    await user.click(screen.getByRole("button", { name: "Só suspeitos (nível 1-2)" }));
+    // fica na barra, ao lado de Ordenar (não dentro do painel de Filtros)
+    await user.click(screen.getByRole("button", { name: "Só suspeitos (nível 1-2)", pressed: false }));
     await waitFor(() => expect(currentSearch(router)).toEqual({ trust_max: "2" }));
     await waitFor(() => expect(lastUsersParams()).toMatchObject({ trust_max: "2", status: "active,suspended" }));
     expect(screen.getByRole("button", { name: /Remover filtro.*Só suspeitos/ })).toBeInTheDocument();

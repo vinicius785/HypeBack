@@ -232,6 +232,7 @@ export function AdminUsersList() {
     {
       kind: "toggle",
       id: "suspects",
+      inline: true,
       label: "Só suspeitos (nível 1-2)",
       active: state.filters.trust_max === ADMIN_USERS_SUSPECT_TRUST_MAX,
       onToggle: () => state.setFilter("trust_max", state.filters.trust_max === ADMIN_USERS_SUSPECT_TRUST_MAX ? "" : ADMIN_USERS_SUSPECT_TRUST_MAX),

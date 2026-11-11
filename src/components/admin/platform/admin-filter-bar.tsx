@@ -362,7 +362,9 @@ export function AdminFilterBar({
   }, [compact, open]);
 
   const inlineDefs = compact ? [] : filters.filter((f) => f.inline);
-  const panelDefs = compact ? filters : filters.filter((f) => !f.inline);
+  // Na barra compacta, um toggle `inline` fica ao lado da ordenação (não no painel): é atalho de um clique.
+  const barToggles = compact ? filters.filter((f): f is AdminToggleFilter => f.kind === "toggle" && !!f.inline) : [];
+  const panelDefs = compact ? filters.filter((f) => !barToggles.includes(f as AdminToggleFilter)) : filters.filter((f) => !f.inline);
   // No painel: seletores, datas e filtros próprios na ordem em que vieram, depois as pílulas.
   const panelOrdered = [...panelDefs.filter((f) => f.kind !== "pills"), ...panelDefs.filter((f) => f.kind === "pills")];
   const activeDefs = filters.filter((f) => isFilterActive(f, values));
@@ -480,6 +482,7 @@ export function AdminFilterBar({
         <div className="adm-filters-row">
           {labelledSearch(search, searchLabel)}
           {compact ? beforeFilters : null}
+          {barToggles.map((def) => renderDef(def, true))}
           {hasPanel ? (
             <div className="adm-filters-anchor" data-compact={compact ? "true" : undefined}>
               <button
