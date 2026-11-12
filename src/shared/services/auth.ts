@@ -222,3 +222,70 @@ export async function staffResetPassword(data: StaffResetPasswordRequestData): P
   const response = await request.json();
   return response.data;
 }
+
+interface FirstAccessRequestData {
+  email: string;
+  code: string;
+  password: string;
+}
+
+/** Falha do primeiro acesso: só status, código de domínio e textos do servidor (nunca os dados enviados). */
+export class FirstAccessError extends Error {
+  readonly status: number;
+  readonly code: string | null;
+  /** O `message` do servidor como lista (validação manda vários textos; os outros erros, um). */
+  readonly messages: string[];
+
+  constructor(init: { status: number; code: string | null; messages: string[] }) {
+    super(init.messages[0] ?? "Falha no primeiro acesso");
+    this.name = "FirstAccessError";
+    this.status = init.status;
+    this.code = init.code;
+    this.messages = init.messages;
+  }
+}
+
+/**
+ * Primeiro acesso de uma conta criada pelo Admin (`POST /backoffice/auth/first-access`, pública: sem Authorization). O dono
+ * define a senha com o código do e-mail de convite e já recebe o token (entra direto). Nada do que vai no corpo (e-mail,
+ * código, senha) é registrado em log.
+ */
+export async function firstAccess(data: FirstAccessRequestData): Promise<{ token: string }> {
+  let request: Response;
+  try {
+    request = await fetch(getApiUrl("/auth/first-access"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "Client-Type": "backoffice",
+      },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    throw new FirstAccessError({ status: 0, code: "NETWORK_ERROR", messages: [] });
+  }
+
+  if (!request.ok) {
+    let body: unknown = null;
+    try {
+      body = await request.json();
+    } catch {
+      body = null;
+    }
+    const record = (typeof body === "object" && body !== null ? body : {}) as { message?: unknown; error?: unknown };
+    const messages = Array.isArray(record.message)
+      ? record.message.filter((m): m is string => typeof m === "string")
+      : typeof record.message === "string"
+        ? [record.message]
+        : [];
+    throw new FirstAccessError({
+      status: request.status,
+      code: typeof record.error === "string" ? record.error : null,
+      messages,
+    });
+  }
+
+  const response = await request.json();
+  return response.data;
+}
