@@ -15,6 +15,7 @@ import { Route as privateadminLayoutRouteImport } from './screens/(private)/(adm
 import { Route as privateappLayoutRouteImport } from './screens/(private)/(app)/_layout'
 import { Route as privateOnboardingLayoutRouteImport } from './screens/(private)/onboarding/_layout'
 import { Route as publicForgotPasswordRouteImport } from './screens/(public)/forgot-password'
+import { Route as publicPrimeiroAcessoRouteImport } from './screens/(public)/primeiro-acesso'
 import { Route as publicResetPasswordRouteImport } from './screens/(public)/reset-password'
 import { Route as publicSignInRouteImport } from './screens/(public)/sign-in'
 import { Route as publicSignUpRouteImport } from './screens/(public)/sign-up'
@@ -89,6 +90,11 @@ const privateOnboardingLayoutRoute = privateOnboardingLayoutRouteImport.update({
 const publicForgotPasswordRoute = publicForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => publicLayoutRoute,
+} as any)
+const publicPrimeiroAcessoRoute = publicPrimeiroAcessoRouteImport.update({
+  id: '/primeiro-acesso',
+  path: '/primeiro-acesso',
   getParentRoute: () => publicLayoutRoute,
 } as any)
 const publicResetPasswordRoute = publicResetPasswordRouteImport.update({
@@ -368,6 +374,7 @@ const privateappCampaignsCampaignIdInfluencerInfluencerIdRoute =
 export interface FileRoutesByFullPath {
   '/onboarding': typeof privateOnboardingLayoutRouteWithChildren
   '/forgot-password': typeof publicForgotPasswordRoute
+  '/primeiro-acesso': typeof publicPrimeiroAcessoRoute
   '/reset-password': typeof publicResetPasswordRoute
   '/sign-in': typeof publicSignInRoute
   '/sign-up': typeof publicSignUpRoute
@@ -420,6 +427,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/forgot-password': typeof publicForgotPasswordRoute
+  '/primeiro-acesso': typeof publicPrimeiroAcessoRoute
   '/reset-password': typeof publicResetPasswordRoute
   '/sign-in': typeof publicSignInRoute
   '/sign-up': typeof publicSignUpRoute
@@ -475,6 +483,7 @@ export interface FileRoutesById {
   '/(private)/(app)': typeof privateappLayoutRouteWithChildren
   '/(private)/onboarding': typeof privateOnboardingLayoutRouteWithChildren
   '/(public)/forgot-password': typeof publicForgotPasswordRoute
+  '/(public)/primeiro-acesso': typeof publicPrimeiroAcessoRoute
   '/(public)/reset-password': typeof publicResetPasswordRoute
   '/(public)/sign-in': typeof publicSignInRoute
   '/(public)/sign-up': typeof publicSignUpRoute
@@ -530,6 +539,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/onboarding'
     | '/forgot-password'
+    | '/primeiro-acesso'
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
@@ -582,6 +592,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/forgot-password'
+    | '/primeiro-acesso'
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
@@ -636,6 +647,7 @@ export interface FileRouteTypes {
     | '/(private)/(app)'
     | '/(private)/onboarding'
     | '/(public)/forgot-password'
+    | '/(public)/primeiro-acesso'
     | '/(public)/reset-password'
     | '/(public)/sign-in'
     | '/(public)/sign-up'
@@ -734,6 +746,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof publicForgotPasswordRouteImport
+      parentRoute: typeof publicLayoutRoute
+    }
+    '/(public)/primeiro-acesso': {
+      id: '/(public)/primeiro-acesso'
+      path: '/primeiro-acesso'
+      fullPath: '/primeiro-acesso'
+      preLoaderRoute: typeof publicPrimeiroAcessoRouteImport
       parentRoute: typeof publicLayoutRoute
     }
     '/(public)/reset-password': {
@@ -1312,6 +1331,7 @@ const privateLayoutRouteWithChildren = privateLayoutRoute._addFileChildren(
 
 interface publicLayoutRouteChildren {
   publicForgotPasswordRoute: typeof publicForgotPasswordRoute
+  publicPrimeiroAcessoRoute: typeof publicPrimeiroAcessoRoute
   publicResetPasswordRoute: typeof publicResetPasswordRoute
   publicSignInRoute: typeof publicSignInRoute
   publicSignUpRoute: typeof publicSignUpRoute
@@ -1322,6 +1342,7 @@ interface publicLayoutRouteChildren {
 
 const publicLayoutRouteChildren: publicLayoutRouteChildren = {
   publicForgotPasswordRoute: publicForgotPasswordRoute,
+  publicPrimeiroAcessoRoute: publicPrimeiroAcessoRoute,
   publicResetPasswordRoute: publicResetPasswordRoute,
   publicSignInRoute: publicSignInRoute,
   publicSignUpRoute: publicSignUpRoute,
