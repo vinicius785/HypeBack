@@ -144,7 +144,8 @@
 .pv .isl-ib:hover:not(:disabled) { background: rgba(255,255,255,.2); }
 .pv .isl-ib:active:not(:disabled) { transform: scale(.92); }
 .pv .isl-ib:disabled { opacity: .3; cursor: default; }
-.pv .isl-x:hover { background: rgba(248,113,113,.3) !important; }
+/* só o botão de fechar (a ilha nova também usa a classe `isl-x` na raiz: sem o `button`, passar o mouse pintava a ilha inteira de rosa) */
+.pv button.isl-x:hover { background: rgba(248,113,113,.3) !important; }
 
 /* corpo: abre por baixo da pílula (altura animada), com a folha branca dentro da moldura preta */
 .pv .isl-b { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .5s var(--out); }

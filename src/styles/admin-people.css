@@ -47,7 +47,8 @@
 /* sem piscar: a ilha de Pessoas não "sobe e desfoca" (era o que piscava); só aparece com um fade curto na primeira chegada.
    A altura fica fixa (os números chegam depois, e a linha não pode crescer nem encolher), os números ocupam um espaço
    mínimo. */
-.pv .isl.isl-ppl-w { animation: isl-ppl-fade .3s ease both; }
+/* sem fade: a ilha nunca aparece translúcida (preta com opacidade baixa lê como rosada/lavada sobre o fundo) */
+.pv .isl.isl-ppl-w { animation: none; }
 .pv .isl.isl-ppl-w.isl-still { animation: none; }
 @keyframes isl-ppl-fade { from { opacity: 0; } }
 .pv .isl-ppl-w .isl-stat b { min-width: 2.2ch; text-align: right; }
