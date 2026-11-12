@@ -35,6 +35,7 @@ import { LAST_SESSION_EXPLANATION, approxSessionText, userKindText, workspaceRol
 import { CREATORS_LIST_MEMORY_KEY, rememberPeopleTab, USERS_LIST_MEMORY_KEY, userDetailLink, workspaceDetailLink } from "./admin-users-links";
 import { UserPlatforms } from "./admin-user-platforms";
 import { PeopleIsland } from "@/components/admin/people/people-island";
+import { NewAccountButton } from "@/components/admin/workspaces/new-account-button";
 import { TrustBadge } from "./admin-user-trust";
 import { AdminWorkspacePicker, useAdminWorkspaceSelection } from "./admin-workspace-picker";
 
@@ -256,7 +257,11 @@ export function AdminUsersList({ kind }: { kind?: "creator" } = {}) {
 
   return (
     <AdminPage>
-      <AdminPageHeader title="Pessoas" subtitle="Quem acessa a plataforma: usuários, criadores e os workspaces dos clientes." />
+      <AdminPageHeader
+        title="Pessoas"
+        subtitle="Quem acessa a plataforma: usuários, criadores e os workspaces dos clientes."
+        actions={<NewAccountButton />}
+      />
 
       <PeopleIsland current={fixedKind ? "creators" : "users"}>
       <AdminFilterBar
