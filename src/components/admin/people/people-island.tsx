@@ -137,8 +137,8 @@ export function PeopleIsland({ current, children }: { current: PeopleSection; ch
 
   // Sempre à vista: as contagens das pílulas e a de contas em cadastro.
   const users = useAdminUsers({ ...ONE, status: "active,suspended" });
-  // A aba Criadores é a lista de usuários só com criadores (tipo fixo, não é filtro): a contagem é a dos usuários `kind=creator`.
-  const creators = useAdminUsers({ ...ONE, status: "active,suspended", kind: "creator" });
+  // A aba Criadores é a lista de usuários só com criadores (tipo fixo, não é filtro): a contagem é a dos criadores ATIVOS (`kind=creator`, `status=active`), a mesma do Dashboard.
+  const creators = useAdminUsers({ ...ONE, status: "active", kind: "creator" });
   const workspaces = useAdminWorkspaceList({ ...ONE });
 
   // Só ao abrir a folha (a de suspeitos pode demorar na primeira vez: a API calcula e guarda as notas).

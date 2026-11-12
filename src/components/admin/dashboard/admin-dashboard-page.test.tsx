@@ -107,6 +107,9 @@ function serveLists() {
         { id: 3, name: "Caio", last_session_at: "2026-10-01T12:00:00.000Z" },
       ]);
     }
+    if (path === "/admin/users" && params.kind === "creator" && params.status === "active" && params.per_page === 1) {
+      return page([{ id: 11, name: "Duda Criadora" }], 3292);
+    }
     if (path === "/admin/users" && params.kind === "creator") {
       return page([
         { id: 11, name: "Duda Criadora", photo: "uploads/duda.png", created_at: "2026-10-30T10:00:00.000Z" },
@@ -320,7 +323,7 @@ describe("números", () => {
     renderPage();
     await loaded();
     const creators = region("Criadores");
-    expect(valueOf(card(creators, "Criadores"))).toBe("145");
+    expect(valueOf(card(creators, "Criadores"))).toBe("3.292");
     expect(valueOf(card(creators, "Criados no período"))).toBe("9");
     expect(card(creators, "Criados no período")).toHaveTextContent("contas novas de criador");
   });
@@ -394,7 +397,7 @@ describe("cada número leva à lista com o mesmo filtro", () => {
     ["Clientes", "Clientes", "/admin/workspaces"],
     ["Clientes", "Ativos", "/admin/workspaces?status=active&activity=active"],
     ["Usuários", "Usuários", "/admin/users"],
-    ["Criadores", "Criadores", "/admin/creators"],
+    ["Criadores", "Criadores", "/admin/creators?status=active"],
     ["Criadores", "Criados no período", "/admin/creators"],
     ["Campanhas", "Publicadas", "/admin/campaigns?status=published"],
   ];

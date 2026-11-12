@@ -140,7 +140,7 @@ describe("Dashboard com o roteador real", () => {
     ["Clientes", "Clientes", "/admin/workspaces", {}],
     ["Clientes", "Ativos", "/admin/workspaces", { status: "active", activity: "active" }],
     ["Usuários", "Usuários", "/admin/users", {}],
-    ["Criadores", "Criadores", "/admin/creators", {}],
+    ["Criadores", "Criadores", "/admin/creators", { status: "active" }],
     ["Campanhas", "Publicadas", "/admin/campaigns", { status: "published" }],
   ] as const)("clicar em %s › %s abre %s com os filtros na busca", async (panel, label, path, search) => {
     const router = renderAt("/admin/dashboard");

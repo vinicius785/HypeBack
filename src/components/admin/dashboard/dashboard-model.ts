@@ -80,6 +80,8 @@ export interface DashboardExtras {
   activeToday?: { value: number; capped: boolean } | null;
   /** `meta.applications` de `GET /admin/campaigns`: inscrições de criadores em campanhas. */
   applications?: AdminCampaignApplicationsMeta | null;
+  /** Criadores ATIVOS (`meta.total` de `GET /admin/users?kind=creator&status=active`): sem suspensos nem contas em cadastro. */
+  creatorsActive?: number | null;
 }
 
 function extraFigure(value: number, kind: AdminFigure["kind"], definition: string): AdminFigure {
@@ -103,6 +105,7 @@ export function buildDashboardAreas(overview: AdminOverview | undefined, range: 
 
   const activeToday = extras.activeToday;
   const applications = extras.applications;
+  const creatorsActive = extras.creatorsActive;
 
   return {
     workspaces: {
@@ -157,8 +160,11 @@ export function buildDashboardAreas(overview: AdminOverview | undefined, range: 
         {
           id: "creators.total",
           label: "Criadores",
-          figure: creators?.total,
-          to: link(CREATORS),
+          figure:
+            creatorsActive == null
+              ? undefined
+              : extraFigure(creatorsActive, "stock", "Criadores com conta ativa (sem suspensos nem contas ainda em cadastro). É o mesmo número da aba Criadores em Pessoas."),
+          to: link(CREATORS, { status: "active" }),
         },
         {
           id: "creators.new",
