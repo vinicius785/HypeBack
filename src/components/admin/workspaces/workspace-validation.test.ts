@@ -9,6 +9,7 @@ import {
   isValidEmail,
   normalizeEditValue,
   validateEditValues,
+  validateNewAccount,
 } from "./workspace-validation";
 
 const original = editValuesFromDetail(makeDetail());
@@ -131,5 +132,23 @@ describe("account_type (tipo de conta)", () => {
   it("valor fora de brand/agency é recusado no formulário", () => {
     expect(validateEditValues({ ...original, account_type: "xyz" }, original).account_type).toBeDefined();
     expect(validateEditValues({ ...original, account_type: "agency" }, original).account_type).toBeUndefined();
+  });
+});
+
+describe("validateNewAccount (Nova conta)", () => {
+  const ok = { account_type: "agency", workspace_name: "Ag", owner_name: "Bo", owner_email: "bo@x.com" } as const;
+
+  it("os valores nos limites passam", () => {
+    expect(validateNewAccount(ok)).toEqual({});
+    expect(validateNewAccount({ ...ok, workspace_name: "A".repeat(100), owner_name: "B".repeat(100) })).toEqual({});
+  });
+
+  it("recusa tipo vazio, nomes curtos ou longos (depois de aparar) e e-mail inválido ou acima de 254", () => {
+    expect(validateNewAccount({ ...ok, account_type: "" }).account_type).toBeDefined();
+    expect(validateNewAccount({ ...ok, workspace_name: " A " }).workspace_name).toBeDefined();
+    expect(validateNewAccount({ ...ok, workspace_name: "A".repeat(101) }).workspace_name).toBeDefined();
+    expect(validateNewAccount({ ...ok, owner_name: "" }).owner_name).toBeDefined();
+    expect(validateNewAccount({ ...ok, owner_email: "sem-arroba" }).owner_email).toBeDefined();
+    expect(validateNewAccount({ ...ok, owner_email: `${"a".repeat(250)}@x.com` }).owner_email).toBeDefined();
   });
 });

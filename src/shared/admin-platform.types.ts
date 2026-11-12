@@ -144,6 +144,7 @@ export const ADMIN_ERROR_CODES = [
   'LAST_OWNER', // 409
   'LAST_PLATFORM_ADMIN', // 409: tirar o papel do último administrador ativo da plataforma
   'IDEMPOTENCY_CONFLICT', // 409
+  'EMAIL_ALREADY_REGISTERED', // 409: criar conta com um e-mail que já tem cadastro
   'NOT_STAFF_ACCOUNT', // 400: gerar código de recuperação de senha para quem não é da equipe da plataforma
   'APPROVAL_CODE_REQUIRED', // 400: faltou o código do Google Authenticator de quem aprova
   'APPROVAL_CODE_INVALID', // 403: código do Authenticator errado ou já usado
@@ -475,6 +476,20 @@ export type AdminWorkspaceMutationResponse = AdminItemResponse<AdminWorkspaceDet
 
 /** Papéis que o Admin pode atribuir: 'custom' (permissões avulsas) nasce em outro fluxo e o servidor o recusa (400). */
 export type AdminAssignableWorkspaceRole = Exclude<AdminWorkspaceRole, 'custom'>;
+
+/** POST /admin/workspaces — cria a conta (marca ou agência) e convida o dono por e-mail. */
+export interface AdminWorkspaceCreateBody extends AdminReasonBody {
+  workspace_name: string; // 2..100
+  account_type: 'brand' | 'agency';
+  owner_name: string; // 2..100
+  owner_email: string; // e-mail válido, até 254
+}
+/** `invite_email: 'queued'` = envio disparado (a entrega não é confirmada). */
+export interface AdminWorkspaceCreateResult {
+  workspace: { id: string; name: string; account_type: 'brand' | 'agency' };
+  owner: { user_id: number; name: string; email: string };
+  invite_email: 'queued';
+}
 
 export interface AdminWorkspaceMemberAddBody extends AdminReasonBody {
   email: string;

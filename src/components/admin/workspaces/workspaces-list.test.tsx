@@ -76,6 +76,16 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 
+describe("WorkspacesListPage · Nova conta", () => {
+  it("o botão 'Nova conta' fica no topo e abre o diálogo de criação (fecha com Cancelar)", async () => {
+    renderWithQuery(<WorkspacesListPage />);
+    await userEvent.click(screen.getByRole("button", { name: "Nova conta" }));
+    expect(screen.getByRole("dialog", { name: "Nova conta" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
 describe("WorkspacesListPage · dados", () => {
   it("título, subtítulo e uma linha por workspace com as seis colunas (Workspace, Responsável, Status, Campanhas, Aportes, Criado em)", async () => {
     renderWithQuery(<WorkspacesListPage />);

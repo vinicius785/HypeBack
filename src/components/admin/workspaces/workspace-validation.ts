@@ -116,3 +116,39 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function isValidEmail(value: string): boolean {
   return EMAIL.test(value.trim());
 }
+
+// ---------------------------------------------------------------------------
+// Nova conta (POST /admin/workspaces)
+// ---------------------------------------------------------------------------
+
+export const NEW_ACCOUNT_NAME_MIN = 2;
+export const NEW_ACCOUNT_NAME_MAX = 100;
+export const NEW_ACCOUNT_EMAIL_MAX = 254;
+
+export type NewAccountField = "account_type" | "workspace_name" | "owner_name" | "owner_email";
+export interface NewAccountValues {
+  account_type: "brand" | "agency" | "";
+  workspace_name: string;
+  owner_name: string;
+  owner_email: string;
+}
+export type NewAccountErrors = Partial<Record<NewAccountField, string>>;
+
+/** Os mesmos limites do servidor (valores já aparados), para a recusa aparecer antes do envio. */
+export function validateNewAccount(values: NewAccountValues): NewAccountErrors {
+  const errors: NewAccountErrors = {};
+  if (values.account_type === "") errors.account_type = "Escolha o tipo da conta.";
+  const name = values.workspace_name.trim();
+  if (name.length < NEW_ACCOUNT_NAME_MIN || name.length > NEW_ACCOUNT_NAME_MAX) {
+    errors.workspace_name = `O nome deve ter de ${NEW_ACCOUNT_NAME_MIN} a ${NEW_ACCOUNT_NAME_MAX} caracteres.`;
+  }
+  const owner = values.owner_name.trim();
+  if (owner.length < NEW_ACCOUNT_NAME_MIN || owner.length > NEW_ACCOUNT_NAME_MAX) {
+    errors.owner_name = `O nome deve ter de ${NEW_ACCOUNT_NAME_MIN} a ${NEW_ACCOUNT_NAME_MAX} caracteres.`;
+  }
+  const email = values.owner_email.trim();
+  if (!isValidEmail(email) || email.length > NEW_ACCOUNT_EMAIL_MAX) {
+    errors.owner_email = `Informe um e-mail válido (até ${NEW_ACCOUNT_EMAIL_MAX} caracteres).`;
+  }
+  return errors;
+}

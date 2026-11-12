@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   AdminFilterBar,
@@ -28,6 +28,7 @@ import {
   type WorkspaceFilterKey,
 } from "./workspace-constants";
 import { buildWorkspaceColumns } from "./workspaces-list-columns";
+import { WorkspaceCreateDialog } from "./workspace-create-dialog";
 
 import "@/styles/admin-workspaces.css";
 
@@ -42,6 +43,7 @@ import "@/styles/admin-workspaces.css";
  */
 export function WorkspacesListPage() {
   const list = useAdminListQueryState(WORKSPACE_LIST_CONFIG);
+  const [creating, setCreating] = useState(false);
   // Guarda o que está na URL (filtros, ordenação, busca, página) para o "voltar" do detalhe trazer a lista como estava.
   const memorySearch = JSON.stringify(stateToSearch(list, WORKSPACE_LIST_CONFIG));
   useEffect(() => {
@@ -68,7 +70,16 @@ export function WorkspacesListPage() {
 
   return (
     <AdminPage>
-      <AdminPageHeader title="Pessoas" subtitle="Quem acessa a plataforma: usuários, criadores e os workspaces dos clientes." />
+      <AdminPageHeader
+        title="Pessoas"
+        subtitle="Quem acessa a plataforma: usuários, criadores e os workspaces dos clientes."
+        actions={
+          // O Admin inteiro já é só da equipe da plataforma (a rota barra quem não é administrador).
+          <button type="button" className="btn" onClick={() => setCreating(true)}>
+            Nova conta
+          </button>
+        }
+      />
 
       <PeopleIsland current="workspaces">
       <AdminFilterBar
@@ -99,6 +110,8 @@ export function WorkspacesListPage() {
         trailing={<AdminRefreshButton iconOnly onClick={() => void query.refetch()} loading={query.isFetching} />}
       />
       </PeopleIsland>
+
+      {creating ? <WorkspaceCreateDialog onClose={() => setCreating(false)} /> : null}
 
       <AdminTable
         caption="Workspaces"

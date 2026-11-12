@@ -207,6 +207,8 @@ const DEFAULT_MESSAGE: Record<string, string> = {
   USER_DELETE_BLOCKED: "A exclusão da conta está bloqueada: resolva os impedimentos listados.",
   LAST_PLATFORM_ADMIN: "Esta é a única conta administradora ativa. Promova outra conta a administrador antes.",
   IDEMPOTENCY_CONFLICT: "Esta solicitação já foi enviada com outros dados. Recarregue e tente de novo.",
+  EMAIL_ALREADY_REGISTERED:
+    "Este e-mail já está cadastrado. Para dar acesso a quem já tem conta, adicione como membro do workspace.",
   // Genéricos do cliente.
   UNAUTHENTICATED: "Sua sessão expirou. Entre novamente.",
   FORBIDDEN: "Você não tem permissão para acessar este recurso.",
