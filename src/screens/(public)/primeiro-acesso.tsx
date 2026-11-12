@@ -23,11 +23,21 @@ import { Button } from "@/components/ui/button";
 import { InputPassword } from "@/components/ui/input-password";
 import { toast } from "sonner";
 
+/**
+ * O roteador lê a busca como JSON: `code=123456` chega como NÚMERO (e `012345`, com zero à esquerda, como texto). Os dois
+ * viram o texto do código; o resto (listas, objetos…) é ignorado.
+ */
+function searchText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "";
+}
+
 export const Route = createFileRoute("/(public)/primeiro-acesso")({
   component: RouteComponent,
   validateSearch: (search: Record<string, unknown>) => ({
     email: typeof search.email === "string" ? search.email : "",
-    code: typeof search.code === "string" ? search.code : "",
+    code: searchText(search.code),
   }),
 });
 

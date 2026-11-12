@@ -79,6 +79,11 @@ describe("Primeiro acesso", () => {
     expect(opts.validateSearch({ email: 5, code: ["1"] })).toEqual({ email: "", code: "" });
   });
 
+  it("validateSearch aceita o código como número (o roteador lê code=123456 como JSON) e com zero à esquerda como texto", () => {
+    expect(opts.validateSearch({ email: "a@b.com", code: 123456 })).toEqual({ email: "a@b.com", code: "123456" });
+    expect(opts.validateSearch({ email: "a@b.com", code: "012345" })).toEqual({ email: "a@b.com", code: "012345" });
+  });
+
   it("define a senha, guarda o token como o login e leva para o início", async () => {
     ctx.firstAccess.mockResolvedValue({ token: "tok-123" });
     wrap();
