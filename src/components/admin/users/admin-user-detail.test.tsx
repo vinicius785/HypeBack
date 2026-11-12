@@ -1093,6 +1093,18 @@ describe("detalhe do usuário: voltar à lista do jeito que ficou", () => {
     expect(Object.fromEntries(url.searchParams)).toEqual({ kind: "creator", sort_by: "trust", order: "asc", page: "2" });
   });
 
+  it("conta de criador: a migalha é 'Criadores' e volta para a aba Criadores com a busca que ficou lá", async () => {
+    rememberListSearch("creators", { sort_by: "trust", order: "asc", page: 3 });
+    server.detail = makeUserDetail({ kind: "creator" });
+    await renderDetail();
+    const crumbs = screen.getByRole("navigation", { name: "Navegação" });
+    expect(within(crumbs).queryByRole("link", { name: "Usuários" })).not.toBeInTheDocument();
+    const url = new URL(within(crumbs).getByRole("link", { name: "Criadores" }).getAttribute("href") ?? "", "http://x");
+    expect(url.pathname).toBe("/admin/creators");
+    expect(Object.fromEntries(url.searchParams)).toEqual({ sort_by: "trust", order: "asc", page: "3" });
+    forgetListSearch("creators");
+  });
+
   it("sem nada guardado a migalha leva à lista no padrão", async () => {
     await renderDetail();
     const crumbs = screen.getByRole("navigation", { name: "Navegação" });

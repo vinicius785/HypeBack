@@ -32,7 +32,7 @@ import {
   usersApiParams,
 } from "./admin-users-config";
 import { LAST_SESSION_EXPLANATION, approxSessionText, userKindText, workspaceRoleText } from "./admin-users-format";
-import { CREATORS_LIST_MEMORY_KEY, USERS_LIST_MEMORY_KEY, userDetailLink, workspaceDetailLink } from "./admin-users-links";
+import { CREATORS_LIST_MEMORY_KEY, rememberPeopleTab, USERS_LIST_MEMORY_KEY, userDetailLink, workspaceDetailLink } from "./admin-users-links";
 import { UserPlatforms } from "./admin-user-platforms";
 import { PeopleIsland } from "@/components/admin/people/people-island";
 import { TrustBadge } from "./admin-user-trust";
@@ -112,6 +112,8 @@ export function AdminUsersList({ kind }: { kind?: "creator" } = {}) {
   // Na aba Criadores o tipo é fixo (não é filtro): a mesma lista, só com criadores, e a sua própria memória de volta.
   const fixedKind = kind;
   const memoryKey = fixedKind ? CREATORS_LIST_MEMORY_KEY : USERS_LIST_MEMORY_KEY;
+  // Ao abrir uma conta desta lista, a migalha do detalhe volta para esta mesma aba de Pessoas.
+  rememberPeopleTab(fixedKind ? "creators" : "users");
   // Guarda o que está na URL (filtros, ordenação, busca, página) para o "voltar" do detalhe trazer a lista como estava.
   const memorySearch = JSON.stringify(stateToSearch(state, ADMIN_USERS_LIST_CONFIG));
   useEffect(() => {

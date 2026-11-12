@@ -28,7 +28,7 @@ import { AdminUserTrustSection } from "./admin-user-trust";
 import { AdminUserLinksTab } from "./admin-user-links-tab";
 import { AdminUserSessionsTab } from "./admin-user-sessions-tab";
 import { userKindText } from "./admin-users-format";
-import { usersListLink } from "./admin-users-links";
+import { usersListLabel, usersListLink } from "./admin-users-links";
 
 import "@/styles/admin-users.css";
 
@@ -43,7 +43,7 @@ export function validateAdminUserSearch(raw: Record<string, unknown>): { tab?: A
 }
 
 /** Migalha de volta à lista: calculada a cada render, para levar os filtros e a ordenação que a pessoa deixou. */
-const listCrumb = (): AdminCrumb => ({ label: "Usuários", to: usersListLink() });
+const listCrumb = (kind?: string): AdminCrumb => ({ label: usersListLabel(kind), to: usersListLink(kind) });
 
 /** O id da URL precisa ser um inteiro positivo; qualquer outra coisa nem vai ao servidor. */
 const VALID_USER_ID = /^[1-9]\d{0,17}$/;
@@ -99,7 +99,7 @@ function AdminUserDetailView({ user }: { user: AdminUserDetail }) {
   return (
     <AdminPage>
       <AdminPageHeader
-        breadcrumb={[listCrumb(), { label: user.name }]}
+        breadcrumb={[listCrumb(user.kind), { label: user.name }]}
         leading={<AdminAvatar name={user.name} photo={user.photo} size={64} />}
         title={user.name}
         // O nome fica sozinho na linha do título; o e-mail e as etiquetas (estado, tipo, admin) vêm juntos logo abaixo.
