@@ -142,6 +142,12 @@ afterEach(() => {
 });
 
 describe("lista de usuários: conteúdo", () => {
+  it("'Nova conta' está no topo de Pessoas, também nas abas Usuários e Criadores, e abre o diálogo", async () => {
+    const { user } = await renderList();
+    await user.click(screen.getByRole("button", { name: "Nova conta" }));
+    expect(screen.getByRole("dialog", { name: "Nova conta" })).toBeInTheDocument();
+  });
+
   it("cabeçalho da página e a primeira consulta, sem filtro nenhum enviado (o padrão é o da API)", async () => {
     await renderList();
     expect(screen.getByText(/Quem acessa a plataforma: usuários, criadores e os workspaces/)).toBeInTheDocument();
