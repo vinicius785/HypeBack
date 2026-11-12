@@ -9,7 +9,10 @@
  * Espaçamento: 12px entre os blocos, 8px entre as pílulas, 16px de respiro lateral e 60px de altura mínima. Tudo sob `.pv`,
  * só tokens do kit; as animações param com `prefers-reduced-motion`. Telas estreitas: o `end` desce para a própria linha.
  */
-.pv .isl.isl-x { --isl-w: 100%; align-self: stretch; }
+.pv .isl.isl-x { --isl-w: 100%; align-self: stretch; animation: isl-x-in .5s var(--out) both; }
+/* a entrada só desliza (sem opacidade nem desfoque): a ilha preta nunca aparece translúcida, que sobre o fundo claro lê como rosada */
+@keyframes isl-x-in { from { transform: translateY(-8px) scale(.985); } }
+.pv .isl.isl-x.isl-still { animation: none; }
 
 .pv .isl-x .isl-x-h {
   display: grid;

@@ -150,7 +150,7 @@
   animation: none;
   transition: border-radius .6s var(--spring), box-shadow .4s, background-color .4s;
 }
-.pv .isl.isl-news[data-state="announce"] { border-radius: 36px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 60%, transparent), 0 8px 28px color-mix(in srgb, var(--brand) 35%, transparent); }
+.pv .isl.isl-news[data-state="announce"] { border-radius: 36px; }
 .pv .isl-news-in { flex: 1 1 280px; }
 /* o controle de período mora na ilha: o trilho claro fica no preto, e o apoio embaixo vira texto claro */
 .pv .isl-news-ctl { flex: 0 1 auto; min-width: 0; max-width: 100%; }
@@ -293,9 +293,6 @@
 
 /* ───────── ilha do Dashboard, refinada: o destaque é o ÚLTIMO ACONTECIMENTO; o período é um coadjuvante discreto ───────── */
 .pv .isl.isl-news { min-height: 88px; padding: 10px 22px 10px 12px; gap: 10px 28px; overflow: hidden; }
-/* luz da marca atrás do ícone: dá ao acontecimento um foco sem usar caixa */
-.pv .isl.isl-news::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(38% 160% at 6% 50%, color-mix(in srgb, var(--brand) 22%, transparent), transparent 70%); opacity: .75; transition: opacity .5s; }
-.pv .isl.isl-news[data-state="announce"]::before { opacity: 1; }
 .pv .isl-news-in { position: relative; flex: 1 1 360px; gap: 16px; padding: 4px 8px 4px 4px; min-height: 0; }
 .pv .isl-news-ico { width: 48px; height: 48px; background: color-mix(in srgb, var(--adm-surface) 10%, transparent); box-shadow: none; }
 .pv .isl-news-ico .ico { width: 20px; height: 20px; }
@@ -325,9 +322,8 @@
 /* a ilha nasce pílula e se abre com mola até a largura toda; o conteúdo entra em cascata (ícone, etiqueta, nome, hora) e o período aparece por último */
 .pv .isl.isl-news { animation: isl-news-open .85s var(--spring) both; }
 @keyframes isl-news-open {
-  from { width: min(100%, 300px); opacity: 0; transform: translateY(-10px) scale(.96); }
-  35% { opacity: 1; }
-  to { width: 100%; opacity: 1; transform: none; }
+  from { width: min(100%, 300px); transform: translateY(-10px) scale(.96); }
+  to { width: 100%; transform: none; }
 }
 .pv .isl-news-in { animation: none; }
 .pv .isl-news-in .isl-news-ico { animation: isl-news-ico-in .7s var(--spring) .25s both; }
@@ -338,10 +334,6 @@
 @keyframes isl-news-txt-in { from { opacity: 0; transform: translateY(8px); } }
 @keyframes isl-news-name-in { from { opacity: 0; transform: translateY(12px); filter: blur(6px); } }
 /* chegou novidade: a ilha dá um pulso de luz e o conteúdo novo entra de novo (o `key` remonta o bloco) */
-/* (a abertura não reinicia no anúncio: o pulso é um anel à parte) */
-.pv .isl.isl-news::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--brand) 80%, white); }
-.pv .isl.isl-news[data-state="announce"]::after { animation: isl-news-pulse 1.4s ease-out 1; }
-@keyframes isl-news-pulse { 0% { opacity: 1; transform: scale(.985); } 100% { opacity: 0; transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) {
-  .pv .isl.isl-news, .pv .isl.isl-news[data-state="announce"]::after, .pv .isl-news-in *, .pv .isl-news-ctl { animation: none; }
+  .pv .isl.isl-news, .pv .isl-news-in *, .pv .isl-news-ctl { animation: none; }
 }
