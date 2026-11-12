@@ -55,10 +55,10 @@ describe("Campanha de agência — campo Marca", () => {
     expect(update).toHaveBeenCalledWith("brandId", "b-2");
   });
 
-  it("lista carregada e vazia: com o cadastro de marca desligado, orienta a pedir o cadastro à equipe", () => {
+  it("lista carregada e vazia: com o cadastro de marca ativo, orienta a criar uma marca em Marcas", () => {
     q.state = { data: [], isSuccess: true, isError: false, isLoading: false };
     setup("");
-    expect(screen.getByText(/Nenhuma marca disponível/)).toBeInTheDocument();
-    expect(screen.queryByText(/Crie uma marca/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Crie uma marca em Marcas/)).toBeInTheDocument();
+    expect(screen.queryByText(/Nenhuma marca disponível/)).not.toBeInTheDocument();
   });
 });
