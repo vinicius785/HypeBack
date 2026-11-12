@@ -99,6 +99,7 @@ export function DashboardStatAreas({ overview, period }: DashboardStatAreasProps
   const usersActivity = useUsersActivity();
   const campaigns = useAdminCampaigns({ page: 1, per_page: 1 }, { refetchInterval: 60_000 });
   const workspaceFaces = useAdminWorkspaceList({ ...NEWEST });
+  const creatorsActive = useAdminUsers({ page: 1, per_page: 1, status: "active", kind: "creator" });
   const creatorFaces = useAdminUsers({ ...NEWEST, status: "active,suspended,pending", kind: "creator" });
 
   if (isError && !data) {
@@ -112,6 +113,7 @@ export function DashboardStatAreas({ overview, period }: DashboardStatAreasProps
   const areas = buildDashboardAreas(data, period, {
     activeToday: usersActivity.activeToday === null ? null : { value: usersActivity.activeToday, capped: usersActivity.capped },
     applications: campaignApplicationsOf(campaigns.data?.meta),
+    creatorsActive: creatorsActive.data?.meta.total ?? null,
   });
   const loading = isPending && !data;
   const periodLoading = isPlaceholderData;

@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({ users: vi.fn(), workspaces: vi.fn(), navigate: vi.fn() }));
 
@@ -28,6 +28,8 @@ const SESSIONS = () => [AGO(60_000), AGO(3 * 60_000), AGO(10 * 60_000), AGO(30 *
 const total = (value: number) => ({ data: { meta: { total: value } } });
 
 beforeEach(() => {
+  // "hoje" (fuso de São Paulo) não pode depender da hora em que o teste roda: fixa o relógio ao meio-dia
+  vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-31T15:00:00Z") });
   h.users.mockReset();
   h.workspaces.mockReset();
   h.navigate.mockReset();
@@ -46,6 +48,8 @@ beforeEach(() => {
   });
   h.workspaces.mockImplementation((params: { status?: string }) => (params.status === "suspended" ? total(2) : params.status === "archived" ? total(4) : total(40)));
 });
+
+afterEach(() => vi.useRealTimers());
 
 describe("PeopleIsland (Pessoas)", () => {
   it("Usuários, Criadores e Workspaces são links com a contagem; o da tela atual é a página", () => {

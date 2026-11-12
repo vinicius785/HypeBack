@@ -17,6 +17,7 @@ const RANGE = { from: "2026-10-02", to: "2026-10-31" };
 const EXTRAS: DashboardExtras = {
   activeToday: { value: 42, capped: false },
   applications: { today: 5, last_7_days: 21, month_to_date: 55 },
+  creatorsActive: 3292,
 };
 
 /** `null` = a consulta ainda não respondeu (sem overview). */
@@ -44,7 +45,9 @@ describe("buildDashboardAreas: os quatro cartões, cada um com dois números", (
     expect(stat("workspaces.total").figure).toBe(OVERVIEW.workspaces.total);
     expect(stat("workspaces.active").figure).toBe(OVERVIEW.workspaces.active);
     expect(stat("users.brand-total").figure).toBe(OVERVIEW.users.brand_total);
-    expect(stat("creators.total").figure).toBe(OVERVIEW.creators.total);
+    // Criadores: só os ATIVOS (mesmo número da aba Criadores em Pessoas), vindos da lista, não do overview
+    expect(stat("creators.total").figure).toMatchObject({ value: 3292, unit: "count" });
+    expect(stats(OVERVIEW, { ...EXTRAS, creatorsActive: null }).stat("creators.total").figure).toBeUndefined();
     expect(stat("creators.new").figure).toBe(OVERVIEW.creators.new_in_period);
     expect(stat("campaigns.published").figure).toBe(OVERVIEW.campaigns.published);
   });
@@ -91,7 +94,7 @@ describe("buildDashboardAreas: para onde cada número leva (nomes de filtro do c
     expect(stat("workspaces.total").to).toEqual({ to: "/admin/workspaces" });
     expect(stat("workspaces.active").to).toEqual({ to: "/admin/workspaces", search: { status: "active", activity: "active" } });
     expect(stat("users.brand-total").to).toEqual({ to: "/admin/users" });
-    expect(stat("creators.total").to).toEqual({ to: "/admin/creators" });
+    expect(stat("creators.total").to).toEqual({ to: "/admin/creators", search: { status: "active" } });
     expect(stat("creators.new").to).toEqual({ to: "/admin/creators" });
     expect(stat("campaigns.published").to).toEqual({ to: "/admin/campaigns", search: { status: "published" } });
     expect(stat("campaigns.applications").to).toEqual({ to: "/admin/campaigns" });
