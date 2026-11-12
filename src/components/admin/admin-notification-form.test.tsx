@@ -87,6 +87,28 @@ describe("AdminNotificationForm — envio", () => {
     toastSuccess.mockReset();
   });
 
+  it("limita o título a 31 caracteres (emoji conta 1, os ** não contam) e a mensagem a 106", async () => {
+    const user = userEvent.setup();
+    render(<AdminNotificationForm onClose={onClose} />);
+    const title = screen.getByPlaceholderText(/Nova campanha aberta/);
+    const body = screen.getByPlaceholderText(/Escreva o que os criadores vão ler/);
+
+    await user.click(title);
+    await user.paste("🎉 " + "a".repeat(60));
+    expect(title).toHaveValue("🎉 " + "a".repeat(29));
+    expect(screen.getByText("31/31")).toBeInTheDocument();
+
+    await user.clear(title);
+    await user.paste("**" + "b".repeat(31) + "**");
+    expect(title).toHaveValue("**" + "b".repeat(31) + "**");
+    expect(screen.getByText("31/31")).toBeInTheDocument();
+
+    await user.click(body);
+    await user.paste("c".repeat(300));
+    expect(body).toHaveValue("c".repeat(106));
+    expect(screen.getByText("106/106")).toBeInTheDocument();
+  });
+
   it("pede confirmação, com o alcance, antes de enviar na hora", async () => {
     const user = userEvent.setup();
     render(<AdminNotificationForm onClose={onClose} />);
