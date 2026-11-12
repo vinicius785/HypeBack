@@ -16,6 +16,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { adminPatch, adminPath, adminPost, isAdminApiError } from "@/lib/admin/admin-client";
 import type {
   AdminWorkspaceDangerBody,
+  AdminWorkspaceCreateBody,
+  AdminWorkspaceCreateResult,
   AdminWorkspaceDetail,
   AdminWorkspaceMember,
   AdminWorkspaceMemberAddBody,
@@ -123,4 +125,16 @@ export function useWorkspaceMemberRemoveMutation(workspaceId: string, userId: nu
       }),
     false,
   );
+}
+
+/**
+ * Nova conta (marca ou agência) com convite ao dono por e-mail. `useAdminMutation` cuida da `Idempotency-Key`: o mesmo
+ * envio (mesmo corpo) reusa a chave, inclusive depois de uma falha; depois de um sucesso a próxima conta usa chave nova.
+ * No sucesso consulta tudo de novo (a lista de workspaces e a de usuários ganham a conta e o dono).
+ */
+export function useWorkspaceCreateMutation() {
+  return useAdminMutation<AdminWorkspaceCreateResult, AdminWorkspaceCreateBody>({
+    mutationFn: (body, idempotencyKey) => adminPost<AdminWorkspaceCreateResult>("/admin/workspaces", body, { idempotencyKey }),
+    invalidate: [adminKeys.all],
+  });
 }

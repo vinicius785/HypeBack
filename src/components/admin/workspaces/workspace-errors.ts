@@ -21,6 +21,9 @@ const MESSAGES: Record<string, string> = {
     "Este é o último proprietário do workspace. Defina outro proprietário antes de remover ou rebaixar esta pessoa.",
   IDEMPOTENCY_CONFLICT: "Esta solicitação já foi enviada com outros dados. Feche o diálogo e tente de novo.",
   WORKSPACE_DELETED: "Este workspace foi excluído.",
+  EMAIL_ALREADY_REGISTERED:
+    "Este e-mail já está cadastrado. Para dar acesso a quem já tem conta, adicione como membro do workspace.",
+  RATE_LIMITED: "Muitas tentativas em pouco tempo (limite de 10 por minuto). Aguarde um instante e tente de novo.",
   FORBIDDEN: "Você não tem permissão para fazer isso.",
 };
 
