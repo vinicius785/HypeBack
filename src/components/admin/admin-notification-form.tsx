@@ -18,6 +18,7 @@ import {
   useEstimateAdminAudience,
 } from "@/hooks/use-admin-notifications";
 import { formatInt } from "@/lib/admin/format";
+import { clampPushBody, clampPushTitle, PUSH_BODY_MAX, PUSH_TITLE_MAX, pushBodyLength, pushTitleLength } from "@/lib/admin/push-text";
 import type {
   AdminAudienceEstimate,
   AdminAudienceFilter,
@@ -27,8 +28,6 @@ import type {
 import { createIdempotencyKeeper } from "@/shared/utils/idempotency-key";
 import { TimeClock } from "@/components/campaign-wizard/time-pick";
 
-const TITLE_MAX = 65;
-const BODY_MAX = 240;
 
 const STEPS: [string, string][] = [
   ["Mensagem", "O que os criadores vão ler"],
@@ -194,7 +193,13 @@ export function AdminNotificationForm({
   } (${channelsLabel})? Um envio imediato não pode ser desfeito.`;
   const urlBad = !validateUrl(ctaUrl.trim());
 
-  const step0Ok = !!title.trim() && !!body.trim() && !urlBad;
+  // Limites do push (título 31 sem os `**`, descrição 106). O campo corta o que passa; uma mensagem copiada de um envio
+  // antigo pode vir maior e então trava o avanço até ser encurtada.
+  const titleLen = pushTitleLength(title);
+  const bodyLen = pushBodyLength(body);
+  const titleOver = titleLen > PUSH_TITLE_MAX;
+  const bodyOver = bodyLen > PUSH_BODY_MAX;
+  const step0Ok = !!title.trim() && !!body.trim() && !urlBad && !titleOver && !bodyOver;
   const step1Err = audienceError(audience);
   const step1Ok = !step1Err && channels.length > 0 && !!estimate && reach > 0;
 
@@ -323,18 +328,20 @@ export function AdminNotificationForm({
             <input
               id={titleFieldId}
               className="cm-in"
-              maxLength={TITLE_MAX}
               placeholder="Ex.: Nova campanha aberta para você!"
               value={title}
               aria-invalid={tried && !title.trim() ? true : undefined}
               aria-describedby={tried && !title.trim() ? `${titleFieldId}-err` : undefined}
               data-adm-autofocus
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => setTitle(clampPushTitle(e.target.value))}
               autoComplete="off"
             />
-            <small className="lvf-ct">
-              {title.length}/{TITLE_MAX}
+            <small className="lvf-ct" data-over={titleOver ? "true" : undefined}>
+              {titleLen}/{PUSH_TITLE_MAX}
             </small>
+            {titleOver ? (
+              <small className="nfe">O título deve ter no máximo {PUSH_TITLE_MAX} caracteres. Encurte para continuar.</small>
+            ) : null}
             {tried && !title.trim() ? (
               <small className="nfe" id={`${titleFieldId}-err`}>
                 Escreva um título
@@ -349,16 +356,18 @@ export function AdminNotificationForm({
               id={bodyFieldId}
               className="cm-ta"
               rows={4}
-              maxLength={BODY_MAX}
               placeholder="Escreva o que os criadores vão ler."
               value={body}
               aria-invalid={tried && !body.trim() ? true : undefined}
               aria-describedby={tried && !body.trim() ? `${bodyFieldId}-err` : undefined}
-              onChange={(e) => setBody(e.target.value)}
+              onChange={(e) => setBody(clampPushBody(e.target.value))}
             />
-            <small className="lvf-ct">
-              {body.length}/{BODY_MAX}
+            <small className="lvf-ct" data-over={bodyOver ? "true" : undefined}>
+              {bodyLen}/{PUSH_BODY_MAX}
             </small>
+            {bodyOver ? (
+              <small className="nfe">A mensagem deve ter no máximo {PUSH_BODY_MAX} caracteres. Encurte para continuar.</small>
+            ) : null}
             {tried && !body.trim() ? (
               <small className="nfe" id={`${bodyFieldId}-err`}>
                 Escreva a mensagem
