@@ -9,11 +9,12 @@
  * "Não apurado" e NÃO leva a lugar nenhum: não há lista para ele.
  */
 import type { AdminLinkTarget } from "@/components/admin/platform";
-import { figureText, formatInt, isFigureAvailable } from "@/lib/admin/format";
-import { createdInPeriodFilter, periodQuery } from "@/lib/admin/period";
+import { formatInt, isFigureAvailable } from "@/lib/admin/format";
+import { createdInPeriodFilter } from "@/lib/admin/period";
 import type {
   AdminActivityEvent,
   AdminAlert,
+  AdminCampaignApplicationsMeta,
   AdminDateRange,
   AdminFigure,
   AdminOverview,
@@ -23,7 +24,7 @@ import type {
 // Painéis de números
 // ---------------------------------------------------------------------------
 
-export type DashboardAreaId = "workspaces" | "users" | "creators" | "campaigns" | "financial";
+export type DashboardAreaId = "workspaces" | "users" | "creators" | "campaigns";
 
 /** Texto de apoio ao lado do tipo do número. Com `label` e `definition`, ganha o "i" com a regra do número que cita. */
 export interface DashboardHint {
@@ -54,14 +55,13 @@ export interface DashboardArea {
   stats: DashboardStat[];
 }
 
-/** Os cinco painéis por id; a ordem na tela é decidida por quem desenha. */
+/** Os quatro cartões por id; a ordem na tela é decidida por quem desenha. */
 export type DashboardAreas = Record<DashboardAreaId, DashboardArea>;
 
 const WORKSPACES = "/admin/workspaces";
 const USERS = "/admin/users";
 const CREATORS = "/admin/creators";
 const CAMPAIGNS = "/admin/campaigns";
-const FINANCIAL = "/admin/financial";
 
 function link(to: string, search?: Record<string, string>): AdminLinkTarget {
   return search ? { to, search } : { to };
@@ -74,32 +74,41 @@ function newInPeriodHint(figure: AdminFigure | undefined, label: string): Dashbo
   return { text, label, definition: figure.definition, periodic: true };
 }
 
-/** O comprometido é PARTE da custódia, não se soma a ela: aparece como "dos quais ... comprometidos". */
-function committedHint(figure: AdminFigure | undefined): DashboardHint | undefined {
-  if (!isFigureAvailable(figure)) return undefined;
-  return { text: `dos quais ${figureText(figure)} comprometidos`, label: "Comprometido", definition: figure.definition };
+/** O que o Dashboard acrescenta ao `/admin/overview`: números de outras rotas (sessões de hoje e inscrições). */
+export interface DashboardExtras {
+  /** Usuários com sessão hoje; `null` enquanto a leitura não chegou. `capped`: bateu no limite de 100 ("ou mais"). */
+  activeToday?: { value: number; capped: boolean } | null;
+  /** `meta.applications` de `GET /admin/campaigns`: inscrições de criadores em campanhas. */
+  applications?: AdminCampaignApplicationsMeta | null;
+}
+
+function extraFigure(value: number, kind: AdminFigure["kind"], definition: string): AdminFigure {
+  return { value, unit: "count", kind, definition };
 }
 
 /**
- * Os cinco painéis do Dashboard. Sem `overview` (carregando) os painéis saem com os mesmos rótulos e sem número: a tela
- * mostra esqueleto no lugar, sem pular de tamanho quando os números chegam.
+ * Os quatro cartões do Dashboard (Clientes, Usuários, Criadores, Campanhas), cada um com DOIS números: o total e o que
+ * conta de verdade (ativos, ativos hoje, criados no período, publicadas e inscrições). O dinheiro saiu do Dashboard (fica
+ * em Financeiro) e o "Precisa de atenção" continua à parte. Sem `overview` (carregando) os cartões saem com os mesmos
+ * rótulos e sem número: a tela mostra esqueleto no lugar, sem pular de tamanho quando os números chegam.
  */
-export function buildDashboardAreas(overview: AdminOverview | undefined, range: AdminDateRange): DashboardAreas {
+export function buildDashboardAreas(overview: AdminOverview | undefined, range: AdminDateRange, extras: DashboardExtras = {}): DashboardAreas {
   const workspaces = overview?.workspaces;
   const users = overview?.users;
   const creators = overview?.creators;
   const campaigns = overview?.campaigns;
-  const financial = overview?.financial;
   const windowDays = overview?.activity_window_days;
-
   const created = createdInPeriodFilter(range);
-  const period = periodQuery(range);
+  void created;
+
+  const activeToday = extras.activeToday;
+  const applications = extras.applications;
 
   return {
     workspaces: {
       id: "workspaces",
       title: "Clientes",
-      columns: { lg: 6, md: 3, sm: 2 },
+      columns: { lg: 2, md: 2, sm: 2 },
       stats: [
         {
           id: "workspaces.total",
@@ -113,33 +122,14 @@ export function buildDashboardAreas(overview: AdminOverview | undefined, range: 
           label: "Ativos",
           figure: workspaces?.active,
           to: link(WORKSPACES, { status: "active", activity: "active" }),
+          hint: windowDays ? { text: `com atividade nos últimos ${windowDays} dias` } : undefined,
         },
-        {
-          id: "workspaces.inactive",
-          label: "Inativos",
-          figure: workspaces?.inactive,
-          to: link(WORKSPACES, { status: "active", activity: "inactive" }),
-        },
-        {
-          id: "workspaces.suspended",
-          label: "Suspensos",
-          figure: workspaces?.suspended,
-          to: link(WORKSPACES, { status: "suspended" }),
-        },
-        {
-          id: "workspaces.archived",
-          label: "Arquivados",
-          figure: workspaces?.archived,
-          to: link(WORKSPACES, { status: "archived" }),
-        },
-        // Não existe teste/plano no banco: aparece como "Não apurado", sem link e sem zero.
-        { id: "workspaces.trial", label: "Em teste", figure: workspaces?.trial },
       ],
     },
     users: {
       id: "users",
       title: "Usuários",
-      columns: { lg: 3, md: 3, sm: 2 },
+      columns: { lg: 2, md: 2, sm: 2 },
       stats: [
         {
           id: "users.brand-total",
@@ -149,110 +139,56 @@ export function buildDashboardAreas(overview: AdminOverview | undefined, range: 
           hint: newInPeriodHint(users?.brand_new_in_period, "Novos usuários no período"),
         },
         {
-          id: "users.suspended",
-          label: "Suspensos",
-          figure: users?.suspended,
-          to: link(USERS, { status: "suspended" }),
-        },
-        {
-          // Aproximação (a sessão some quando a pessoa sai) e sem filtro equivalente na lista: não leva a lugar nenhum.
-          id: "users.recent-session",
-          label: "Sessão recente",
-          figure: users?.recent_session,
-          hint: windowDays ? { text: `últimos ${windowDays} dias` } : undefined,
+          // Sessão aberta hoje (dia de São Paulo): a API não conta por sessão, então vem da leitura das 100 contas mais recentes.
+          id: "users.active-today",
+          label: "Ativos hoje",
+          figure: activeToday
+            ? extraFigure(activeToday.value, "proxy", "Usuários de marca com sessão aberta hoje (dia de São Paulo). Lido das 100 contas com sessão mais recente: acima de 100, o número é um mínimo.")
+            : undefined,
+          hint: activeToday?.capped ? { text: "100 ou mais" } : { text: "com sessão hoje" },
         },
       ],
     },
     creators: {
       id: "creators",
       title: "Criadores",
-      columns: { lg: 1, md: 1, sm: 1 },
+      columns: { lg: 2, md: 2, sm: 2 },
       stats: [
         {
           id: "creators.total",
           label: "Criadores",
           figure: creators?.total,
           to: link(CREATORS),
-          hint: newInPeriodHint(creators?.new_in_period, "Novos criadores no período"),
+        },
+        {
+          id: "creators.new",
+          label: "Criados no período",
+          figure: creators?.new_in_period,
+          to: link(CREATORS),
+          hint: { text: "contas novas de criador" },
+          periodic: true,
         },
       ],
     },
     campaigns: {
       id: "campaigns",
       title: "Campanhas",
-      columns: { lg: 5, md: 3, sm: 2 },
+      columns: { lg: 2, md: 2, sm: 2 },
       stats: [
-        { id: "campaigns.total", label: "Campanhas", figure: campaigns?.total, to: link(CAMPAIGNS) },
         {
           id: "campaigns.published",
           label: "Publicadas",
           figure: campaigns?.published,
           to: link(CAMPAIGNS, { status: "published" }),
+          hint: campaigns?.total && isFigureAvailable(campaigns.total) ? { text: `de ${formatInt(campaigns.total.value)} campanhas` } : undefined,
         },
         {
-          id: "campaigns.finished",
-          label: "Finalizadas",
-          figure: campaigns?.finished,
-          to: link(CAMPAIGNS, { status: "finished" }),
+          id: "campaigns.applications",
+          label: "Inscrições hoje",
+          figure: applications ? extraFigure(applications.today, "realized", "Criadores que se inscreveram em campanhas hoje (dia de São Paulo). Convites da marca não contam.") : undefined,
+          to: link(CAMPAIGNS),
+          hint: applications ? { text: `${formatInt(applications.last_7_days)} em 7 dias · ${formatInt(applications.month_to_date)} no mês` } : undefined,
         },
-        {
-          id: "campaigns.draft",
-          label: "Rascunhos",
-          figure: campaigns?.draft,
-          to: link(CAMPAIGNS, { status: "draft" }),
-        },
-        {
-          id: "campaigns.created",
-          label: "Criadas no período",
-          figure: campaigns?.created_in_period,
-          to: link(CAMPAIGNS, created),
-          periodic: true,
-        },
-      ],
-    },
-    financial: {
-      id: "financial",
-      title: "Dinheiro",
-      columns: { lg: 3, md: 3, sm: 2 },
-      stats: [
-        {
-          id: "financial.funded",
-          label: "Aportes no período",
-          figure: financial?.funded_in_period,
-          to: link(FINANCIAL, { type: "charge", ...period }),
-          periodic: true,
-        },
-        {
-          id: "financial.custody",
-          label: "Saldo em custódia",
-          figure: financial?.custody,
-          to: link(FINANCIAL),
-          hint: committedHint(financial?.committed),
-        },
-        {
-          // Liberado é o valor que foi para o saldo do criador; "pago" é só o PIX concluído (o próximo cartão).
-          id: "financial.released",
-          label: "Liberado a criadores no período",
-          figure: financial?.released_in_period,
-          to: link(FINANCIAL, { type: "ledger_entry", ...period }),
-          hint: { text: "vai ao saldo do criador" },
-          periodic: true,
-        },
-        {
-          id: "financial.paid-pix",
-          label: "Pago via PIX no período",
-          figure: financial?.paid_pix_in_period,
-          to: link(FINANCIAL, { type: "transfer", ...period }),
-          periodic: true,
-        },
-        {
-          id: "financial.pending",
-          label: "Cobranças pendentes",
-          figure: financial?.pending_charges,
-          to: link(FINANCIAL, { type: "charge" }),
-        },
-        // Não há modelo de taxa/comissão no banco: "Não apurado", sem link e sem zero.
-        { id: "financial.revenue", label: "Receita da plataforma", figure: financial?.platform_revenue },
       ],
     },
   };

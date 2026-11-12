@@ -76,39 +76,29 @@ describe("PLATFORM_NAV (Admin da plataforma)", () => {
       [
         "Gestão da plataforma",
         [
-          ["Workspaces", "/admin/workspaces"],
-          ["Usuários", "/admin/users"],
-          ["Solicitações", "/admin/account-requests"],
-          ["Suporte", "/admin/support"],
-          ["Equipe", "/admin/team"],
-        ],
-      ],
-      [
-        "Operação",
-        [
+          ["Pessoas", "/admin/users"],
           ["Campanhas", "/admin/campaigns"],
-          ["Criadores", "/admin/creators"],
           ["Financeiro", "/admin/financial"],
           ["Comunidade", "/admin/groups"],
         ],
       ],
       [
-        "Monitoramento",
+        "Operação",
         [
-          ["Atividades", "/admin/activity"],
+          ["Atendimento", "/admin/support"],
           ["Notificações", "/admin/notifications"],
-          ["Saúde da plataforma", "/admin/health"],
+          ["Monitoramento", "/admin/activity"],
         ],
       ],
+      ["Administração", [["Equipe", "/admin/team"]]],
     ]);
   });
 
-  it("todos os ícones são diferentes: Comunidade não reusa o de Criadores (nem o de Usuários)", () => {
+  it("todos os ícones são diferentes: Comunidade não reusa o de Pessoas", () => {
     const icons = PLATFORM_NAV.flatMap((g) => g.items.map((i) => i.icon));
     expect(new Set(icons).size).toBe(icons.length);
     const iconOf = (label: string) => PLATFORM_NAV.flatMap((g) => g.items).find((i) => i.label === label)?.icon;
-    expect(iconOf("Comunidade")).not.toBe(iconOf("Criadores"));
-    expect(iconOf("Comunidade")).not.toBe(iconOf("Usuários"));
+    expect(iconOf("Comunidade")).not.toBe(iconOf("Pessoas"));
   });
 });
 
@@ -257,7 +247,7 @@ describe("Sidebar (escopo do workspace, como no app)", () => {
     render(<Sidebar />);
     expect(screen.queryByRole("group", { name: "Administração" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Backoffice" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Workspaces" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pessoas" })).not.toBeInTheDocument();
   });
 
   it("sem a permissão, o item some e o grupo que ficou vazio não deixa título solto", () => {
@@ -304,8 +294,8 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
     render(<Sidebar scope="platform" />);
     const items = within(screen.getByRole("navigation", { name: "Navegação do Admin" }));
     for (const label of ["Início", "Lives", "Backoffice"]) expect(items.queryByRole("button", { name: label })).not.toBeInTheDocument();
-    expect(items.getAllByRole("button")).toHaveLength(13);
-    for (const group of ["Visão geral", "Gestão da plataforma", "Operação", "Monitoramento"]) {
+    expect(items.getAllByRole("button")).toHaveLength(9);
+    for (const group of ["Visão geral", "Gestão da plataforma", "Operação", "Administração"]) {
       expect(items.getByRole("group", { name: group })).toBeInTheDocument();
     }
   });
@@ -331,12 +321,12 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
 
   it("cada botão tem nome acessível e a dica do trilho (no trilho o texto some)", async () => {
     render(<Sidebar scope="platform" />);
-    const button = within(nav()).getByRole("button", { name: "Workspaces" });
-    expect(button).toHaveAttribute("data-tip", "Workspaces");
-    expect(button).toHaveAccessibleName("Workspaces");
+    const button = within(nav()).getByRole("button", { name: "Pessoas" });
+    expect(button).toHaveAttribute("data-tip", "Pessoas");
+    expect(button).toHaveAccessibleName("Pessoas");
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     await userEvent.hover(button);
-    expect(screen.getByRole("tooltip")).toHaveTextContent("Workspaces");
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Pessoas");
     await userEvent.unhover(button);
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
@@ -353,19 +343,19 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
 
   it("clicar leva para a rota da página", async () => {
     render(<Sidebar scope="platform" />);
-    await userEvent.click(within(nav()).getByRole("button", { name: "Usuários" }));
+    await userEvent.click(within(nav()).getByRole("button", { name: "Pessoas" }));
     expect(ctx.navigate).toHaveBeenCalledWith({ to: "/admin/users" });
     await userEvent.click(within(nav()).getByRole("button", { name: "Comunidade" }));
     expect(ctx.navigate).toHaveBeenLastCalledWith({ to: "/admin/groups" });
   });
 
-  it("rota filha acende o item do pai (e só ele)", () => {
+  it("rota filha de uma tela do grupo acende a entrada do grupo (e só ela)", () => {
     ctx.pathname = "/admin/workspaces/3f2a9c1e-0000-4000-8000-000000000000";
     render(<Sidebar scope="platform" />);
     const items = within(nav());
     const active = items.getAllByRole("button").filter((b) => b.getAttribute("aria-current") === "page");
-    expect(active.map((b) => b.getAttribute("aria-label"))).toEqual(["Workspaces"]);
-    expect(items.getByRole("button", { name: "Workspaces" })).toHaveClass("on");
+    expect(active.map((b) => b.getAttribute("aria-label"))).toEqual(["Pessoas"]);
+    expect(items.getByRole("button", { name: "Pessoas" })).toHaveClass("on");
   });
 
   it("a rota da Comunidade (/admin/groups/new) acende Comunidade", () => {
@@ -462,15 +452,15 @@ describe("Sidebar (volta ao app: o menu do Admin sai e o do app entra)", () => {
   it("a saída conta para trás a partir do 'Voltar ao app': `--n` é a vez dele na cascata", () => {
     render(<Sidebar scope="platform" />);
     // 12 itens + 4 títulos de grupo + o "Voltar ao app"
-    expect(aside().style.getPropertyValue("--n")).toBe("17");
-    expect(back().style.getPropertyValue("--i")).toBe("17");
+    expect(aside().style.getPropertyValue("--n")).toBe("13");
+    expect(back().style.getPropertyValue("--i")).toBe("13");
   });
 
   it("enquanto o menu sai, outros cliques não navegam e um segundo clique não agenda outra volta", () => {
     vi.useFakeTimers();
     render(<Sidebar scope="platform" />);
     fireEvent.click(back());
-    fireEvent.click(within(nav()).getByRole("button", { name: "Usuários" }));
+    fireEvent.click(within(nav()).getByRole("button", { name: "Pessoas" }));
     fireEvent.click(back());
     advance(LEAVE_MS * 3);
     expect(ctx.navigate).toHaveBeenCalledTimes(1);
@@ -485,7 +475,7 @@ describe("Sidebar (volta ao app: o menu do Admin sai e o do app entra)", () => {
     expect(aside()).toHaveClass("adm-leaving");
     advance(2000);
     expect(aside()).not.toHaveClass("adm-leaving");
-    fireEvent.click(within(nav()).getByRole("button", { name: "Usuários" }));
+    fireEvent.click(within(nav()).getByRole("button", { name: "Pessoas" }));
     expect(ctx.navigate).toHaveBeenLastCalledWith({ to: "/admin/users" });
   });
 

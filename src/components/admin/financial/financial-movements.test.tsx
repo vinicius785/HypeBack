@@ -210,9 +210,10 @@ describe("Movimentações: filtros enviados à API", () => {
 
   it("o tipo vai para a API e para a URL (Todas é a ausência do filtro)", async () => {
     const { router } = await openMovements();
-    const types = screen.getByRole("group", { name: "Tipo de movimentação" });
-    expect(within(types).getAllByRole("button").map((b) => b.textContent)).toEqual(["Todas", "Cobranças", "Lançamentos", "Saques", "Transferências"]);
-    expect(within(types).getByRole("button", { name: "Todas" })).toHaveAttribute("aria-pressed", "true");
+    // o tipo é um filtro do painel (ícone de filtro), junto do período e do workspace
+    const types = screen.getByRole("combobox", { name: "Tipo de movimentação" });
+    expect(within(types).getAllByRole("option").map((o) => o.textContent)).toEqual(["Todas", "Cobranças", "Lançamentos", "Saques", "Transferências"]);
+    expect(types).toHaveValue("");
 
     for (const [label, type] of [
       ["Cobranças", "charge"],
@@ -220,13 +221,13 @@ describe("Movimentações: filtros enviados à API", () => {
       ["Saques", "withdrawal"],
       ["Transferências", "transfer"],
     ] as const) {
-      await userEvent.click(within(types).getByRole("button", { name: label }));
+      await userEvent.selectOptions(types, label);
       await waitFor(() => expect(lastFeedQuery().type).toBe(type));
       expect(currentSearch(router)).toMatchObject({ tab: "movements", type });
-      expect(within(types).getByRole("button", { name: label })).toHaveAttribute("aria-pressed", "true");
+      expect(types).toHaveValue(type);
     }
 
-    await userEvent.click(within(types).getByRole("button", { name: "Todas" }));
+    await userEvent.selectOptions(types, "Todas");
     await waitFor(() => expect(lastFeedQuery().type).toBeUndefined());
     expect(currentSearch(router)).toEqual({ tab: "movements" });
   });
@@ -269,21 +270,21 @@ describe("Movimentações: filtros enviados à API", () => {
     expect(document.querySelectorAll(".adm-fin-help")).toHaveLength(0);
   });
 
-  it("tipo, workspace e período juntos; 'Limpar filtros' (o do kit) zera tipo e workspace de uma vez e mantém o período", async () => {
+  it("tipo, workspace e período juntos; 'Limpar filtros' (o do kit) zera tudo de uma vez, inclusive o período (volta aos 30 dias)", async () => {
     const { router } = await openMovements("/admin/financial?tab=movements&type=transfer&workspace_id=" + CAFE_ID + "&from=2026-09-01&to=2026-09-30");
     expect(lastFeedQuery()).toMatchObject({ type: "transfer", workspace_id: CAFE_ID, from: "2026-09-01", to: "2026-09-30" });
-    expect(screen.getByRole("button", { name: "Transferências" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("combobox", { name: "Tipo de movimentação" })).toHaveValue("transfer");
     await waitFor(() => expect(workspacePill()).toHaveTextContent("Café Serra Verde"));
-    // o filtro entra em "Filtros (n)" e vira chip
+    // cada filtro entra em "Filtros (n)" e vira chip: tipo, workspace e período fora do padrão
     expect(screen.getByRole("button", { name: "Remover filtro Workspace: Café Serra Verde" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Remover filtro Período:/ })).toBeInTheDocument();
 
     await userEvent.click(screen.getAllByRole("button", { name: "Limpar filtros" })[0]);
     await waitFor(() => expect(lastFeedQuery().type).toBeUndefined());
     expect(lastFeedQuery().workspace_id).toBeUndefined();
-    expect(lastFeedQuery()).toMatchObject({ from: "2026-09-01", to: "2026-09-30" });
-    expect(currentSearch(router)).toEqual({ tab: "movements", from: "2026-09-01", to: "2026-09-30" });
+    expect(currentSearch(router)).toEqual({ tab: "movements" });
     expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Todas" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("combobox", { name: "Tipo de movimentação" })).toHaveValue("");
   });
 
   it("a barra é uma só (segmento de tipo + workspace + atualizar) e não há 'Limpar filtros' próprio fora dela", async () => {
@@ -378,7 +379,7 @@ describe("Movimentações: carregar mais (cursor)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
     await waitFor(() => expect(feedCalls().at(-1)?.[1]).toMatchObject({ cursor: "cursor-1" }));
 
-    await userEvent.click(screen.getByRole("button", { name: "Saques" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Tipo de movimentação" }), "Saques");
     await waitFor(() => expect(lastFeedQuery().type).toBe("withdrawal"));
     expect(lastFeedQuery().cursor).toBeUndefined();
   });
@@ -406,7 +407,7 @@ describe("Movimentações: estados", () => {
     let resolve!: (value: ReturnType<typeof feedPage<AdminFinancialMovement>>) => void;
     client.adminFeed.mockReturnValue(new Promise((r) => (resolve = r)));
     const { container } = renderFinancial("/admin/financial?tab=movements");
-    await screen.findByRole("tab", { name: "Movimentações", selected: true });
+    await screen.findByRole("button", { name: "Movimentações", pressed: true });
     await waitFor(() => expect(container.querySelectorAll(".adm-row .adm-sk").length).toBeGreaterThan(0));
     expect(screen.getByRole("table", { name: "Movimentações financeiras" })).toHaveAttribute("aria-busy", "true");
 
@@ -432,7 +433,7 @@ describe("Movimentações: estados", () => {
     expect(clearButtons).toHaveLength(2);
     await userEvent.click(clearButtons[0]);
     await waitFor(() => expect(currentSearch(router)).toEqual({ tab: "movements" }));
-    expect(screen.getByRole("button", { name: "Todas" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("combobox", { name: "Tipo de movimentação" })).toHaveValue("");
   });
 
   it("recurso ainda não disponível no servidor", async () => {

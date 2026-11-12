@@ -87,7 +87,7 @@ describe("Financeiro: visão geral", () => {
   it("agrupa em Entradas, Custódia, Criadores, Pago, Plataforma e Conferências", async () => {
     renderFinancial();
     await screen.findByText("R$ 1.234.567,89");
-    const names = screen.getAllByRole("region").map((region) => region.getAttribute("aria-labelledby"));
+    const names = screen.getAllByRole("region").map((region) => region.getAttribute("aria-labelledby")).filter(Boolean);
     const headings = names.map((id) => document.getElementById(id as string)?.textContent);
     expect(headings).toEqual(["Entradas", "Custódia", "Criadores", "Pago", "Plataforma", "Conferências"]);
   });
@@ -375,12 +375,12 @@ describe("Financeiro: período (dias de São Paulo)", () => {
     expect(currentSearch(router)).toEqual({ from: "2026-10-10", to: "2026-10-20" });
   });
 
-  it("o período é um só, no cabeçalho (nenhum seletor dentro das abas)", async () => {
+  it("o período é um só, na ilha (nenhum seletor dentro das visões)", async () => {
     renderFinancial();
     await screen.findByText("R$ 1.234.567,89");
     expect(screen.getAllByRole("group", { name: "Período" })).toHaveLength(1);
-    const header = screen.getByRole("heading", { name: "Financeiro", level: 1 }).closest("header")!;
-    expect(within(header).getByRole("group", { name: "Período" })).toBeInTheDocument();
+    const island = screen.getByRole("region", { name: "Financeiro" });
+    expect(within(island).getByRole("group", { name: "Período" })).toBeInTheDocument();
   });
 });
 
@@ -388,31 +388,31 @@ describe("Financeiro: abas e atualizar", () => {
   it("a aba fica na URL e leva só o período; a visão geral é o padrão", async () => {
     const { router } = renderFinancial("/admin/financial?from=2026-10-10&to=2026-10-20");
     await screen.findByText("R$ 1.234.567,89");
-    expect(screen.getByRole("tab", { name: "Visão geral" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("button", { name: "Visão geral" })).toHaveAttribute("aria-pressed", "true");
 
-    await userEvent.click(screen.getByRole("tab", { name: "Movimentações" }));
+    await userEvent.click(screen.getByRole("button", { name: "Movimentações" }));
     await waitFor(() => expect(currentSearch(router)).toEqual({ tab: "movements", from: "2026-10-10", to: "2026-10-20" }));
-    expect(screen.getByRole("tab", { name: "Movimentações" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("button", { name: "Movimentações" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByText("Entradas")).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("tab", { name: "Por workspace" }));
+    await userEvent.click(screen.getByRole("button", { name: "Por workspace" }));
     await waitFor(() => expect(currentSearch(router)).toEqual({ tab: "by-workspace", from: "2026-10-10", to: "2026-10-20" }));
 
-    await userEvent.click(screen.getByRole("tab", { name: "Visão geral" }));
+    await userEvent.click(screen.getByRole("button", { name: "Visão geral" }));
     await waitFor(() => expect(currentSearch(router)).toEqual({ from: "2026-10-10", to: "2026-10-20" }));
     await screen.findByText("Entradas");
   });
 
   it("trocar de aba descarta os filtros da outra (só o período atravessa)", async () => {
     const { router } = renderFinancial("/admin/financial?tab=movements&type=withdrawal&from=2026-10-10&to=2026-10-20");
-    await screen.findByRole("tab", { name: "Movimentações", selected: true });
-    await userEvent.click(screen.getByRole("tab", { name: "Por workspace" }));
+    await screen.findByRole("button", { name: "Movimentações", pressed: true });
+    await userEvent.click(screen.getByRole("button", { name: "Por workspace" }));
     await waitFor(() => expect(currentSearch(router)).toEqual({ tab: "by-workspace", from: "2026-10-10", to: "2026-10-20" }));
   });
 
   it("um link de filtro sem aba (o 'Ver todos' dos alertas) abre as Movimentações já filtradas", async () => {
     renderFinancial("/admin/financial?type=withdrawal");
-    await screen.findByRole("tab", { name: "Movimentações", selected: true });
+    await screen.findByRole("button", { name: "Movimentações", pressed: true });
     await waitFor(() => expect(client.adminFeed).toHaveBeenCalled());
     expect(client.adminFeed.mock.calls[0][1]).toMatchObject({ type: "withdrawal" });
   });
@@ -424,7 +424,7 @@ describe("Financeiro: abas e atualizar", () => {
 
     const refresh = screen.getByRole("button", { name: "Atualizar" });
     expect(refresh).toHaveAttribute("data-icon-only", "true");
-    expect(refresh.closest("header")).not.toBeNull();
+    expect(refresh.closest(".isl")).not.toBeNull();
     await userEvent.click(refresh);
     await waitFor(() => expect(summaryCalls()).toHaveLength(2));
   });

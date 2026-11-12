@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { formatBRLFromCents } from "@/lib/admin/format";
 import type { AdminActivityEvent, AdminAlert, AdminOverview } from "@/shared/admin-platform.types";
 
 import {
@@ -9,51 +8,63 @@ import {
   buildDashboardAreas,
   dashboardPeriodRule,
   pickAttentionAlerts,
+  type DashboardExtras,
   type DashboardStat,
 } from "./dashboard-model";
 import { ALERTS, EVENTS, figure, OVERVIEW } from "./dashboard-fixtures";
 
 const RANGE = { from: "2026-10-02", to: "2026-10-31" };
+const EXTRAS: DashboardExtras = {
+  activeToday: { value: 42, capped: false },
+  applications: { today: 5, last_7_days: 21, month_to_date: 55 },
+};
 
 /** `null` = a consulta ainda não respondeu (sem overview). */
-function stats(overview: AdminOverview | null = OVERVIEW) {
-  const areas = buildDashboardAreas(overview ?? undefined, RANGE);
+function stats(overview: AdminOverview | null = OVERVIEW, extras: DashboardExtras = EXTRAS) {
+  const areas = buildDashboardAreas(overview ?? undefined, RANGE, extras);
   const byId = new Map<string, DashboardStat>();
   for (const area of Object.values(areas)) for (const stat of area.stats) byId.set(stat.id, stat);
   return { areas, stat: (id: string) => byId.get(id)!, all: [...byId.values()] };
 }
 
-describe("buildDashboardAreas: o que cada painel mostra", () => {
-  it("são cinco painéis, cada um com os seus números na ordem da tela", () => {
+describe("buildDashboardAreas: os quatro cartões, cada um com dois números", () => {
+  it("Clientes, Usuários, Criadores e Campanhas, nesta ordem; o dinheiro não está no Dashboard", () => {
     const { areas } = stats();
-    expect(Object.values(areas).map((area) => area.title)).toEqual(["Clientes", "Usuários", "Criadores", "Campanhas", "Dinheiro"]);
-    expect(areas.workspaces.stats.map((s) => s.label)).toEqual(["Clientes", "Ativos", "Inativos", "Suspensos", "Arquivados", "Em teste"]);
-    expect(areas.users.stats.map((s) => s.label)).toEqual(["Usuários", "Suspensos", "Sessão recente"]);
-    expect(areas.creators.stats.map((s) => s.label)).toEqual(["Criadores"]);
-    expect(areas.campaigns.stats.map((s) => s.label)).toEqual(["Campanhas", "Publicadas", "Finalizadas", "Rascunhos", "Criadas no período"]);
-    expect(areas.financial.stats.map((s) => s.label)).toEqual([
-      "Aportes no período",
-      "Saldo em custódia",
-      "Liberado a criadores no período",
-      "Pago via PIX no período",
-      "Cobranças pendentes",
-      "Receita da plataforma",
-    ]);
+    expect(Object.values(areas).map((area) => area.title)).toEqual(["Clientes", "Usuários", "Criadores", "Campanhas"]);
+    expect(areas).not.toHaveProperty("financial");
+    for (const area of Object.values(areas)) expect(area.stats).toHaveLength(2);
+    expect(areas.workspaces.stats.map((s) => s.label)).toEqual(["Clientes", "Ativos"]);
+    expect(areas.users.stats.map((s) => s.label)).toEqual(["Usuários", "Ativos hoje"]);
+    expect(areas.creators.stats.map((s) => s.label)).toEqual(["Criadores", "Criados no período"]);
+    expect(areas.campaigns.stats.map((s) => s.label)).toEqual(["Publicadas", "Inscrições hoje"]);
   });
 
-  it("cada número é o AdminFigure do contrato (com o seu tipo e a sua definição), sem conta nenhuma no meio", () => {
+  it("os números do overview são o AdminFigure do contrato (tipo e definição), sem conta no meio", () => {
     const { stat } = stats();
     expect(stat("workspaces.total").figure).toBe(OVERVIEW.workspaces.total);
     expect(stat("workspaces.active").figure).toBe(OVERVIEW.workspaces.active);
-    expect(stat("workspaces.inactive").figure).toBe(OVERVIEW.workspaces.inactive);
-    expect(stat("users.recent-session").figure).toBe(OVERVIEW.users.recent_session);
+    expect(stat("users.brand-total").figure).toBe(OVERVIEW.users.brand_total);
     expect(stat("creators.total").figure).toBe(OVERVIEW.creators.total);
-    expect(stat("campaigns.created").figure).toBe(OVERVIEW.campaigns.created_in_period);
-    expect(stat("financial.custody").figure).toBe(OVERVIEW.financial.custody);
-    expect(stat("financial.paid-pix").figure).toBe(OVERVIEW.financial.paid_pix_in_period);
+    expect(stat("creators.new").figure).toBe(OVERVIEW.creators.new_in_period);
+    expect(stat("campaigns.published").figure).toBe(OVERVIEW.campaigns.published);
   });
 
-  it("os painéis têm só o título: a regra do período saiu da descrição e mora em dashboardPeriodRule", () => {
+  it("'Ativos hoje' e 'Inscrições hoje' vêm de outras rotas: o valor entra como número, com a regra no 'i'", () => {
+    const { stat } = stats();
+    expect(stat("users.active-today").figure).toMatchObject({ value: 42, unit: "count", kind: "proxy" });
+    expect(stat("users.active-today").figure?.definition).toMatch(/sessão aberta hoje/);
+    expect(stat("campaigns.applications").figure).toMatchObject({ value: 5, unit: "count", kind: "realized" });
+    expect(stat("campaigns.applications").figure?.definition).toMatch(/Convites da marca não contam/);
+  });
+
+  it("antes da resposta dessas rotas, os dois números ficam em branco (esqueleto), sem inventar zero", () => {
+    const { stat } = stats(OVERVIEW, {});
+    expect(stat("users.active-today").figure).toBeUndefined();
+    expect(stat("campaigns.applications").figure).toBeUndefined();
+    expect(stat("campaigns.applications").hint).toBeUndefined();
+  });
+
+  it("os cartões têm só o título: a regra do período mora em dashboardPeriodRule", () => {
     const { areas } = stats();
     for (const area of Object.values(areas)) expect(area).not.toHaveProperty("description");
   });
@@ -63,10 +74,7 @@ describe("dashboardPeriodRule: a regra do período numa frase por assunto", () =
   it("diz o que segue o período e o que é a posição de agora", () => {
     const [follows, now] = dashboardPeriodRule(30);
     expect(follows).toMatch(/Seguem o período/);
-    expect(follows).toMatch(/aportes/);
-    expect(follows).toMatch(/PIX/);
     expect(now).toMatch(/agora/);
-    expect(now).toMatch(/custódia/);
   });
 
   it("a janela de atividade acompanha o servidor; sem ela (carregando) não inventa número", () => {
@@ -79,57 +87,23 @@ describe("dashboardPeriodRule: a regra do período numa frase por assunto", () =
 describe("buildDashboardAreas: para onde cada número leva (nomes de filtro do contrato)", () => {
   const { stat } = stats();
 
-  it("clientes", () => {
+  it("cada número leva à sua lista, já filtrada quando o filtro existe", () => {
     expect(stat("workspaces.total").to).toEqual({ to: "/admin/workspaces" });
     expect(stat("workspaces.active").to).toEqual({ to: "/admin/workspaces", search: { status: "active", activity: "active" } });
-    expect(stat("workspaces.inactive").to).toEqual({ to: "/admin/workspaces", search: { status: "active", activity: "inactive" } });
-    expect(stat("workspaces.suspended").to).toEqual({ to: "/admin/workspaces", search: { status: "suspended" } });
-    expect(stat("workspaces.archived").to).toEqual({ to: "/admin/workspaces", search: { status: "archived" } });
-  });
-
-  it("usuários e criadores", () => {
     expect(stat("users.brand-total").to).toEqual({ to: "/admin/users" });
-    expect(stat("users.suspended").to).toEqual({ to: "/admin/users", search: { status: "suspended" } });
     expect(stat("creators.total").to).toEqual({ to: "/admin/creators" });
-  });
-
-  it("campanhas: por situação, e 'criadas no período' leva o período como created_from/created_to", () => {
-    expect(stat("campaigns.total").to).toEqual({ to: "/admin/campaigns" });
+    expect(stat("creators.new").to).toEqual({ to: "/admin/creators" });
     expect(stat("campaigns.published").to).toEqual({ to: "/admin/campaigns", search: { status: "published" } });
-    expect(stat("campaigns.finished").to).toEqual({ to: "/admin/campaigns", search: { status: "finished" } });
-    expect(stat("campaigns.draft").to).toEqual({ to: "/admin/campaigns", search: { status: "draft" } });
-    expect(stat("campaigns.created").to).toEqual({
-      to: "/admin/campaigns",
-      search: { created_from: "2026-10-02", created_to: "2026-10-31" },
-    });
+    expect(stat("campaigns.applications").to).toEqual({ to: "/admin/campaigns" });
   });
 
-  it("dinheiro: tudo vai ao Financeiro; o que segue o período leva from/to, a posição de agora não leva", () => {
-    expect(stat("financial.funded").to).toEqual({
-      to: "/admin/financial",
-      search: { type: "charge", from: "2026-10-02", to: "2026-10-31" },
-    });
-    expect(stat("financial.custody").to).toEqual({ to: "/admin/financial" });
-    expect(stat("financial.released").to).toEqual({
-      to: "/admin/financial",
-      search: { type: "ledger_entry", from: "2026-10-02", to: "2026-10-31" },
-    });
-    expect(stat("financial.paid-pix").to).toEqual({
-      to: "/admin/financial",
-      search: { type: "transfer", from: "2026-10-02", to: "2026-10-31" },
-    });
-    expect(stat("financial.pending").to).toEqual({ to: "/admin/financial", search: { type: "charge" } });
-  });
-
-  it("número 'não apurado' e a sessão recente (aproximação sem filtro equivalente) não levam a lugar nenhum", () => {
-    expect(stat("workspaces.trial").to).toBeUndefined();
-    expect(stat("financial.revenue").to).toBeUndefined();
-    expect(stat("users.recent-session").to).toBeUndefined();
+  it("'Ativos hoje' não leva a lugar nenhum (não existe lista equivalente: a sessão é uma aproximação)", () => {
+    expect(stat("users.active-today").to).toBeUndefined();
   });
 
   it("todo destino é uma rota do Admin", () => {
     const { all } = stats();
-    for (const s of all) if (s.to) expect(s.to.to).toMatch(/^\/admin\/(workspaces|users|creators|campaigns|financial)$/);
+    for (const s of all) if (s.to) expect(s.to.to).toMatch(/^\/admin\/(workspaces|users|creators|campaigns)$/);
   });
 
   it("carregando (sem overview) os destinos já existem: o cartão em esqueleto continua clicável", () => {
@@ -149,7 +123,6 @@ describe("buildDashboardAreas: textos de apoio", () => {
       periodic: true,
     });
     expect(stat("users.brand-total").hint?.text).toBe("+7 no período");
-    expect(stat("creators.total").hint?.text).toBe("+9 no período");
   });
 
   it("nenhum novo no período diz isso em vez de '+0'", () => {
@@ -163,44 +136,31 @@ describe("buildDashboardAreas: textos de apoio", () => {
     expect(stats(null).stat("workspaces.total").hint).toBeUndefined();
   });
 
-  it("o comprometido aparece como PARTE da custódia (não soma), com a sua definição", () => {
-    const hint = stats().stat("financial.custody").hint;
-    expect(hint?.text).toBe(`dos quais ${formatBRLFromCents(2_875_000)} comprometidos`);
-    expect(hint?.text).toContain("28.750,00");
-    expect(hint?.label).toBe("Comprometido");
-    expect(hint?.definition).toBe("Definição de comprometido.");
-    expect(hint?.periodic).toBeUndefined();
+  it("ativos diz a janela do servidor; 'ativos hoje' diz '100 ou mais' quando a leitura bate no limite", () => {
+    expect(stats().stat("workspaces.active").hint).toEqual({ text: "com atividade nos últimos 30 dias" });
+    expect(stats(null).stat("workspaces.active").hint).toBeUndefined();
+    expect(stats().stat("users.active-today").hint).toEqual({ text: "com sessão hoje" });
+    expect(stats(OVERVIEW, { ...EXTRAS, activeToday: { value: 100, capped: true } }).stat("users.active-today").hint).toEqual({ text: "100 ou mais" });
   });
 
-  it("liberado a criadores diz que vai ao saldo do criador e nunca se chama 'pago'; só o PIX concluído é 'pago'", () => {
-    const { all, stat } = stats();
-    expect(stat("financial.released").hint?.text).toBe("vai ao saldo do criador");
-    const paidWording = all.filter((s) => /pag[oa]/i.test(`${s.label} ${s.hint?.text ?? ""}`));
-    expect(paidWording.map((s) => s.id)).toEqual(["financial.paid-pix"]);
-  });
-
-  it("a sessão recente diz a janela do servidor", () => {
-    expect(stats().stat("users.recent-session").hint).toEqual({ text: "últimos 30 dias" });
-    expect(stats(null).stat("users.recent-session").hint).toBeUndefined();
+  it("publicadas diz de quantas campanhas; inscrições dizem 7 dias e o mês", () => {
+    const { stat } = stats();
+    expect(stat("campaigns.published").hint?.text).toMatch(/^de [\d.]+ campanhas$/);
+    expect(stat("campaigns.applications").hint?.text).toBe("21 em 7 dias · 55 no mês");
   });
 
   it("os números que seguem o período estão marcados (viram esqueleto quando o período muda); os de posição não", () => {
     const { all } = stats();
-    expect(all.filter((s) => s.periodic).map((s) => s.id)).toEqual([
-      "campaigns.created",
-      "financial.funded",
-      "financial.released",
-      "financial.paid-pix",
-    ]);
+    expect(all.filter((s) => s.periodic).map((s) => s.id)).toEqual(["creators.new"]);
   });
 });
 
 describe("buildDashboardAreas: resposta incompleta do servidor", () => {
   it("um grupo ausente deixa os números dele em branco, sem derrubar a tela", () => {
-    const partial = { ...OVERVIEW, financial: undefined } as unknown as AdminOverview;
+    const partial = { ...OVERVIEW, campaigns: undefined } as unknown as AdminOverview;
     const { stat } = stats(partial);
-    expect(stat("financial.custody").figure).toBeUndefined();
-    expect(stat("financial.custody").hint).toBeUndefined();
+    expect(stat("campaigns.published").figure).toBeUndefined();
+    expect(stat("campaigns.published").hint).toBeUndefined();
     expect(stat("workspaces.total").figure).toBe(OVERVIEW.workspaces.total);
   });
 });

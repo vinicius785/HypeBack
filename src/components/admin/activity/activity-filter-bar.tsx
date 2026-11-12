@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 
 import { AdminFilterBar, AdminRefreshButton, type AdminFilterDef } from "@/components/admin/platform";
@@ -88,6 +88,8 @@ interface ActivityFilterBarProps {
   tab: ActivityTab;
   filters: ActivityFilters;
   state: Pick<AdminListQueryState<ActivityFilterKey>, "setFilter" | "setFilters">;
+  /** Seletor "Tudo na plataforma / Alterações administrativas", na mesma linha da busca e dos filtros. */
+  segment?: ComponentProps<typeof AdminFilterBar>["segment"];
 }
 
 /**
@@ -97,7 +99,7 @@ interface ActivityFilterBarProps {
  * específico (`target_id`) só entra na barra quando a URL o traz (link de outra tela): aparece como filtro ativo e
  * some com o "×". "Limpar filtros" zera os filtros da visão e mantém o período.
  */
-export function ActivityFilterBar({ tab, filters, state }: ActivityFilterBarProps) {
+export function ActivityFilterBar({ tab, filters, state, segment }: ActivityFilterBarProps) {
   // Quem acabou de ser escolhido (workspace e autor): o chip mostra o nome já (a URL só muda um instante depois) em vez
   // de buscar o detalhe e piscar "Carregando…". Recarregada a página, só há o id e o nome vem da busca.
   const [pickedWorkspace, setPickedWorkspace] = useState<AdminWorkspaceRef | null>(null);
@@ -171,6 +173,8 @@ export function ActivityFilterBar({ tab, filters, state }: ActivityFilterBarProp
 
   return (
     <AdminFilterBar
+      segment={segment}
+      compact
       filters={defs}
       values={values}
       onChange={(patch) => state.setFilters(patch as Partial<Record<ActivityFilterKey, string>>)}

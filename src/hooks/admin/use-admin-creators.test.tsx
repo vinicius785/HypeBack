@@ -71,7 +71,7 @@ describe("validateAdminCreatorsSearch: aba de criadores", () => {
       sort_by: "followers",
       order: "asc",
     });
-    expect(search).not.toHaveProperty("tab");
+    expect(search.tab).toBeUndefined();
   });
 
   it("UGC não é rede social: `network=ugc` (e qualquer rede fora das quatro) sai da busca", () => {
@@ -105,36 +105,10 @@ describe("validateAdminCreatorsSearch: aba de criadores", () => {
   });
 });
 
-describe("validateAdminCreatorsSearch: aba de duplicados", () => {
-  it("leva a aba, o motivo, a confiança e a página, e só isso", () => {
-    expect(
-      validateAdminCreatorsSearch({
-        tab: "duplicates",
-        reason: "phone",
-        confidence: "possible",
-        page: 2,
-        per_page: 25,
-        // são da aba de criadores: não passam
-        network: "tiktok",
-        registration: "complete",
-        sort_by: "name",
-      }),
-    ).toEqual({ tab: "duplicates", reason: "phone", confidence: "possible", page: 2, per_page: 25 });
-  });
-
-  it("motivo e confiança fora do contrato saem; 10 por página é o padrão da aba (não vai para a URL)", () => {
-    expect(validateAdminCreatorsSearch({ tab: "duplicates", reason: "nome", confidence: "baixa" })).toEqual({ tab: "duplicates" });
-    expect(validateAdminCreatorsSearch({ tab: "duplicates", per_page: 10 })).toEqual({ tab: "duplicates" });
-    // 100 não é uma opção desta aba (10, 25, 50): volta ao padrão
-    expect(validateAdminCreatorsSearch({ tab: "duplicates", per_page: 100 })).toEqual({ tab: "duplicates" });
-  });
-});
-
-describe("validateAdminCreatorsSearch: aba de inconsistências", () => {
-  it("só a aba (a lista não tem filtro nem página)", () => {
-    expect(validateAdminCreatorsSearch({ tab: "inconsistencies", page: 3, search: "x", reason: "email" })).toEqual({
-      tab: "inconsistencies",
-    });
+describe("validateAdminCreatorsSearch: abas antigas", () => {
+  it("um `?tab=` de duplicados ou inconsistências (as abas saíram) é ignorado e não escreve nada", () => {
+    expect(validateAdminCreatorsSearch({ tab: "duplicates", reason: "phone", confidence: "possible", page: 2 })).toEqual({ page: 2 });
+    expect(validateAdminCreatorsSearch({ tab: "inconsistencies" })).toEqual({});
   });
 });
 

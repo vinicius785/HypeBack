@@ -2,7 +2,7 @@
  * Vocabulário e configuração das telas de Workspaces do Admin: filtros e ordenação da lista, abas e ações do
  * detalhe, papéis e rótulos que não estão em `src/lib/admin/labels.ts`.
  */
-import type { AdminFilterDef, AdminFilterOption } from "@/components/admin/platform";
+import type { AdminFilterDef, AdminFilterOption, AdminSortOption } from "@/components/admin/platform";
 import { isValidCivilDate } from "./workspace-format";
 import {
   createAdminListSearchValidator,
@@ -243,3 +243,19 @@ export const MOVEMENT_TYPE_OPTIONS: readonly { value: AdminMovementType | "all";
   { value: "withdrawal", label: "Saques" },
   { value: "transfer", label: "PIX" },
 ];
+
+/** Opções do menu "Ordenar" (o mesmo `sort_by`/`order` da URL e dos cabeçalhos da tabela). */
+export const WORKSPACE_SORT_OPTIONS: readonly AdminSortOption[] = [
+  { sortBy: "created_at", order: "desc", group: "Cadastro", shortLabel: "Mais recentes", label: "Cadastro: mais recentes" },
+  { sortBy: "created_at", order: "asc", group: "Cadastro", shortLabel: "Mais antigos", label: "Cadastro: mais antigos" },
+  { sortBy: "name", order: "asc", group: "Nome", shortLabel: "A–Z", label: "Nome: A–Z" },
+  { sortBy: "name", order: "desc", group: "Nome", shortLabel: "Z–A", label: "Nome: Z–A" },
+  { sortBy: "last_activity", order: "desc", group: "Última atividade", shortLabel: "Mais recente", label: "Última atividade: mais recente" },
+  { sortBy: "last_activity", order: "asc", group: "Última atividade", shortLabel: "Mais antiga", label: "Última atividade: mais antiga" },
+  { sortBy: "volume", order: "desc", group: "Aportes", shortLabel: "Maior valor", label: "Aportes: maior valor" },
+  { sortBy: "volume", order: "asc", group: "Aportes", shortLabel: "Menor valor", label: "Aportes: menor valor" },
+  { sortBy: "campaigns", order: "desc", group: "Campanhas", shortLabel: "Mais campanhas", label: "Campanhas: mais campanhas" },
+  { sortBy: "campaigns", order: "asc", group: "Campanhas", shortLabel: "Menos campanhas", label: "Campanhas: menos campanhas" },
+  { sortBy: "members", order: "desc", group: "Membros", shortLabel: "Mais membros", label: "Membros: mais membros" },
+  { sortBy: "members", order: "asc", group: "Membros", shortLabel: "Menos membros", label: "Membros: menos membros" },
+] as const;

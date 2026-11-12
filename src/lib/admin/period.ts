@@ -1,13 +1,11 @@
 /**
- * Período do Dashboard do Admin: os predefinidos (7 dias, 30 dias, 90 dias, 6 meses, Este ano) e o personalizado,
+ * Período do Dashboard do Admin: os predefinidos (Hoje, Esta semana, Este mês) e o personalizado,
  * sempre em DIAS DE SÃO PAULO. O contrato manda `from`/`to` como `YYYY-MM-DD`, com `to` inclusivo.
  *
  * Regras:
- * - 7, 30 e 90 dias são os últimos N dias CONTANDO hoje (de hoje-(N-1) até hoje), o mesmo padrão do servidor, que
- *   sem `from`/`to` usa os últimos 30 dias contando hoje;
- * - 6 meses são os últimos 6 meses de calendário terminando hoje: do dia seguinte a "hoje menos 6 meses" até hoje
- *   (hoje 31/10 → 01/05 a 31/10; hoje 15/10 → 16/04 a 15/10). Mês que não tem o dia usa o último dia dele;
- * - Este ano é 1º de janeiro até hoje;
+ * - Hoje é só o dia de hoje (from = to);
+ * - Esta semana vai da segunda-feira (a semana começa na segunda, padrão ISO) até hoje;
+ * - Este mês vai do dia 1º do mês de hoje até hoje (é o padrão);
  * - personalizado vai no máximo até hoje (período futuro não existe) e tem no máximo 366 dias contando as duas pontas
  *   (o limite do contrato). Se a pessoa inverter as datas ou estourar o limite, a ponta que ela NÃO mexeu acompanha;
  * - toda a conta é feita sobre o texto `YYYY-MM-DD` (via UTC, sem `Date` local): o fuso da máquina nunca muda o dia.
@@ -21,21 +19,19 @@ import { civilDateInSaoPaulo, formatDateRange } from "./format";
 // Vocabulário
 // ---------------------------------------------------------------------------
 
-export const PERIOD_PRESETS = ["7d", "30d", "90d", "6m", "year"] as const;
+export const PERIOD_PRESETS = ["today", "week", "month"] as const;
 export type AdminPeriodPreset = (typeof PERIOD_PRESETS)[number];
 export type AdminPeriodChoice = AdminPeriodPreset | "custom";
 
-export const DEFAULT_PERIOD_PRESET: AdminPeriodPreset = "30d";
+export const DEFAULT_PERIOD_PRESET: AdminPeriodPreset = "month";
 
 /** Limite do contrato: o intervalo máximo é de 366 dias, contando as duas pontas. */
 export const MAX_PERIOD_DAYS = 366;
 
 export const PERIOD_LABEL: Record<AdminPeriodChoice, string> = {
-  "7d": "7 dias",
-  "30d": "30 dias",
-  "90d": "90 dias",
-  "6m": "6 meses",
-  year: "Este ano",
+  today: "Hoje",
+  week: "Esta semana",
+  month: "Este mês",
   custom: "Personalizado",
 };
 
@@ -121,19 +117,22 @@ export function todayInSaoPaulo(now: Date | number = Date.now()): string {
   return civilDateInSaoPaulo(now);
 }
 
+/** Dia da semana de um dia civil (0 = domingo … 6 = sábado). */
+function weekday(date: string): number {
+  const { year, month, day } = mustParse(date);
+  return new Date(utcMs(year, month, day)).getUTCDay();
+}
+
 /** Dias de São Paulo de um predefinido, dado o dia de hoje. */
 export function resolvePreset(preset: AdminPeriodPreset, today: string): AdminDateRange {
   switch (preset) {
-    case "7d":
-      return { from: addCivilDays(today, -6), to: today };
-    case "30d":
-      return { from: addCivilDays(today, -29), to: today };
-    case "90d":
-      return { from: addCivilDays(today, -89), to: today };
-    case "6m":
-      return { from: addCivilDays(addCivilMonths(today, -6), 1), to: today };
-    case "year":
-      return { from: `${mustParse(today).year.toString().padStart(4, "0")}-01-01`, to: today };
+    case "today":
+      return { from: today, to: today };
+    case "week":
+      // a semana começa na segunda
+      return { from: addCivilDays(today, -((weekday(today) + 6) % 7)), to: today };
+    case "month":
+      return { from: `${today.slice(0, 8)}01`, to: today };
   }
 }
 
@@ -171,7 +170,7 @@ export interface AdminPeriodSelection {
 
 /**
  * O período a consultar, dado o dia de hoje (`YYYY-MM-DD`, de São Paulo). Sem escolha (ou com um personalizado
- * inválido) é o padrão: 30 dias.
+ * inválido) é o padrão: este mês.
  */
 export function resolvePeriodForDay(selection: AdminPeriodSelection, today: string): AdminPeriod {
   if (selection.preset === "custom") {
@@ -192,7 +191,7 @@ export function resolvePeriod(selection: AdminPeriodSelection = {}, now: Date | 
 // URL da tela (`?period=90d`, `?period=custom&from=2026-10-01&to=2026-10-15`)
 // ---------------------------------------------------------------------------
 
-/** O que a URL do Dashboard guarda do período. Ausente = padrão (30 dias), que não aparece na URL. */
+/** O que a URL do Dashboard guarda do período. Ausente = padrão (este mês), que não aparece na URL. */
 export interface AdminPeriodSearch {
   period?: AdminPeriodChoice;
   from?: string;
@@ -242,18 +241,7 @@ export function formatPeriodRange(range: AdminDateRange): string {
   return formatDateRange(range);
 }
 
-/** "Últimos 30 dias", "Últimos 6 meses", "Este ano (2026)", "Período personalizado". */
+/** "Hoje", "Esta semana", "Este mês", "Período personalizado". */
 export function periodLabel(period: AdminPeriod): string {
-  switch (period.preset) {
-    case "7d":
-    case "30d":
-    case "90d":
-      return `Últimos ${PERIOD_LABEL[period.preset]}`;
-    case "6m":
-      return "Últimos 6 meses";
-    case "year":
-      return `Este ano (${period.to.slice(0, 4)})`;
-    case "custom":
-      return "Período personalizado";
-  }
+  return period.preset === "custom" ? "Período personalizado" : PERIOD_LABEL[period.preset];
 }

@@ -75,8 +75,11 @@ export function validateAdminCampaignsSearch(raw: Record<string, unknown>): Admi
 }
 
 /** `GET /admin/campaigns`: a página da lista, no formato `{ data, meta }`. */
-export function useAdminCampaigns(params: AdminQuery): UseQueryResult<AdminListResult<AdminCampaignListItem>, unknown> {
-  return useAdminList<AdminCampaignListItem>({ resource: "campaigns", path: "/admin/campaigns", params });
+export function useAdminCampaigns(
+  params: AdminQuery,
+  options: { enabled?: boolean; refetchInterval?: number | false } = {},
+): UseQueryResult<AdminListResult<AdminCampaignListItem>, unknown> {
+  return useAdminList<AdminCampaignListItem>({ resource: "campaigns", path: "/admin/campaigns", params, enabled: options.enabled, refetchInterval: options.refetchInterval });
 }
 
 /** `GET /admin/campaigns/:campaignId` (public_id). */

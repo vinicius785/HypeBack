@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -25,6 +25,7 @@ import { ALERT_SEVERITY_LABEL } from "@/lib/admin/labels";
 
 import { HealthAlertGroups, HealthSuggestionList } from "./health-alerts";
 import { ALERT_SEVERITIES, HEALTH_FILTER_CONFIG, isAlertSeverity } from "./health-search";
+import { HealthIsland } from "./health-island";
 import { HealthSystem } from "./health-system";
 
 import "@/styles/admin-health.css";
@@ -72,7 +73,7 @@ function sectionTitle(title: string, count: number | null): string {
  * anunciar nada a leitor de tela) e pelo botão de atualizar no fim da barra de filtros (esse sim anuncia o clique);
  * "Verificado há…" aparece uma vez, no cabeçalho.
  */
-export function HealthPage() {
+export function HealthPage({ embedded = false }: { embedded?: boolean } = {}) {
   const state = useAdminListQueryState(HEALTH_FILTER_CONFIG);
   const severity = isAlertSeverity(state.filters.severity) ? state.filters.severity : "";
 
@@ -92,45 +93,58 @@ export function HealthPage() {
   const checkedAt = loaded?.computedAt ?? system.data?.checked_at;
 
   const clearSeverity = () => state.setFilters({ severity: "" });
+  const refreshNow = () => {
+    refresh.request();
+    void queryClient.invalidateQueries({ queryKey: adminKeys.resource(ADMIN_HEALTH_RESOURCE) });
+  };
   const clearAction = (
     <button type="button" className="btn out adm-btn-sm" onClick={clearSeverity}>
       Limpar filtros
     </button>
   );
 
+  const checked = checkedAt ? (
+    <time dateTime={checkedAt} title={`${formatDateTime(checkedAt)}, horário de São Paulo`}>
+      Verificado {formatRelativeTime(checkedAt, now)}
+    </time>
+  ) : undefined;
+  // Dentro do Monitoramento o título e o cabeçalho são os da página que a hospeda.
+  const Frame = embedded ? Fragment : AdminPage;
+
   return (
-    <AdminPage>
-      <AdminPageHeader
-        title="Saúde da plataforma"
-        subtitle="Alertas e sugestões de atenção, e o estado dos sistemas que sustentam a plataforma."
-        meta={
-          checkedAt ? (
-            <time dateTime={checkedAt} title={`${formatDateTime(checkedAt)}, horário de São Paulo`}>
-              Verificado {formatRelativeTime(checkedAt, now)}
-            </time>
-          ) : undefined
-        }
-      />
+    <Frame>
+      {embedded ? null : (
+        <AdminPageHeader
+          title="Saúde da plataforma"
+          subtitle="Alertas e sugestões de atenção, e o estado dos sistemas que sustentam a plataforma."
+          meta={checked}
+        />
+      )}
 
-      <HealthSystem query={system} />
+      {embedded ? (
+        // No Monitoramento: a "ilha" no topo (estado do sistema, gravidade, verificado há…, atualizar) e a folha com o detalhe.
+        <HealthIsland
+          system={system}
+          severity={severity}
+          onSeverityChange={(value) => state.setFilters({ severity: value })}
+          checked={checked}
+          fetching={fetching}
+          announce={refresh.announce}
+          onRefresh={refreshNow}
+        />
+      ) : (
+        <>
+          <HealthSystem query={system} />
 
-      <AdminFilterBar
-        filters={FILTERS}
-        values={{ severity }}
-        onChange={(patch) => state.setFilters(patch as { severity?: string })}
-        onClear={clearSeverity}
-        trailing={
-          <AdminRefreshButton
-            iconOnly
-            loading={fetching}
-            announce={refresh.announce}
-            onClick={() => {
-              refresh.request();
-              void queryClient.invalidateQueries({ queryKey: adminKeys.resource(ADMIN_HEALTH_RESOURCE) });
-            }}
+          <AdminFilterBar
+            filters={FILTERS}
+            values={{ severity }}
+            onChange={(patch) => state.setFilters(patch as { severity?: string })}
+            onClear={clearSeverity}
+            trailing={<AdminRefreshButton iconOnly loading={fetching} announce={refresh.announce} onClick={refreshNow} />}
           />
-        }
-      />
+        </>
+      )}
 
       {query.error && !loaded ? (
         <AdminErrorState boxed error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />
@@ -169,6 +183,6 @@ export function HealthPage() {
           </AdminSection>
         </>
       )}
-    </AdminPage>
+    </Frame>
   );
 }

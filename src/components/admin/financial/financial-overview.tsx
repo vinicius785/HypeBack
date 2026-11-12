@@ -7,6 +7,8 @@ import {
   AdminFigureGrid,
   AdminLink,
   AdminSection,
+  AdminFilterBar,
+  inIsland,
 } from "@/components/admin/platform";
 import { useAdminFinancialSummary } from "@/hooks/admin/use-admin-financial";
 import { formatDateRange, formatDateTime, isFigureAvailable } from "@/lib/admin/format";
@@ -15,6 +17,8 @@ import type { AdminDateRange, AdminFigure } from "@/shared/admin-platform.types"
 import { FINANCIAL_GROUPS, FINANCIAL_RECONCILIATION_HELP } from "./financial-model";
 
 import "@/styles/admin-financial.css";
+import type { FinancialPeriodBar } from "./financial-period-filter";
+import { FinancialRefreshButton } from "./financial-refresh";
 
 /** `0` é "as duas fontes batem"; qualquer outro valor é um sinal para investigar. Sem número, sem veredito. */
 function driftBadge(figure: AdminFigure | undefined): ReactNode {
@@ -32,18 +36,30 @@ function driftBadge(figure: AdminFigure | undefined): ReactNode {
 
 interface FinancialOverviewProps {
   period: AdminDateRange;
+  /** Onde a barra mora: dentro da ilha do Financeiro. */
+  tools?: HTMLElement | null;
+  /** O filtro e o texto do período (a barra de cada visão os leva). */
+  periodBar: FinancialPeriodBar;
 }
 
 /**
  * Visão geral: os números em blocos, o recado "liberado ≠ pago" e as conferências. Os indicadores não repetem o
  * tipo nem "no período" em cada número: o tipo e a regra estão no "i" de cada um, e o período vale o do cabeçalho.
  */
-export function FinancialOverview({ period }: FinancialOverviewProps) {
+export function FinancialOverview({ period, tools, periodBar }: FinancialOverviewProps) {
   const query = useAdminFinancialSummary(period);
   const summary = query.data;
 
+  // Na visão geral a barra é só o período e o atualizar (os números não têm filtro).
+  const bar = inIsland(tools, <AdminFilterBar filters={[periodBar.filter]} compact beforeFilters={periodBar.now} trailing={<FinancialRefreshButton />} />);
+
   if (query.error && !summary) {
-    return <AdminErrorState boxed compact error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />;
+    return (
+      <>
+        {bar}
+        <AdminErrorState boxed compact error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />
+      </>
+    );
   }
 
   const loading = query.isLoading;
@@ -54,6 +70,7 @@ export function FinancialOverview({ period }: FinancialOverviewProps) {
 
   return (
     <div className="adm-fin-stack">
+      {bar}
       {query.error ? (
         <AdminErrorState boxed compact error={query.error} onRetry={() => void query.refetch()} retrying={query.isFetching} />
       ) : null}

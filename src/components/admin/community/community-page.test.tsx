@@ -50,7 +50,7 @@ function renderPage(url = "/admin/groups") {
 }
 
 function tab(name: string) {
-  return screen.getByRole("tab", { name });
+  return within(screen.getByRole("group", { name: "Seções da Comunidade" })).getByRole("button", { name });
 }
 
 beforeEach(() => {
@@ -68,9 +68,9 @@ describe("CommunityPage: abre na comunidade padrão", () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Comunidade", level: 1 })).toBeInTheDocument();
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Feed", "Grupos", "Equipe"]);
-    expect(tab("Feed")).toHaveAttribute("aria-selected", "true");
-    expect(tab("Grupos")).toHaveAttribute("aria-selected", "false");
+    expect(within(screen.getByRole("group", { name: "Seções da Comunidade" })).getAllByRole("button").map((t) => t.textContent)).toEqual(["Feed", "Grupos", "Equipe"]);
+    expect(tab("Feed")).toHaveAttribute("aria-pressed", "true");
+    expect(tab("Grupos")).toHaveAttribute("aria-pressed", "false");
     expect(await screen.findByText("Gravei um vídeo novo hoje!")).toBeInTheDocument();
   });
 
@@ -102,7 +102,7 @@ describe("CommunityPage: abre na comunidade padrão", () => {
     renderPage("/admin/groups?tab=outra");
 
     expect(await screen.findByText("Gravei um vídeo novo hoje!")).toBeInTheDocument();
-    expect(tab("Feed")).toHaveAttribute("aria-selected", "true");
+    expect(tab("Feed")).toHaveAttribute("aria-pressed", "true");
   });
 });
 
@@ -111,7 +111,7 @@ describe("CommunityPage: a função dos grupos continua aqui", () => {
     renderPage("/admin/groups?tab=groups");
 
     expect(await screen.findByText("Moda e Estilo")).toBeInTheDocument();
-    expect(tab("Grupos")).toHaveAttribute("aria-selected", "true");
+    expect(tab("Grupos")).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Criar grupo" })).toBeInTheDocument();
     expect(posts.list).not.toHaveBeenCalled();
   });
@@ -144,20 +144,24 @@ describe("CommunityPage: a função dos grupos continua aqui", () => {
     expect(screen.getByRole("banner").querySelector(".adm-head-sub")?.textContent).toBe(subtitle);
   });
 
-  it("o cabeçalho só tem a ação primária da aba: Criar grupo nos Grupos, nenhuma no Feed", async () => {
-    renderPage("/admin/groups?tab=groups");
+  it("a ação primária mora na ilha: 'Criar grupo' só nos Grupos, nenhuma no Feed (e a barra da aba também vai para a ilha)", async () => {
+    const { unmount } = renderPage("/admin/groups?tab=groups");
     await screen.findByText("Moda e Estilo");
-
-    const buttons = within(screen.getByRole("banner")).getAllByRole("button");
-    expect(buttons.map((b) => b.textContent)).toEqual(["Criar grupo"]);
-    expect(screen.queryByRole("button", { name: "Atualizar" })).not.toBeInTheDocument();
+    const island = within(screen.getByRole("region", { name: "Comunidade" }));
+    expect(island.getByRole("button", { name: "Criar grupo" })).toBeInTheDocument();
+    // a busca da aba está dentro da ilha, na segunda linha
+    expect(island.getByRole("searchbox", { name: "Buscar grupos" })).toBeInTheDocument();
+    unmount();
+    renderPage("/admin/groups");
+    await screen.findByRole("region", { name: "Comunidade" });
+    expect(screen.queryByRole("button", { name: "Criar grupo" })).not.toBeInTheDocument();
   });
 
   it("Criar grupo leva ao diálogo de novo grupo", async () => {
     const { router } = renderPage("/admin/groups?tab=groups");
     await screen.findByText("Moda e Estilo");
 
-    await userEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "Criar grupo" }));
+    await userEvent.click(within(screen.getByRole("region", { name: "Comunidade" })).getByRole("button", { name: "Criar grupo" }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe("/admin/groups/new"));
   });

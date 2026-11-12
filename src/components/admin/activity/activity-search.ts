@@ -12,10 +12,12 @@ import {
   type AdminListSearch,
   type AdminListStateConfig,
 } from "@/lib/admin/list-query";
+import { isAlertSeverity } from "@/components/admin/health/health-search";
 import { ACTIVITY_KIND_LABEL } from "@/lib/admin/labels";
 import {
   ADMIN_ACTION_CODES,
   type AdminActionCode,
+  type AdminAlertSeverity,
   type AdminActivityKind,
   type AdminAuditLogQuery,
 } from "@/shared/admin-platform.types";
@@ -66,6 +68,8 @@ export const TARGET_ID_MAX_LENGTH = 64;
 
 export type ActivitySearch = AdminListSearch<ActivityFilterKey> & {
   tab?: Exclude<ActivityTab, "feed">;
+  /** Gravidade dos alertas de saúde (bloco de cima da página). */
+  severity?: AdminAlertSeverity;
   from?: string;
   to?: string;
 };
@@ -136,6 +140,7 @@ export function validateActivitySearch(raw: Record<string, unknown>): ActivitySe
 
   const tab = readActivityTab(raw);
   if (tab !== "feed") out.tab = tab;
+  if (isAlertSeverity(raw.severity)) out.severity = raw.severity;
   const from = text(raw.from);
   const to = text(raw.to);
   if (isCivilDate(from)) out.from = from;

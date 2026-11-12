@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 import {
-  AdminActionMenu,
   AdminBadge,
   AdminEntityCell,
   AdminFilterBar,
@@ -12,6 +11,7 @@ import {
   AdminPager,
   AdminRefreshButton,
   AdminSearchInput,
+  AdminSortMenu,
   AdminStatusBadge,
   AdminTable,
   type AdminFilterDef,
@@ -26,17 +26,15 @@ import { TRUST_DISCLAIMER } from "@/lib/admin/trust";
 import type { AdminUserListItem, AdminUserWorkspaceLink, AdminWorkspaceRef } from "@/shared/admin-platform.types";
 
 import {
-  ADMIN_USERS_DEFAULT_KIND,
-  ADMIN_USERS_KIND_OPTIONS,
   ADMIN_USERS_DEFAULT_STATUS,
   ADMIN_USERS_LIST_CONFIG,
   ADMIN_USERS_STATUS_OPTIONS,
-  ADMIN_USERS_SUSPECT_TRUST_MAX,
   usersApiParams,
 } from "./admin-users-config";
 import { LAST_SESSION_EXPLANATION, approxSessionText, userKindText, workspaceRoleText } from "./admin-users-format";
-import { USERS_LIST_MEMORY_KEY, userDetailLink, workspaceDetailLink } from "./admin-users-links";
+import { CREATORS_LIST_MEMORY_KEY, USERS_LIST_MEMORY_KEY, userDetailLink, workspaceDetailLink } from "./admin-users-links";
 import { UserPlatforms } from "./admin-user-platforms";
+import { PeopleIsland } from "@/components/admin/people/people-island";
 import { TrustBadge } from "./admin-user-trust";
 import { AdminWorkspacePicker, useAdminWorkspaceSelection } from "./admin-workspace-picker";
 
@@ -104,21 +102,27 @@ function LastSessionCell({ iso }: { iso: string | null }) {
   );
 }
 
-/** O `kind` que a API devolve para cada valor do filtro "Tipo"; `all` não tem um só. */
-const EXPECTED_KIND: Record<string, string | undefined> = { brand: "brand", creator: "creator" };
 
 /**
  * Lista global de usuários (`/admin/users`): busca, estado, tipo, workspace e período de cadastro, todos na URL
  * e todos enviados à API; tabela ordenável por cadastro, nome e última sessão; paginada; a linha abre o detalhe.
  */
-export function AdminUsersList() {
+export function AdminUsersList({ kind }: { kind?: "creator" } = {}) {
   const state = useAdminListQueryState(ADMIN_USERS_LIST_CONFIG);
+  // Na aba Criadores o tipo é fixo (não é filtro): a mesma lista, só com criadores, e a sua própria memória de volta.
+  const fixedKind = kind;
+  const memoryKey = fixedKind ? CREATORS_LIST_MEMORY_KEY : USERS_LIST_MEMORY_KEY;
   // Guarda o que está na URL (filtros, ordenação, busca, página) para o "voltar" do detalhe trazer a lista como estava.
   const memorySearch = JSON.stringify(stateToSearch(state, ADMIN_USERS_LIST_CONFIG));
   useEffect(() => {
-    rememberListSearch(USERS_LIST_MEMORY_KEY, JSON.parse(memorySearch) as Record<string, string | number>);
-  }, [memorySearch]);
-  const users = useAdminUsers(usersApiParams(state.params, state.filters.status));
+    rememberListSearch(memoryKey, JSON.parse(memorySearch) as Record<string, string | number>);
+  }, [memorySearch, memoryKey]);
+  const users = useAdminUsers(
+    fixedKind
+      ? // Em Criadores o workspace não é filtro: um `?workspace_id=` antigo na URL não vai para a consulta.
+        { ...usersApiParams(state.params, state.filters.status), kind: fixedKind, workspace_id: undefined }
+      : usersApiParams(state.params, state.filters.status),
+  );
   const meta = users.data?.meta;
   useAdminPageClamp(state.page, meta?.total_pages, state.setPage);
 
@@ -128,15 +132,15 @@ export function AdminUsersList() {
 
   const rows = users.data?.data;
   // A primeira consulta por confiança pode demorar (a API calcula e guarda as notas): avisa enquanto espera.
-  const slowTrust = users.isFetching && (state.sortBy === "trust" || !!state.filters.trust_max);
+  const slowTrust = users.isFetching && (state.sortBy === "trust");
 
   const lastSessionDefinition =
     meta?.definitions?.last_session_at ?? meta?.definitions?.last_session ?? LAST_SESSION_EXPLANATION;
 
-  // Com um tipo só no filtro (Marca, Criadores) a coluna "Tipo" diria a mesma coisa em toda linha: sai. O que destoa do
-  // filtro (agência e administrador dentro de "Marca") aparece como etiqueta junto do nome.
-  const expectedKind = EXPECTED_KIND[state.filters.kind || ADMIN_USERS_DEFAULT_KIND];
-  const showKindColumn = expectedKind === undefined;
+  // O tipo não é filtro: Usuários são as contas de marca (padrão da API) e Criadores têm a sua aba. A coluna "Tipo" diria a
+  // mesma coisa em toda linha, então não existe; o que destoa da aba (agência e administrador dentro de "Usuários") aparece
+  // como etiqueta junto do nome.
+  const expectedKind = fixedKind ?? "brand";
 
   const columns: AdminTableColumn<AdminUserListItem>[] = [
     {
@@ -146,7 +150,7 @@ export function AdminUsersList() {
       width: "minmax(180px, 2.2fr)",
       primary: true,
       cell: (user) => {
-        const otherKind = !showKindColumn && user.kind !== expectedKind;
+        const otherKind = user.kind !== expectedKind;
         const badges =
           otherKind || user.is_platform_admin ? (
             <span className="adm-users-person-badges">
@@ -165,17 +169,6 @@ export function AdminUsersList() {
         return <AdminEntityCell name={user.name} photo={user.photo} subtitle={user.email} badge={badges} />;
       },
     },
-    ...(showKindColumn
-      ? [
-          {
-            key: "kind",
-            header: "Tipo",
-            width: "minmax(112px, 1fr)",
-            hideBelow: "md",
-            cell: (user: AdminUserListItem) => <span className="adm-users-sub">{userKindText(user.kind)}</span>,
-          } satisfies AdminTableColumn<AdminUserListItem>,
-        ]
-      : []),
     {
       key: "trust",
       header: "Confiança",
@@ -226,24 +219,12 @@ export function AdminUsersList() {
     },
   ];
 
-  // "Tipo" e "Workspace" ficam sempre à vista na barra (contam em "Filtros (n)", viram chip e saem em "Limpar filtros");
-  // o período de cadastro fica no painel.
+  // Estado, workspace e período de cadastro ficam no painel de filtros (contam em "Filtros (n)", viram chip e saem em "Limpar filtros").
   const filters: AdminFilterDef[] = [
-    {
-      kind: "toggle",
-      id: "suspects",
-      label: "Só suspeitos (nível 1-2)",
-      active: state.filters.trust_max === ADMIN_USERS_SUSPECT_TRUST_MAX,
-      onToggle: () => state.setFilter("trust_max", state.filters.trust_max === ADMIN_USERS_SUSPECT_TRUST_MAX ? "" : ADMIN_USERS_SUSPECT_TRUST_MAX),
-      onClear: () => state.setFilter("trust_max", ""),
-    },
-    {
-      kind: "select",
-      key: "kind",
-      label: "Tipo",
-      options: ADMIN_USERS_KIND_OPTIONS,
-      defaultValue: ADMIN_USERS_DEFAULT_KIND,
-    },
+    // O estado da conta (Ativos e suspensos, Ativos, Suspensos, Em cadastro, Excluídos, Todos) mora no painel de filtros.
+    { kind: "select", key: "status", label: "Status da conta", options: ADMIN_USERS_STATUS_OPTIONS, defaultValue: ADMIN_USERS_DEFAULT_STATUS },
+    // Criadores não têm workspace de marca para filtrar: o seletor só existe em Usuários.
+    ...(fixedKind ? [] : ([
     {
       kind: "custom",
       id: "workspace",
@@ -263,7 +244,8 @@ export function AdminUsersList() {
           }}
         />
       ),
-    },
+    }
+    ] as AdminFilterDef[])),
     { kind: "date-range", label: "Cadastrado em", fromKey: "created_from", toKey: "created_to" },
   ];
 
@@ -272,17 +254,10 @@ export function AdminUsersList() {
 
   return (
     <AdminPage>
-      <AdminPageHeader title="Usuários" subtitle="Quem acessa a plataforma, em todos os workspaces." />
+      <AdminPageHeader title="Pessoas" subtitle="Quem acessa a plataforma: usuários, criadores e os workspaces dos clientes." />
 
+      <PeopleIsland current={fixedKind ? "creators" : "users"}>
       <AdminFilterBar
-        segment={{
-          ariaLabel: "Status da conta",
-          options: ADMIN_USERS_STATUS_OPTIONS,
-          value: state.filters.status,
-          onChange: (status) => state.setFilter("status", status),
-        }}
-        // Estado fora de "Ativos e suspensos" (o padrão da API) conta como filtro: chip e "Limpar filtros" o devolvem ao padrão.
-        segmentDefault={ADMIN_USERS_DEFAULT_STATUS}
         search={
           <AdminSearchInput
             value={state.search}
@@ -298,30 +273,20 @@ export function AdminUsersList() {
         onClear={state.clearFilters}
         compact
         beforeFilters={
-          <AdminActionMenu
-            iconOnly
-            round
-            triggerIcon="sort"
-            ariaLabel="Ordenar"
-            items={USERS_SORT_OPTIONS.map((option) => ({
-              id: `${option.sortBy}:${option.order}`,
-              label: option.label,
-              selected: state.sortBy === option.sortBy && state.order === option.order,
-              group: option.group,
-              shortLabel: option.shortLabel,
-              // Tocar na opção que já está escolhida a desmarca: volta à ordenação padrão (a do cadastro, mais recentes).
-              onSelect: () => {
-                const chosen = state.sortBy === option.sortBy && state.order === option.order;
-                if (chosen) state.setSort(ADMIN_USERS_LIST_CONFIG.defaultSortBy, ADMIN_USERS_LIST_CONFIG.defaultOrder);
-                else state.setSort(option.sortBy, option.order);
-              },
-            }))}
+          <AdminSortMenu
+            options={USERS_SORT_OPTIONS}
+            sortBy={state.sortBy}
+            order={state.order}
+            defaultSortBy={ADMIN_USERS_LIST_CONFIG.defaultSortBy}
+            defaultOrder={ADMIN_USERS_LIST_CONFIG.defaultOrder}
+            onSort={state.setSort}
           />
         }
         trailing={
           <AdminRefreshButton iconOnly loading={users.isFetching} onClick={() => void users.refetch()} />
         }
       />
+      </PeopleIsland>
 
       {slowTrust ? (
         <p className="adm-muted" role="status">

@@ -1,0 +1,55 @@
+/*
+ * Pessoas do Admin (`src/components/admin/people`): a ilha com Usuários e Workspaces (padrão `.isl` do Gerenciamento,
+ * em management-board.css). Prefixo `adm-ppl-`/`isl-`, tudo sob `.pv`, só tokens do kit; animações param com
+ * `prefers-reduced-motion`.
+ */
+.pv .isl.isl-ppl-w { --isl-w: 100%; align-self: stretch; }
+.pv .isl-ppl-w .isl-segs { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+
+/* as pílulas são links: a da lista aberta vira branca sobre o preto da ilha */
+.pv .isl-ppl-w a.isl-seg { color: inherit; text-decoration: none; cursor: pointer; transition: background .2s, color .2s, transform .2s; }
+.pv .isl-ppl-w a.isl-seg:hover { background: rgba(255, 255, 255, .18); }
+.pv .isl-ppl-w a.isl-seg:active { transform: scale(.96); }
+.pv .isl-ppl-w a.isl-seg em { font-style: normal; font-weight: 700; opacity: .75; font-variant-numeric: tabular-nums; }
+.pv .isl-ppl-w a.isl-seg[aria-current="page"] { background: var(--adm-surface); color: var(--ink); }
+.pv .isl-ppl-w a.isl-seg[aria-current="page"] i { background: var(--ink); }
+.pv .isl-ppl-w a:focus-visible { outline: 2px solid var(--adm-surface); outline-offset: 2px; }
+
+/* a folha branca: quatro números lado a lado */
+.pv .adm-ppl-sheet { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 28px; }
+.pv .adm-ppl-sheet > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pv .adm-ppl-sheet small { color: var(--adm-text-muted); font-size: 12.5px; font-weight: 600; }
+.pv .adm-ppl-sheet b { font-size: 26px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.pv .adm-ppl-sheet span { color: var(--adm-text-muted); font-size: 13px; }
+
+
+@media (max-width: 899px) { .pv .adm-ppl-sheet { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* trocar de aba (Usuários, Criadores, Workspaces) não pode piscar: a ilha não repete a entrada (`isl-still`), então a troca é
+   direta e sem efeito. (Uma view transition foi testada e deixava a ilha rosada durante a troca: saiu.) */
+.pv .isl.isl-ppl-w.isl-still { animation: none; }
+
+/* alertas de confiança: o medidor de cinco barras da tabela, em miniatura. Com alerta, as barras acesas (as duas mais baixas)
+   respiram; sem alerta, as cinco ficam acesas em verde e paradas. */
+.pv .isl-ppl-w .isl-mini-trust { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+.pv .isl-ppl-w .isl-mini-trust i { display: block; flex: none; width: 2px; border-radius: 1px; background: currentColor; opacity: .3; transform-origin: bottom; }
+.pv .isl-ppl-w .isl-mini-trust i:nth-child(1) { height: 4px; }
+.pv .isl-ppl-w .isl-mini-trust i:nth-child(2) { height: 6px; }
+.pv .isl-ppl-w .isl-mini-trust i:nth-child(3) { height: 8px; }
+.pv .isl-ppl-w .isl-mini-trust i:nth-child(4) { height: 10px; }
+.pv .isl-ppl-w .isl-mini-trust i:nth-child(5) { height: 12px; }
+.pv .isl-ppl-w .isl-stat[data-tone="warn"] .isl-mini-trust i:nth-child(-n + 2) { opacity: 1; animation: isl-stat-bar 1.4s ease-in-out infinite; }
+.pv .isl-ppl-w .isl-stat[data-tone="warn"] .isl-mini-trust i:nth-child(2) { animation-delay: .18s; }
+.pv .isl-ppl-w .isl-stat[data-tone="ok"] .isl-mini-trust i { opacity: 1; }
+@keyframes isl-stat-bar { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.55); } }
+@media (prefers-reduced-motion: reduce) { .pv .isl-ppl-w .isl-mini-trust i { animation: none; } }
+
+/* sem piscar: a ilha de Pessoas não "sobe e desfoca" (era o que piscava); só aparece com um fade curto na primeira chegada.
+   A altura fica fixa (os números chegam depois, e a linha não pode crescer nem encolher), os números ocupam um espaço
+   mínimo. */
+.pv .isl.isl-ppl-w { animation: isl-ppl-fade .3s ease both; }
+.pv .isl.isl-ppl-w.isl-still { animation: none; }
+@keyframes isl-ppl-fade { from { opacity: 0; } }
+.pv .isl-ppl-w .isl-stat b { min-width: 2.2ch; text-align: right; }
+.pv .isl-ppl-w .isl-seg em { display: inline-block; min-width: 1.6ch; }
+

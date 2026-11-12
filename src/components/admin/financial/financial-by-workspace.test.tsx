@@ -221,7 +221,7 @@ describe("Por workspace: estados", () => {
     let resolve!: (value: ReturnType<typeof pageResponse>) => void;
     client.adminList.mockReturnValue(new Promise((r) => (resolve = r)));
     const { container } = renderFinancial("/admin/financial?tab=by-workspace");
-    await screen.findByRole("tab", { name: "Por workspace", selected: true });
+    await screen.findByRole("button", { name: "Por workspace", pressed: true });
     await waitFor(() => expect(container.querySelectorAll(".adm-row .adm-sk").length).toBeGreaterThan(0));
 
     resolve(pageResponse());

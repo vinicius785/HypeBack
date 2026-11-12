@@ -5,6 +5,7 @@ import {
   AdminEmptyState,
   AdminErrorState,
   AdminFilterBar,
+  inIsland,
   AdminLoadMore,
   AdminSearchInput,
   AdminSection,
@@ -55,7 +56,7 @@ function GroupsSkeleton() {
  * (sem repetir o botão) e, numa busca sem resultado, a ação é "Limpar busca". Arquivados/Todos contam como
  * filtro (chip e "Limpar filtros" voltam aos Ativos).
  */
-export function CommunityGroups() {
+export function CommunityGroups({ tools }: { tools?: HTMLElement | null } = {}) {
   const navigate = useNavigate();
   const [status, setStatus] = useState<GroupStatusFilter>(DEFAULT_STATUS);
   const [search, setSearch] = useState("");
@@ -146,17 +147,19 @@ export function CommunityGroups() {
 
   return (
     <div className="adm-com-stack">
+      {inIsland(tools, (
       <AdminFilterBar
-        segment={{
-          options: STATUS_OPTIONS,
-          value: status,
-          onChange: (value) => setStatus(value as GroupStatusFilter),
-          ariaLabel: "Status dos grupos",
+        filters={[{ kind: "select", key: "status", label: "Status dos grupos", options: STATUS_OPTIONS, defaultValue: DEFAULT_STATUS }]}
+        values={{ status }}
+        onChange={(patch) => {
+          if (patch.status !== undefined) setStatus(patch.status as GroupStatusFilter);
         }}
-        segmentDefault={DEFAULT_STATUS}
+        onClear={() => setStatus(DEFAULT_STATUS)}
         search={<AdminSearchInput value={search} onSearch={setSearch} placeholder="Buscar grupos" label="Buscar grupos" />}
         searchLabel="Buscar grupos"
+        compact
       />
+      ))}
 
       {body}
     </div>

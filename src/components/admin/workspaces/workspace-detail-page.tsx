@@ -45,9 +45,13 @@ import { WorkspaceMembersTab } from "./workspace-members-tab";
 import { WorkspaceSummaryTab } from "./workspace-summary-tab";
 
 import "@/styles/admin-workspaces.css";
+import { workspacesListLink } from "./workspace-links";
 
-const LIST_LINK = { to: "/admin/workspaces" };
-const LIST_CRUMB: AdminCrumb = { label: "Workspaces", to: LIST_LINK };
+
+
+/** "Workspaces" nas migalhas: volta para a lista do jeito que a pessoa a deixou (filtros, ordenação, página). */
+const listCrumb = (): AdminCrumb => ({ label: "Workspaces", to: workspacesListLink() });
+
 const TAB_PREFIX = "workspace";
 
 /** A regra da "última atividade", no "i" do cabeçalho (o Resumo não repete a data): dois parágrafos, a regra e a janela. */
@@ -122,7 +126,7 @@ function DetailSkeleton() {
   return (
     <AdminPage>
       <AdminPageHeader
-        breadcrumb={[LIST_CRUMB, { label: "Workspace" }]}
+        breadcrumb={[listCrumb(), { label: "Workspace" }]}
         leading={<AdminSkeleton width={64} height={64} radius={16} />}
         title={
           <>
@@ -171,9 +175,9 @@ export function WorkspaceDetailPage({ workspaceId }: { workspaceId: string }) {
   if (!workspace) {
     return (
       <AdminPage>
-        <AdminPageHeader breadcrumb={[LIST_CRUMB, { label: "Workspace" }]} title="Workspace" />
+        <AdminPageHeader breadcrumb={[listCrumb(), { label: "Workspace" }]} title="Workspace" />
         {isAdminApiError(query.error, "NOT_FOUND") ? (
-          <AdminNotFound entity="workspace" backTo={LIST_LINK} backLabel="Voltar para Workspaces" />
+          <AdminNotFound entity="workspace" backTo={workspacesListLink()} backLabel="Voltar para Workspaces" />
         ) : (
           <AdminErrorState boxed error={query.error} onRetry={() => void query.refetch()} retrying={query.isRefetching} />
         )}
@@ -197,7 +201,7 @@ export function WorkspaceDetailPage({ workspaceId }: { workspaceId: string }) {
   return (
     <AdminPage>
       <AdminPageHeader
-        breadcrumb={[LIST_CRUMB, { label: workspace.name }]}
+        breadcrumb={[listCrumb(), { label: workspace.name }]}
         leading={<AdminAvatar name={workspace.name} photo={workspace.photo} shape="square" size={64} />}
         title={workspace.name}
         badges={

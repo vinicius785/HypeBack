@@ -70,3 +70,33 @@
   .pv .adm-health-rule dd { margin-bottom: 6px; }
   .pv .adm-health-sug-side { flex-direction: row; align-items: baseline; justify-content: space-between; text-align: left; }
 }
+
+/* ───────────────────────── ilha do Monitoramento (padrão `.isl` do Gerenciamento) ───────────────────────── */
+.pv .isl.isl-h-w { --isl-w: 100%; align-self: stretch; }
+.pv .isl-h-w .isl-segs { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.pv .isl-h-w .isl-seg { cursor: pointer; border: 0; color: inherit; transition: background .2s, color .2s, transform .2s; }
+.pv .isl-h-w button.isl-seg:hover { background: rgba(255, 255, 255, .18); }
+.pv .isl-h-w button.isl-seg:active { transform: scale(.96); }
+.pv .isl-h-w button.isl-seg[aria-pressed="true"] { background: var(--adm-surface); color: var(--ink); }
+.pv .isl-h-w button.isl-seg[aria-pressed="true"] i { background: var(--ink); }
+.pv .isl-h-w button.isl-seg[aria-pressed="true"][data-tone="bad"] i { background: var(--adm-bad); }
+.pv .isl-h-w button.isl-seg[aria-pressed="true"][data-tone="warn"] i { background: var(--adm-warn); }
+/* Banco e Redis: nome + três bolinhas que acendem em sequência (como o "Enviando" das Notificações) */
+.pv .isl-live { display: flex; align-items: center; gap: 8px; }
+.pv .isl-svc { display: inline-flex; align-items: center; gap: 10px; height: 36px; padding: 0 14px; border-radius: 99px; background: rgba(255, 255, 255, .1); font-size: 12.5px; }
+.pv .isl-svc b { font-weight: 600; }
+.pv .isl-svc-dots { display: inline-flex; align-items: center; gap: 5px; }
+.pv .isl-svc-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--isl-dot, rgba(255, 255, 255, .5)); opacity: .3; animation: isl-svc-dot 1.4s ease-in-out infinite; }
+.pv .isl-svc-dots i:nth-child(2) { animation-delay: .2s; }
+.pv .isl-svc-dots i:nth-child(3) { animation-delay: .4s; }
+.pv .isl-svc[data-state="ok"] { --isl-dot: #34d399; }
+.pv .isl-svc[data-state="down"] { --isl-dot: #f87171; }
+.pv .isl-svc[data-state="down"] .isl-svc-dots i { animation-duration: .7s; }
+.pv .isl-svc[data-state="disabled"] .isl-svc-dots i { animation: none; opacity: .35; }
+@keyframes isl-svc-dot { 0%, 70%, 100% { opacity: .3; transform: scale(.85); } 35% { opacity: 1; transform: scale(1.25); } }
+.pv .isl-meta { margin-left: 0; color: rgba(255, 255, 255, .6); font-size: 12.5px; white-space: nowrap; }
+.pv .isl-refresh { border: 0; cursor: pointer; }
+.pv .isl-refresh[data-busy="true"] .ico { animation: isl-spin 1s linear infinite; }
+@keyframes isl-spin { to { transform: rotate(360deg); } }
+@media (max-width: 899px) { .pv .isl-meta { display: none; } }
+@media (prefers-reduced-motion: reduce) { .pv .isl-refresh .ico { animation: none; } }

@@ -2,16 +2,17 @@ import { useCallback, useMemo } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { FinancialPeriodControl } from "@/components/admin/financial/financial-period-control";
-import { AdminPage, AdminPageHeader, AdminTabPanel, AdminTabs, type AdminTabItem } from "@/components/admin/platform";
+import { AdminPage, AdminPageHeader, type AdminFilterOption } from "@/components/admin/platform";
 import { useAdminFinancialPeriod } from "@/hooks/admin/use-admin-financial-period";
 import { useAdminListQueryState } from "@/hooks/admin/use-admin-list-query-state";
+
+import { HealthPage } from "@/components/admin/health/health-page";
 
 import { ActivityFeed } from "./activity-feed";
 import { activeActivityFilterCount, ActivityFilterBar, clearActivityFilters } from "./activity-filter-bar";
 import {
   ACTIVITY_FILTER_CONFIG,
   ACTIVITY_TAB_LABEL,
-  ACTIVITY_TABS,
   readActivityFilters,
   readActivityTab,
   type ActivityTab,
@@ -20,8 +21,10 @@ import { AuditLog } from "./audit-log";
 
 import "@/styles/admin-activity.css";
 
-const TAB_ITEMS: readonly AdminTabItem<ActivityTab>[] = ACTIVITY_TABS.map((id) => ({ id, label: ACTIVITY_TAB_LABEL[id] }));
-const TAB_PREFIX = "adm-act";
+const VIEW_OPTIONS: readonly AdminFilterOption[] = [
+  { value: "feed", label: "Tudo na plataforma" },
+  { value: "changes", label: ACTIVITY_TAB_LABEL.changes },
+];
 
 /** Aba da URL (`?tab=changes`). Trocar de aba leva o período e o workspace: valem para as duas visões. */
 function useActivityTab(): [ActivityTab, (tab: ActivityTab) => void] {
@@ -50,8 +53,9 @@ function useActivityTab(): [ActivityTab, (tab: ActivityTab) => void] {
 }
 
 /**
- * Atividades (`/admin/activity`): a linha do tempo da plataforma e as alterações administrativas (com antes e
- * depois). Aba, filtros, página e período ficam na URL.
+ * Monitoramento (`/admin/activity`): uma página só, sem abas. Em cima, o estado da plataforma (sistemas, alertas e
+ * sugestões); embaixo, a atividade (linha do tempo ou alterações administrativas, por um seletor). Visão, filtros,
+ * página e período ficam na URL.
  */
 export function ActivityPage() {
   const [tab, setTab] = useActivityTab();
@@ -81,19 +85,32 @@ export function ActivityPage() {
   return (
     <AdminPage>
       <AdminPageHeader
-        title="Atividades"
-        subtitle="O que aconteceu na plataforma e quem mudou o quê, com o motivo e o antes e depois."
-        actions={<FinancialPeriodControl period={period} today={today} preset={preset} onChange={setPeriod} />}
+        title="Monitoramento"
+        subtitle="Como a plataforma está agora, o que pede atenção e o que aconteceu."
       />
 
-      <AdminTabs tabs={TAB_ITEMS} value={tab} onChange={setTab} ariaLabel="Seções das atividades" idPrefix={TAB_PREFIX} />
+      {/* 1. Agora: sistemas, alertas e sugestões */}
+      <HealthPage embedded />
 
-      <ActivityFilterBar tab={tab} filters={filters} state={state} />
+      {/* 2. O que aconteceu: uma linha do tempo, com o período e o seletor de visão no mesmo lugar (sem abas) */}
+      <div className="adm-mon-head">
+        <div>
+          <h2>Atividade</h2>
+          <p>O que aconteceu na plataforma e quem mudou o quê, com o motivo e o antes e depois.</p>
+        </div>
+        <FinancialPeriodControl period={period} today={today} preset={preset} onChange={setPeriod} />
+      </div>
 
-      <AdminTabPanel idPrefix={TAB_PREFIX} id="feed" active={tab === "feed"}>
+      <ActivityFilterBar
+        tab={tab}
+        filters={filters}
+        state={state}
+        segment={{ options: VIEW_OPTIONS, value: tab, onChange: (value) => setTab(value as ActivityTab), ariaLabel: "O que mostrar" }}
+      />
+
+      {tab === "feed" ? (
         <ActivityFeed filters={filters} period={period} filtered={filtered} onClearFilters={clear} />
-      </AdminTabPanel>
-      <AdminTabPanel idPrefix={TAB_PREFIX} id="changes" active={tab === "changes"}>
+      ) : (
         <AuditLog
           params={auditParams}
           page={state.page}
@@ -102,7 +119,7 @@ export function ActivityPage() {
           filtered={filtered}
           onClearFilters={clear}
         />
-      </AdminTabPanel>
+      )}
     </AdminPage>
   );
 }

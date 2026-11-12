@@ -4,6 +4,8 @@ import { recalledListSearch } from "@/lib/admin/list-memory";
 
 /** Chave com que a lista de Usuários guarda a sua busca (filtros, ordenação, página) para a volta do detalhe. */
 export const USERS_LIST_MEMORY_KEY = "users";
+/** O mesmo para a aba Criadores (a lista de usuários só com criadores). */
+export const CREATORS_LIST_MEMORY_KEY = "creators";
 
 /**
  * Volta para a lista de Usuários do jeito que a pessoa a deixou (filtros, ordenação, busca e página), não zerada. Sem nada

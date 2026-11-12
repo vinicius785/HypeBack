@@ -460,6 +460,8 @@ export function AdminFilterBar({
   };
 
   const hasPanel = panelDefs.length > 0;
+  // "Limpar filtros" na barra: sempre fora do modo compacto; no compacto, só quando não há painel (o painel já o traz).
+  const inTrail = !compact || !hasPanel;
   const hasInline = inlineDefs.length > 0;
   const canClear = activeCount > 0 && (!!onClear || activeCustom.length > 0 || activeToggles.length > 0 || segmentActive);
 
@@ -523,9 +525,9 @@ export function AdminFilterBar({
               {panelOrdered.map((def) => renderDef(def, false))}
             </div>
           ) : null}
-          {trailing || (canClear && !compact) ? (
+          {trailing || (canClear && inTrail) ? (
             <div className="adm-filters-trail">
-              {canClear && !compact ? (
+              {canClear && inTrail ? (
                 <button type="button" className="adm-textbtn" onClick={clearAll}>
                   Limpar filtros
                 </button>

@@ -14,10 +14,6 @@ vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/admin/admin-client")>();
   return { ...actual, adminList: client.adminList, adminGet: client.adminGet, adminGetEnvelope: client.adminGetEnvelope };
 });
-vi.mock("@/hooks/admin/use-admin-creators-profile", () => ({
-  useAdminCreatorsNicheProfile: () => ({ data: undefined, isLoading: false, isError: false, isFetching: false, refetch: vi.fn() }),
-  useAdminCreatorsSizeProfile: () => ({ data: undefined, isLoading: false, isError: false, isFetching: false, refetch: vi.fn() }),
-}));
 vi.mock("@/components/admin/users/admin-workspace-picker", () => ({
   AdminWorkspacePicker: () => <div data-testid="workspace-picker" />,
   useAdminWorkspaceSelection: () => ({ summary: undefined }),
@@ -25,14 +21,10 @@ vi.mock("@/components/admin/users/admin-workspace-picker", () => ({
 
 import { AdminCampaignsList } from "@/components/admin/campaigns/admin-campaigns-list";
 import { makeCampaign, makeCampaignDetail, pageOf } from "@/components/admin/campaigns/campaign-fixtures";
-import { AdminCreatorsScreen } from "@/components/admin/creators/admin-creators-screen";
-import { makeCreator } from "@/components/admin/creators/creator-fixtures";
 import { validateAdminCampaignsSearch } from "@/hooks/admin/use-admin-campaigns";
-import { validateAdminCreatorsSearch } from "@/hooks/admin/use-admin-creators";
 import { Route as CampaignDetailRoute } from "@/screens/(private)/(admin)/admin.campaigns.$campaignId";
 import { Route as CampaignsIndexRoute } from "@/screens/(private)/(admin)/admin.campaigns.index";
 import { Route as CampaignsLayoutRoute } from "@/screens/(private)/(admin)/admin.campaigns";
-import { Route as CreatorsRoute } from "@/screens/(private)/(admin)/admin.creators";
 
 // O jsdom não implementa `scrollTo` (o roteador chama a cada navegação) e reclama no console.
 window.scrollTo = (() => {}) as typeof window.scrollTo;
@@ -48,9 +40,8 @@ function renderRoutes(url: string) {
   const layout = asUpdatable(CampaignsLayoutRoute).update({ id: "/admin/campaigns", path: "/admin/campaigns", getParentRoute: () => root });
   const index = asUpdatable(CampaignsIndexRoute).update({ id: "/", path: "/", getParentRoute: () => layout });
   const detail = asUpdatable(CampaignDetailRoute).update({ id: "/$campaignId", path: "/$campaignId", getParentRoute: () => layout });
-  const creators = asUpdatable(CreatorsRoute).update({ id: "/admin/creators", path: "/admin/creators", getParentRoute: () => root });
   const router = createRouter({
-    routeTree: root.addChildren([(layout as AnyRoute & { addChildren: (c: AnyRoute[]) => AnyRoute }).addChildren([index, detail]), creators]),
+    routeTree: root.addChildren([(layout as AnyRoute & { addChildren: (c: AnyRoute[]) => AnyRoute }).addChildren([index, detail])]),
     history: createMemoryHistory({ initialEntries: [url] }),
   });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retryDelay: 0, gcTime: 0 } } });
@@ -65,9 +56,7 @@ beforeEach(() => {
   client.adminList.mockReset();
   client.adminGet.mockReset();
   client.adminGetEnvelope.mockReset();
-  client.adminList.mockImplementation(async (path: string) =>
-    path === "/admin/campaigns" ? pageOf([makeCampaign()]) : pageOf([makeCreator()]),
-  );
+  client.adminList.mockImplementation(async () => pageOf([makeCampaign()]));
   client.adminGet.mockImplementation(async () => makeCampaignDetail());
   client.adminGetEnvelope.mockImplementation(async () => ({ data: [], meta: { computed_at: "2026-10-31T15:00:00.000Z" } }));
 });
@@ -78,8 +67,6 @@ describe("rotas de Campanhas e Criadores", () => {
   it("cada rota usa a tela e o validador de busca do módulo", () => {
     expect(CampaignsIndexRoute.options.component).toBe(AdminCampaignsList);
     expect(CampaignsIndexRoute.options.validateSearch).toBe(validateAdminCampaignsSearch);
-    expect(CreatorsRoute.options.component).toBe(AdminCreatorsScreen);
-    expect(CreatorsRoute.options.validateSearch).toBe(validateAdminCreatorsSearch);
   });
 
   it("/admin/campaigns abre a lista, com a busca da URL valendo", async () => {
@@ -98,15 +85,5 @@ describe("rotas de Campanhas e Criadores", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Festival Café Serra Verde" })).toBeInTheDocument();
     expect(client.adminGet).toHaveBeenCalledWith("/admin/campaigns/ca3b0000-0000-4000-8000-000000000006", undefined, expect.anything());
     expect(client.adminList).not.toHaveBeenCalled();
-  });
-
-  it("/admin/creators abre os criadores e, com ?tab=, a aba pedida", async () => {
-    renderRoutes("/admin/creators");
-    expect(await screen.findByText("Rafael Borges Mendes")).toBeInTheDocument();
-    cleanup();
-
-    renderRoutes("/admin/creators?tab=inconsistencies");
-    expect(await screen.findByText("Nenhuma inconsistência encontrada")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Inconsistências" })).toHaveAttribute("aria-selected", "true");
   });
 });

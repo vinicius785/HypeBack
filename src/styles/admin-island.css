@@ -1,0 +1,72 @@
+/*
+ * Casca das ilhas do backoffice (`AdminIsland`, padrão `.isl` do Gerenciamento em management-board.css). Um desenho só:
+ *
+ *   ┌──────────────────────────────────────────────────────────────────┐
+ *   │ [ start: pílulas ........ ]  [ end: números vivos, atualizar ]  ⌄ │  ← a seta fica no canto direito
+ *   │ [ tools: busca · ordenar · filtros ]                              │
+ *   └──────────────────────────────────────────────────────────────────┘
+ *
+ * Espaçamento: 12px entre os blocos, 8px entre as pílulas, 16px de respiro lateral e 60px de altura mínima. Tudo sob `.pv`,
+ * só tokens do kit; as animações param com `prefers-reduced-motion`. Telas estreitas: o `end` desce para a própria linha.
+ */
+.pv .isl.isl-x { --isl-w: 100%; align-self: stretch; }
+
+.pv .isl-x .isl-x-h {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "start end chev";
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 8px;
+  min-height: 60px;
+  padding: 10px 12px 10px 16px;
+}
+.pv .isl-x .isl-x-start { grid-area: start; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
+.pv .isl-x .isl-x-end { grid-area: end; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+/* a seta: sempre a última coluna, centrada, com a mesma área de toque em todas as ilhas */
+.pv .isl-x .isl-x-chev { grid-area: chev; justify-self: end; flex: none; width: 36px; height: 36px; margin: 0; cursor: pointer; border: 0; color: inherit; }
+.pv .isl-x .isl-x-chev:focus-visible { outline: 2px solid var(--adm-surface); outline-offset: 2px; }
+
+/* segunda linha: a barra da lista, alinhada ao respiro do cabeçalho */
+.pv .isl-x .isl-tools { padding: 0 12px 12px 16px; min-width: 0; }
+.pv .isl-x .isl-tools:empty { display: none; }
+
+/* a folha branca: margem igual nas quatro ilhas */
+.pv .isl-x .isl-sheet { margin: 0 8px 8px; }
+
+@media (max-width: 1180px) {
+  .pv .isl-x .isl-x-h { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "start chev" "end end"; }
+  .pv .isl-x .isl-x-end { justify-content: flex-start; }
+  .pv .isl-x .isl-x-h:has(.isl-x-end:empty) { grid-template-areas: "start chev"; }
+}
+
+/* números vivos da ilha (`AdminIslandStat`): ícone animado + valor + rótulo, cada um com o seu movimento */
+.pv .isl-x .isl-live { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.pv .isl-x .isl-stat { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 8px; border-radius: 99px; background: color-mix(in srgb, var(--adm-surface) 10%, transparent); font-size: 12.5px; }
+.pv .isl-x .isl-stat b { min-width: 2.2ch; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pv .isl-x .isl-stat small { color: color-mix(in srgb, var(--adm-surface) 62%, transparent); font-size: 12px; font-weight: 500; }
+.pv .isl-x .isl-stat-ico { position: relative; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: color-mix(in srgb, var(--adm-surface) 14%, transparent); color: var(--adm-surface); }
+.pv .isl-x .isl-stat-ico .ico { width: 13px; height: 13px; }
+.pv .isl-x .isl-stat[data-tone="ok"] .isl-stat-ico { background: rgba(52, 211, 153, .22); color: #34d399; }
+.pv .isl-x .isl-stat[data-tone="warn"] .isl-stat-ico { background: rgba(251, 191, 36, .22); color: #fbbf24; }
+.pv .isl-x .isl-stat[data-tone="bad"] .isl-stat-ico { background: rgba(248, 113, 113, .22); color: #f87171; }
+/* cada ícone tem o seu movimento: balança (ativos), radar (online), brilho (novos), alarme (alertas) */
+.pv .isl-x .isl-stat[data-anim="bob"] .isl-stat-ico .ico { animation: isl-stat-bob 2.2s ease-in-out infinite; }
+.pv .isl-x .isl-stat[data-anim="rise"] .isl-stat-ico .ico { animation: isl-stat-rise 1.6s ease-in-out infinite; }
+.pv .isl-x .isl-stat[data-anim="drop"][data-tone="bad"] .isl-stat-ico .ico { animation: isl-stat-drop 1.8s ease-in infinite; }
+.pv .isl-x .isl-stat[data-anim="radar"] .isl-stat-ico::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid currentColor; opacity: 0; animation: isl-stat-radar 1.8s ease-out infinite; }
+@keyframes isl-stat-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px) scale(1.08); } }
+/* a seta verde sobe e some no alto, reaparece embaixo: "chegou gente nova" */
+@keyframes isl-stat-rise { 0% { transform: translateY(5px); opacity: 0; } 35% { opacity: 1; } 70% { transform: translateY(-2px); opacity: 1; } 100% { transform: translateY(-6px); opacity: 0; } }
+/* a lixeira "recebe" algo: o ícone cai de cima e se acomoda com um tranco */
+@keyframes isl-stat-drop { 0% { transform: translateY(-7px); opacity: 0; } 35% { transform: translateY(1px); opacity: 1; } 45% { transform: translateY(-1px); } 55%, 100% { transform: translateY(0); opacity: 1; } }
+@keyframes isl-stat-radar { 0% { transform: scale(.8); opacity: .7; } 100% { transform: scale(1.9); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) { .pv .isl-x .isl-stat-ico .ico, .pv .isl-x .isl-stat-ico::after { animation: none; } }
+
+/* barra de ilha sem busca, só com o período em texto à esquerda: o texto empurra, e o ícone de filtro e o atualizar ficam JUNTOS no
+   canto direito (o `trail` do kit empurra o atualizar sozinho para a ponta e abria um vão entre os dois ícones) */
+.pv .isl-x .isl-period-now { display: inline-flex; align-items: center; gap: 8px; margin-right: auto; padding-left: 4px; color: color-mix(in srgb, var(--adm-surface) 72%, transparent); font-size: 13px; white-space: nowrap; }
+.pv .isl-x .isl-period-now b { color: var(--adm-surface); font-weight: 600; }
+.pv .isl-x .adm-filters-row:has(.isl-period-now) { justify-content: flex-start; }
+.pv .isl-x .adm-filters-row:has(.isl-period-now) .adm-filters-trail { margin-left: 0; }

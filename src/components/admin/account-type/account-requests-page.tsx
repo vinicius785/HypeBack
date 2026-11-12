@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   AdminBadge,
@@ -7,15 +7,14 @@ import {
   AdminEntityCell,
   AdminKeyValueList,
   AdminLink,
-  AdminPage,
-  AdminPageHeader,
+  AdminFilterBar,
   AdminPager,
   AdminRefreshButton,
   AdminSearchInput,
   AdminSection,
   AdminTable,
-  AdminTabs,
   adminToast,
+  inIsland,
   type AdminTableColumn,
 } from "@/components/admin/platform";
 import { useAdminCapabilities } from "@/hooks/admin/use-admin-team";
@@ -38,22 +37,23 @@ const PER_PAGE = 20;
 type Decision = { request: AccountTypeRequest; kind: "approve" | "reject" };
 
 /**
- * Solicitações de troca do tipo de conta (marca/agência) dos workspaces. A equipe lê; só o administrador da
- * plataforma aprova ou rejeita (a API confere o papel em cada decisão). Aprovar muda o tipo e avisa o time;
- * rejeitar exige o motivo, mantém o tipo e avisa o time com o motivo.
+ * Fila das Solicitações de troca do tipo de conta (marca/agência), dentro do Atendimento. A equipe lê; só o administrador
+ * da plataforma aprova ou rejeita (a API confere o papel em cada decisão). Aprovar muda o tipo e avisa o time; rejeitar
+ * exige o motivo, mantém o tipo e avisa o time com o motivo. `view` diz se é a fila dos pendentes ou o histórico.
  * Dados: `GET /admin/workspace-account-type-requests`; decisão: `POST .../:id/approve|reject`.
  */
-export function AdminAccountTypeRequestsPage() {
+export function AccountRequestsQueue({ view, tools }: { view: AccountRequestFilter; tools?: HTMLElement | null }) {
   const capabilities = useAdminCapabilities();
-  const [tab, setTab] = useState<AccountRequestFilter>("pending");
+  const tab = view;
   const [text, setText] = useState("");
   const [page, setPage] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(null);
+  // Trocar de fila volta à primeira página.
+  useEffect(() => setPage(1), [view]);
   const [decision, setDecision] = useState<Decision | null>(null);
 
   const q = text.trim().length >= 2 ? text.trim() : undefined;
   const list = useAdminAccountTypeRequests({ status: tab, q, page, per_page: PER_PAGE });
-  const pendingCount = useAdminAccountTypeRequests({ status: "pending", page: 1, per_page: 1 }).data?.meta.total;
   const canDecide = capabilities.isAdmin;
 
   const columns: AdminTableColumn<AccountTypeRequest>[] = [
@@ -112,28 +112,10 @@ export function AdminAccountTypeRequestsPage() {
   const meta = list.data?.meta;
 
   return (
-    <AdminPage>
-      <AdminPageHeader
-        title="Solicitações de tipo de conta"
-        subtitle="Pedidos dos workspaces para virar Marca ou Agência. O tipo só muda quando você aprova."
-        actions={<AdminRefreshButton onClick={() => void list.refetch()} loading={list.isFetching} />}
-      />
-
-      <AdminSection>
-        <div className="adm-ar-bar">
-          <AdminTabs
-            ariaLabel="Situação das solicitações"
-            idPrefix="adm-ar"
-            value={tab}
-            onChange={(t) => {
-              setTab(t);
-              setPage(1);
-            }}
-            tabs={[
-              { id: "pending", label: "Pendentes", count: pendingCount ?? null },
-              { id: "decided", label: "Histórico" },
-            ]}
-          />
+    <>
+      {inIsland(tools, (
+      <AdminFilterBar
+        search={
           <AdminSearchInput
             value={text}
             onSearch={(v) => {
@@ -143,8 +125,14 @@ export function AdminAccountTypeRequestsPage() {
             placeholder="Buscar workspace ou responsável"
             label="Buscar solicitações"
           />
-        </div>
+        }
+        searchLabel="Buscar solicitações"
+        compact
+        trailing={<AdminRefreshButton iconOnly onClick={() => void list.refetch()} loading={list.isFetching} />}
+      />
+      ))}
 
+      <AdminSection flush>
         <AdminTable
           caption="Solicitações de tipo de conta"
           columns={columns}
@@ -176,7 +164,7 @@ export function AdminAccountTypeRequestsPage() {
         }}
       />
       {decision && <DecisionDialog decision={decision} onClose={() => setDecision(null)} />}
-    </AdminPage>
+    </>
   );
 }
 

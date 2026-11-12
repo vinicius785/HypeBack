@@ -1,9 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { HealthPage } from "@/components/admin/health/health-page";
-import { validateHealthSearch } from "@/components/admin/health/health-search";
-
+/** A Saúde da plataforma virou uma aba das Atividades: o endereço antigo (e links salvos) leva para lá. */
 export const Route = createFileRoute("/(private)/(admin)/admin/health")({
-  validateSearch: validateHealthSearch,
-  component: HealthPage,
+  beforeLoad: ({ search }) => {
+    const severity = (search as { severity?: string }).severity;
+    throw redirect({ to: "/admin/activity", search: { tab: "health", ...(severity ? { severity } : {}) } as never, replace: true });
+  },
 });

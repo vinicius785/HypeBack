@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import {
   AdminActionMenu,
@@ -11,6 +11,8 @@ import {
   AdminPager,
   AdminRefreshButton,
   AdminSearchInput,
+  AdminSortMenu,
+  type AdminSortOption,
   AdminStatusBadge,
   AdminTable,
   type AdminFilterDef,
@@ -20,14 +22,17 @@ import {
 import { AdminWorkspacePicker, useAdminWorkspaceSelection } from "@/components/admin/users/admin-workspace-picker";
 import { useAdminListQueryState, useAdminPageClamp } from "@/hooks/admin/use-admin-list-query-state";
 import { ADMIN_CAMPAIGN_LIST_CONFIG, useAdminCampaigns } from "@/hooks/admin/use-admin-campaigns";
+import { rememberListSearch } from "@/lib/admin/list-memory";
+import { stateToSearch } from "@/lib/admin/list-query";
 import { formatBRLFromCents, formatDate, formatDateTime, formatInt } from "@/lib/admin/format";
 import { FIGURE_KIND_HELP } from "@/lib/admin/labels";
 import type { AdminCampaignListItem, AdminWorkspaceRef } from "@/shared/admin-platform.types";
 
 import { useAdminCapabilities } from "@/hooks/admin/use-admin-team";
 
+import { CampaignsIsland } from "./campaigns-island";
 import { AdminCampaignDeleteDialog } from "./admin-campaign-delete";
-import { campaignDetailLink, campaignWorkspaceLink } from "./campaign-links";
+import { CAMPAIGNS_LIST_MEMORY_KEY, campaignDetailLink, campaignWorkspaceLink } from "./campaign-links";
 import {
   CAMPAIGN_COLUMN_DEFINITIONS,
   PAYMENT_METHOD_OPTIONS,
@@ -55,6 +60,20 @@ function pickDefinition(
   }
   return fallback;
 }
+
+/** Opções do menu "Ordenar" (o mesmo `sort_by`/`order` da URL e dos cabeçalhos da tabela). */
+const CAMPAIGN_SORT_OPTIONS: readonly AdminSortOption[] = [
+  { sortBy: "created_at", order: "desc", group: "Criação", shortLabel: "Mais recentes", label: "Criação: mais recentes" },
+  { sortBy: "created_at", order: "asc", group: "Criação", shortLabel: "Mais antigas", label: "Criação: mais antigas" },
+  { sortBy: "title", order: "asc", group: "Título", shortLabel: "A–Z", label: "Título: A–Z" },
+  { sortBy: "title", order: "desc", group: "Título", shortLabel: "Z–A", label: "Título: Z–A" },
+  { sortBy: "creators", order: "desc", group: "Criadores", shortLabel: "Mais criadores", label: "Criadores: mais criadores" },
+  { sortBy: "creators", order: "asc", group: "Criadores", shortLabel: "Menos criadores", label: "Criadores: menos criadores" },
+  { sortBy: "committed", order: "desc", group: "Comprometido", shortLabel: "Maior valor", label: "Comprometido: maior valor" },
+  { sortBy: "committed", order: "asc", group: "Comprometido", shortLabel: "Menor valor", label: "Comprometido: menor valor" },
+  { sortBy: "released", order: "desc", group: "Liberado", shortLabel: "Maior valor", label: "Liberado: maior valor" },
+  { sortBy: "released", order: "asc", group: "Liberado", shortLabel: "Menor valor", label: "Liberado: menor valor" },
+] as const;
 
 /**
  * Nome do workspace (link) com a etiqueta do estado quando não está ativo, e o responsável dele embaixo (só o nome:
@@ -118,6 +137,11 @@ function MoneyCell({ cents }: { cents: number }) {
  */
 export function AdminCampaignsList() {
   const list = useAdminListQueryState(ADMIN_CAMPAIGN_LIST_CONFIG);
+  // Guarda o que está na URL (filtros, ordenação, busca, página) para o "voltar" do detalhe trazer a lista como estava.
+  const memorySearch = JSON.stringify(stateToSearch(list, ADMIN_CAMPAIGN_LIST_CONFIG));
+  useEffect(() => {
+    rememberListSearch(CAMPAIGNS_LIST_MEMORY_KEY, JSON.parse(memorySearch) as Record<string, string | number>);
+  }, [memorySearch]);
   const query = useAdminCampaigns(list.params);
   const meta = query.data?.meta;
   useAdminPageClamp(list.page, meta?.total_pages, list.setPage);
@@ -293,22 +317,28 @@ export function AdminCampaignsList() {
     <AdminPage>
       <AdminPageHeader title="Campanhas" subtitle="Todas as campanhas da plataforma." />
 
+      <CampaignsIsland options={STATUS_OPTIONS} value={list.filters.status} onChange={(status) => list.setFilter("status", status)}>
       <AdminFilterBar
-        segment={{
-          options: STATUS_OPTIONS,
-          value: list.filters.status,
-          onChange: (value) => list.setFilter("status", value),
-          ariaLabel: "Status da campanha",
-        }}
-        segmentDefault=""
         search={<AdminSearchInput value={list.search} onSearch={list.setSearch} placeholder="Buscar por título ou workspace" />}
         searchLabel="Buscar campanhas"
         filters={filters}
         values={list.filters}
         onChange={(patch) => list.setFilters(patch)}
         onClear={list.clearFilters}
+        compact
+        beforeFilters={
+          <AdminSortMenu
+            options={CAMPAIGN_SORT_OPTIONS}
+            sortBy={list.sortBy}
+            order={list.order}
+            defaultSortBy={ADMIN_CAMPAIGN_LIST_CONFIG.defaultSortBy}
+            defaultOrder={ADMIN_CAMPAIGN_LIST_CONFIG.defaultOrder}
+            onSort={list.setSort}
+          />
+        }
         trailing={<AdminRefreshButton iconOnly onClick={() => void query.refetch()} loading={query.isFetching} />}
       />
+      </CampaignsIsland>
 
       <AdminTable
         caption="Campanhas"

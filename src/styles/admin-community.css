@@ -102,3 +102,15 @@
   .pv .adm-team-act { grid-column: 1 / -1; justify-content: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) { .pv .adm-team-sw, .pv .adm-team-sw-k, .pv .adm-team-sw-k::after { transition: none; } }
+
+/* ilha da Comunidade (padrão `AdminIsland`): pílulas das seções, "Criar grupo" na ponta e a barra da aba na segunda linha */
+.pv .isl-com-w .isl-segs { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.pv .isl-com-w .isl-seg { cursor: pointer; border: 0; color: inherit; transition: background .2s, color .2s, transform .2s; }
+.pv .isl-com-w .isl-seg:hover { background: color-mix(in srgb, var(--adm-surface) 18%, transparent); }
+.pv .isl-com-w .isl-seg:active { transform: scale(.96); }
+.pv .isl-com-w .isl-seg[aria-pressed="true"] { background: var(--adm-surface); color: var(--ink); }
+.pv .isl-com-w .isl-seg[aria-pressed="true"] i { background: var(--ink); }
+.pv .isl-cta { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px 0 12px; border: 0; border-radius: 99px; background: var(--adm-surface); color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer; transition: transform .2s, box-shadow .2s; }
+.pv .isl-cta:hover { box-shadow: 0 0 0 3px color-mix(in srgb, var(--adm-surface) 28%, transparent); }
+.pv .isl-cta:active { transform: scale(.96); }
+.pv .isl-cta .ico { width: 14px; height: 14px; }

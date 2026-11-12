@@ -8,6 +8,8 @@ const client = vi.hoisted(() => ({
   adminFeed: vi.fn(),
 }));
 
+// A saúde (bloco de cima do Monitoramento) tem os testes dela; aqui só interessa a atividade.
+vi.mock("@/components/admin/health/health-page", () => ({ HealthPage: () => null }));
 vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/admin/admin-client")>();
   return { ...actual, adminGet: client.adminGet, adminList: client.adminList, adminFeed: client.adminFeed };
@@ -189,15 +191,15 @@ describe("Atividade: filtros e período", () => {
   it("uma só barra de filtros, acima do painel, com workspace e tipo na linha dela (sem 'Atualizar' no cabeçalho)", async () => {
     const { container } = await openFeed();
     expect(container.querySelectorAll(".adm-filters")).toHaveLength(1);
-    const panel = screen.getByRole("tabpanel");
-    expect(panel.querySelector(".adm-filters")).toBeNull();
+    // o seletor de visão (Tudo / Alterações) mora na mesma barra, e a lista vem depois dela
+    expect(within(container.querySelector<HTMLElement>(".adm-filters")!).getByRole("group", { name: "O que mostrar" })).toBeInTheDocument();
     const bar = container.querySelector<HTMLElement>(".adm-filters")!;
     expect(within(bar).getByRole("button", { name: /^Workspace:/ })).toBeInTheDocument();
     expect(within(bar).getByRole("combobox", { name: "Tipo" })).toBeInTheDocument();
-    // o período é do cabeçalho e o "Atualizar" é o ícone no fim da barra
-    const header = screen.getByRole("heading", { name: "Atividades", level: 1 }).closest("header")!;
-    expect(within(header).getByRole("group", { name: "Período" })).toBeInTheDocument();
-    expect(within(header).queryByRole("button", { name: "Atualizar" })).not.toBeInTheDocument();
+    // o período fica no cabeçalho do bloco "Atividade" e o "Atualizar" é o ícone no fim da barra
+    const head = screen.getByRole("heading", { name: "Atividade", level: 2 }).closest(".adm-mon-head") as HTMLElement;
+    expect(within(head).getByRole("group", { name: "Período" })).toBeInTheDocument();
+    expect(within(head).queryByRole("button", { name: "Atualizar" })).not.toBeInTheDocument();
     expect(within(bar).getByRole("button", { name: "Atualizar" })).toHaveAttribute("data-icon-only", "true");
   });
 

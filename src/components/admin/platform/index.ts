@@ -43,6 +43,9 @@ export {
   type AdminTableProps,
   type AdminTableSort,
 } from "./admin-table";
+export { AdminIsland, inIsland, type AdminIslandProps } from "./admin-island";
+export { AdminIslandStat, type AdminIslandStatProps } from "./admin-island-stat";
+export { AdminSortMenu, type AdminSortOption } from "./admin-sort-menu";
 export { AdminTabPanel, AdminTabs, adminTabIds, type AdminTabItem } from "./admin-tabs";
 export { AdminActionMenu, type AdminActionMenuItem, type AdminActionMenuProps } from "./admin-action-menu";
 export { AdminDialog, AdminDrawer, type AdminDialogProps, type AdminDialogSize, type AdminDrawerProps } from "./admin-dialog";

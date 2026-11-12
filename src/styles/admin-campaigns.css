@@ -69,3 +69,20 @@
   .pv .adm-campaigns-dist li { grid-template-columns: minmax(0, 1fr) 40px; row-gap: 6px; }
   .pv .adm-campaigns-dist-bar { grid-column: 1 / -1; grid-row: 2; }
 }
+
+/* ilha de Campanhas (padrão `AdminIsland`): pílulas de status, "Criadas hoje" e a folha com quatro números */
+.pv .isl-cmp-w .isl-segs { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.pv .isl-cmp-w .isl-seg { cursor: pointer; border: 0; color: inherit; transition: background .2s, color .2s, transform .2s; }
+.pv .isl-cmp-w .isl-seg:hover { background: color-mix(in srgb, var(--adm-surface) 18%, transparent); }
+.pv .isl-cmp-w .isl-seg:active { transform: scale(.96); }
+.pv .isl-cmp-w .isl-seg em { display: inline-block; min-width: 1.6ch; font-style: normal; font-weight: 700; opacity: .75; font-variant-numeric: tabular-nums; }
+.pv .isl-cmp-w .isl-seg[aria-pressed="true"] { background: var(--adm-surface); color: var(--ink); }
+.pv .isl-cmp-w .isl-seg[aria-pressed="true"] i { background: var(--ink); }
+.pv .isl-cmp-w .isl-seg[aria-pressed="true"][data-tone="ok"] i { background: var(--adm-ok); }
+.pv .isl-cmp-w .isl-seg[aria-pressed="true"][data-tone="warn"] i { background: var(--adm-warn); }
+.pv .adm-cmp-sheet { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 28px; }
+.pv .adm-cmp-sheet > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pv .adm-cmp-sheet small { color: var(--adm-text-muted); font-size: 12.5px; font-weight: 600; }
+.pv .adm-cmp-sheet b { font-size: 26px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.pv .adm-cmp-sheet span { color: var(--adm-text-muted); font-size: 13px; }
+@media (max-width: 900px) { .pv .adm-cmp-sheet { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

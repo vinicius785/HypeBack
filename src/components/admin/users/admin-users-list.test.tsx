@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const client = vi.hoisted(() => ({ adminList: vi.fn(), adminGet: vi.fn() }));
 
+// A ilha de Pessoas tem os testes dela (e faz consultas próprias de 1 item): aqui só interessa a lista.
+vi.mock("@/components/admin/people/people-island", () => ({ PeopleIsland: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
 vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/admin/admin-client")>();
   return { ...actual, adminList: client.adminList, adminGet: client.adminGet };
@@ -119,7 +121,7 @@ function cellsOf(row: HTMLElement) {
 
 async function renderList(url = "/admin/users") {
   const view = renderRoutes(ROUTES, url);
-  await screen.findByRole("heading", { name: "Usuários", level: 1 });
+  await screen.findByRole("heading", { name: "Pessoas", level: 1 });
   return { ...view, user: userEvent.setup() };
 }
 
@@ -142,13 +144,13 @@ afterEach(() => {
 describe("lista de usuários: conteúdo", () => {
   it("cabeçalho da página e a primeira consulta, sem filtro nenhum enviado (o padrão é o da API)", async () => {
     await renderList();
-    expect(screen.getByText("Quem acessa a plataforma, em todos os workspaces.")).toBeInTheDocument();
+    expect(screen.getByText(/Quem acessa a plataforma: usuários, criadores e os workspaces/)).toBeInTheDocument();
     await screen.findByText("Bernardo Medeiros Moraes");
     expect(usersCalls()).toHaveLength(1);
     expect(lastUsersParams()).toEqual({ page: 1, per_page: 25, sort_by: "created_at", order: "desc", status: "active,suspended" });
   });
 
-  it("as colunas: usuário, confiança, workspaces, status, cadastro e última sessão (sem 'Tipo' enquanto o filtro é um tipo só)", async () => {
+  it("as colunas: usuário, confiança, workspaces, status, cadastro e última sessão (sem coluna 'Tipo': o tipo não é filtro)", async () => {
     await renderList();
     await screen.findByText("Bernardo Medeiros Moraes");
     const headers = within(table()).getAllByRole("columnheader").map((h) => h.textContent ?? "");
@@ -160,20 +162,6 @@ describe("lista de usuários: conteúdo", () => {
     expect(headers[5]).toMatch(/^Última sessão/);
     expect(headers[6]).toBe("Celular");
     expect(headers).toHaveLength(7);
-  });
-
-  it("com 'Todos' os tipos, a coluna 'Tipo' volta (é onde os tipos diferem)", async () => {
-    await renderList("/admin/users?kind=all");
-    await screen.findByText("Bernardo Medeiros Moraes");
-    const headers = within(table()).getAllByRole("columnheader").map((h) => h.textContent ?? "");
-    // a coluna "Confiança" vem logo depois de "Tipo"
-    expect(headers.slice(0, 2)).toEqual(["Usuário", "Tipo"]);
-    expect(headers[2]).toMatch(/^Confiança/);
-    expect(headers.slice(3, 6)).toEqual(["Workspaces", "Status", "Cadastrado em"]);
-    const [, kind] = cellsOf(dataRows()[1]);
-    expect(kind).toHaveTextContent("Agência");
-    // sem a etiqueta de tipo junto do nome: o tipo já está na coluna
-    expect(within(cellsOf(dataRows()[1])[0]).queryByText("Agência")).not.toBeInTheDocument();
   });
 
   it("linha de uma conta de marca ativa com sessão", async () => {
@@ -335,8 +323,8 @@ describe("lista de usuários: filtros na URL e na API", () => {
   it("estado da conta: cada opção vai para a URL e para a consulta; o padrão sai de ambos", async () => {
     const { router, user } = await renderList();
     await screen.findByText("Bernardo Medeiros Moraes");
-    const group = screen.getByRole("group", { name: "Status da conta" });
-    expect(within(group).getByRole("button", { name: "Ativos e suspensos" })).toHaveAttribute("aria-pressed", "true");
+    const status = screen.getByRole("combobox", { name: "Status da conta" });
+    expect(status).toHaveValue("active,suspended");
 
     for (const [label, value] of [
       ["Suspensos", "suspended"],
@@ -345,13 +333,13 @@ describe("lista de usuários: filtros na URL e na API", () => {
       ["Excluídos", "deleted"],
       ["Todos", "all"],
     ] as const) {
-      await user.click(within(group).getByRole("button", { name: label }));
+      await user.selectOptions(status, label);
       await waitFor(() => expect(currentSearch(router)).toEqual({ status: value }));
       await waitFor(() => expect(lastUsersParams()).toMatchObject({ status: value, page: 1 }));
-      expect(within(group).getByRole("button", { name: label })).toHaveAttribute("aria-pressed", "true");
+      expect(status).toHaveValue(value);
     }
 
-    await user.click(within(group).getByRole("button", { name: "Ativos e suspensos" }));
+    await user.selectOptions(status, "Ativos e suspensos");
     await waitFor(() => expect(currentSearch(router)).toEqual({}));
     await waitFor(() => expect(lastUsersParams()).toMatchObject({ status: "active,suspended" }));
   });
@@ -361,35 +349,14 @@ describe("lista de usuários: filtros na URL e na API", () => {
     await screen.findByText("Bernardo Medeiros Moraes");
     expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
 
-    await user.click(within(screen.getByRole("group", { name: "Status da conta" })).getByRole("button", { name: "Suspensos" }));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Status da conta" }), "Suspensos");
     await waitFor(() => expect(currentSearch(router)).toEqual({ status: "suspended" }));
     expect(screen.getByRole("button", { name: "Remover filtro Status da conta: Suspensos" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Limpar filtros" }));
     await waitFor(() => expect(currentSearch(router)).toEqual({}));
-    expect(
-      within(screen.getByRole("group", { name: "Status da conta" })).getByRole("button", { name: "Ativos e suspensos" }),
-    ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("combobox", { name: "Status da conta" })).toHaveValue("active,suspended");
     expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
-  });
-
-  it("tipo: Criadores e Todos mudam a URL, a consulta e viram chip; 'Marca' é o padrão", async () => {
-    const { router, user } = await renderList();
-    await screen.findByText("Bernardo Medeiros Moraes");
-    const select = screen.getByRole("combobox", { name: "Tipo" });
-    expect(select).toHaveValue("brand");
-
-    await user.selectOptions(select, "creator");
-    await waitFor(() => expect(currentSearch(router)).toEqual({ kind: "creator" }));
-    await waitFor(() => expect(lastUsersParams()).toMatchObject({ kind: "creator" }));
-    expect(screen.getByRole("button", { name: "Remover filtro Tipo: Criadores" })).toBeInTheDocument();
-
-    await user.selectOptions(select, "all");
-    await waitFor(() => expect(lastUsersParams()).toMatchObject({ kind: "all" }));
-
-    await user.click(screen.getByRole("button", { name: "Remover filtro Tipo: Todos" }));
-    await waitFor(() => expect(currentSearch(router)).toEqual({}));
-    await waitFor(() => expect(lastUsersParams()).not.toHaveProperty("kind"));
   });
 
   it("busca por nome ou e-mail: Enter busca na hora, vai para a URL e volta à página 1", async () => {
@@ -431,24 +398,23 @@ describe("lista de usuários: filtros na URL e na API", () => {
     expect(screen.queryByRole("button", { name: /^Remover filtro Workspace/ })).not.toBeInTheDocument();
   });
 
-  it("o seletor de workspace é um filtro da barra: 'Limpar filtros' o limpa junto com o tipo", async () => {
+  it("o seletor de workspace é um filtro da barra: 'Limpar filtros' o limpa", async () => {
     const { router, user } = await renderList();
     await screen.findByText("Bernardo Medeiros Moraes");
-    await user.selectOptions(screen.getByRole("combobox", { name: "Tipo" }), "creator");
     await user.click(screen.getByRole("button", { name: /^Workspace:/ }));
     await user.click(await screen.findByRole("option", { name: /Studio Lume Fotografia/ }));
-    await waitFor(() => expect(currentSearch(router)).toEqual({ kind: "creator", workspace_id: WS_LUME }));
-    expect(screen.getByRole("button", { name: /^Filtros/ })).toHaveTextContent("2");
+    await waitFor(() => expect(currentSearch(router)).toEqual({ workspace_id: WS_LUME }));
+    expect(screen.getByRole("button", { name: /^Filtros/ })).toHaveTextContent("1");
 
     await user.click(screen.getByRole("button", { name: "Limpar filtros" }));
     await waitFor(() => expect(currentSearch(router)).toEqual({}));
     await waitFor(() => expect(lastUsersParams()).toEqual({ page: 1, per_page: 25, sort_by: "created_at", order: "desc", status: "active,suspended" }));
   });
 
-  it("'Limpar filtros' volta tipo, período, estado e workspace ao padrão, mas mantém a busca", async () => {
+  it("'Limpar filtros' volta período, estado e workspace ao padrão, mas mantém a busca", async () => {
     client.adminGet.mockResolvedValue(makeWorkspaceItem({ id: WS_LUME, name: "Studio Lume Fotografia" }));
     const { router, user } = await renderList(
-      `/admin/users?status=suspended&kind=creator&workspace_id=${WS_LUME}&created_from=2026-10-01&search=ana`,
+      `/admin/users?status=suspended&workspace_id=${WS_LUME}&created_from=2026-10-01&search=ana`,
     );
     await screen.findByText("Bernardo Medeiros Moraes");
     await user.click(screen.getByRole("button", { name: "Limpar filtros" }));
@@ -460,7 +426,7 @@ describe("lista de usuários: filtros na URL e na API", () => {
     client.adminGet.mockResolvedValue(makeWorkspaceItem({ id: WS_CAFE, name: "Café Serra Verde" }));
     serve({ total: 400 });
     await renderList(
-      `/admin/users?status=suspended&kind=all&search=ana&sort_by=name&order=asc&page=2&per_page=50&workspace_id=${WS_CAFE}&created_from=2026-10-01&created_to=2026-10-31`,
+      `/admin/users?status=suspended&search=ana&sort_by=name&order=asc&page=2&per_page=50&workspace_id=${WS_CAFE}&created_from=2026-10-01&created_to=2026-10-31`,
     );
     await screen.findByText("Bernardo Medeiros Moraes");
 
@@ -471,13 +437,11 @@ describe("lista de usuários: filtros na URL e na API", () => {
       sort_by: "name",
       order: "asc",
       status: "suspended",
-      kind: "all",
       workspace_id: WS_CAFE,
       created_from: "2026-10-01",
       created_to: "2026-10-31",
     });
-    expect(within(screen.getByRole("group", { name: "Status da conta" })).getByRole("button", { name: "Suspensos" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("combobox", { name: "Tipo" })).toHaveValue("all");
+    expect(screen.getByRole("combobox", { name: "Status da conta" })).toHaveValue("suspended");
     expect(screen.getByRole("searchbox")).toHaveValue("ana");
     expect(screen.getByLabelText("Cadastrado em: a partir de")).toHaveValue("2026-10-01");
     expect(screen.getByLabelText("Cadastrado em: até")).toHaveValue("2026-10-31");
@@ -667,20 +631,21 @@ describe("lista de usuários: confiança", () => {
     expect(screen.getByRole("menuitem", { name: "Confiança: perfil real primeiro" })).toHaveTextContent("Perfil real primeiro");
   });
 
-  it("a barra é só busca e dois ícones (ordenar e filtros), na linha das abas de estado, e os filtros ficam no painel", async () => {
+  it("a barra mora na ilha de Pessoas: busca e ícones (ordenar e filtros), e o estado da conta fica no painel de filtros", async () => {
     const { user } = await renderList();
     await screen.findByText("Bernardo Medeiros Moraes");
     const bar = screen.getByRole("button", { name: "Ordenar" }).closest(".adm-filters") as HTMLElement;
     expect(bar).toHaveAttribute("data-compact", "true");
-    // as abas de estado e a busca/ícones são irmãos da mesma barra (mesma linha)
-    expect(bar.querySelector(".seg")).not.toBeNull();
+    // sem segmento de estado na barra: o estado é um filtro do painel
+    expect(bar.querySelector(".seg")).toBeNull();
     expect(bar.querySelector(".adm-filters-row")).not.toBeNull();
     const filters = screen.getByRole("button", { name: "Filtros" });
     expect(filters).toHaveAttribute("aria-expanded", "false");
     await user.click(filters);
     expect(filters).toHaveAttribute("aria-expanded", "true");
     const panel = screen.getByRole("group", { name: "Filtros" });
-    expect(within(panel).getByLabelText("Tipo")).toBeInTheDocument();
+    expect(within(panel).getByLabelText("Status da conta")).toBeInTheDocument();
+    expect(within(panel).queryByLabelText("Tipo")).not.toBeInTheDocument();
     expect(within(panel).getByRole("group", { name: "Cadastrado em" })).toBeInTheDocument();
     expect(within(panel).queryByText(/Confiança/)).not.toBeInTheDocument();
   });
@@ -727,12 +692,12 @@ describe("lista de usuários: desmarcar a ordenação e lembrar o que ficou", ()
 
   it("guarda filtros, ordenação, busca e página para a volta do detalhe, e apaga quando tudo volta ao padrão", async () => {
     serve({ total: 80 });
-    const { user } = await renderList("/admin/users?kind=creator&status=active&sort_by=name&order=asc&page=2");
+    const { user } = await renderList("/admin/users?status=active&sort_by=name&order=asc&page=2");
     await screen.findByText("Bernardo Medeiros Moraes");
-    await waitFor(() => expect(recalledListSearch("users")).toEqual({ page: 2, sort_by: "name", order: "asc", kind: "creator", status: "active" }));
+    await waitFor(() => expect(recalledListSearch("users")).toEqual({ page: 2, sort_by: "name", order: "asc", status: "active" }));
 
     await pickSort(user, "Nome: A–Z");
-    await waitFor(() => expect(recalledListSearch("users")).toMatchObject({ kind: "creator", status: "active" }));
+    await waitFor(() => expect(recalledListSearch("users")).toMatchObject({ status: "active" }));
     expect(recalledListSearch("users")).not.toHaveProperty("sort_by");
   });
 });
@@ -758,22 +723,10 @@ describe("lista de usuários: conta pendente (em cadastro)", () => {
 });
 
 describe("lista de usuários: confiança em toda a lista, celular e status novo", () => {
-  it("'Só suspeitos' manda trust_max=2 (junto do status explícito), vira chip e sai com 'Limpar filtros'", async () => {
-    const { router, user } = await renderList();
-    await screen.findByText("Bernardo Medeiros Moraes");
-    await user.click(screen.getByRole("button", { name: /^Filtros/ }));
-    await user.click(screen.getByRole("button", { name: "Só suspeitos (nível 1-2)" }));
-    await waitFor(() => expect(currentSearch(router)).toEqual({ trust_max: "2" }));
-    await waitFor(() => expect(lastUsersParams()).toMatchObject({ trust_max: "2", status: "active,suspended" }));
-    expect(screen.getByRole("button", { name: /Remover filtro.*Só suspeitos/ })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Limpar filtros" }));
-    await waitFor(() => expect(lastUsersParams()).not.toHaveProperty("trust_max"));
-  });
-
   it("'Em cadastro' manda status=pending", async () => {
     const { user } = await renderList();
     await screen.findByText("Bernardo Medeiros Moraes");
-    await user.click(within(screen.getByRole("group", { name: "Status da conta" })).getByRole("button", { name: "Em cadastro" }));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Status da conta" }), "Em cadastro");
     await waitFor(() => expect(lastUsersParams()).toMatchObject({ status: "pending" }));
   });
 
@@ -781,14 +734,8 @@ describe("lista de usuários: confiança em toda a lista, celular e status novo"
     const { user } = await renderList();
     await screen.findByText("Bernardo Medeiros Moraes");
     expect(lastUsersParams()).toMatchObject({ status: "active,suspended" });
-    await user.click(within(screen.getByRole("group", { name: "Status da conta" })).getByRole("button", { name: "Ativos" }));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Status da conta" }), "Ativos");
     await waitFor(() => expect(lastUsersParams()).toMatchObject({ status: "active" }));
-  });
-
-  it("trust_max fora de 1-5 (400): mostra a mensagem do servidor", async () => {
-    client.adminList.mockRejectedValue(toAdminApiError(400, { message: ["trust_max deve estar entre 1 e 5"] }));
-    await renderList("/admin/users?trust_max=9");
-    expect(await screen.findByText(/trust_max deve estar entre 1 e 5/)).toBeInTheDocument();
   });
 
   it("celular: iOS, Android, os dois (o último usado primeiro) e '—' quando não se sabe", async () => {
@@ -818,5 +765,39 @@ describe("lista de usuários: confiança em toda a lista, celular e status novo"
     });
     await renderList();
     expect(await screen.findByText("Futuro")).toBeInTheDocument();
+  });
+});
+
+describe("lista de usuários: aba Criadores (a mesma lista, só com criadores)", () => {
+  async function renderCreators() {
+    const view = renderRoutes([{ path: "/admin/creators", component: () => <AdminUsersList kind="creator" /> }, stubRoute("/admin/users/$userId")], "/admin/creators");
+    await screen.findByRole("heading", { name: "Pessoas", level: 1 });
+    return { ...view, user: userEvent.setup() };
+  }
+
+  it("consulta só criadores, com a mesma tabela, e o tipo não é um filtro", async () => {
+    const { user } = await renderCreators();
+    await screen.findByText("Bernardo Medeiros Moraes");
+    expect(lastUsersParams()).toMatchObject({ kind: "creator", status: "active,suspended" });
+    // as mesmas colunas da lista de usuários (sem a coluna de tipo, que seria sempre a mesma)
+    expect(within(table()).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^Usuário/), expect.stringMatching(/^Confiança/), "Status"]),
+    );
+    expect(within(table()).queryByRole("columnheader", { name: "Tipo" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Filtros" }));
+    expect(screen.queryByRole("combobox", { name: "Tipo" })).not.toBeInTheDocument();
+    // Criadores não têm workspace de marca para filtrar
+    expect(screen.queryByRole("button", { name: /^Workspace/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Status da conta" })).toBeInTheDocument();
+  });
+
+  it("guarda a própria memória de volta, sem misturar com a de Usuários", async () => {
+    forgetListSearch("creators");
+    forgetListSearch("users");
+    const { user } = await renderCreators();
+    await screen.findByText("Bernardo Medeiros Moraes");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Status da conta" }), "Suspensos");
+    await waitFor(() => expect(recalledListSearch("creators")).toMatchObject({ status: "suspended" }));
+    expect(recalledListSearch("users")).toBeUndefined();
   });
 });

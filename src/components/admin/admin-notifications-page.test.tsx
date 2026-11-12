@@ -60,7 +60,9 @@ function renderPage() {
   return renderAdminRoute([{ path: "/admin/notifications", component: AdminNotificationsPage }], "/admin/notifications");
 }
 
-const tab = (name: RegExp | string) => screen.getByRole("tab", { name });
+const group = () => within(screen.getByRole("group", { name: "Situação das notificações" }));
+const tab = (name: RegExp | string) => group().getByRole("button", { name });
+const tabs = () => group().getAllByRole("button");
 const titlesInTable = () =>
   within(screen.getByRole("table", { name: "Notificações" }))
     .getAllByRole("row")
@@ -82,23 +84,49 @@ describe("Notificações: cabeçalho e abas", () => {
     expect(await screen.findByRole("heading", { name: "Notificações", level: 1 })).toBeInTheDocument();
     const buttons = within(screen.getByRole("banner")).getAllByRole("button");
     expect(buttons.map((b) => b.textContent)).toEqual(["Nova notificação"]);
-    // Sem o segmentado deslizante feito à mão: as abas são as do kit.
+    // Sem o segmentado feito à mão: os filtros de situação são as pílulas da ilha (padrão do Gerenciamento).
     expect(document.getElementById("ntseg")).toBeNull();
-    expect(screen.getByRole("tablist", { name: "Status das notificações" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Resumo das notificações" })).toHaveClass("isl");
   });
 
   it("as abas, nesta ordem e com a contagem de cada uma (Com falha inclui a entrega parcial)", async () => {
     renderPage();
     await screen.findByText("Aviso enviada");
 
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
+    expect(tabs().map((t) => t.textContent)).toEqual([
       "Todas7",
       "Agendadas1",
       "Enviadas2",
       "Com falha2",
       "Rascunhos1",
     ]);
-    expect(tab(/Todas/)).toHaveAttribute("aria-selected", "true");
+    expect(tab(/Todas/)).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("com um envio em andamento, a ilha mostra 'Enviando' (bolinhas até o criador) e some quando não há", async () => {
+    renderPage();
+    await screen.findByText("Aviso enviada");
+    const island = within(screen.getByRole("region", { name: "Resumo das notificações" }));
+    const status = island.getByRole("status");
+    expect(status).toHaveAccessibleName(/Enviando “Aviso enviando”/);
+    expect(status.querySelectorAll(".isl-send-dots i")).toHaveLength(3);
+    expect(status.querySelector(".isl-send-who")).not.toBeNull();
+  });
+
+  it("a ilha abre (e fecha) uma folha com o resumo dos envios", async () => {
+    renderPage();
+    await screen.findByText("Aviso enviada");
+    const toggle = screen.getByRole("button", { name: "Abrir o resumo" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(toggle);
+    const open = screen.getByRole("button", { name: "Fechar o resumo" });
+    expect(open).toHaveAttribute("aria-expanded", "true");
+    const sheet = within(screen.getByRole("region", { name: "Resumo dos envios" }));
+    expect(sheet.getByText("Entregues")).toBeInTheDocument();
+    expect(sheet.getByText("Leram no app")).toBeInTheDocument();
+    expect(sheet.getByText("Próxima agendada")).toBeInTheDocument();
+    await userEvent.click(open);
+    expect(screen.getByRole("button", { name: "Abrir o resumo" })).toHaveAttribute("aria-expanded", "false");
   });
 
   it("Todas mostra tudo, inclusive a cancelada", async () => {
@@ -125,7 +153,6 @@ describe("Notificações: cabeçalho e abas", () => {
 
     await userEvent.click(tab(/Com falha/));
     expect(titlesInTable()).toEqual(["Aviso parcial", "Aviso falhou"]);
-    expect(screen.getByRole("tabpanel")).toHaveAccessibleName(/Com falha/);
 
     await userEvent.click(tab(/Agendadas/));
     expect(titlesInTable()).toEqual(["Aviso agendada"]);
@@ -150,7 +177,7 @@ describe("Notificações: estados do kit", () => {
     renderPage();
 
     expect(await screen.findByText("Carregando…")).toBeInTheDocument();
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Todas", "Agendadas", "Enviadas", "Com falha", "Rascunhos"]);
+    expect(tabs().map((t) => t.textContent)).toEqual(["Todas—", "Agendadas—", "Enviadas—", "Com falha—", "Rascunhos—"]);
   });
 
   it("erro: mostra o estado de erro e 'Tentar de novo' consulta outra vez", async () => {
@@ -185,7 +212,7 @@ describe("Notificações: estados do kit", () => {
     expect(within(empty).queryByRole("button", { name: "Nova notificação" })).not.toBeInTheDocument();
     await userEvent.click(within(empty).getByRole("button", { name: "Ver todas" }));
 
-    expect(tab(/Todas/)).toHaveAttribute("aria-selected", "true");
+    expect(tab(/Todas/)).toHaveAttribute("aria-pressed", "true");
     expect(await screen.findByText("Aviso enviada")).toBeInTheDocument();
   });
 });

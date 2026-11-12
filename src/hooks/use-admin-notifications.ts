@@ -38,6 +38,8 @@ export function useAdminNotificationsList(
     staleTime: 30 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
+    // Enquanto algum envio está em andamento, a lista se atualiza sozinha (a ilha mostra o andamento).
+    refetchInterval: (query) => (query.state.data?.some((n) => n.status === "sending") ? 5_000 : false),
   });
 }
 

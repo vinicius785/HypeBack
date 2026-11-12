@@ -72,6 +72,24 @@ export interface AdminListQuery {
   order?: 'asc' | 'desc';
 }
 
+/**
+ * Inscrições de criadores em campanhas por janela (dias de São Paulo), no `meta` de `GET /admin/campaigns`. Não depende de
+ * `page`/`per_page` e respeita os filtros `status`, `payment_method` e `workspace_id`. Convites da marca não contam.
+ */
+export interface AdminCampaignApplicationsMeta {
+  today: number;
+  /** Hoje e os 6 dias anteriores. */
+  last_7_days: number;
+  /** Do dia 1 do mês até agora. */
+  month_to_date: number;
+}
+
+/** O que `GET /admin/campaigns` acrescenta ao `meta` padrão. */
+export function campaignApplicationsOf(meta: unknown): AdminCampaignApplicationsMeta | null {
+  const value = (meta as { applications?: Partial<AdminCampaignApplicationsMeta> } | null | undefined)?.applications;
+  return value && Number.isFinite(value.today) && Number.isFinite(value.last_7_days) && Number.isFinite(value.month_to_date) ? (value as AdminCampaignApplicationsMeta) : null;
+}
+
 export interface AdminPageMeta {
   page: number;
   per_page: number;
@@ -612,6 +630,8 @@ export interface AdminUserListItem {
   status: AdminUserAccountStatus;
   /** Em qual etapa a conta parou quando `status` é `pending`; `null` (ou ausente) nos outros. */
   pending_step?: AdminUserPendingStep | null;
+  /** Quando a conta foi excluída (só em `status=deleted`); filtros `deleted_from`/`deleted_to` e `sort_by=deleted_at` na lista. */
+  deleted_at?: string | null;
   /** Sistemas do celular, o usado por último primeiro. Vazio = não se sabe. */
   platforms?: AdminUserPlatform[];
   is_platform_admin: boolean;

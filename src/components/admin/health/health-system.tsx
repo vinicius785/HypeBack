@@ -46,7 +46,7 @@ export function formatSnapshotAge(hours: number | null): string | null {
   return `há ${rounded.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ${rounded === 1 ? "hora" : "horas"}`;
 }
 
-function systemItems(system: AdminSystemHealth): AdminKeyValueItem[] {
+export function systemItems(system: AdminSystemHealth): AdminKeyValueItem[] {
   const snapshot = system.metrics_snapshot;
   const age = formatSnapshotAge(snapshot.age_hours);
   return [
