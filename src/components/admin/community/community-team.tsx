@@ -6,6 +6,7 @@ import {
   AdminEmptyState,
   AdminErrorState,
   AdminFilterBar,
+  inIsland,
   AdminLoadMore,
   AdminSearchInput,
   AdminSection,
@@ -94,7 +95,7 @@ function TeamSkeleton() {
  * promover. Sem busca, lista a equipe (ou só moderadores, ou só contas oficiais); digitando, procura em todas as
  * pessoas. As duas marcas são identificação visual (nunca dão acesso ao Admin) e valem no app e no Feed.
  */
-export function CommunityTeam() {
+export function CommunityTeam({ tools }: { tools?: HTMLElement | null } = {}) {
   const [segment, setSegment] = useState<Segment>("team");
   const [search, setSearch] = useState("");
   const searching = search.trim().length >= MIN_SEARCH;
@@ -192,9 +193,14 @@ export function CommunityTeam() {
         <b>Moderador</b> e o selo <b>Verificado</b> (a conta oficial, com o ícone roxo) são só identificação: aparecem no app e no Feed e
         não dão acesso ao Admin.
       </p>
+      {inIsland(tools, (
       <AdminFilterBar
-        segment={{ options: SEGMENTS, value: segment, onChange: (v) => setSegment(v as Segment), ariaLabel: "Quem mostrar" }}
-        segmentDefault="team"
+        filters={[{ kind: "select", key: "segment", label: "Quem mostrar", options: SEGMENTS, defaultValue: "team" }]}
+        values={{ segment }}
+        onChange={(patch) => {
+          if (patch.segment !== undefined) setSegment(patch.segment as Segment);
+        }}
+        onClear={() => setSegment("team")}
         search={
           <AdminSearchInput
             value={search}
@@ -204,7 +210,9 @@ export function CommunityTeam() {
           />
         }
         searchLabel="Buscar pessoa"
+        compact
       />
+      ))}
       {searching ? <p className="adm-team-hint">Resultado da busca em todas as pessoas. Limpe a busca para voltar à equipe.</p> : null}
       {body}
     </div>

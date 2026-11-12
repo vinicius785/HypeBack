@@ -63,20 +63,21 @@ describe("CommunityGroups: filtros", () => {
     await screen.findByText("Moda e Estilo");
 
     expect(lastQuery()).toMatchObject({ status: "active", search: undefined });
-    const segment = screen.getByRole("group", { name: "Status dos grupos" });
-    expect(within(segment).getByRole("button", { name: "Ativos" })).toHaveAttribute("aria-pressed", "true");
-    expect(within(segment).getAllByRole("button").map((b) => b.textContent)).toEqual(["Ativos", "Arquivados", "Todos"]);
+    // o estado é um filtro do painel (ícone de filtro), não um segmento na barra
+    const status = screen.getByRole("combobox", { name: "Status dos grupos" });
+    expect(status).toHaveValue("active");
+    expect(within(status).getAllByRole("option").map((o) => o.textContent)).toEqual(["Ativos", "Arquivados", "Todos"]);
     expect(screen.getByRole("searchbox", { name: "Buscar grupos" })).toBeInTheDocument();
   });
 
-  it("trocar o segmento pede aquele estado à API", async () => {
+  it("trocar o estado pede aquele estado à API", async () => {
     renderGroups();
     await screen.findByText("Moda e Estilo");
 
-    await userEvent.click(screen.getByRole("button", { name: "Arquivados" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Status dos grupos" }), "Arquivados");
     await waitFor(() => expect(lastQuery()).toMatchObject({ status: "deleted" }));
 
-    await userEvent.click(screen.getByRole("button", { name: "Todos" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Status dos grupos" }), "Todos");
     await waitFor(() => expect(lastQuery()).toMatchObject({ status: "all" }));
   });
 
@@ -97,7 +98,7 @@ describe("CommunityGroups: segmento como filtro", () => {
     expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Filtros ativos" })).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Arquivados" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Status dos grupos" }), "Arquivados");
 
     await waitFor(() => expect(lastQuery()).toMatchObject({ status: "deleted" }));
     expect(screen.getByRole("button", { name: "Remover filtro Status dos grupos: Arquivados" })).toBeInTheDocument();
@@ -105,7 +106,7 @@ describe("CommunityGroups: segmento como filtro", () => {
     await userEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
 
     await waitFor(() => expect(lastQuery()).toMatchObject({ status: "active" }));
-    expect(screen.getByRole("button", { name: "Ativos" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("combobox", { name: "Status dos grupos" })).toHaveValue("active");
     expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
   });
 });
@@ -186,7 +187,7 @@ describe("CommunityGroups: estados do kit", () => {
     renderGroups();
     await screen.findByText("Moda e Estilo");
 
-    await userEvent.click(screen.getByRole("button", { name: "Arquivados" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Status dos grupos" }), "Arquivados");
 
     const empty = (await screen.findByText("Nenhum grupo arquivado")).closest('[role="status"]') as HTMLElement;
     expect(within(empty).queryByRole("button")).not.toBeInTheDocument();

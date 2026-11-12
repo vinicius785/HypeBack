@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { readAdminListState, stateToApiQuery, stateToSearch } from "@/lib/admin/list-query";
 
 import {
-  ADMIN_USERS_KIND_OPTIONS,
   ADMIN_USERS_LIST_CONFIG,
   ADMIN_USERS_STATUS_OPTIONS,
 } from "./admin-users-config";
@@ -89,7 +88,6 @@ describe("configuração da lista", () => {
   it("o padrão da tela é o padrão da API: sem mexer, nada vai para a URL nem para a consulta", () => {
     const state = readAdminListState({}, ADMIN_USERS_LIST_CONFIG);
     expect(state.filters.status).toBe("active,suspended");
-    expect(state.filters.kind).toBe("brand");
     expect(stateToSearch(state, ADMIN_USERS_LIST_CONFIG)).toEqual({});
     expect(stateToApiQuery(state, ADMIN_USERS_LIST_CONFIG)).toEqual({
       page: 1,
@@ -101,7 +99,7 @@ describe("configuração da lista", () => {
 
   it("filtros fora do padrão vão com os nomes do contrato", () => {
     const state = readAdminListState(
-      { status: "all", kind: "creator", workspace_id: "ws-1", created_from: "2026-10-01", created_to: "2026-10-31", sort_by: "last_session" },
+      { status: "all", workspace_id: "ws-1", created_from: "2026-10-01", created_to: "2026-10-31", sort_by: "last_session" },
       ADMIN_USERS_LIST_CONFIG,
     );
     expect(stateToApiQuery(state, ADMIN_USERS_LIST_CONFIG)).toEqual({
@@ -110,7 +108,6 @@ describe("configuração da lista", () => {
       sort_by: "last_session",
       order: "desc",
       status: "all",
-      kind: "creator",
       workspace_id: "ws-1",
       created_from: "2026-10-01",
       created_to: "2026-10-31",
@@ -129,14 +126,6 @@ describe("configuração da lista", () => {
       ["suspended", "Suspensos"],
       ["pending", "Em cadastro"],
       ["deleted", "Excluídos"],
-      ["all", "Todos"],
-    ]);
-  });
-
-  it("tipo: Marca é o padrão; Criadores e Todos", () => {
-    expect(ADMIN_USERS_KIND_OPTIONS.map((o) => [o.value, o.label])).toEqual([
-      ["brand", "Marca"],
-      ["creator", "Criadores"],
       ["all", "Todos"],
     ]);
   });

@@ -114,7 +114,6 @@ function isCivilDate(value: string): boolean {
 const MAX_MIN_FOLLOWERS = 2_000_000_000;
 
 const creatorsValidator = createAdminListSearchValidator(ADMIN_CREATOR_LIST_CONFIG);
-const duplicatesValidator = createAdminListSearchValidator(ADMIN_DUPLICATES_LIST_CONFIG);
 
 /**
  * O roteador junta a busca crua da URL com o que o validador devolve (`{ ...crua, ...validada }`): um valor recusado
@@ -139,22 +138,11 @@ function validateCreatorsList(raw: Record<string, unknown>): AdminListSearch<Adm
   return search;
 }
 
-function validateDuplicatesList(raw: Record<string, unknown>): AdminListSearch<AdminDuplicateFilterKey> {
-  const search = { ...duplicatesValidator(raw) };
-  delete search.order; // sem ordenação nesta lista
-  if (!search.reason || !(ADMIN_DUPLICATE_REASONS as readonly string[]).includes(search.reason)) search.reason = undefined;
-  if (!search.confidence || !(ADMIN_DUPLICATE_CONFIDENCES as readonly string[]).includes(search.confidence)) {
-    search.confidence = undefined;
-  }
-  return search;
-}
-
 /** `validateSearch` da rota: só os parâmetros da aba aberta (a de criadores não escreve `tab`). */
 export function validateAdminCreatorsSearch(raw: Record<string, unknown>): AdminCreatorsSearch {
-  const tab = parseAdminCreatorsTab(raw.tab);
-  if (tab === "duplicates") return { tab, ...validateDuplicatesList(raw) };
-  if (tab === "inconsistencies") return { tab };
-  return validateCreatorsList(raw);
+  // Só existe a lista de criadores (as abas Duplicados e Inconsistências saíram): um `?tab=` antigo é ignorado.
+  // `tab: undefined` de propósito: o roteador junta a busca crua com a validada, então só assim o `?tab=` antigo sai da URL.
+  return { ...validateCreatorsList(raw), tab: undefined };
 }
 
 // ---------------------------------------------------------------------------

@@ -76,7 +76,27 @@ export const WORKSPACE_NAV: readonly NavSection[] = [
 ];
 
 /**
+ * Telas do Admin que dividem uma entrada do menu: a entrada leva à primeira aba (`tabs[0]`) e fica acesa em todas
+ * as outras. A navegação entre as telas do grupo é a "ilha" no topo de cada lista (`PeopleIsland`), não os detalhes.
+ */
+export const PLATFORM_SECTION_GROUPS = {
+  people: {
+    label: "Pessoas",
+    tabs: [
+      { label: "Usuários", href: "/admin/users" },
+      { label: "Criadores", href: "/admin/creators" },
+      { label: "Workspaces", href: "/admin/workspaces" },
+    ],
+  },
+} as const;
+export type PlatformSectionGroupId = keyof typeof PLATFORM_SECTION_GROUPS;
+
+/** O endereço que acende a entrada do menu de um grupo (o da primeira aba). */
+const groupHref = (id: PlatformSectionGroupId): string => PLATFORM_SECTION_GROUPS[id].tabs[0].href;
+
+/**
  * Admin da plataforma. A Comunidade segue em `/admin/groups`. Os ícones são todos distintos entre si.
+ * Pessoas junta telas parecidas numa entrada só, com abas (`PLATFORM_SECTION_GROUPS`).
  */
 export const PLATFORM_NAV: readonly NavSection[] = [
   {
@@ -88,31 +108,25 @@ export const PLATFORM_NAV: readonly NavSection[] = [
     id: "gestao",
     label: "Gestão da plataforma",
     items: [
-      { id: "workspaces", label: "Workspaces", icon: "box", href: "/admin/workspaces", pinned: true },
-      { id: "users", label: "Usuários", icon: "user", href: "/admin/users", pinned: true },
-      { id: "account-requests", label: "Solicitações", icon: "refresh", href: "/admin/account-requests" },
-      { id: "support", label: "Suporte", icon: "flag", href: "/admin/support" },
-      { id: "team", label: "Equipe", icon: "users", href: "/admin/team" },
+      { id: "people", label: "Pessoas", icon: "users", href: groupHref("people"), pinned: true },
+      { id: "campaigns", label: "Campanhas", icon: "mega", href: "/admin/campaigns" },
+      { id: "financial", label: "Financeiro", icon: "banknote", href: "/admin/financial", pinned: true },
+      { id: "community", label: "Comunidade", icon: "msg", href: "/admin/groups" },
     ],
   },
   {
     id: "operacao",
     label: "Operação",
     items: [
-      { id: "campaigns", label: "Campanhas", icon: "mega", href: "/admin/campaigns" },
-      { id: "creators", label: "Criadores", icon: "star", href: "/admin/creators" },
-      { id: "financial", label: "Financeiro", icon: "banknote", href: "/admin/financial", pinned: true },
-      { id: "community", label: "Comunidade", icon: "msg", href: "/admin/groups" },
+      { id: "support", label: "Atendimento", icon: "flag", href: "/admin/support" },
+      { id: "notifications", label: "Notificações", icon: "bell", href: "/admin/notifications" },
+      { id: "monitoring", label: "Monitoramento", icon: "clock", href: "/admin/activity" },
     ],
   },
   {
-    id: "monitoramento",
-    label: "Monitoramento",
-    items: [
-      { id: "activity", label: "Atividades", icon: "clock", href: "/admin/activity" },
-      { id: "notifications", label: "Notificações", icon: "bell", href: "/admin/notifications" },
-      { id: "health", label: "Saúde da plataforma", icon: "shield", href: "/admin/health" },
-    ],
+    id: "administracao",
+    label: "Administração",
+    items: [{ id: "team", label: "Equipe", icon: "shield", href: "/admin/team" }],
   },
 ];
 

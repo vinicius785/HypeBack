@@ -9,6 +9,21 @@ const client = vi.hoisted(() => ({
   adminPatch: vi.fn(),
 }));
 
+// A ilha de Campanhas tem os testes dela (e faz consultas próprias de 1 item): aqui as pílulas de status são botões simples.
+vi.mock("./campaigns-island", () => ({
+  CampaignsIsland: ({ options, value, onChange, children }: { options: { value: string; label: string }[]; value: string; onChange: (v: string) => void; children?: React.ReactNode }) => (
+    <>
+      <div role="group" aria-label="Status da campanha">
+        {options.map((o) => (
+          <button key={o.value || "all"} type="button" aria-pressed={o.value === value} onClick={() => onChange(o.value)}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {children}
+    </>
+  ),
+}));
 vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/admin/admin-client")>();
   return {
@@ -369,18 +384,18 @@ describe("Lista de campanhas: URL ⇄ filtros ⇄ API", () => {
     expect(currentSearch(router)).toEqual({});
   });
 
-  it("o status fora de 'Todas' conta como filtro: vira chip e 'Limpar filtros' devolve a 'Todas'", async () => {
+  it("o status é uma pílula da ilha (não um chip): 'Finalizadas' filtra pela API e 'Todas' devolve o padrão", async () => {
     const { router } = await renderLoaded();
-    expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
-
     await userEvent.click(screen.getByRole("button", { name: "Finalizadas" }));
     await waitFor(() => expect(lastParams()).toMatchObject({ status: "finished" }));
-    expect(screen.getByRole("button", { name: "Remover filtro Status da campanha: Finalizadas" })).toBeInTheDocument();
+    expect(currentSearch(router)).toEqual({ status: "finished" });
+    expect(screen.getByRole("button", { name: "Finalizadas" })).toHaveAttribute("aria-pressed", "true");
+    // o estado vive nas pílulas da ilha: nada de chip nem de "Limpar filtros" para ele
+    expect(screen.queryByRole("button", { name: /Remover filtro Status/ })).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    await userEvent.click(screen.getByRole("button", { name: "Todas" }));
     await waitFor(() => expect(lastParams()).not.toHaveProperty("status"));
     expect(currentSearch(router)).toEqual({});
-    expect(screen.getByRole("button", { name: "Todas" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("busca: Enter busca na hora e a busca vai para a API e para a URL", async () => {

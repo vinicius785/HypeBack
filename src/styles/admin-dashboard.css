@@ -55,7 +55,7 @@
 .pv .adm-dash .adm-dash-strip .adm-fig-link:focus-visible { outline-offset: -3px; }
 
 /* Usuários e Criadores dividem a linha na proporção dos números (3 e 1): cada número com a mesma largura */
-.pv .adm-dash-row { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 24px; }
+.pv .adm-dash-row { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 16px; }
 
 @container adm-dash (max-width: 1000px) {
   .pv .adm-dash .adm-dash-strip { --adm-dash-cols: var(--c-md, 3); }
@@ -73,7 +73,7 @@
 
 /* ───────────────────────── atenção e atividade ───────────────────────── */
 
-.pv .adm-dash-split { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 24px; align-items: start; }
+.pv .adm-dash-split { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 16px; align-items: stretch; }
 @container adm-dash (max-width: 900px) {
   .pv .adm-dash .adm-dash-split { grid-template-columns: minmax(0, 1fr); }
 }
@@ -89,36 +89,39 @@
 
 /* ── precisa de atenção: uma linha por alerta (gravidade, título, contagem, seta); a regra fica recolhida ── */
 
-.pv .adm-dash-alerts { list-style: none; margin: 0 -12px; padding: 0; display: flex; flex-direction: column; }
-.pv .adm-dash-alert { position: relative; padding: 14px 12px; border-radius: var(--adm-r-md); transition: background .15s; }
-.pv .adm-dash-alert + .adm-dash-alert::before { content: ""; position: absolute; top: -.75px; left: 12px; right: 12px; height: 1.5px; background: var(--line); pointer-events: none; }
-.pv .adm-dash-alert[data-link="true"]:hover { background: rgba(5, 5, 5, .03); }
-.pv .adm-dash-alert:has(.adm-dash-alert-link:focus-visible) { box-shadow: var(--adm-ring); }
-.pv .adm-dash-alert-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
-.pv .adm-dash-alert-title { flex: 1 1 200px; min-width: 0; margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; line-height: 1.35; overflow-wrap: anywhere; }
-/* link esticado: a linha inteira clica; o foco aparece como anel na linha (acima) */
-.pv .adm-dash-alert-link { color: inherit; text-decoration: none; }
-.pv .adm-dash-alert-link::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
-.pv .adm-dash-alert-link:focus-visible { outline: none; }
-.pv .adm-dash-alert-side { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-.pv .adm-dash-alert-count { display: inline-flex; align-items: baseline; gap: 6px; }
-.pv .adm-dash-alert-count b { font-size: 20px; font-weight: 600; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
-.pv .adm-dash-alert-count small { color: var(--adm-text-muted); font-size: 12.5px; }
-.pv .adm-dash-alert-go { color: var(--adm-text-muted); display: inline-flex; transition: transform .25s var(--ease), color .2s; }
-.pv .adm-dash-alert[data-link="true"]:hover .adm-dash-alert-go { color: var(--ink); transform: translateX(2px); }
-
-/* a regra exata (é o que separa fato registrado de heurística) fica num detalhe: acima do link esticado, para clicar nele */
-.pv .adm-dash-alert-more { position: relative; z-index: 2; width: fit-content; max-width: 100%; margin-top: 6px; }
-.pv .adm-dash-alert-more[open] { width: auto; }
-/* alvo de toque do "Como é calculado" sem engordar a linha */
-.pv .adm-dash-alert-more > .adm-summary { position: relative; }
-.pv .adm-dash-alert-more > .adm-summary::after { content: ""; position: absolute; left: -6px; right: -6px; top: calc((100% - var(--adm-hit)) / 2); bottom: calc((100% - var(--adm-hit)) / 2); }
-.pv .adm-dash-alert-desc { margin: 8px 0 0; color: var(--adm-text-muted); font-size: 13.5px; line-height: 1.5; }
-.pv .adm-dash-alert-more .adm-alert-rule { font-size: 12.5px; }
+/* "Precisa de atenção" usa a estrutura do "Meu trabalho" da Início (home-my-work.css: `tkcard mw`): preto com luz roxa, número grande,
+   lista agrupada e rodapé. Aqui entra só o que é de alerta: a cor da gravidade no ícone, o número com a unidade e o "como é calculado". */
+.pv .adm-att.tkcard.mw { padding-bottom: 0; }
+/* aqui o cartão cresce com a lista (na Início a altura é a da linha e a lista rola): sem rolagem interna nem degradê */
+.pv .adm-att .mw-l { margin: 0 -12px; flex: none; min-height: 0; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+.pv .adm-att-ic { --sev: rgba(255, 255, 255, .85); background: color-mix(in srgb, var(--sev) 18%, transparent); color: var(--sev); }
+.pv .adm-att-ic[data-severity="critical"] { --sev: #ff8a8a; }
+.pv .adm-att-ic[data-severity="warning"] { --sev: #ffc680; }
+.pv .adm-att-ic .ico { width: 18px; height: 18px; }
+.pv .adm-att-sev { font-weight: 600; }
+.pv .adm-att-sev[data-severity="critical"] { color: #ff9b9b; }
+.pv .adm-att-sev[data-severity="warning"] { color: #ffc680; }
+.pv .adm-att .mw-c { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; line-height: 1; }
+.pv .adm-att-unit { color: rgba(255, 255, 255, .5); font-size: 11.5px; font-weight: 500; letter-spacing: 0; }
+.pv .adm-att-more { padding: 0 12px 10px 68px; }
+.pv .adm-att-more summary { width: fit-content; cursor: pointer; color: rgba(255, 255, 255, .55); font-size: 12.5px; font-weight: 600; list-style: none; transition: color .2s; }
+.pv .adm-att-more summary::-webkit-details-marker { display: none; }
+.pv .adm-att-more summary::before { content: "› "; display: inline-block; transition: transform .2s; }
+.pv .adm-att-more[open] summary::before { transform: rotate(90deg); }
+.pv .adm-att-more summary:hover { color: #fff; }
+.pv .adm-att-more summary:focus-visible { outline: 2px solid #fff; outline-offset: 3px; border-radius: 4px; }
+.pv .adm-att-more p { margin: 8px 0 0; color: rgba(255, 255, 255, .65); font-size: 13px; line-height: 1.5; }
+.pv .adm-att-more dl { margin: 8px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12.5px; }
+.pv .adm-att-more dt { color: rgba(255, 255, 255, .5); }
+.pv .adm-att-more dd { margin: 0; color: rgba(255, 255, 255, .85); overflow-wrap: anywhere; }
+.pv .adm-att-all { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, .75); text-decoration: none; transition: color .2s; }
+.pv .adm-att-all:hover { color: #fff; }
+.pv .adm-att-all .ico { width: 14px; height: 14px; transition: transform .25s var(--ease); }
+.pv .adm-att-all:hover .ico { transform: translateX(3px); }
+.pv .adm-att-light { margin-bottom: 14px; padding: 8px; border-radius: 22px; background: var(--adm-surface); color: var(--ink); }
+.pv .adm-att a.mw-r { text-decoration: none; }
 
 @container adm-dash (max-width: 520px) {
-  .pv .adm-dash .adm-dash-alert-title { flex-basis: 100%; order: 3; }
-  .pv .adm-dash .adm-dash-alert-side { order: 2; }
 }
 
 /* ───────────────────────── tablet e celular ───────────────────────── */
@@ -131,11 +134,214 @@
   .pv .adm-dash-strip { margin: 0 -12px; }
   .pv .adm-dash .adm-dash-strip > .adm-fig { padding: 8px 12px 10px; }
   .pv .adm-dash .adm-dash-strip > .adm-fig::after { left: 12px; right: 12px; }
-  .pv .adm-dash-alerts { margin: 0 -10px; }
-  .pv .adm-dash-alert { padding: 12px 10px; }
-  .pv .adm-dash-alert + .adm-dash-alert::before { left: 10px; right: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pv .adm-dash-alert, .pv .adm-dash-alert-go { transition: none; }
+
+}
+
+/* ilha "dinâmica" do Dashboard (`.isl` do Gerenciamento): em repouso é uma pílula pequena e centrada; ao chegar novidade abre com
+   mola (mais larga e mais alta), anuncia e volta. Só a última novidade, sem números nem filtros. */
+.pv .isl.isl-news {
+  --isl-w: 100%;
+  align-self: stretch;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px;
+  min-height: 60px; padding: 8px 18px 8px 6px;
+  animation: none;
+  transition: border-radius .6s var(--spring), box-shadow .4s, background-color .4s;
+}
+.pv .isl.isl-news[data-state="announce"] { border-radius: 36px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 60%, transparent), 0 8px 28px color-mix(in srgb, var(--brand) 35%, transparent); }
+.pv .isl-news-in { flex: 1 1 280px; }
+/* o controle de período mora na ilha: o trilho claro fica no preto, e o apoio embaixo vira texto claro */
+.pv .isl-news-ctl { flex: 0 1 auto; min-width: 0; max-width: 100%; }
+.pv .isl-news-ctl .adm-period { gap: 4px; }
+.pv .isl-news-ctl .adm-period-summary, .pv .isl-news-ctl .adm-period > :not(.adm-period-row) { color: color-mix(in srgb, var(--adm-surface) 62%, transparent); font-size: 12px; }
+@container adm-dash (max-width: 920px) { .pv .isl-news-ctl { flex-basis: 100%; } }
+.pv .isl-news-in { display: flex; align-items: center; gap: 12px; padding: 8px 18px 8px 10px; min-height: 52px; min-width: 0; animation: isl-news-in .55s var(--spring) both; }
+.pv .isl-news-ico { position: relative; flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: color-mix(in srgb, var(--adm-surface) 14%, transparent); color: var(--adm-surface); }
+.pv .isl-news-ico .ico { width: 16px; height: 16px; }
+.pv .isl-news[data-kind="creator"] .isl-news-ico, .pv .isl-news[data-kind="charge"] .isl-news-ico, .pv .isl-news[data-kind="withdrawal"] .isl-news-ico { background: var(--adm-ok-bg); color: var(--adm-ok); }
+.pv .isl-news[data-kind="application"] .isl-news-ico { background: var(--adm-ok-bg); color: var(--adm-ok); }
+.pv .isl-news-t { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; flex: 1; }
+.pv .isl-news-t b { font-size: 13px; font-weight: 700; }
+.pv .isl-news-t small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: color-mix(in srgb, var(--adm-surface) 65%, transparent); font-size: 12.5px; }
+.pv .isl-news-when { flex: none; color: color-mix(in srgb, var(--adm-surface) 60%, transparent); font-size: 12px; white-space: nowrap; }
+.pv .isl-news-ico[data-anim="bob"] .ico { animation: isl-news-bob 2s ease-in-out infinite; }
+.pv .isl-news-ico[data-anim="pop"] .ico { animation: isl-news-pop 1.8s ease-in-out infinite; }
+.pv .isl-news-ico[data-anim="rise"] .ico { animation: isl-news-rise 1.6s ease-in-out infinite; }
+.pv .isl-news-ico[data-anim="radar"]::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid currentColor; opacity: 0; animation: isl-news-radar 1.8s ease-out infinite; }
+@keyframes isl-news-in { from { opacity: 0; transform: scale(.9) translateY(4px); } }
+@keyframes isl-news-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px) scale(1.1); } }
+@keyframes isl-news-pop { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.25) rotate(14deg); } }
+@keyframes isl-news-rise { 0% { transform: translateY(5px); opacity: 0; } 35% { opacity: 1; } 70% { transform: translateY(-2px); opacity: 1; } 100% { transform: translateY(-6px); opacity: 0; } }
+@keyframes isl-news-radar { 0% { transform: scale(.8); opacity: .7; } 100% { transform: scale(1.9); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pv .isl-news-in, .pv .isl-news-ico .ico, .pv .isl-news-ico::after { animation: none; } .pv .isl.isl-news { transition: none; } }
+
+/* ───────────────────────── cartões do Dashboard (dois números cada) e carrossel de fotos ───────────────────────── */
+
+.pv .adm-dash-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@container adm-dash (max-width: 820px) { .pv .adm-dash .adm-dash-grid { grid-template-columns: minmax(0, 1fr); } }
+.pv .adm-dash-grid > .adm-card { display: flex; flex-direction: column; }
+
+/* carrossel infinito: a faixa anda uma lista inteira (metade da faixa, que tem a lista duas vezes) e recomeça sem salto */
+/* a faixa é um painel preto com luz roxa (a marca): dois focos de luz atrás dos rostos e as bordas que apagam no preto */
+.pv .adm-dash-car {
+  position: relative; margin: 18px -26px -26px; padding: 14px 0; overflow: hidden; border-radius: 0 0 var(--adm-radius) var(--adm-radius); background:
+    radial-gradient(60% 140% at 18% 120%, color-mix(in srgb, var(--brand) 55%, transparent), transparent 70%),
+    radial-gradient(50% 130% at 82% -30%, color-mix(in srgb, var(--brand) 38%, transparent), transparent 70%),
+    var(--ink);
+}
+.pv .adm-dash-car::before, .pv .adm-dash-car::after { content: ""; position: absolute; top: 0; bottom: 0; width: 44px; z-index: 1; pointer-events: none; }
+.pv .adm-dash-car::before { left: 0; background: linear-gradient(to right, var(--ink), transparent); }
+.pv .adm-dash-car::after { right: 0; background: linear-gradient(to left, var(--ink), transparent); }
+.pv .adm-dash-car-track { display: flex; width: max-content; animation: adm-dash-car 48s linear infinite; will-change: transform; }
+.pv .adm-dash-car:hover .adm-dash-car-track, .pv .adm-dash-car:focus-within .adm-dash-car-track { animation-play-state: paused; }
+.pv .adm-dash-car-half { display: flex; gap: 12px; padding-right: 12px; }
+.pv .adm-dash-car-face { flex: none; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; transition: transform .25s var(--ease); }
+.pv a.adm-dash-car-face:hover { transform: scale(1.12); }
+.pv a.adm-dash-car-face:focus-visible { outline: 2px solid var(--adm-surface); outline-offset: 3px; }
+.pv .adm-dash-car-face[data-skeleton="true"] { background: color-mix(in srgb, var(--adm-surface) 12%, transparent); animation: adm-pulse 1.4s ease-in-out infinite; }
+.pv .adm-dash-car[data-empty="true"] .adm-dash-car-track[data-still="true"] { animation: none; }
+@keyframes adm-dash-car { to { transform: translateX(-50%); } }
+/* menos movimento: a faixa fica parada e se rola à mão */
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-dash-car { overflow-x: auto; }
+  .pv .adm-dash-car::before, .pv .adm-dash-car::after { display: none; }
+  .pv .adm-dash-car-track { animation: none; }
+  .pv .adm-dash-car-half[aria-hidden="true"] { display: none; }
+}
+
+/* ───────────────────────── atividade recente: cartões que se sobrepõem ───────────────────────── */
+
+.pv .adm-dash-feed { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.pv .adm-dash-feed-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pv .adm-dash-feed-h h2 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -.02em; }
+.pv .adm-dash-feed-h p { margin: 4px 0 0; color: var(--adm-text-muted); font-size: 13px; }
+.pv .adm-dash-deck { display: flex; flex-direction: column; margin: 0; padding: 0 0 4px; list-style: none; }
+.pv .adm-dash-deck-card {
+  position: relative; z-index: var(--z, 1); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 12px;
+  margin-top: -18px; padding: 14px 18px 32px; border-radius: 22px; background: var(--adm-surface);
+  box-shadow: 0 -8px 18px -10px color-mix(in srgb, var(--ink) 38%, transparent), 0 0 0 1.5px var(--line);
+  animation: adm-dash-deck-in .55s var(--ease) both; animation-delay: calc(var(--i, 0) * 70ms);
+  transition: transform .3s var(--ease), box-shadow .3s var(--ease);
+}
+.pv .adm-dash-deck-card:first-child { margin-top: 0; }
+.pv .adm-dash-deck-card[data-last="true"] { padding-bottom: 16px; }
+/* o cartão sob o mouse sobe e fica por cima, mostrando o que o seguinte cobria */
+.pv .adm-dash-deck-card:hover, .pv .adm-dash-deck-card:focus-within { z-index: 99; transform: translateY(-6px); box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--ink) 45%, transparent), 0 0 0 1.5px var(--line); }
+.pv .adm-dash-deck-ico { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--bg); color: var(--ink); }
+.pv .adm-dash-deck-card[data-tone="brand"] .adm-dash-deck-ico { background: var(--ink); color: var(--adm-surface); }
+.pv .adm-dash-deck-ico .ico { width: 16px; height: 16px; }
+.pv .adm-dash-deck-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pv .adm-dash-deck-title { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -.01em; line-height: 1.35; overflow-wrap: anywhere; }
+.pv .adm-dash-deck-title a { color: inherit; text-decoration: none; }
+.pv .adm-dash-deck-title a:hover { text-decoration: underline; }
+.pv .adm-dash-deck-main small { color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.4; }
+.pv .adm-dash-deck-reason strong { color: var(--ink); font-weight: 600; }
+.pv .adm-dash-deck-card time { color: var(--adm-text-muted); font-size: 12px; white-space: nowrap; }
+@keyframes adm-dash-deck-in { from { opacity: 0; transform: translateY(-14px) scale(.97); } }
+@media (prefers-reduced-motion: reduce) { .pv .adm-dash-deck-card { animation: none; transition: none; } .pv .adm-dash-deck-card:hover { transform: none; } }
+
+/* ───────────────────────── refino geral: menos vazio entre os cartões e entrada animada em todos ───────────────────────── */
+
+/* a página do Dashboard tem respiro menor entre os blocos (a ilha, a grade, a linha de atenção e atividade) */
+.pv .adm-page.adm-dash { gap: 16px; }
+.pv .adm-dash .adm-dash-grid > .adm-card { padding: 20px 22px; }
+.pv .adm-dash .adm-dash-grid .adm-card-h { margin-bottom: 10px; }
+.pv .adm-dash .adm-dash-strip > .adm-fig { padding-top: 4px; padding-bottom: 6px; }
+.pv .adm-dash .adm-dash-car { margin: 14px -22px -20px; }
+.pv .adm-dash-feed { gap: 10px; }
+.pv .adm-dash-feed-h p { margin-top: 2px; }
+.pv .adm-att.tkcard.mw { padding: 22px 22px 0; }
+.pv .adm-att .mw-n { margin: 14px 0 10px; }
+.pv .adm-att .mw-f { padding: 10px 0 12px; }
+
+/* os cartões entram em cascata (sobem e aparecem), cada um um pouco depois do anterior */
+.pv .adm-dash-grid > .adm-card, .pv .adm-dash-split > *, .pv .adm-dash-row > .adm-card {
+  animation: adm-dash-rise .6s var(--ease) both; animation-delay: calc(var(--k, 0) * 70ms + 120ms);
+}
+.pv .adm-dash-grid > :nth-child(1) { --k: 0; }
+.pv .adm-dash-grid > :nth-child(2) { --k: 1; }
+.pv .adm-dash-grid > :nth-child(3) { --k: 2; }
+.pv .adm-dash-grid > :nth-child(4) { --k: 3; }
+.pv .adm-dash-split > :nth-child(1) { --k: 4; }
+.pv .adm-dash-split > :nth-child(2) { --k: 5; }
+/* os cartões de número reagem ao mouse: o cartão sobe um pouco e o número cresce */
+.pv .adm-dash-grid > .adm-card { transition: transform .3s var(--ease), box-shadow .3s var(--ease); }
+.pv .adm-dash-grid > .adm-card:hover { transform: translateY(-3px); box-shadow: 0 14px 28px -18px color-mix(in srgb, var(--ink) 40%, transparent); }
+.pv .adm-dash .adm-fig-value { transition: transform .3s var(--ease); transform-origin: left center; }
+.pv .adm-dash .adm-fig[data-link="true"]:hover .adm-fig-value { transform: scale(1.04); }
+@keyframes adm-dash-rise { from { opacity: 0; transform: translateY(14px); } }
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-dash-grid > .adm-card, .pv .adm-dash-split > *, .pv .adm-dash-row > .adm-card { animation: none; }
+  .pv .adm-dash-grid > .adm-card:hover, .pv .adm-dash .adm-fig[data-link="true"]:hover .adm-fig-value { transform: none; }
+}
+
+/* quem manda na altura da linha é o "Precisa de atenção": a atividade recente se adapta a ela (não conta para a altura) e rola por
+   dentro, com o fim se apagando; tem um piso para não ficar minúscula quando há poucos alertas */
+.pv .adm-dash-split > .adm-dash-feed { contain: size; min-height: 340px; }
+.pv .adm-dash-feed-h { flex: none; }
+.pv .adm-dash-feed .adm-dash-deck { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 8px 4px 22px; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 26px), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 8px, #000 calc(100% - 26px), transparent); }
+.pv .adm-dash-feed .adm-dash-deck::-webkit-scrollbar { display: none; }
+@container adm-dash (max-width: 900px) {
+  /* uma coluna só: a atividade volta a ter a altura do próprio conteúdo */
+  .pv .adm-dash .adm-dash-split > .adm-dash-feed { contain: none; min-height: 0; }
+  .pv .adm-dash .adm-dash-feed .adm-dash-deck { overflow: visible; -webkit-mask-image: none; mask-image: none; padding-bottom: 4px; }
+}
+
+/* ───────── ilha do Dashboard, refinada: o destaque é o ÚLTIMO ACONTECIMENTO; o período é um coadjuvante discreto ───────── */
+.pv .isl.isl-news { min-height: 88px; padding: 10px 22px 10px 12px; gap: 10px 28px; overflow: hidden; }
+/* luz da marca atrás do ícone: dá ao acontecimento um foco sem usar caixa */
+.pv .isl.isl-news::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(38% 160% at 6% 50%, color-mix(in srgb, var(--brand) 22%, transparent), transparent 70%); opacity: .75; transition: opacity .5s; }
+.pv .isl.isl-news[data-state="announce"]::before { opacity: 1; }
+.pv .isl-news-in { position: relative; flex: 1 1 360px; gap: 16px; padding: 4px 8px 4px 4px; min-height: 0; }
+.pv .isl-news-ico { width: 48px; height: 48px; background: color-mix(in srgb, var(--adm-surface) 10%, transparent); box-shadow: none; }
+.pv .isl-news-ico .ico { width: 20px; height: 20px; }
+.pv .isl-news-t { gap: 3px; line-height: 1.15; }
+.pv .isl-news-t b { font-size: 12.5px; font-weight: 600; color: color-mix(in srgb, var(--adm-surface) 58%, transparent); }
+.pv .isl-news-eyebrow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pv .isl-news-t small { font-size: clamp(18px, 2.1vw, 24px); font-weight: 700; letter-spacing: -.01em; color: var(--adm-surface); }
+.pv .isl-news-when { padding: 0; background: none; color: color-mix(in srgb, var(--adm-surface) 42%, transparent); font-size: 12.5px; font-weight: 500; }
+.pv .isl-news-when::before { content: "·"; margin-right: 8px; }
+
+/* período: pequeno, apagado e separado por um fio; acende ao passar o mouse ou focar */
+.pv .isl-news-ctl { position: relative; padding-left: 28px; border-left: 1px solid rgba(255,255,255,.12); opacity: .72; transition: opacity .25s; }
+.pv .isl-news-ctl:hover, .pv .isl-news-ctl:focus-within { opacity: 1; }
+@container adm-dash (max-width: 920px) { .pv .isl-news-ctl { padding-left: 0; border-left: 0; border-top: 1px solid rgba(255,255,255,.12); padding-top: 10px; } }
+.pv .isl-news-ctl .adm-period { gap: 6px; }
+.pv .isl-news-ctl .adm-period .adm-period-seg { padding: 3px; background: rgba(255,255,255,.08); }
+.pv .isl-news-ctl .adm-period .adm-period-seg .ind { top: 3px; bottom: 3px; background: rgba(255,255,255,.9); }
+.pv .isl-news-ctl .adm-period .adm-period-seg .adm-period-btn { height: 28px; padding: 0 11px; font-size: 12px; font-weight: 600; color: color-mix(in srgb, var(--adm-surface) 70%, transparent); }
+.pv .isl-news-ctl .adm-period .adm-period-seg .adm-period-btn.on { color: var(--ink); }
+.pv .isl-news-ctl .adm-period .adm-period-seg .adm-period-btn:not(.on):not(:disabled):hover { color: var(--adm-surface); }
+.pv .isl-news-ctl .adm-period-field { height: 34px; background: rgba(255,255,255,.08); }
+.pv .isl-news-ctl .adm-period-field label, .pv .isl-news-ctl .adm-period-sep { color: color-mix(in srgb, var(--adm-surface) 60%, transparent); }
+.pv .isl-news-ctl .adm-period-field input { color: var(--adm-surface); color-scheme: dark; }
+.pv .isl-news-ctl .adm-period-summary, .pv .isl-news-ctl .adm-period > :not(.adm-period-row) { font-size: 11px; color: color-mix(in srgb, var(--adm-surface) 55%, transparent); }
+
+/* ───────── entrada animada da ilha ───────── */
+/* a ilha nasce pílula e se abre com mola até a largura toda; o conteúdo entra em cascata (ícone, etiqueta, nome, hora) e o período aparece por último */
+.pv .isl.isl-news { animation: isl-news-open .85s var(--spring) both; }
+@keyframes isl-news-open {
+  from { width: min(100%, 300px); opacity: 0; transform: translateY(-10px) scale(.96); }
+  35% { opacity: 1; }
+  to { width: 100%; opacity: 1; transform: none; }
+}
+.pv .isl-news-in { animation: none; }
+.pv .isl-news-in .isl-news-ico { animation: isl-news-ico-in .7s var(--spring) .25s both; }
+.pv .isl-news-in .isl-news-eyebrow { animation: isl-news-txt-in .5s var(--spring) .4s both; }
+.pv .isl-news-in .isl-news-t > small { animation: isl-news-name-in .6s var(--spring) .5s both; }
+.pv .isl-news-ctl { animation: isl-news-txt-in .6s ease .7s both; }
+@keyframes isl-news-ico-in { from { opacity: 0; transform: scale(.3) rotate(-25deg); } }
+@keyframes isl-news-txt-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes isl-news-name-in { from { opacity: 0; transform: translateY(12px); filter: blur(6px); } }
+/* chegou novidade: a ilha dá um pulso de luz e o conteúdo novo entra de novo (o `key` remonta o bloco) */
+/* (a abertura não reinicia no anúncio: o pulso é um anel à parte) */
+.pv .isl.isl-news::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--brand) 80%, white); }
+.pv .isl.isl-news[data-state="announce"]::after { animation: isl-news-pulse 1.4s ease-out 1; }
+@keyframes isl-news-pulse { 0% { opacity: 1; transform: scale(.985); } 100% { opacity: 0; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .pv .isl.isl-news, .pv .isl.isl-news[data-state="announce"]::after, .pv .isl-news-in *, .pv .isl-news-ctl { animation: none; }
 }

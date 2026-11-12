@@ -30,8 +30,8 @@ describe("rota /admin/dashboard", () => {
 
   it("valida só o período da URL: predefinido válido passa, o padrão e o lixo saem", () => {
     expect(route.options.validateSearch).toBe(readPeriodSearch);
-    expect(route.options.validateSearch({ period: "90d" })).toEqual({ period: "90d" });
-    expect(route.options.validateSearch({ period: "30d" })).toEqual({});
+    expect(route.options.validateSearch({ period: "week" })).toEqual({ period: "week" });
+    expect(route.options.validateSearch({ period: "month" })).toEqual({});
     expect(route.options.validateSearch({ period: "custom", from: "2026-10-01", to: "2026-10-15" })).toEqual({
       period: "custom",
       from: "2026-10-01",

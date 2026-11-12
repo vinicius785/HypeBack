@@ -91,3 +91,18 @@
   .pv .adm-fin-group .adm-figs,
   .pv .adm-fin-group-criadores .adm-figs { grid-template-columns: minmax(0, 1fr); gap: 18px; }
 }
+
+/* ilha do Financeiro (padrão `AdminIsland`): pílulas das visões, o período na segunda linha e a folha com quatro valores */
+.pv .isl-fin-w .isl-segs { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.pv .isl-fin-w .isl-seg { cursor: pointer; border: 0; color: inherit; transition: background .2s, color .2s, transform .2s; }
+.pv .isl-fin-w .isl-seg:hover { background: color-mix(in srgb, var(--adm-surface) 18%, transparent); }
+.pv .isl-fin-w .isl-seg:active { transform: scale(.96); }
+.pv .isl-fin-w .isl-seg[aria-pressed="true"] { background: var(--adm-surface); color: var(--ink); }
+.pv .isl-fin-w .isl-seg[aria-pressed="true"] i { background: var(--ink); }
+.pv .isl-fin-w .isl-live { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.pv .adm-fin-sheet { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 28px; }
+.pv .adm-fin-sheet > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pv .adm-fin-sheet small { color: var(--adm-text-muted); font-size: 12.5px; font-weight: 600; }
+.pv .adm-fin-sheet b { font-size: 24px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pv .adm-fin-sheet span { color: var(--adm-text-muted); font-size: 13px; }
+@media (max-width: 900px) { .pv .adm-fin-sheet { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

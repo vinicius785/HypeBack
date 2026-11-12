@@ -115,59 +115,33 @@ describe("todayInSaoPaulo (o dia vira à meia-noite de São Paulo, não à da m�
 });
 
 describe("resolvePreset", () => {
-  const TODAY = "2026-10-31";
+  const TODAY = "2026-10-31"; // sábado
 
-  it("7, 30 e 90 dias são os últimos N dias CONTANDO hoje", () => {
-    expect(resolvePreset("7d", TODAY)).toEqual({ from: "2026-10-25", to: TODAY });
-    expect(resolvePreset("30d", TODAY)).toEqual({ from: "2026-10-02", to: TODAY });
-    expect(resolvePreset("90d", TODAY)).toEqual({ from: "2026-08-03", to: TODAY });
-    for (const [preset, days] of [["7d", 7], ["30d", 30], ["90d", 90]] as const) {
-      const range = resolvePreset(preset, TODAY);
-      expect(countCivilDays(range.from, range.to)).toBe(days);
-    }
+  it("Hoje é só o dia de hoje", () => {
+    expect(resolvePreset("today", TODAY)).toEqual({ from: TODAY, to: TODAY });
   });
 
-  it("o padrão do servidor (sem from/to) é o mesmo que 30 dias: de hoje-29 até hoje", () => {
-    expect(resolvePreset(DEFAULT_PERIOD_PRESET, TODAY).from).toBe(addCivilDays(TODAY, -29));
+  it("Esta semana começa na segunda-feira e vai até hoje", () => {
+    expect(resolvePreset("week", "2026-10-31")).toEqual({ from: "2026-10-26", to: "2026-10-31" }); // sábado
+    expect(resolvePreset("week", "2026-11-01")).toEqual({ from: "2026-10-26", to: "2026-11-01" }); // domingo: ainda a mesma semana
+    expect(resolvePreset("week", "2026-11-02")).toEqual({ from: "2026-11-02", to: "2026-11-02" }); // segunda: só hoje
+    expect(resolvePreset("week", "2026-10-28")).toEqual({ from: "2026-10-26", to: "2026-10-28" }); // quarta
   });
 
-  it("atravessa a virada de mês e de ano", () => {
-    expect(resolvePreset("7d", "2026-03-05")).toEqual({ from: "2026-02-27", to: "2026-03-05" });
-    expect(resolvePreset("30d", "2026-01-10")).toEqual({ from: "2025-12-12", to: "2026-01-10" });
-    expect(resolvePreset("7d", "2026-01-03")).toEqual({ from: "2025-12-28", to: "2026-01-03" });
+  it("a semana atravessa a virada de mês e de ano", () => {
+    expect(resolvePreset("week", "2026-03-01")).toEqual({ from: "2026-02-23", to: "2026-03-01" });
+    expect(resolvePreset("week", "2026-01-02")).toEqual({ from: "2025-12-29", to: "2026-01-02" });
+    expect(resolvePreset("week", "2028-03-01")).toEqual({ from: "2028-02-28", to: "2028-03-01" }); // bissexto
   });
 
-  it("em ano bissexto fevereiro tem 29 dias", () => {
-    expect(resolvePreset("7d", "2028-03-05")).toEqual({ from: "2028-02-28", to: "2028-03-05" });
-    expect(resolvePreset("30d", "2028-03-05")).toEqual({ from: "2028-02-05", to: "2028-03-05" });
-    expect(resolvePreset("30d", "2026-03-05")).toEqual({ from: "2026-02-04", to: "2026-03-05" });
+  it("Este mês vai do dia 1º até hoje (e é o padrão)", () => {
+    expect(resolvePreset("month", "2026-10-31")).toEqual({ from: "2026-10-01", to: "2026-10-31" });
+    expect(resolvePreset("month", "2026-11-01")).toEqual({ from: "2026-11-01", to: "2026-11-01" });
+    expect(resolvePreset("month", "2028-02-29")).toEqual({ from: "2028-02-01", to: "2028-02-29" });
+    expect(DEFAULT_PERIOD_PRESET).toBe("month");
   });
 
-  it.each([
-    ["hoje no fim do mês: seis meses fechados", "2026-10-31", "2026-05-01"],
-    ["hoje no meio do mês: começa no dia seguinte a seis meses atrás", "2026-10-15", "2026-04-16"],
-    ["31/08 → fevereiro não tem 31: começa em 01/03", "2026-08-31", "2026-03-01"],
-    ["31/03 atravessa o ano", "2026-03-31", "2025-10-01"],
-    ["31/01 atravessa o ano", "2026-01-31", "2025-08-01"],
-    ["01/01", "2026-01-01", "2025-07-02"],
-    ["29/02 de ano bissexto", "2028-02-29", "2027-08-30"],
-    ["28/02 de ano comum", "2026-02-28", "2025-08-29"],
-    ["31/08 de ano bissexto: 29/02 existe", "2024-08-31", "2024-03-01"],
-    ["30/09: março tem 31", "2026-09-30", "2026-03-31"],
-    ["31/07", "2026-07-31", "2026-02-01"],
-  ])("6 meses, %s (%s → a partir de %s)", (_name, today, from) => {
-    expect(resolvePreset("6m", today)).toEqual({ from, to: today });
-  });
-
-  it("Este ano é de 1º de janeiro até hoje", () => {
-    expect(resolvePreset("year", "2026-10-31")).toEqual({ from: "2026-01-01", to: "2026-10-31" });
-    expect(resolvePreset("year", "2026-01-01")).toEqual({ from: "2026-01-01", to: "2026-01-01" });
-    const leapEnd = resolvePreset("year", "2028-12-31");
-    expect(leapEnd).toEqual({ from: "2028-01-01", to: "2028-12-31" });
-    expect(countCivilDays(leapEnd.from, leapEnd.to)).toBe(MAX_PERIOD_DAYS);
-  });
-
-  it("nenhum predefinido passa do limite do contrato (366 dias) em nenhum dia de três anos, bissexto incluído", () => {
+  it("nenhum predefinido passa do limite do contrato em nenhum dia de três anos, bissexto incluído", () => {
     for (let day = "2027-01-01"; day <= "2029-12-31"; day = addCivilDays(day, 1)) {
       for (const preset of PERIOD_PRESETS) {
         const range = resolvePreset(preset, day);
@@ -230,29 +204,25 @@ describe("normalizeCustomRange", () => {
 });
 
 describe("resolvePeriod", () => {
-  it("sem escolha é o padrão: 30 dias contando hoje", () => {
-    expect(resolvePeriod({}, sp("2026-10-31T15:00:00"))).toEqual({ preset: "30d", from: "2026-10-02", to: "2026-10-31" });
-    expect(resolvePeriod(undefined, sp("2026-10-31T15:00:00")).preset).toBe("30d");
+  const MONTH = { preset: "month", from: "2026-10-01", to: "2026-10-31" };
+
+  it("sem escolha é o padrão: este mês", () => {
+    expect(resolvePeriod({}, sp("2026-10-31T15:00:00"))).toEqual(MONTH);
+    expect(resolvePeriod(undefined, sp("2026-10-31T15:00:00")).preset).toBe("month");
   });
 
   it.each<[AdminPeriodPreset, string, string]>([
-    ["7d", "2026-10-25", "2026-10-31"],
-    ["30d", "2026-10-02", "2026-10-31"],
-    ["90d", "2026-08-03", "2026-10-31"],
-    ["6m", "2026-05-01", "2026-10-31"],
-    ["year", "2026-01-01", "2026-10-31"],
+    ["today", "2026-10-31", "2026-10-31"],
+    ["week", "2026-10-26", "2026-10-31"],
+    ["month", "2026-10-01", "2026-10-31"],
   ])("%s resolve para %s a %s", (preset, from, to) => {
     expect(resolvePeriod({ preset }, sp("2026-10-31T09:30:00"))).toEqual({ preset, from, to });
   });
 
-  it("à meia-noite de São Paulo o período anda um dia", () => {
-    expect(resolvePeriod({ preset: "7d" }, sp("2026-10-31T23:59:59"))).toMatchObject({ from: "2026-10-25", to: "2026-10-31" });
-    expect(resolvePeriod({ preset: "7d" }, sp("2026-11-01T00:00:00"))).toMatchObject({ from: "2026-10-26", to: "2026-11-01" });
-  });
-
-  it("virando o ano, 'Este ano' recomeça em 1º de janeiro", () => {
-    expect(resolvePeriod({ preset: "year" }, sp("2026-12-31T23:59:59"))).toEqual({ preset: "year", from: "2026-01-01", to: "2026-12-31" });
-    expect(resolvePeriod({ preset: "year" }, sp("2027-01-01T00:00:00"))).toEqual({ preset: "year", from: "2027-01-01", to: "2027-01-01" });
+  it("à meia-noite de São Paulo o período anda um dia (e o mês recomeça)", () => {
+    expect(resolvePeriod({ preset: "today" }, sp("2026-10-31T23:59:59"))).toMatchObject({ from: "2026-10-31", to: "2026-10-31" });
+    expect(resolvePeriod({ preset: "today" }, sp("2026-11-01T00:00:00"))).toMatchObject({ from: "2026-11-01", to: "2026-11-01" });
+    expect(resolvePeriod({ preset: "month" }, sp("2026-11-01T00:00:00"))).toMatchObject({ from: "2026-11-01", to: "2026-11-01" });
   });
 
   it("personalizado válido é usado (limitado a hoje)", () => {
@@ -271,28 +241,20 @@ describe("resolvePeriod", () => {
 
   it("personalizado inválido ou incompleto volta ao padrão", () => {
     const now = sp("2026-10-31T12:00:00");
-    expect(resolvePeriod({ preset: "custom" }, now)).toEqual({ preset: "30d", from: "2026-10-02", to: "2026-10-31" });
-    expect(resolvePeriod({ preset: "custom", from: "ontem", to: "hoje" }, now).preset).toBe("30d");
+    expect(resolvePeriod({ preset: "custom" }, now)).toEqual(MONTH);
+    expect(resolvePeriod({ preset: "custom", from: "ontem", to: "hoje" }, now).preset).toBe("month");
   });
 
   it("escolha desconhecida volta ao padrão", () => {
-    expect(resolvePeriod({ preset: "decada" as never }, sp("2026-10-31T12:00:00")).preset).toBe("30d");
-  });
-
-  it("o resultado nunca passa de 366 dias, o limite do contrato", () => {
-    const now = sp("2028-12-31T12:00:00");
-    for (const preset of PERIOD_PRESETS) {
-      const period = resolvePeriod({ preset }, now);
-      expect(countCivilDays(period.from, period.to)).toBeLessThanOrEqual(MAX_PERIOD_DAYS);
-    }
+    expect(resolvePeriod({ preset: "decada" as never }, sp("2026-10-31T12:00:00")).preset).toBe("month");
   });
 });
 
 describe("resolvePeriodForDay (o mesmo, a partir do dia de hoje)", () => {
   it("resolve pelo dia informado, sem relógio", () => {
-    expect(resolvePeriodForDay({ preset: "7d" }, "2026-03-05")).toEqual({ preset: "7d", from: "2026-02-27", to: "2026-03-05" });
-    expect(resolvePeriodForDay({ preset: "year" }, "2028-12-31")).toEqual({ preset: "year", from: "2028-01-01", to: "2028-12-31" });
-    expect(resolvePeriodForDay({}, "2026-10-31")).toEqual({ preset: "30d", from: "2026-10-02", to: "2026-10-31" });
+    expect(resolvePeriodForDay({ preset: "week" }, "2026-03-05")).toEqual({ preset: "week", from: "2026-03-02", to: "2026-03-05" });
+    expect(resolvePeriodForDay({ preset: "today" }, "2028-12-31")).toEqual({ preset: "today", from: "2028-12-31", to: "2028-12-31" });
+    expect(resolvePeriodForDay({}, "2026-10-31")).toEqual({ preset: "month", from: "2026-10-01", to: "2026-10-31" });
   });
 
   it("personalizado vale até o dia informado, e o inválido volta ao padrão", () => {
@@ -301,19 +263,19 @@ describe("resolvePeriodForDay (o mesmo, a partir do dia de hoje)", () => {
       from: "2026-10-01",
       to: "2026-10-31",
     });
-    expect(resolvePeriodForDay({ preset: "custom", from: "x", to: "y" }, "2026-10-31").preset).toBe("30d");
+    expect(resolvePeriodForDay({ preset: "custom", from: "x", to: "y" }, "2026-10-31").preset).toBe("month");
   });
 
   it("virar o dia muda o período: é por isso que a tela refaz a conta quando o dia de São Paulo vira", () => {
-    expect(resolvePeriodForDay({ preset: "30d" }, "2026-10-31")).not.toEqual(resolvePeriodForDay({ preset: "30d" }, "2026-11-01"));
+    expect(resolvePeriodForDay({ preset: "today" }, "2026-10-31")).not.toEqual(resolvePeriodForDay({ preset: "today" }, "2026-11-01"));
   });
 });
 
 describe("período na URL", () => {
   it("lê um predefinido e esconde o padrão (URL curta)", () => {
-    expect(readPeriodSearch({ period: "90d" })).toEqual({ period: "90d" });
-    expect(readPeriodSearch({ period: "year" })).toEqual({ period: "year" });
-    expect(readPeriodSearch({ period: "30d" })).toEqual({});
+    expect(readPeriodSearch({ period: "today" })).toEqual({ period: "today" });
+    expect(readPeriodSearch({ period: "week" })).toEqual({ period: "week" });
+    expect(readPeriodSearch({ period: "month" })).toEqual({});
     expect(readPeriodSearch({})).toEqual({});
   });
 
@@ -327,16 +289,17 @@ describe("período na URL", () => {
     expect(readPeriodSearch({ period: "custom", from: "2026-02-30", to: "2026-10-15" })).toEqual({});
   });
 
-  it("ignora o que não é válido: escolha desconhecida, número, datas soltas", () => {
+  it("ignora o que não é válido: escolha desconhecida (inclusive os atalhos antigos), número, datas soltas", () => {
     expect(readPeriodSearch({ period: "decada" })).toEqual({});
+    expect(readPeriodSearch({ period: "90d" })).toEqual({});
     expect(readPeriodSearch({ period: 30 })).toEqual({});
     expect(readPeriodSearch({ from: "2026-10-01", to: "2026-10-15" })).toEqual({});
-    expect(readPeriodSearch({ period: "7d", from: "2026-10-01", to: "2026-10-15" })).toEqual({ period: "7d" });
+    expect(readPeriodSearch({ period: "week", from: "2026-10-01", to: "2026-10-15" })).toEqual({ period: "week" });
   });
 
   it("periodToSearch é o inverso: o padrão sai da URL", () => {
-    expect(periodToSearch({ preset: "30d", from: "2026-10-02", to: "2026-10-31" })).toEqual({});
-    expect(periodToSearch({ preset: "7d", from: "2026-10-25", to: "2026-10-31" })).toEqual({ period: "7d" });
+    expect(periodToSearch({ preset: "month", from: "2026-10-01", to: "2026-10-31" })).toEqual({});
+    expect(periodToSearch({ preset: "today", from: "2026-10-31", to: "2026-10-31" })).toEqual({ period: "today" });
     expect(periodToSearch({ preset: "custom", from: "2026-10-01", to: "2026-10-15" })).toEqual({
       period: "custom",
       from: "2026-10-01",
@@ -352,36 +315,33 @@ describe("período na URL", () => {
     }
   });
 });
-
 describe("consultas e textos", () => {
-  const PERIOD: AdminPeriod = { preset: "30d", from: "2026-10-02", to: "2026-10-31" };
+  const PERIOD: AdminPeriod = { preset: "month", from: "2026-10-01", to: "2026-10-31" };
 
   it("monta os parâmetros from/to da API e a mesma coisa como texto de URL", () => {
-    expect(periodQuery(PERIOD)).toEqual({ from: "2026-10-02", to: "2026-10-31" });
-    expect(periodQueryString(PERIOD)).toBe("from=2026-10-02&to=2026-10-31");
+    expect(periodQuery(PERIOD)).toEqual({ from: "2026-10-01", to: "2026-10-31" });
+    expect(periodQueryString(PERIOD)).toBe("from=2026-10-01&to=2026-10-31");
   });
 
   it("o filtro 'criado no período' das listas usa os nomes do contrato", () => {
-    expect(createdInPeriodFilter(PERIOD)).toEqual({ created_from: "2026-10-02", created_to: "2026-10-31" });
+    expect(createdInPeriodFilter(PERIOD)).toEqual({ created_from: "2026-10-01", created_to: "2026-10-31" });
   });
 
   it("formata os dias como o resto do Admin (um dia só aparece uma vez)", () => {
-    expect(formatPeriodRange(PERIOD)).toBe("02/10/2026 – 31/10/2026");
+    expect(formatPeriodRange(PERIOD)).toBe("01/10/2026 – 31/10/2026");
     expect(formatPeriodRange({ from: "2026-10-31", to: "2026-10-31" })).toBe("31/10/2026");
   });
 
   it("rótulo de cada escolha", () => {
     const at = (preset: AdminPeriod["preset"]): AdminPeriod => ({ preset, from: "2026-01-01", to: "2026-10-31" });
-    expect(periodLabel(at("7d"))).toBe("Últimos 7 dias");
-    expect(periodLabel(at("30d"))).toBe("Últimos 30 dias");
-    expect(periodLabel(at("90d"))).toBe("Últimos 90 dias");
-    expect(periodLabel(at("6m"))).toBe("Últimos 6 meses");
-    expect(periodLabel(at("year"))).toBe("Este ano (2026)");
+    expect(periodLabel(at("today"))).toBe("Hoje");
+    expect(periodLabel(at("week"))).toBe("Esta semana");
+    expect(periodLabel(at("month"))).toBe("Este mês");
     expect(periodLabel(at("custom"))).toBe("Período personalizado");
   });
 
   it("isPeriodPreset reconhece só os predefinidos", () => {
-    expect(isPeriodPreset("6m")).toBe(true);
+    expect(isPeriodPreset("week")).toBe(true);
     expect(isPeriodPreset("custom")).toBe(false);
     expect(isPeriodPreset(30)).toBe(false);
   });

@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { AdminSupportPage } from "@/components/admin/support/support-page";
+import { AdminServicePage } from "@/components/admin/service/service-page";
+import { validateServiceSearch } from "@/components/admin/service/service-search";
 
+// Atendimento: Suporte e Solicitações numa página só; a fila mora na URL (`?fila=requests`).
 export const Route = createFileRoute("/(private)/(admin)/admin/support")({
-  component: AdminSupportPage,
+  validateSearch: validateServiceSearch,
+  component: AdminServicePage,
 });

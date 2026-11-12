@@ -60,15 +60,14 @@ describe("URL da lista (validateSearch)", () => {
 
   it("o que não mexe no padrão não aparece na URL", () => {
     expect(validate({})).toEqual({});
-    expect(validate({ status: "active,suspended", kind: "brand", sort_by: "created_at", order: "desc", page: 1, per_page: 25 })).toEqual({});
+    expect(validate({ status: "active,suspended", sort_by: "created_at", order: "desc", page: 1, per_page: 25 })).toEqual({});
   });
 
   it("filtros, busca, ordenação e página, com os nomes do contrato (e números como números)", () => {
     expect(
       validate({
         status: "suspended",
-        kind: "all",
-        workspace_id: "7a1e0000-0000-4000-8000-000000000002",
+          workspace_id: "7a1e0000-0000-4000-8000-000000000002",
         created_from: "2026-10-01",
         created_to: "2026-10-31",
         search: "  ana  ",
@@ -79,7 +78,6 @@ describe("URL da lista (validateSearch)", () => {
       }),
     ).toEqual({
       status: "suspended",
-      kind: "all",
       workspace_id: "7a1e0000-0000-4000-8000-000000000002",
       created_from: "2026-10-01",
       created_to: "2026-10-31",

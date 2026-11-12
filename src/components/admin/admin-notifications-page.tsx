@@ -2,13 +2,8 @@ import { useMemo, useState } from "react";
 
 import { AdminNotificationForm, type AdminNotificationInitial } from "@/components/admin/admin-notification-form";
 import { AdminNotificationList } from "@/components/admin/admin-notification-list";
-import {
-  AdminPage,
-  AdminPageHeader,
-  AdminTabPanel,
-  AdminTabs,
-  type AdminTabItem,
-} from "@/components/admin/platform";
+import { AdminNotificationsIsland, type NotificationIslandSegment } from "@/components/admin/admin-notifications-island";
+import { AdminPage, AdminPageHeader } from "@/components/admin/platform";
 import { I } from "@/components/prototype/ui";
 import { useAdminNotificationsList } from "@/hooks/use-admin-notifications";
 import type { AdminNotificationListItem, AdminNotificationStatus } from "@/shared/types";
@@ -43,7 +38,6 @@ const EMPTY_BY_TAB: Record<Tab, { title: string; description: string }> = {
   draft: { title: "Nenhum rascunho", description: "Os rascunhos aparecem aqui." },
 };
 
-const TAB_PREFIX = "adm-not";
 
 function inTab(n: AdminNotificationListItem, tab: Tab): boolean {
   return tab === "all" || TAB_STATUSES[tab].includes(n.status);
@@ -52,7 +46,7 @@ function inTab(n: AdminNotificationListItem, tab: Tab): boolean {
 /**
  * Notificações (`/admin/notifications`): avisos para os criadores por push, e-mail e WhatsApp. Uma consulta só
  * traz tudo e as abas agrupam no cliente (Todas, Agendadas, Enviadas, Com falha, Rascunhos), cada uma com a sua
- * contagem. A ação primária é "Nova notificação" (diálogo em passos); Duplicar parte de uma notificação existente.
+ * contagem, nas pílulas da "ilha" (padrão Dynamic Island) no topo, que também abre um resumo dos envios. A ação primária é "Nova notificação" (diálogo em passos); Duplicar parte de uma notificação existente.
  */
 export function AdminNotificationsPage() {
   const query = useAdminNotificationsList();
@@ -62,10 +56,11 @@ export function AdminNotificationsPage() {
   const all = useMemo(() => query.data ?? [], [query.data]);
   const items = useMemo(() => all.filter((n) => inTab(n, tab)), [all, tab]);
 
-  const tabs: readonly AdminTabItem<Tab>[] = TAB_ORDER.map((id) => ({
+  const segments: readonly NotificationIslandSegment[] = TAB_ORDER.map((id) => ({
     id,
     label: TAB_LABEL[id],
     count: query.data ? all.filter((n) => inTab(n, id)).length : null,
+    tone: id === "failed" ? "bad" : id === "sent" ? "ok" : undefined,
   }));
 
   const duplicate = (n: AdminNotificationListItem) =>
@@ -103,20 +98,18 @@ export function AdminNotificationsPage() {
         }
       />
 
-      <AdminTabs tabs={tabs} value={tab} onChange={setTab} ariaLabel="Status das notificações" idPrefix={TAB_PREFIX} />
+      <AdminNotificationsIsland segments={segments} value={tab} onChange={(id) => setTab(id as Tab)} items={all} />
 
-      <AdminTabPanel idPrefix={TAB_PREFIX} id={tab} active>
-        <AdminNotificationList
-          items={query.data ? items : undefined}
-          isLoading={query.isLoading}
-          refreshing={query.isFetching && !query.isLoading}
-          error={query.error}
-          onRetry={() => void query.refetch()}
-          retrying={query.isFetching}
-          empty={empty}
-          onDuplicate={duplicate}
-        />
-      </AdminTabPanel>
+      <AdminNotificationList
+        items={query.data ? items : undefined}
+        isLoading={query.isLoading}
+        refreshing={query.isFetching && !query.isLoading}
+        error={query.error}
+        onRetry={() => void query.refetch()}
+        retrying={query.isFetching}
+        empty={empty}
+        onDuplicate={duplicate}
+      />
 
       {form ? <AdminNotificationForm initial={form.initial} onClose={() => setForm(null)} /> : null}
     </AdminPage>

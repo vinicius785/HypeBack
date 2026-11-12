@@ -9,6 +9,8 @@ const api = vi.hoisted(() => ({
   adminPost: vi.fn(),
   adminPatch: vi.fn(),
 }));
+// A ilha de Pessoas tem os testes dela (e faz consultas próprias de 1 item): aqui só interessa a lista.
+vi.mock("@/components/admin/people/people-island", () => ({ PeopleIsland: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
 vi.mock("@/lib/admin/admin-client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/admin/admin-client")>()),
   ...api,
@@ -78,8 +80,8 @@ describe("WorkspacesListPage · dados", () => {
   it("título, subtítulo e uma linha por workspace com as seis colunas (Workspace, Responsável, Status, Campanhas, Aportes, Criado em)", async () => {
     renderWithQuery(<WorkspacesListPage />);
 
-    expect(screen.getByRole("heading", { level: 1, name: "Workspaces" })).toBeInTheDocument();
-    expect(screen.getByText("Todos os clientes da plataforma.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Pessoas" })).toBeInTheDocument();
+    expect(screen.getByText(/usuários, criadores e os workspaces dos clientes/)).toBeInTheDocument();
 
     const row = await waitFor(() => rowOf("Café Serra Verde"));
     const headers = screen.getAllByRole("columnheader");
@@ -219,45 +221,32 @@ describe("WorkspacesListPage · filtros (URL e API)", () => {
     renderWithQuery(<WorkspacesListPage />);
     await screen.findByText("Café Serra Verde");
     expect(lastParams()).toEqual({ page: 1, per_page: 25, sort_by: "created_at", order: "desc" });
-    expect(screen.getByRole("button", { name: "Todos" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("combobox", { name: "Status do workspace" })).toHaveValue("");
     expect(screen.getByRole("combobox", { name: "Tipo" })).toHaveValue("brand");
-    expect(screen.getByRole("button", { name: "Excluídos" })).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("o segmento tem só Todos, Ativos, Suspensos e Arquivados; 'Excluídos' é um filtro da barra", async () => {
+  it("o estado é um filtro do painel (Todos, Ativos, Suspensos, Arquivados e Excluídos), junto dos outros filtros", async () => {
     renderWithQuery(<WorkspacesListPage />);
     await screen.findByText("Café Serra Verde");
-    const segment = screen.getByRole("group", { name: "Status do workspace" });
-    expect(within(segment).getAllByRole("button").map((b) => b.textContent)).toEqual(["Todos", "Ativos", "Suspensos", "Arquivados"]);
-    expect(within(segment).queryByRole("button", { name: "Excluídos" })).not.toBeInTheDocument();
-  });
-
-  it("'Excluídos' é o liga/desliga do kit: fica à vista na linha da barra (inline) e não é um botão feito à mão", async () => {
-    renderWithQuery(<WorkspacesListPage />);
-    await screen.findByText("Café Serra Verde");
-    const toggle = screen.getByRole("button", { name: "Excluídos" });
-    expect(toggle).toHaveAttribute("data-toggle", "true");
-    // à vista no celular: "Uso recente" e "Excluídos" estão na linha dos filtros inline; "Tipo" e "Criado em" ficam no painel "Filtros"
-    const inline = document.querySelector(".adm-filters-inline") as HTMLElement;
-    expect(inline).toContainElement(toggle);
-    expect(within(inline).getByRole("combobox", { name: "Uso recente" })).toBeInTheDocument();
-    expect(within(inline).queryByRole("combobox", { name: "Tipo" })).not.toBeInTheDocument();
-    expect(within(inline).queryByRole("group", { name: "Criado em" })).not.toBeInTheDocument();
     const panel = document.querySelector(".adm-filters-panel") as HTMLElement;
+    const status = within(panel).getByRole("combobox", { name: "Status do workspace" });
+    expect(within(status).getAllByRole("option").map((o) => o.textContent)).toEqual(["Todos", "Ativos", "Suspensos", "Arquivados", "Excluídos"]);
+    expect(within(panel).getByRole("combobox", { name: "Uso recente" })).toBeInTheDocument();
     expect(within(panel).getByRole("combobox", { name: "Tipo" })).toBeInTheDocument();
     expect(within(panel).getByRole("group", { name: "Criado em" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Status do workspace" })).not.toBeInTheDocument();
   });
 
   it("'Excluídos' entra na contagem de 'Filtros (n)' e 'Limpar filtros' o desfaz uma vez só (o chip e o botão não se duplicam)", async () => {
     fakeRouter.set({ status: "deleted" });
     renderWithQuery(<WorkspacesListPage />);
     await screen.findByText("Café Serra Verde");
-    expect(screen.getByRole("button", { name: /^Filtros/ })).toHaveTextContent("Filtros1");
-    expect(screen.getAllByRole("button", { name: "Remover filtro Status: Excluídos" })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Filtros, 1 ativo" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Remover filtro Status do workspace: Excluídos" })).toHaveLength(1);
 
     await userEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
     await waitFor(() => expect(fakeRouter.search).toEqual({}));
-    expect(screen.getByRole("button", { name: "Excluídos" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("combobox", { name: "Status do workspace" })).toHaveValue("");
     expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
   });
 
@@ -267,7 +256,7 @@ describe("WorkspacesListPage · filtros (URL e API)", () => {
     await screen.findByText("Café Serra Verde");
 
     expect(lastParams()).toMatchObject({ status: "archived", activity: "inactive", kind: "orphan", page: 2 });
-    expect(screen.getByRole("button", { name: "Arquivados" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("combobox", { name: "Status do workspace" })).toHaveValue("archived");
     expect(screen.getByRole("combobox", { name: "Uso recente" })).toHaveValue("inactive");
     expect(screen.getByRole("combobox", { name: "Tipo" })).toHaveValue("orphan");
   });
@@ -276,43 +265,33 @@ describe("WorkspacesListPage · filtros (URL e API)", () => {
     ["Ativos", "active"],
     ["Suspensos", "suspended"],
     ["Arquivados", "archived"],
-  ])("segmento %s manda status=%s e volta à página 1; 'Todos' devolve o padrão", async (label, value) => {
+  ])("estado %s manda status=%s e volta à página 1; 'Todos' devolve o padrão", async (label, value) => {
     fakeRouter.set({ page: 3 });
     renderWithQuery(<WorkspacesListPage />);
     await screen.findByText("Café Serra Verde");
 
-    await userEvent.click(screen.getByRole("button", { name: label }));
+    const status = screen.getByRole("combobox", { name: "Status do workspace" });
+    await userEvent.selectOptions(status, label);
     await waitFor(() => expect(lastParams()).toMatchObject({ status: value, page: 1 }));
     expect(fakeRouter.search).toEqual({ status: value });
 
-    await userEvent.click(screen.getByRole("button", { name: "Todos" }));
+    await userEvent.selectOptions(status, "Todos");
     await waitFor(() => expect(lastParams()).not.toHaveProperty("status"));
     expect(fakeRouter.search).toEqual({});
   });
 
-  it("'Excluídos' manda status=deleted (o mesmo valor de antes) e vira chip; clicar de novo, ou no chip, volta ao padrão", async () => {
+  it("'Excluídos' manda status=deleted (o mesmo valor de antes) e vira chip; o chip volta ao padrão", async () => {
     fakeRouter.set({ page: 3 });
     renderWithQuery(<WorkspacesListPage />);
     await screen.findByText("Café Serra Verde");
 
-    await userEvent.click(screen.getByRole("button", { name: "Excluídos" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Status do workspace" }), "Excluídos");
     await waitFor(() => expect(lastParams()).toMatchObject({ status: "deleted", page: 1 }));
     expect(fakeRouter.search).toEqual({ status: "deleted" });
-    expect(screen.getByRole("button", { name: "Excluídos" })).toHaveAttribute("aria-pressed", "true");
-    // nenhum botão do segmento fica marcado: o estado vem do filtro
-    for (const label of ["Todos", "Ativos", "Suspensos", "Arquivados"]) {
-      expect(screen.getByRole("button", { name: label })).toHaveAttribute("aria-pressed", "false");
-    }
 
-    await userEvent.click(screen.getByRole("button", { name: "Remover filtro Status: Excluídos" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remover filtro Status do workspace: Excluídos" }));
     await waitFor(() => expect(lastParams()).not.toHaveProperty("status"));
     expect(fakeRouter.search).toEqual({});
-
-    // a consulta de `deleted` já está em cache: o que prova o clique é a URL
-    await userEvent.click(screen.getByRole("button", { name: "Excluídos" }));
-    await waitFor(() => expect(fakeRouter.search).toEqual({ status: "deleted" }));
-    await userEvent.click(screen.getByRole("button", { name: "Excluídos" }));
-    await waitFor(() => expect(fakeRouter.search).toEqual({}));
   });
 
   it("link do Dashboard com status=deleted abre a lista de excluídos, com o chip ativo", async () => {
@@ -320,8 +299,8 @@ describe("WorkspacesListPage · filtros (URL e API)", () => {
     renderWithQuery(<WorkspacesListPage />);
     await screen.findByText("Café Serra Verde");
     expect(lastParams()).toMatchObject({ status: "deleted" });
-    expect(screen.getByRole("button", { name: "Remover filtro Status: Excluídos" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Excluídos" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Remover filtro Status do workspace: Excluídos" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Status do workspace" })).toHaveValue("deleted");
   });
 
   it("busca (nome, responsável, identificador) vai como `search` e fica na URL", async () => {

@@ -7,7 +7,7 @@ import { useIsClientRole } from "@/hooks/use-is-client-role";
 import { isPlatformStaff } from "@/lib/utils/platform-admin";
 import { getCampaignStatusValue } from "@/shared/utils/campaign-status";
 
-import { NAV_BY_SCOPE, type NavScope, type VisibleNavSection } from "./nav-config";
+import { NAV_BY_SCOPE, PLATFORM_SECTION_GROUPS, type NavScope, type VisibleNavSection } from "./nav-config";
 
 /**
  * As seções do ambiente já filtradas para o usuário (permissões do workspace, equipe da plataforma) e
@@ -38,8 +38,12 @@ export function useNavSections(scope: NavScope = "workspace") {
   }).length;
 
   // Ativo também nas rotas filhas (`/admin/workspaces/:id` acende "Workspaces").
-  const isOn = (href: string) =>
-    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+  const at = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
+  // Uma entrada com abas (Pessoas, Atendimento, Monitoramento) fica acesa em todas as telas do grupo.
+  const isOn = (href: string) => {
+    const group = Object.values(PLATFORM_SECTION_GROUPS).find((g) => g.tabs[0].href === href);
+    return group ? group.tabs.some((tab) => at(tab.href)) : at(href);
+  };
 
   const sections: VisibleNavSection[] = NAV_BY_SCOPE[scope]
     .map((section) => ({

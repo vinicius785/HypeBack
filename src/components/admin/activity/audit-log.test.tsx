@@ -8,6 +8,8 @@ const client = vi.hoisted(() => ({
   adminFeed: vi.fn(),
 }));
 
+// A saúde (bloco de cima do Monitoramento) tem os testes dela; aqui só interessa a atividade.
+vi.mock("@/components/admin/health/health-page", () => ({ HealthPage: () => null }));
 vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/admin/admin-client")>();
   return { ...actual, adminGet: client.adminGet, adminList: client.adminList, adminFeed: client.adminFeed };
@@ -78,21 +80,21 @@ afterEach(() => {
 });
 
 describe("Alterações administrativas: abas e consulta", () => {
-  it("a aba da URL abre o log com página, período e nenhum filtro na consulta", async () => {
+  it("a visão da URL abre o log com página, período e nenhum filtro na consulta", async () => {
     await openChanges();
-    expect(await screen.findByRole("tab", { name: "Alterações administrativas", selected: true })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Alterações administrativas", pressed: true })).toBeInTheDocument();
     expect(lastQuery()).toEqual({ page: 1, per_page: 25, from: "2026-10-02", to: "2026-10-31" });
   });
 
-  it("trocar de aba leva o período e muda a visão (e a URL)", async () => {
+  it("trocar a visão (seletor) leva o período e muda a lista (e a URL)", async () => {
     const { router } = renderActivity("/admin/activity?from=2026-10-20&to=2026-10-25");
     await screen.findByRole("heading", { name: "Linha do tempo" });
-    await userEvent.click(screen.getByRole("tab", { name: "Alterações administrativas" }));
+    await userEvent.click(screen.getByRole("button", { name: "Alterações administrativas" }));
     expect(await screen.findByRole("table", { name: "Alterações administrativas" })).toBeInTheDocument();
     await waitFor(() => expect(lastQuery()).toMatchObject({ from: "2026-10-20", to: "2026-10-25" }));
     expect(currentSearch(router)).toMatchObject({ tab: "changes", from: "2026-10-20", to: "2026-10-25" });
 
-    await userEvent.click(screen.getByRole("tab", { name: "Atividade" }));
+    await userEvent.click(screen.getByRole("button", { name: "Tudo na plataforma" }));
     await screen.findByRole("heading", { name: "Linha do tempo" });
     expect(currentSearch(router)).not.toHaveProperty("tab");
   });

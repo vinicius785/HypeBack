@@ -93,6 +93,7 @@ export function routerModuleMock() {
         () => state.search,
       ),
     useNavigate: () => navigate,
+    useLocation: () => ({ pathname: "/admin/workspaces" }),
   };
 }
 

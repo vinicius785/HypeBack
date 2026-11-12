@@ -17,6 +17,7 @@ import { formatPeriodRange, MAX_PERIOD_DAYS, PERIOD_LABEL, PERIOD_PRESETS, type 
 
 import { DashboardActivity } from "./dashboard-activity";
 import { DashboardAttention } from "./dashboard-attention";
+import { DashboardNewsIsland } from "./dashboard-news-island";
 import { dashboardPeriodRule } from "./dashboard-model";
 import { DashboardStatAreas } from "./dashboard-stat-areas";
 import { useDashboardPeriod } from "./use-dashboard-period";
@@ -43,6 +44,7 @@ export function AdminDashboardPage() {
   const activity = useAdminRecentActivity();
 
   const generatedAt = overview.data?.generated_at;
+
   const custom = period.preset === ADMIN_PERIOD_CUSTOM;
 
   // Adaptador fino: o seletor só emite intervalos válidos; quem aplica (e grava na URL) é o hook.
@@ -62,7 +64,12 @@ export function AdminDashboardPage() {
       <AdminPageHeader
         title="Dashboard"
         subtitle="Saúde da plataforma em um relance."
-        actions={
+      />
+
+      {/* A ilha vai de ponta a ponta: anuncia a última novidade e leva o controle de período. */}
+      <DashboardNewsIsland
+        activity={activity.data?.data}
+        controls={
           <AdminPeriodSelect
             compact
             presets={PERIOD_PRESET_OPTIONS}

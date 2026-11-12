@@ -1,28 +1,19 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import {
-  AdminInfoPopover,
-  AdminPage,
-  AdminPageHeader,
-  AdminTabPanel,
-  AdminTabs,
-  type AdminTabItem,
-} from "@/components/admin/platform";
+import { AdminInfoPopover, AdminPage, AdminPageHeader } from "@/components/admin/platform";
 import { useAdminFinancialPeriod } from "@/hooks/admin/use-admin-financial-period";
 
 import { FinancialByWorkspace } from "./financial-by-workspace";
 import { FinancialMovements } from "./financial-movements";
 import { FINANCIAL_READING_HELP } from "./financial-model";
 import { FinancialOverview } from "./financial-overview";
-import { FinancialPeriodControl } from "./financial-period-control";
-import { FinancialRefreshButton } from "./financial-refresh";
-import { FINANCIAL_TAB_LABEL, FINANCIAL_TABS, readFinancialTab, type FinancialTab } from "./financial-search";
+import { FinancialIsland } from "./financial-island";
+import { buildPeriodBar } from "./financial-period-filter";
+import { readFinancialTab, type FinancialTab } from "./financial-search";
 
 import "@/styles/admin-financial.css";
 
-const TAB_ITEMS: readonly AdminTabItem<FinancialTab>[] = FINANCIAL_TABS.map((id) => ({ id, label: FINANCIAL_TAB_LABEL[id] }));
-const TAB_PREFIX = "adm-fin";
 
 /** Aba da URL (`?tab=movements`). Trocar de aba leva só o período: cada aba tem os seus filtros. */
 function useFinancialTab(): [FinancialTab, (tab: FinancialTab) => void] {
@@ -60,6 +51,9 @@ function useFinancialTab(): [FinancialTab, (tab: FinancialTab) => void] {
 export function FinancialPage() {
   const [tab, setTab] = useFinancialTab();
   const { period, today, preset, setPeriod } = useAdminFinancialPeriod();
+  // Onde as visões penduram a barra (período, filtros, atualizar): dentro da ilha.
+  const [tools, setTools] = useState<HTMLElement | null>(null);
+  const periodBar = buildPeriodBar(period, today, preset, setPeriod);
 
   return (
     <AdminPage>
@@ -75,25 +69,13 @@ export function FinancialPage() {
             </AdminInfoPopover>
           </>
         }
-        actions={
-          <div className="adm-fin-tools">
-            <FinancialPeriodControl period={period} today={today} preset={preset} onChange={setPeriod} />
-            {tab === "overview" ? <FinancialRefreshButton /> : null}
-          </div>
-        }
       />
 
-      <AdminTabs tabs={TAB_ITEMS} value={tab} onChange={setTab} ariaLabel="Seções do financeiro" idPrefix={TAB_PREFIX} />
+      <FinancialIsland toolsRef={setTools} tab={tab} onTab={setTab} period={period} />
 
-      <AdminTabPanel idPrefix={TAB_PREFIX} id="overview" active={tab === "overview"}>
-        <FinancialOverview period={period} />
-      </AdminTabPanel>
-      <AdminTabPanel idPrefix={TAB_PREFIX} id="movements" active={tab === "movements"}>
-        <FinancialMovements period={period} />
-      </AdminTabPanel>
-      <AdminTabPanel idPrefix={TAB_PREFIX} id="by-workspace" active={tab === "by-workspace"}>
-        <FinancialByWorkspace period={period} />
-      </AdminTabPanel>
+      {tab === "overview" ? <FinancialOverview period={period} tools={tools} periodBar={periodBar} /> : null}
+      {tab === "movements" ? <FinancialMovements period={period} tools={tools} periodBar={periodBar} /> : null}
+      {tab === "by-workspace" ? <FinancialByWorkspace period={period} tools={tools} periodBar={periodBar} /> : null}
     </AdminPage>
   );
 }

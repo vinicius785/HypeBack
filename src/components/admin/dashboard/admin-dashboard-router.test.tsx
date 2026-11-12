@@ -20,11 +20,12 @@ const api = vi.hoisted(() => ({
   adminGet: vi.fn(),
   adminGetEnvelope: vi.fn(),
   adminFeed: vi.fn(),
+  adminList: vi.fn(),
 }));
 
 vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/admin/admin-client")>();
-  return { ...actual, adminGet: api.adminGet, adminGetEnvelope: api.adminGetEnvelope, adminFeed: api.adminFeed };
+  return { ...actual, adminGet: api.adminGet, adminGetEnvelope: api.adminGetEnvelope, adminFeed: api.adminFeed, adminList: api.adminList };
 });
 
 import { readPeriodSearch } from "@/lib/admin/period";
@@ -79,6 +80,10 @@ beforeEach(() => {
   window.scrollTo = vi.fn();
   api.adminGet.mockReset().mockResolvedValue(OVERVIEW);
   api.adminGetEnvelope.mockReset().mockResolvedValue({ data: ALERTS, meta: { computed_at: "2026-10-31T15:00:00.000Z" } });
+  api.adminList.mockReset().mockImplementation(async (path: string) => ({
+    data: [],
+    meta: { page: 1, per_page: 1, total: path === "/admin/campaigns" ? 460 : 10, total_pages: 1, applications: { today: 5, last_7_days: 21, month_to_date: 55 } },
+  }));
   api.adminFeed.mockReset().mockResolvedValue({ data: EVENTS, meta: { next_cursor: null, has_more: false } });
 });
 
@@ -87,24 +92,24 @@ afterEach(() => {
 });
 
 describe("Dashboard com o roteador real", () => {
-  it("abre em /admin/dashboard sem nada na URL: 30 dias", async () => {
+  it("abre em /admin/dashboard sem nada na URL: este mês", async () => {
     const router = renderAt("/admin/dashboard");
     expect(await screen.findByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
-    await waitFor(() => expect(overviewParams()).toEqual([{ from: "2026-10-02", to: "2026-10-31" }]));
+    await waitFor(() => expect(overviewParams()).toEqual([{ from: "2026-10-01", to: "2026-10-31" }]));
     expect(router.state.location.search).toEqual({});
   });
 
   it("trocar o período coloca ?period= na URL (sem empilhar histórico) e consulta de novo", async () => {
     const router = renderAt("/admin/dashboard");
-    await userEvent.click(await screen.findByRole("button", { name: "90 dias" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Esta semana" }));
 
-    await waitFor(() => expect(router.state.location.search).toEqual({ period: "90d" }));
+    await waitFor(() => expect(router.state.location.search).toEqual({ period: "week" }));
     expect(router.state.location.pathname).toBe("/admin/dashboard");
-    expect(router.history.location.href).toBe("/admin/dashboard?period=90d");
-    await waitFor(() => expect(overviewParams().at(-1)).toEqual({ from: "2026-08-03", to: "2026-10-31" }));
+    expect(router.history.location.href).toBe("/admin/dashboard?period=week");
+    await waitFor(() => expect(overviewParams().at(-1)).toEqual({ from: "2026-10-26", to: "2026-10-31" }));
     expect(router.history.length).toBe(1); // `replace`: nenhum "voltar" por clique no seletor
 
-    await userEvent.click(screen.getByRole("button", { name: "30 dias" }));
+    await userEvent.click(screen.getByRole("button", { name: "Este mês" }));
     await waitFor(() => expect(router.history.location.href).toBe("/admin/dashboard"));
   });
 
@@ -112,9 +117,9 @@ describe("Dashboard com o roteador real", () => {
     const router = renderAt("/admin/dashboard");
     await userEvent.click(await screen.findByRole("button", { name: "Personalizado" }));
     await waitFor(() =>
-      expect(router.history.location.href).toBe("/admin/dashboard?period=custom&from=2026-10-02&to=2026-10-31"),
+      expect(router.history.location.href).toBe("/admin/dashboard?period=custom&from=2026-10-01&to=2026-10-31"),
     );
-    expect(router.state.location.search).toEqual({ period: "custom", from: "2026-10-02", to: "2026-10-31" });
+    expect(router.state.location.search).toEqual({ period: "custom", from: "2026-10-01", to: "2026-10-31" });
   });
 
   it("abre direto num período da URL (link compartilhado)", async () => {
@@ -126,19 +131,17 @@ describe("Dashboard com o roteador real", () => {
 
   it("período inválido na URL abre a tela no padrão (o roteador mantém a busca crua; a tela a revalida)", async () => {
     renderAt("/admin/dashboard?period=decada&from=2026-02-30");
-    expect(await screen.findByRole("button", { name: "30 dias", pressed: true })).toBeInTheDocument();
-    await waitFor(() => expect(overviewParams()).toEqual([{ from: "2026-10-02", to: "2026-10-31" }]));
+    expect(await screen.findByRole("button", { name: "Este mês", pressed: true })).toBeInTheDocument();
+    await waitFor(() => expect(overviewParams()).toEqual([{ from: "2026-10-01", to: "2026-10-31" }]));
     expect(screen.queryByLabelText("De")).not.toBeInTheDocument();
   });
 
   it.each([
+    ["Clientes", "Clientes", "/admin/workspaces", {}],
     ["Clientes", "Ativos", "/admin/workspaces", { status: "active", activity: "active" }],
-    ["Clientes", "Inativos", "/admin/workspaces", { status: "active", activity: "inactive" }],
-    ["Clientes", "Suspensos", "/admin/workspaces", { status: "suspended" }],
-    ["Usuários", "Suspensos", "/admin/users", { status: "suspended" }],
+    ["Usuários", "Usuários", "/admin/users", {}],
+    ["Criadores", "Criadores", "/admin/creators", {}],
     ["Campanhas", "Publicadas", "/admin/campaigns", { status: "published" }],
-    ["Campanhas", "Criadas no período", "/admin/campaigns", { created_from: "2026-10-02", created_to: "2026-10-31" }],
-    ["Dinheiro", "Pago via PIX no período", "/admin/financial", { type: "transfer", from: "2026-10-02", to: "2026-10-31" }],
   ] as const)("clicar em %s › %s abre %s com os filtros na busca", async (panel, label, path, search) => {
     const router = renderAt("/admin/dashboard");
     const region = await screen.findByRole("region", { name: panel });
@@ -150,17 +153,17 @@ describe("Dashboard com o roteador real", () => {
     expect(router.state.location.search).toEqual(search);
   });
 
-  it("um alerta leva à rota do servidor com os filtros na busca; 'Ver todos' abre a Saúde", async () => {
+  it("um alerta leva à rota do servidor com os filtros na busca; 'Ver todos' abre a atividade", async () => {
     const router = renderAt("/admin/dashboard");
     const attention = await screen.findByRole("region", { name: /^Precisa de atenção/ });
-    await userEvent.click(await within(attention).findByRole("link", { name: "Saques de criadores travados" }));
+    await userEvent.click(await within(attention).findByRole("link", { name: /Saques de criadores travados/ }));
     expect(await screen.findByTestId("destino")).toHaveTextContent("/admin/financial");
     expect(router.state.location.search).toEqual({ type: "withdrawal" });
 
     router.history.back();
     const back = await screen.findByRole("region", { name: /^Precisa de atenção/ });
     await userEvent.click(within(back).getByRole("link", { name: "Ver todos" }));
-    expect(await screen.findByTestId("destino")).toHaveTextContent("/admin/health");
+    expect(await screen.findByTestId("destino")).toHaveTextContent("/admin/activity");
   });
 
   it("um evento leva ao detalhe do que mudou (rota com parâmetro)", async () => {
@@ -173,15 +176,15 @@ describe("Dashboard com o roteador real", () => {
 
   it("voltar da lista para o Dashboard preserva o período escolhido", async () => {
     const router = renderAt("/admin/dashboard");
-    await userEvent.click(await screen.findByRole("button", { name: "90 dias" }));
-    await waitFor(() => expect(router.history.location.href).toBe("/admin/dashboard?period=90d"));
+    await userEvent.click(await screen.findByRole("button", { name: "Esta semana" }));
+    await waitFor(() => expect(router.history.location.href).toBe("/admin/dashboard?period=week"));
 
     const clients = screen.getByRole("region", { name: "Clientes" });
-    await userEvent.click(within(clients).getByRole("link", { name: "Ver Suspensos" }));
+    await userEvent.click(within(clients).getByRole("link", { name: "Ver Ativos" }));
     expect(await screen.findByTestId("destino")).toHaveTextContent("/admin/workspaces");
 
     router.history.back();
-    expect(await screen.findByRole("button", { name: "90 dias", pressed: true })).toBeInTheDocument();
-    expect(router.history.location.href).toBe("/admin/dashboard?period=90d");
+    expect(await screen.findByRole("button", { name: "Esta semana", pressed: true })).toBeInTheDocument();
+    expect(router.history.location.href).toBe("/admin/dashboard?period=week");
   });
 });

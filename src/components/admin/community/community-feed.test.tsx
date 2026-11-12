@@ -59,7 +59,7 @@ describe("CommunityFeed: a lista", () => {
     await screen.findByText("Gravei um vídeo novo hoje!");
 
     expect(lastQuery()).toMatchObject({ group: "all", search: undefined, cursor: null, limit: 20 });
-    expect(screen.getByRole("button", { name: "Todas" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("combobox", { name: "Origem das publicações" })).toHaveValue("all");
   });
 
   it("no singular: 1 curtida, 1 comentário", async () => {
@@ -184,10 +184,10 @@ describe("CommunityFeed: filtros e paginação", () => {
     renderFeed();
     await screen.findByText("Gravei um vídeo novo hoje!");
 
-    await userEvent.click(screen.getByRole("button", { name: "Sem grupo" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Origem das publicações" }), "Sem grupo");
 
     await waitFor(() => expect(lastQuery()).toMatchObject({ group: "none" }));
-    expect(screen.getByRole("button", { name: "Sem grupo" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("combobox", { name: "Origem das publicações" })).toHaveValue("none");
   });
 
   it("'Sem grupo' conta como filtro (chip e 'Limpar filtros' voltam a Todas); Todas não", async () => {
@@ -195,14 +195,14 @@ describe("CommunityFeed: filtros e paginação", () => {
     await screen.findByText("Gravei um vídeo novo hoje!");
     expect(screen.queryByRole("button", { name: "Limpar filtros" })).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Sem grupo" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Origem das publicações" }), "Sem grupo");
     await waitFor(() => expect(lastQuery()).toMatchObject({ group: "none" }));
     expect(screen.getByRole("button", { name: "Remover filtro Origem das publicações: Sem grupo" })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
 
     await waitFor(() => expect(lastQuery()).toMatchObject({ group: "all" }));
-    expect(screen.getByRole("button", { name: "Todas" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("combobox", { name: "Origem das publicações" })).toHaveValue("all");
   });
 
   it("a busca vai para a API com o texto aparado, e Enter busca na hora", async () => {
@@ -262,7 +262,7 @@ describe("CommunityFeed: estados", () => {
     renderFeed();
     await screen.findByText("Gravei um vídeo novo hoje!");
 
-    await userEvent.click(screen.getByRole("button", { name: "Sem grupo" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Origem das publicações" }), "Sem grupo");
 
     expect(await screen.findByText("Nenhuma publicação fora de grupos")).toBeInTheDocument();
   });

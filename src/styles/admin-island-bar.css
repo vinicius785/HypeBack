@@ -1,0 +1,21 @@
+/*
+ * A barra da lista (busca, ordenar, filtros, atualizar) dentro de uma "ilha" (padrão `.isl` do Gerenciamento): fica numa
+ * segunda linha (`.isl-tools`), em tons de preto. Vale para toda ilha com a classe `isl-bar-dark` (Pessoas e Atendimento).
+ */
+.pv .isl-bar-dark .adm-filters { gap: 8px; min-width: 0; }
+.pv .isl-bar-dark .adm-filters-row { gap: 8px; }
+.pv .isl-bar-dark .adm-search { background: rgba(255, 255, 255, .1); color: var(--adm-surface); border-radius: 99px; box-shadow: none; }
+.pv .isl-bar-dark .adm-search input { color: var(--adm-surface); }
+.pv .isl-bar-dark .adm-search input::placeholder { color: rgba(255, 255, 255, .55); }
+.pv .isl-bar-dark .adm-search .ico, .pv .isl-bar-dark .adm-search svg { color: rgba(255, 255, 255, .6); }
+.pv .isl-bar-dark .adm-search:focus-within { background: rgba(255, 255, 255, .16); box-shadow: 0 0 0 2px rgba(255, 255, 255, .35); }
+/* os botões redondos (ordenar, filtros, atualizar) */
+.pv .isl-bar-dark .adm-filters-toggle, .pv .isl-bar-dark .btn.adm-actmenu-btn, .pv .isl-bar-dark .adm-filters-trail .btn { background: rgba(255, 255, 255, .1); color: var(--adm-surface); box-shadow: none; border: 0; }
+.pv .isl-bar-dark .adm-filters-toggle:hover, .pv .isl-bar-dark .btn.adm-actmenu-btn:hover, .pv .isl-bar-dark .adm-filters-trail .btn:hover { background: rgba(255, 255, 255, .18); }
+/* os chips dos filtros ativos e o "Limpar" */
+.pv .isl-bar-dark .adm-chip { background: rgba(255, 255, 255, .12); color: var(--adm-surface); box-shadow: none; }
+.pv .isl-bar-dark .adm-chip:hover { background: rgba(255, 255, 255, .2); }
+.pv .isl-bar-dark .adm-textbtn { color: var(--adm-surface); }
+/* o painel de filtros e o menu abrem em branco por cima da ilha: o texto volta a ser escuro */
+.pv .isl-bar-dark .adm-filters-panel, .pv .isl-bar-dark .adm-actmenu-list, .pv .isl-bar-dark [role="menu"] { color: var(--ink); }
+

@@ -1,16 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   AdminBadge,
   AdminEntityCell,
-  AdminPage,
-  AdminPageHeader,
+  AdminFilterBar,
   AdminPager,
   AdminRefreshButton,
   AdminSearchInput,
   AdminSection,
   AdminTable,
-  AdminTabs,
+  inIsland,
+  type AdminFilterDef,
   type AdminTableColumn,
 } from "@/components/admin/platform";
 import { useAdminCapabilities } from "@/hooks/admin/use-admin-team";
@@ -33,24 +33,27 @@ import { SupportTicketDrawer } from "./support-ticket-drawer";
 import "@/styles/admin-support.css";
 
 const PER_PAGE = 20;
-type Tab = "active" | "resolved_all";
+export type SupportView = "active" | "resolved_all";
 type Assigned = "all" | "me" | "none";
 
 /**
- * Suporte: central dos pedidos de ajuda que chegam da plataforma, do app do criador e do site. A equipe lê; quem tem
- * `support.manage` (administrador e suporte) responde, muda status, prioridade e responsável. Dados:
+ * Fila do Suporte (dentro do Atendimento): pedidos de ajuda que chegam da plataforma, do app do criador e do site. A
+ * equipe lê; quem tem `support.manage` (administrador e suporte) responde, muda status, prioridade e responsável.
+ * `view` diz se a fila é a dos ativos ou a dos resolvidos (a ilha do Atendimento escolhe). Dados:
  * `GET /admin/support/tickets` (contagens em `meta.counts`); detalhe e ações no painel lateral.
  */
-export function AdminSupportPage() {
+export function SupportQueue({ view, tools }: { view: SupportView; tools?: HTMLElement | null }) {
   const capabilities = useAdminCapabilities();
   const canManage = capabilities.can("support.manage");
-  const [tab, setTab] = useState<Tab>("active");
+  const tab = view;
   const [source, setSource] = useState<SupportSource | "all">("all");
   const [priority, setPriority] = useState<SupportPriority | "all">("all");
   const [assigned, setAssigned] = useState<Assigned>("all");
   const [text, setText] = useState("");
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
+  // Trocar de fila volta à primeira página.
+  useEffect(() => setPage(1), [view]);
 
   const q = text.trim().length >= 2 ? text.trim() : undefined;
   const params: SupportListParams = {
@@ -64,8 +67,6 @@ export function AdminSupportPage() {
   };
   const list = useAdminSupportTickets(params);
   const counts = supportCounts(list.data?.meta);
-  const activeCount = counts ? counts.by_status.open + counts.by_status.in_progress + counts.by_status.waiting : null;
-  const resolvedCount = counts ? counts.by_status.resolved + counts.by_status.closed : null;
   const reset = <T,>(set: (v: T) => void) => (v: T) => {
     set(v);
     setPage(1);
@@ -111,63 +112,64 @@ export function AdminSupportPage() {
   const meta = list.data?.meta;
   const filtered = source !== "all" || priority !== "all" || assigned !== "all" || !!q;
 
+  const sourceTotal = counts && tab === "active" ? Object.values(counts.by_source).reduce((x, y) => x + y, 0) : null;
+  const filters: AdminFilterDef[] = [
+    {
+      kind: "select",
+      key: "source",
+      label: "Origem",
+      options: [
+        { value: "all", label: `Todas${sourceTotal !== null ? ` (${sourceTotal})` : ""}` },
+        ...SUPPORT_SOURCES.map((s) => ({ value: s, label: `${SUPPORT_SOURCE_LABEL[s]}${counts && tab === "active" ? ` (${counts.by_source[s]})` : ""}` })),
+      ],
+      defaultValue: "all",
+    },
+    {
+      kind: "select",
+      key: "priority",
+      label: "Prioridade",
+      options: [{ value: "all", label: "Todas" }, ...[...SUPPORT_PRIORITIES].reverse().map((p) => ({ value: p, label: SUPPORT_PRIORITY_LABEL[p] }))],
+      defaultValue: "all",
+    },
+    {
+      kind: "select",
+      key: "assigned",
+      label: "Responsável",
+      options: [
+        { value: "all", label: "Todos" },
+        { value: "me", label: `Atribuídos a mim${counts ? ` (${counts.mine})` : ""}` },
+        { value: "none", label: `Sem responsável${counts ? ` (${counts.unassigned})` : ""}` },
+      ],
+      defaultValue: "all",
+    },
+  ];
+
   return (
-    <AdminPage>
-      <AdminPageHeader
-        title="Suporte"
-        subtitle="Pedidos de ajuda da plataforma, do app e do site em um só lugar."
-        actions={<AdminRefreshButton onClick={() => void list.refetch()} loading={list.isFetching} />}
+    <>
+      {inIsland(tools, (
+      <AdminFilterBar
+        search={<AdminSearchInput value={text} onSearch={reset(setText)} placeholder="Buscar assunto, nome, e-mail ou nº" label="Buscar pedidos de suporte" />}
+        searchLabel="Buscar pedidos de suporte"
+        filters={filters}
+        values={{ source, priority, assigned }}
+        onChange={(patch) => {
+          if (patch.source !== undefined) setSource(patch.source as SupportSource | "all");
+          if (patch.priority !== undefined) setPriority(patch.priority as SupportPriority | "all");
+          if (patch.assigned !== undefined) setAssigned(patch.assigned as Assigned);
+          setPage(1);
+        }}
+        onClear={() => {
+          setSource("all");
+          setPriority("all");
+          setAssigned("all");
+          setPage(1);
+        }}
+        compact
+        trailing={<AdminRefreshButton iconOnly onClick={() => void list.refetch()} loading={list.isFetching} />}
       />
+      ))}
 
-      <AdminSection>
-        <div className="adm-sup-bar">
-          <AdminTabs
-            ariaLabel="Situação dos pedidos"
-            idPrefix="adm-sup"
-            value={tab}
-            onChange={reset(setTab)}
-            tabs={[
-              { id: "active", label: "Ativos", count: activeCount },
-              { id: "resolved_all", label: "Resolvidos", count: resolvedCount },
-            ]}
-          />
-          <AdminSearchInput value={text} onSearch={reset(setText)} placeholder="Buscar assunto, nome, e-mail ou nº" label="Buscar pedidos de suporte" />
-        </div>
-
-        <div className="adm-sup-filters" role="group" aria-label="Filtros">
-          <label>
-            <span>Origem</span>
-            <select value={source} onChange={(e) => reset(setSource)(e.target.value as SupportSource | "all")}>
-              <option value="all">Todas{counts && tab === "active" ? ` (${Object.values(counts.by_source).reduce((a, b) => a + b, 0)})` : ""}</option>
-              {SUPPORT_SOURCES.map((s) => (
-                <option key={s} value={s}>
-                  {SUPPORT_SOURCE_LABEL[s]}
-                  {counts && tab === "active" ? ` (${counts.by_source[s]})` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Prioridade</span>
-            <select value={priority} onChange={(e) => reset(setPriority)(e.target.value as SupportPriority | "all")}>
-              <option value="all">Todas</option>
-              {[...SUPPORT_PRIORITIES].reverse().map((p) => (
-                <option key={p} value={p}>
-                  {SUPPORT_PRIORITY_LABEL[p]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Responsável</span>
-            <select value={assigned} onChange={(e) => reset(setAssigned)(e.target.value as Assigned)}>
-              <option value="all">Todos</option>
-              <option value="me">Atribuídos a mim{counts ? ` (${counts.mine})` : ""}</option>
-              <option value="none">Sem responsável{counts ? ` (${counts.unassigned})` : ""}</option>
-            </select>
-          </label>
-        </div>
-
+      <AdminSection flush>
         <AdminTable
           caption="Pedidos de suporte"
           columns={columns}
@@ -196,6 +198,6 @@ export function AdminSupportPage() {
       </AdminSection>
 
       <SupportTicketDrawer ticketId={openId} canManage={canManage} onClose={() => setOpenId(null)} />
-    </AdminPage>
+    </>
   );
 }

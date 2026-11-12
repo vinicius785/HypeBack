@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import {
   AdminEntityCell,
   AdminFilterBar,
+  inIsland,
   AdminPager,
   AdminSearchInput,
   AdminTable,
@@ -14,6 +15,7 @@ import { useAdminListQueryState, useAdminPageClamp } from "@/hooks/admin/use-adm
 import { formatBRLFromCents } from "@/lib/admin/format";
 import type { AdminDateRange, AdminFinancialByWorkspaceRow } from "@/shared/admin-platform.types";
 
+import type { FinancialPeriodBar } from "./financial-period-filter";
 import { FinancialRefreshButton } from "./financial-refresh";
 import { BY_WORKSPACE_LIST_CONFIG } from "./financial-search";
 
@@ -75,6 +77,10 @@ function buildColumns(definitions: Record<string, string> | undefined): AdminTab
 
 interface FinancialByWorkspaceProps {
   period: AdminDateRange;
+  /** Onde a barra mora: dentro da ilha do Financeiro. */
+  tools?: HTMLElement | null;
+  /** O filtro e o texto do período (a barra de cada visão os leva). */
+  periodBar: FinancialPeriodBar;
 }
 
 /**
@@ -82,7 +88,7 @@ interface FinancialByWorkspaceProps {
  * quanto virou PIX concluído, mais a linha "Não atribuído" (valores sem workspace). Ordena por coluna, busca por
  * nome e pagina; clicar na linha abre a aba Financeiro do workspace.
  */
-export function FinancialByWorkspace({ period }: FinancialByWorkspaceProps) {
+export function FinancialByWorkspace({ period, tools, periodBar }: FinancialByWorkspaceProps) {
   const state = useAdminListQueryState(BY_WORKSPACE_LIST_CONFIG);
   // O período é da página, não da lista: sempre explícito, nunca o que sobrou solto na URL.
   const params = useMemo(() => ({ ...state.params, from: period.from, to: period.to }), [state.params, period.from, period.to]);
@@ -95,11 +101,17 @@ export function FinancialByWorkspace({ period }: FinancialByWorkspaceProps) {
 
   return (
     <div className="adm-fin-stack">
-      <AdminFilterBar
-        search={<AdminSearchInput value={state.search} onSearch={state.setSearch} placeholder="Buscar workspace" label="Buscar workspaces" />}
-        searchLabel="Buscar workspaces"
-        trailing={<FinancialRefreshButton />}
-      />
+      {inIsland(
+        tools,
+        <AdminFilterBar
+          search={<AdminSearchInput value={state.search} onSearch={state.setSearch} placeholder="Buscar workspace" label="Buscar workspaces" />}
+          searchLabel="Buscar workspaces"
+          filters={[periodBar.filter]}
+          compact
+          beforeFilters={periodBar.now}
+          trailing={<FinancialRefreshButton />}
+        />,
+      )}
 
       <AdminTable
         caption="Financeiro por workspace"

@@ -34,7 +34,8 @@ import type { AccountTypeRequest } from "@/shared/services/account-type-requests
 
 import { listResult } from "../users/admin-users-test-data";
 import { renderRoutes, stubRoute } from "../users/admin-users-test-utils";
-import { AdminAccountTypeRequestsPage } from "./account-requests-page";
+import { AdminServicePage } from "../service/service-page";
+import { validateServiceSearch } from "../service/service-search";
 
 const req = (over: Partial<AccountTypeRequest> = {}): AccountTypeRequest => ({
   id: "r1",
@@ -52,7 +53,7 @@ const req = (over: Partial<AccountTypeRequest> = {}): AccountTypeRequest => ({
 });
 
 const ADMIN = { id: 1, name: "Marina", is_platform_admin: true, platform_role: "admin" };
-const ROUTES = [{ path: "/admin/account-requests", component: AdminAccountTypeRequestsPage }, stubRoute("/admin/workspaces/$workspaceId")];
+const ROUTES = [{ path: "/admin/support", component: AdminServicePage, validateSearch: validateServiceSearch }, stubRoute("/admin/workspaces/$workspaceId")];
 
 function serve(rows: AccountTypeRequest[]) {
   mocks.adminList.mockImplementation(async (_p: string, params?: Record<string, unknown>) => {
@@ -70,8 +71,8 @@ function serve(rows: AccountTypeRequest[]) {
 }
 
 async function renderPage() {
-  const view = renderRoutes(ROUTES, "/admin/account-requests");
-  await screen.findByRole("heading", { level: 1, name: "Solicitações de tipo de conta" });
+  const view = renderRoutes(ROUTES, "/admin/support?fila=requests");
+  await screen.findByRole("heading", { level: 1, name: "Atendimento" });
   return { ...view, user: userEvent.setup() };
 }
 
@@ -145,7 +146,7 @@ describe("Solicitações de tipo de conta (Admin)", () => {
     serve([]);
     const { user } = await renderPage();
     expect(await screen.findByText("Nenhuma solicitação pendente")).toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: /Histórico/ }));
+    await user.click(screen.getByRole("button", { name: /^Histórico/ }));
     expect(await screen.findByText("Nenhuma decisão registrada ainda")).toBeInTheDocument();
   });
 });

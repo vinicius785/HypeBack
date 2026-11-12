@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { AdminAccountTypeRequestsPage } from "@/components/admin/account-type/account-requests-page";
-
+/** As Solicitações viraram uma fila do Atendimento: o endereço antigo (e links salvos) leva para lá. */
 export const Route = createFileRoute("/(private)/(admin)/admin/account-requests")({
-  component: AdminAccountTypeRequestsPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/admin/support", search: { fila: "requests" } as never, replace: true });
+  },
 });

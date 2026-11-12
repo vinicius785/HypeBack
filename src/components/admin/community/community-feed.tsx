@@ -7,6 +7,7 @@ import {
   AdminEmptyState,
   AdminErrorState,
   AdminFilterBar,
+  inIsland,
   AdminIconButton,
   AdminLink,
   AdminListSkeleton,
@@ -128,7 +129,7 @@ function uniqueById(posts: CommunityPostModeration[]): CommunityPostModeration[]
  * mais antigo. Dá para buscar pelo texto, ficar só com o que não está em grupo (que nenhum grupo modera) e remover
  * qualquer publicação. É o mesmo "Para você" que os criadores veem na aba Comunidade do app.
  */
-export function CommunityFeed() {
+export function CommunityFeed({ tools }: { tools?: HTMLElement | null } = {}) {
   const [scope, setScope] = useState<FeedScope>("all");
   const [search, setSearch] = useState("");
   const [removing, setRemoving] = useState<CommunityPostModeration | null>(null);
@@ -222,14 +223,15 @@ export function CommunityFeed() {
 
   return (
     <div className="adm-com-stack">
+      {inIsland(tools, (
       <AdminFilterBar
-        segment={{
-          options: SCOPE_OPTIONS,
-          value: scope,
-          onChange: (value) => setScope(value as FeedScope),
-          ariaLabel: "Origem das publicações",
+        // A origem (Todas, Sem grupo) mora no painel do ícone de filtro, como os estados das outras telas.
+        filters={[{ kind: "select", key: "scope", label: "Origem das publicações", options: SCOPE_OPTIONS, defaultValue: "all" }]}
+        values={{ scope }}
+        onChange={(patch) => {
+          if (patch.scope !== undefined) setScope(patch.scope as FeedScope);
         }}
-        segmentDefault="all"
+        onClear={() => setScope("all")}
         search={
           <AdminSearchInput
             value={search}
@@ -239,6 +241,7 @@ export function CommunityFeed() {
           />
         }
         searchLabel="Buscar publicações"
+        compact
         trailing={
           <AdminRefreshButton
             iconOnly
@@ -247,6 +250,7 @@ export function CommunityFeed() {
           />
         }
       />
+      ))}
 
       <AdminSection flush>{body}</AdminSection>
 

@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   AdminBadge,
   AdminFilterBar,
+  inIsland,
   AdminInfoPopover,
   AdminLink,
   AdminLoadMore,
@@ -19,6 +20,7 @@ import { FIGURE_KIND_HELP, FIGURE_KIND_LABEL, MOVEMENT_TYPE_LABEL } from "@/lib/
 import type { AdminDateRange, AdminFinancialMovement, AdminMovementType, AdminWorkspaceRef } from "@/shared/admin-platform.types";
 
 import { CopyValue } from "./copy-value";
+import type { FinancialPeriodBar } from "./financial-period-filter";
 import { FinancialRefreshButton } from "./financial-refresh";
 import { isMovementType, isWorkspaceId, MOVEMENTS_FILTER_CONFIG } from "./financial-search";
 
@@ -194,6 +196,10 @@ const COLUMNS: readonly AdminTableColumn<AdminFinancialMovement>[] = [
 
 interface FinancialMovementsProps {
   period: AdminDateRange;
+  /** Onde a barra mora: dentro da ilha do Financeiro. */
+  tools?: HTMLElement | null;
+  /** O filtro e o texto do período (a barra de cada visão os leva). */
+  periodBar: FinancialPeriodBar;
 }
 
 /**
@@ -201,7 +207,7 @@ interface FinancialMovementsProps {
  * para o mais antigo, com filtro de tipo, de workspace e o período da página. "Carregar mais" pede a página
  * seguinte com o cursor da anterior. Os ids de origem abrem na própria linha.
  */
-export function FinancialMovements({ period }: FinancialMovementsProps) {
+export function FinancialMovements({ period, tools, periodBar }: FinancialMovementsProps) {
   const state = useAdminListQueryState(MOVEMENTS_FILTER_CONFIG);
   // O que veio da URL é revalidado: um valor solto nunca chega à API.
   const type: AdminMovementType | "" = isMovementType(state.filters.type) ? state.filters.type : "";
@@ -241,17 +247,25 @@ export function FinancialMovements({ period }: FinancialMovementsProps) {
 
   return (
     <div className="adm-fin-stack">
-      <AdminFilterBar
-        segment={{
-          ariaLabel: "Tipo de movimentação",
-          options: TYPE_OPTIONS,
-          value: type,
-          onChange: (value) => state.setFilter("type", value),
-        }}
-        segmentDefault=""
-        filters={filters}
-        trailing={<FinancialRefreshButton />}
-      />
+      {inIsland(
+        tools,
+        <AdminFilterBar
+          // O tipo (Todas, Cobranças, Lançamentos…) e o período moram no painel do ícone de filtro, junto do workspace.
+          filters={[
+            periodBar.filter,
+            { kind: "select", key: "type", label: "Tipo de movimentação", options: TYPE_OPTIONS, defaultValue: "" },
+            ...filters,
+          ]}
+          values={{ type }}
+          onChange={(patch) => {
+            if (patch.type !== undefined) state.setFilter("type", patch.type);
+          }}
+          onClear={() => state.setFilter("type", "")}
+          compact
+          beforeFilters={periodBar.now}
+          trailing={<FinancialRefreshButton />}
+        />,
+      )}
 
       <AdminTable
         caption="Movimentações financeiras"

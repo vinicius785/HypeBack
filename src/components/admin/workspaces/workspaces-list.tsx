@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import {
   AdminFilterBar,
@@ -7,17 +7,23 @@ import {
   AdminPager,
   AdminRefreshButton,
   AdminSearchInput,
+  AdminSortMenu,
   AdminTable,
   type AdminFilterDef,
 } from "@/components/admin/platform";
 import { useAdminListQueryState, useAdminPageClamp } from "@/hooks/admin/use-admin-list-query-state";
+import { PeopleIsland } from "@/components/admin/people/people-island";
 import { useAdminWorkspaceList } from "@/hooks/admin/use-admin-workspaces";
+import { rememberListSearch } from "@/lib/admin/list-memory";
+import { stateToSearch } from "@/lib/admin/list-query";
+import { WORKSPACES_LIST_MEMORY_KEY } from "./workspace-links";
 
 import {
   WORKSPACE_DELETED_STATUS,
   WORKSPACE_LIST_CONFIG,
   WORKSPACE_LIST_FILTERS,
   WORKSPACE_SORT_FIRST_ORDER,
+  WORKSPACE_SORT_OPTIONS,
   WORKSPACE_STATUS_OPTIONS,
   type WorkspaceFilterKey,
 } from "./workspace-constants";
@@ -36,6 +42,11 @@ import "@/styles/admin-workspaces.css";
  */
 export function WorkspacesListPage() {
   const list = useAdminListQueryState(WORKSPACE_LIST_CONFIG);
+  // Guarda o que está na URL (filtros, ordenação, busca, página) para o "voltar" do detalhe trazer a lista como estava.
+  const memorySearch = JSON.stringify(stateToSearch(list, WORKSPACE_LIST_CONFIG));
+  useEffect(() => {
+    rememberListSearch(WORKSPACES_LIST_MEMORY_KEY, JSON.parse(memorySearch) as Record<string, string | number>);
+  }, [memorySearch]);
   const query = useAdminWorkspaceList(list.params);
   const meta = query.data?.meta;
   useAdminPageClamp(list.page, meta?.total_pages, list.setPage);
@@ -43,33 +54,24 @@ export function WorkspacesListPage() {
   const columns = useMemo(() => buildWorkspaceColumns(meta?.definitions), [meta?.definitions]);
   const filtered = list.hasActiveFilters || list.search !== "";
 
-  const deletedOnly = list.filters.status === WORKSPACE_DELETED_STATUS;
-  // "Excluídos" é um liga/desliga da barra que escreve `status=deleted`. Sem `onClear`: o chip e "Limpar filtros"
-  // chamam `onToggle` (só com o filtro ativo), que já leva `status` de volta ao padrão: nunca vira duas vezes.
+  // O estado (Todos, Ativos, Suspensos, Arquivados, Excluídos) mora no painel de filtros: um só parâmetro `status` na URL.
   const filters: AdminFilterDef[] = [
-    ...WORKSPACE_LIST_FILTERS,
     {
-      kind: "toggle",
-      id: "deleted",
-      label: "Excluídos",
-      active: deletedOnly,
-      summary: "Status: Excluídos",
-      inline: true,
-      onToggle: () => list.setFilter("status", deletedOnly ? "" : WORKSPACE_DELETED_STATUS),
+      kind: "select",
+      key: "status",
+      label: "Status do workspace",
+      options: [...WORKSPACE_STATUS_OPTIONS, { value: WORKSPACE_DELETED_STATUS, label: "Excluídos" }],
+      defaultValue: "",
     },
+    ...WORKSPACE_LIST_FILTERS,
   ];
 
   return (
     <AdminPage>
-      <AdminPageHeader title="Workspaces" subtitle="Todos os clientes da plataforma." />
+      <AdminPageHeader title="Pessoas" subtitle="Quem acessa a plataforma: usuários, criadores e os workspaces dos clientes." />
 
+      <PeopleIsland current="workspaces">
       <AdminFilterBar
-        segment={{
-          options: WORKSPACE_STATUS_OPTIONS,
-          value: list.filters.status,
-          onChange: (value) => list.setFilter("status", value),
-          ariaLabel: "Status do workspace",
-        }}
         search={
           <AdminSearchInput
             value={list.search}
@@ -83,8 +85,20 @@ export function WorkspacesListPage() {
         values={list.filters}
         onChange={(patch) => list.setFilters(patch as Partial<Record<WorkspaceFilterKey, string>>)}
         onClear={list.clearFilters}
+        compact
+        beforeFilters={
+          <AdminSortMenu
+            options={WORKSPACE_SORT_OPTIONS}
+            sortBy={list.sortBy}
+            order={list.order}
+            defaultSortBy={WORKSPACE_LIST_CONFIG.defaultSortBy as string}
+            defaultOrder="desc"
+            onSort={list.setSort}
+          />
+        }
         trailing={<AdminRefreshButton iconOnly onClick={() => void query.refetch()} loading={query.isFetching} />}
       />
+      </PeopleIsland>
 
       <AdminTable
         caption="Workspaces"

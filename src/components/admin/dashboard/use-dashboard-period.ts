@@ -33,7 +33,7 @@ const PERIOD_KEYS = ["period", "from", "to"] as const;
 
 /**
  * O período do Dashboard **na URL** (`?period=90d`, `?period=custom&from=2026-10-01&to=2026-10-15`): voltar de uma
- * lista para o Dashboard, recarregar e compartilhar o link preservam o período. O padrão (30 dias) não aparece na URL.
+ * lista para o Dashboard, recarregar e compartilhar o link preservam o período. O padrão (este mês) não aparece na URL.
  * Trocar de período substitui a entrada do histórico (`replace`): cada clique no seletor não vira um "voltar".
  *
  * A rota declara `validateSearch: readPeriodSearch` (de `@/lib/admin/period`); o que vem da URL é sempre revalidado.

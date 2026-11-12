@@ -70,7 +70,7 @@
 .pv button.adm-trust { cursor: help; }
 .pv button.adm-trust:focus-visible { outline: none; box-shadow: var(--adm-ring); }
 .pv .adm-trust-meter { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
-.pv .adm-trust-meter i { display: block; width: 3.5px; border-radius: 2px; background: var(--tl-bar); opacity: .22; }
+.pv .adm-trust-meter i { display: block; flex: none; width: 3px; border-radius: 1px; background: var(--tl-bar); opacity: .22; }
 .pv .adm-trust-meter i:nth-child(1) { height: 5px; }
 .pv .adm-trust-meter i:nth-child(2) { height: 7px; }
 .pv .adm-trust-meter i:nth-child(3) { height: 9px; }
@@ -156,3 +156,30 @@
 .pv .adm-users-net-n b { font-size: 14px; }
 .pv .adm-users-net-off { padding: 3px 8px; border-radius: 999px; background: var(--bg); color: var(--adm-text-muted); font-size: 11.5px; font-weight: 600; }
 .pv .adm-users-net[data-disabled="true"] .adm-users-net-id > a, .pv .adm-users-net[data-disabled="true"] .adm-users-net-id > span { color: var(--adm-text-muted); }
+
+/* Entrada dos ícones de confiança ao abrir a aba: o selo "pula" para dentro e as cinco barras crescem, uma depois da outra;
+   as linhas entram em cascata (`--trust-d`). Só roda quando o selo aparece (não a cada atualização da lista). */
+.pv .adm-trust { --trust-d: 0ms; }
+.pv .adm-row .adm-trust { animation: adm-trust-in .5s var(--ease) both; animation-delay: var(--trust-d); }
+.pv .adm-trust-meter i { transform-origin: bottom; animation: adm-trust-bar .55s var(--ease) both; animation-delay: calc(var(--trust-d) + 120ms + var(--b, 0) * 70ms); }
+.pv .adm-trust-meter i:nth-child(1) { --b: 0; }
+.pv .adm-trust-meter i:nth-child(2) { --b: 1; }
+.pv .adm-trust-meter i:nth-child(3) { --b: 2; }
+.pv .adm-trust-meter i:nth-child(4) { --b: 3; }
+.pv .adm-trust-meter i:nth-child(5) { --b: 4; }
+.pv .adm-tbody > .adm-row:nth-child(n + 13) { --trust-d: 540ms; }
+.pv .adm-tbody > .adm-row:nth-child(1) { --trust-d: 0ms; }
+.pv .adm-tbody > .adm-row:nth-child(2) { --trust-d: 45ms; }
+.pv .adm-tbody > .adm-row:nth-child(3) { --trust-d: 90ms; }
+.pv .adm-tbody > .adm-row:nth-child(4) { --trust-d: 135ms; }
+.pv .adm-tbody > .adm-row:nth-child(5) { --trust-d: 180ms; }
+.pv .adm-tbody > .adm-row:nth-child(6) { --trust-d: 225ms; }
+.pv .adm-tbody > .adm-row:nth-child(7) { --trust-d: 270ms; }
+.pv .adm-tbody > .adm-row:nth-child(8) { --trust-d: 315ms; }
+.pv .adm-tbody > .adm-row:nth-child(9) { --trust-d: 360ms; }
+.pv .adm-tbody > .adm-row:nth-child(10) { --trust-d: 405ms; }
+.pv .adm-tbody > .adm-row:nth-child(11) { --trust-d: 450ms; }
+.pv .adm-tbody > .adm-row:nth-child(12) { --trust-d: 495ms; }
+@keyframes adm-trust-in { from { opacity: 0; transform: translateY(6px) scale(.7); } 60% { transform: translateY(-1px) scale(1.06); } to { opacity: 1; transform: none; } }
+@keyframes adm-trust-bar { from { transform: scaleY(0); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pv .adm-row .adm-trust, .pv .adm-trust-meter i { animation: none; } }

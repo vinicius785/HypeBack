@@ -1,0 +1,42 @@
+/*
+ * Atendimento do Admin (`src/components/admin/service`): a ilha com as filas (padrão `.isl` do Gerenciamento, em
+ * management-board.css). Prefixo `adm-svc-`/`isl-`, tudo sob `.pv`, só tokens do kit; animações param com
+ * `prefers-reduced-motion`.
+ */
+.pv .isl.isl-svc-w { --isl-w: 100%; align-self: stretch; }
+
+/* grupos de filas: um rótulo miúdo e as pílulas; o escolhido vira branco sobre o preto da ilha */
+.pv .isl-sgrp { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.pv .isl-sgrp + .isl-sgrp { padding-left: 12px; border-left: 1px solid rgba(255, 255, 255, .14); }
+.pv .isl-sgrp-k { color: rgba(255, 255, 255, .55); font-size: 12px; font-weight: 600; }
+.pv .isl-svc-w .isl-seg { cursor: pointer; border: 0; color: inherit; transition: background .2s, color .2s, transform .2s; }
+.pv .isl-svc-w .isl-seg:hover { background: rgba(255, 255, 255, .18); }
+.pv .isl-svc-w .isl-seg:active { transform: scale(.96); }
+.pv .isl-svc-w .isl-seg em { font-style: normal; font-weight: 700; opacity: .75; font-variant-numeric: tabular-nums; }
+.pv .isl-svc-w .isl-seg[aria-pressed="true"] { background: var(--adm-surface); color: var(--ink); }
+.pv .isl-svc-w .isl-seg[aria-pressed="true"] i { background: var(--ink); }
+.pv .isl-svc-w .isl-seg[aria-pressed="true"][data-tone="warn"] i { background: var(--adm-warn); }
+
+/* aguardando você: três bolinhas que acendem em sequência (âmbar com pendência, verde em dia), como Banco e Redis */
+.pv .isl-wait { display: inline-flex; align-items: center; gap: 10px; height: 36px; padding: 0 14px; border-radius: 99px; background: rgba(255, 255, 255, .1); font-size: 12.5px; }
+.pv .isl-wait b { font-weight: 600; }
+.pv .isl-wait em { font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pv .isl-wait-dots { display: inline-flex; align-items: center; gap: 5px; }
+.pv .isl-wait-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--isl-dot, rgba(255, 255, 255, .5)); opacity: .3; animation: isl-wait-dot 1.4s ease-in-out infinite; }
+.pv .isl-wait-dots i:nth-child(2) { animation-delay: .2s; }
+.pv .isl-wait-dots i:nth-child(3) { animation-delay: .4s; }
+.pv .isl-wait[data-state="warn"] { --isl-dot: #fbbf24; }
+.pv .isl-wait[data-state="ok"] { --isl-dot: #34d399; }
+.pv .isl-wait[data-state="ok"] .isl-wait-dots i { animation: none; opacity: .9; }
+@keyframes isl-wait-dot { 0%, 70%, 100% { opacity: .3; transform: scale(.85); } 35% { opacity: 1; transform: scale(1.25); } }
+
+/* a folha branca: quatro números lado a lado */
+.pv .adm-svc-sheet { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 28px; }
+.pv .adm-svc-sheet > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pv .adm-svc-sheet small { color: var(--adm-text-muted); font-size: 12.5px; font-weight: 600; }
+.pv .adm-svc-sheet b { font-size: 26px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.pv .adm-svc-sheet span { color: var(--adm-text-muted); font-size: 13px; }
+
+@media (max-width: 1180px) { .pv .isl-sgrp + .isl-sgrp { padding-left: 0; border-left: 0; } }
+@media (max-width: 899px) { .pv .adm-svc-sheet { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .pv .isl-wait-dots i { animation: none; opacity: .8; } }

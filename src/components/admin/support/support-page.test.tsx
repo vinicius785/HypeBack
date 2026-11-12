@@ -34,7 +34,8 @@ import type { SupportTicket, SupportTicketDetail } from "@/shared/services/admin
 
 import { listResult } from "../users/admin-users-test-data";
 import { renderRoutes, stubRoute } from "../users/admin-users-test-utils";
-import { AdminSupportPage } from "./support-page";
+import { AdminServicePage } from "../service/service-page";
+import { validateServiceSearch } from "../service/service-search";
 
 const ticket = (over: Partial<SupportTicket> = {}): SupportTicket => ({
   id: "t1",
@@ -68,7 +69,7 @@ const detail = (over: Partial<SupportTicketDetail> = {}): SupportTicketDetail =>
 
 const COUNTS = { by_status: { open: 3, in_progress: 1, waiting: 0, resolved: 5, closed: 2 }, by_source: { platform: 1, app: 3, site: 0 }, unassigned: 4, mine: 1 };
 const ADMIN = { id: 1, name: "Marina", is_platform_admin: true, platform_role: "admin" };
-const ROUTES = [{ path: "/admin/support", component: AdminSupportPage }, stubRoute("/admin/workspaces/$workspaceId")];
+const ROUTES = [{ path: "/admin/support", component: AdminServicePage, validateSearch: validateServiceSearch }, stubRoute("/admin/workspaces/$workspaceId")];
 
 function serve(rows: SupportTicket[], d: SupportTicketDetail = detail(), permissions: string[] = ["read", "support.manage"]) {
   mocks.adminList.mockImplementation(async () => ({ ...listResult(rows as never, rows.length), meta: { ...listResult(rows as never, rows.length).meta, counts: COUNTS } }));
@@ -83,7 +84,7 @@ function serve(rows: SupportTicket[], d: SupportTicketDetail = detail(), permiss
 
 async function renderPage() {
   const view = renderRoutes(ROUTES, "/admin/support");
-  await screen.findByRole("heading", { level: 1, name: "Suporte" });
+  await screen.findByRole("heading", { level: 1, name: "Atendimento" });
   return { ...view, user: userEvent.setup() };
 }
 
@@ -104,8 +105,8 @@ describe("Suporte (Admin)", () => {
     expect(within(row).getByText("Aberto")).toBeInTheDocument();
     expect(within(row).getByText("Sem responsável")).toBeInTheDocument();
     expect(mocks.adminList).toHaveBeenCalledWith("/admin/support/tickets", expect.objectContaining({ status: "active", page: 1 }), expect.anything());
-    expect(await screen.findByRole("tab", { name: /Ativos/ })).toHaveTextContent("4");
-    expect(screen.getByRole("tab", { name: /Resolvidos/ })).toHaveTextContent("7");
+    expect(await screen.findByRole("button", { name: /^Ativos/ })).toHaveTextContent("4");
+    expect(screen.getByRole("button", { name: /^Resolvidos/ })).toHaveTextContent("7");
   });
 
   it("filtros e busca viram parâmetros da chamada", async () => {
@@ -118,7 +119,7 @@ describe("Suporte (Admin)", () => {
     await waitFor(() =>
       expect(mocks.adminList).toHaveBeenLastCalledWith("/admin/support/tickets", expect.objectContaining({ source: "site", priority: "urgent", assigned: "none" }), expect.anything()),
     );
-    await user.click(screen.getByRole("tab", { name: /Resolvidos/ }));
+    await user.click(screen.getByRole("button", { name: /^Resolvidos/ }));
     await waitFor(() => expect(mocks.adminList).toHaveBeenLastCalledWith("/admin/support/tickets", expect.objectContaining({ status: "resolved_all" }), expect.anything()));
   });
 

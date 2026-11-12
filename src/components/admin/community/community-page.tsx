@@ -1,6 +1,8 @@
 import { Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 
-import { AdminPage, AdminPageHeader, AdminTabPanel, AdminTabs, type AdminTabItem } from "@/components/admin/platform";
+import { useState } from "react";
+
+import { AdminIsland, AdminPage, AdminPageHeader, type AdminTabItem } from "@/components/admin/platform";
 import { I } from "@/components/prototype/ui";
 import { useAdminSearchParam } from "@/hooks/admin/use-admin-search-param";
 
@@ -20,7 +22,6 @@ const TABS: readonly AdminTabItem<CommunityTabId>[] = [
 /** Fixo: não muda com a aba (o título da página diz o que ela é; a aba diz o que se vê). */
 const SUBTITLE = "O que os criadores publicam no app e os grupos deles: acompanhe, modere, crie grupos e defina moderadores e contas oficiais.";
 
-const TAB_PREFIX = "adm-com";
 
 /**
  * Comunidade (`/admin/groups`): abre no Feed, a comunidade padrão do app (o "Para você": tudo o que os criadores
@@ -32,32 +33,41 @@ export function CommunityPage() {
   const navigate = useNavigate();
   const [tabFromUrl, setTab] = useAdminSearchParam<CommunityTabId>("tab", DEFAULT_COMMUNITY_TAB, COMMUNITY_TAB_IDS);
   const tab = resolveCommunityTab(pathname, tabFromUrl);
-
-  // Só a ação primária da aba: Criar grupo nos Grupos; no Feed não há nenhuma ("Atualizar" mora na barra do Feed).
-  const actions =
-    tab === "groups" ? (
-      <button type="button" className="btn" onClick={() => navigate({ to: "/admin/groups/new" })}>
-        <I n="plus" cls="sm" />
-        Criar grupo
-      </button>
-    ) : undefined;
+  // Onde cada aba pendura a sua barra (busca, filtros, atualizar): dentro da ilha.
+  const [tools, setTools] = useState<HTMLElement | null>(null);
 
   return (
     <AdminPage>
-      <AdminPageHeader title="Comunidade" subtitle={SUBTITLE} actions={actions} />
+      <AdminPageHeader title="Comunidade" subtitle={SUBTITLE} />
 
-      <AdminTabs tabs={TABS} value={tab} onChange={setTab} ariaLabel="Seções da Comunidade" idPrefix={TAB_PREFIX} />
+      {/* A ilha é a navegação (Feed, Grupos, Equipe) e abriga a barra da aba aberta (busca, filtros, atualizar). */}
+      <AdminIsland
+        ariaLabel="Comunidade"
+        className="isl-com-w"
+        toolsRef={setTools}
+        start={
+          <div className="isl-segs" role="group" aria-label="Seções da Comunidade">
+            {TABS.map((item) => (
+              <button key={item.id} type="button" className="isl-seg" aria-pressed={item.id === tab} onClick={() => setTab(item.id)}>
+                <i aria-hidden="true" />
+                {item.label}
+              </button>
+            ))}
+          </div>
+        }
+        end={
+          tab === "groups" ? (
+            <button type="button" className="isl-cta" onClick={() => navigate({ to: "/admin/groups/new" })}>
+              <I n="plus" cls="sm" />
+              Criar grupo
+            </button>
+          ) : null
+        }
+      />
 
-      <AdminTabPanel idPrefix={TAB_PREFIX} id="feed" active={tab === "feed"}>
-        <CommunityFeed />
-      </AdminTabPanel>
-      <AdminTabPanel idPrefix={TAB_PREFIX} id="groups" active={tab === "groups"}>
-        <CommunityGroups />
-      </AdminTabPanel>
-
-      <AdminTabPanel idPrefix={TAB_PREFIX} id="team" active={tab === "team"}>
-        <CommunityTeam />
-      </AdminTabPanel>
+      {tab === "feed" ? <CommunityFeed tools={tools} /> : null}
+      {tab === "groups" ? <CommunityGroups tools={tools} /> : null}
+      {tab === "team" ? <CommunityTeam tools={tools} /> : null}
 
       {/* Rotas filhas (/admin/groups/new, /admin/groups/$groupId): diálogo sobre a lista de grupos. */}
       <Outlet />
