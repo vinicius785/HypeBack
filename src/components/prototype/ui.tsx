@@ -33,6 +33,7 @@ const MAP: Record<string, keyof typeof icons> = {
   sort: "ArrowDownUp",
   video: "Video",
   sparkles: "Sparkles",
+  zap: "Zap",
   heart: "Heart",
   msg: "MessageSquare",
   plus: "Plus",

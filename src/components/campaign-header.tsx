@@ -28,6 +28,8 @@ export interface CampaignHeaderProps {
   /** `campaigns_delete`: mostra "Excluir" (só com `onDelete`). */
   canDelete?: boolean;
   onDelete?: () => void;
+  /** Boost da campanha (botão "Impulsionar" ou a etiqueta do estado), entre as ações. */
+  boostAction?: ReactNode;
   /** Abas da campanha, coladas na base do cartão. */
   children?: ReactNode;
 }
@@ -53,6 +55,7 @@ export function CampaignHeader({
   onShare,
   canDelete = false,
   onDelete,
+  boostAction,
   children,
 }: CampaignHeaderProps) {
   const cover = getUploadUrl(banner);
@@ -77,7 +80,8 @@ export function CampaignHeader({
       document.removeEventListener("keydown", onKey);
     };
   }, [menuOpen]);
-  const hasMenu = canWrite || (canDelete && !!onDelete);
+  // "Compartilhar" mora no menu "⋯" e vale para quem vê a campanha: o menu existe sempre.
+  const hasMenu = true;
 
   // Seletor de status: a etiqueta abre um menu com as opções (Rascunho / Publicado); escolher a outra dispara a ação
   // correspondente (publicar ou despublicar). Só para quem pode escrever e só em rascunho/publicada.
@@ -153,6 +157,7 @@ export function CampaignHeader({
               {checking ? "Verificando..." : "Verificar publicações"}
             </button>
           )}
+          {boostAction}
           {canWrite && (status === "published" || status === "draft") ? (
             <div className="chd-sel" ref={statusRef}>
               <button
@@ -192,10 +197,6 @@ export function CampaignHeader({
               <I n="eye" cls="sm" />
               Ver convite
             </button>
-            <button type="button" className="chd-q" onClick={onShare}>
-              <I n="share" cls="sm" />
-              Compartilhar
-            </button>
           </span>
         </div>
         {hasMenu ? (
@@ -212,6 +213,17 @@ export function CampaignHeader({
             </button>
             {menuOpen ? (
               <div className="chd-pop" role="menu" aria-label="Ações da campanha">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onShare();
+                  }}
+                >
+                  <I n="share" cls="sm" />
+                  Compartilhar
+                </button>
                 {canWrite ? (
                   <button
                     type="button"

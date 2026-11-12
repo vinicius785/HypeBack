@@ -2,7 +2,7 @@ import { getApiUrl, getAuthToken, getWorkspaceId } from "@/lib/utils/api";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/http-client";
 import type { CampaignPhaseUpsertPayload, CreatePhaseData } from "./phase";
 import type { DashboardPhase } from "./dashboard";
-import type { Campaign } from "../types";
+import type { Campaign, CampaignBoost } from "../types";
 
 export interface CampaignListItem {
   id: string;
@@ -174,3 +174,13 @@ export async function deleteCampaign(campaignId: string): Promise<void> {
   await apiDelete(`/campaigns/${campaignId}`);
 }
 
+
+/**
+ * Usa o Boost da campanha (`POST /campaigns/:id/boost`, sem corpo): ela fica em destaque por 24 horas. Devolve o `boost` já
+ * com `active = true` e `ends_at`. Erros 409 (`BOOST_ALREADY_USED`, `BOOST_CAMPAIGN_NOT_PUBLISHED`,
+ * `BOOST_REGISTRATION_CLOSED`) chegam como `Error` com `code` e o texto da API.
+ */
+export async function activateCampaignBoost(campaignId: string): Promise<CampaignBoost> {
+  const result = await apiPost<{ boost: CampaignBoost }>(`/campaigns/${campaignId}/boost`);
+  return result.boost;
+}

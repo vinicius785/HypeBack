@@ -350,8 +350,21 @@ export interface Niche {
   parent_id: number | string | null;
   name: string;
 }
+/**
+ * Boost da campanha (destaque de 24 horas para os criadores). Vem só no detalhe (`GET /campaigns/:id`), nunca na listagem.
+ * `available`: ainda não foi usado; `active`: em destaque agora; datas em ISO, UTC.
+ */
+export interface CampaignBoost {
+  available: boolean;
+  active: boolean;
+  started_at: string | null;
+  ends_at: string | null;
+}
+
 export interface Campaign {
   id: string; // public_id (UUID)
+  /** Situação do Boost; só no detalhe da campanha. */
+  boost?: CampaignBoost;
   /** Marca da agência dona da campanha; só vem em workspace de agência. */
   brand?: { id: string; name: string; photo?: string | null } | null;
   title: string;
