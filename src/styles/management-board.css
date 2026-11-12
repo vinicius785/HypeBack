@@ -1134,3 +1134,15 @@
   .pv .gnew.more .gnew-f { grid-template-columns: 1fr; }
   .pv .gnew.more .gnew-f .btn { align-self: flex-start; }
 }
+
+/* Boost ativo (cabeçalho da campanha): pílula preta com luz roxa, o raio pulsa e o texto é o cronômetro do que falta */
+.pv .chd.chi .chd-boost-on {
+  position: relative; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px 0 13px; border-radius: 99px; overflow: hidden; isolation: isolate;
+  background: radial-gradient(70% 160% at 12% 130%, color-mix(in srgb, var(--brand, #9e2cfa) 60%, transparent), transparent 70%), radial-gradient(60% 150% at 100% -30%, color-mix(in srgb, var(--brand, #9e2cfa) 38%, transparent), transparent 70%), #0a0a0b;
+  color: #fff; font-size: 13px; font-weight: 700; margin-right: 6px; cursor: default;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand, #9e2cfa) 45%, transparent), 0 6px 18px -8px color-mix(in srgb, var(--brand, #9e2cfa) 70%, transparent);
+}
+.pv .chd.chi .chd-boost-on time { font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.pv .chd.chi .chd-boost-on .ico { width: 15px; height: 15px; color: #fff; fill: currentColor; filter: drop-shadow(0 0 5px color-mix(in srgb, var(--brand, #9e2cfa) 90%, white)); animation: chd-boost-zap 1.3s ease-in-out infinite; transform-origin: 50% 50%; }
+@keyframes chd-boost-zap { 0%, 100% { transform: scale(1); opacity: .85; } 50% { transform: scale(1.28); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .pv .chd.chi .chd-boost-on .ico { animation: none; } }

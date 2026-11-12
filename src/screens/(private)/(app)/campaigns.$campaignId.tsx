@@ -25,13 +25,14 @@ import { ContractsTab } from "@/components/campaign-tabs/contracts-tab";
 import { MetricsTab } from "@/components/campaign-tabs/metrics-tab";
 import { GroupsTab } from "@/components/campaign-tabs/groups-tab";
 import { CampaignDeleteModal } from "@/components/campaign-delete-modal";
+import { CampaignBoostAction } from "@/components/campaign-boost-action";
 import { ShareCampaignModal } from "@/components/share-campaign-modal";
 import { Modal } from "@/components/ui/modal";
 import { InputDate } from "@/components/ui/input-date";
 import { validateMuralEndDate, formatDateForInput, addDays } from "@/shared/utils/date-validations";
 
 import { useCampaign } from "@/hooks/use-campaigns";
-import { useActivateMural, useDeactivateMural } from "@/hooks/use-campaign-mural";
+import { useActivateMural, useDeactivateMural, useMuralStatus } from "@/hooks/use-campaign-mural";
 import { useCampaignDashboard } from "@/hooks/use-campaign-dashboard";
 import {
   useIdentifiedPosts,
@@ -225,6 +226,12 @@ function RouteComponent() {
   } = useCampaignManagement(campaignId, {
     enabled: true,
   });
+
+  // Inscrições abertas = mural ativo e com a data de encerramento no futuro; sem a leitura, não se bloqueia (a API recusa).
+  const { data: muralStatus } = useMuralStatus(campaignId);
+  const registrationOpen: boolean | null = muralStatus
+    ? muralStatus.active && (!muralStatus.end_date || Date.parse(muralStatus.end_date) >= Date.now() - 86_400_000)
+    : null;
 
   const { mutate: activateMural, isPending: isActivatingMural } = useActivateMural(campaignId);
   const { mutate: deactivateMural, isPending: isDeactivatingMural } = useDeactivateMural(campaignId);
@@ -700,6 +707,15 @@ function RouteComponent() {
               onShare={() => setIsShareModalOpen(true)}
               canDelete={permissions.campaigns_delete}
               onDelete={() => setShowDeleteModal(true)}
+              boostAction={
+                <CampaignBoostAction
+                  campaignId={campaignId}
+                  boost={campaign?.boost}
+                  published={statusValue === "published"}
+                  registrationOpen={registrationOpen}
+                  canWrite={canWriteCampaigns}
+                />
+              }
             >
               <nav className="dtabs" ref={dtabsRef} onMouseLeave={glideOff}>
                 <i className="ind" />

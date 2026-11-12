@@ -81,9 +81,19 @@ describe("CampaignHeader: menu ⋯ (Editar e Excluir)", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
-  it("sem nenhuma permissão não existe o botão do menu", () => {
+  it("sem nenhuma permissão o menu só tem Compartilhar (sem Editar nem Excluir)", () => {
     setup({ canWrite: false, canDelete: false });
-    expect(screen.queryByRole("button", { name: "Mais ações da campanha" })).toBeNull();
+    openMenu();
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Compartilhar"]);
+  });
+
+  it("Compartilhar mora no menu ⋯ (não solto no cartão); o clique chama onShare e fecha o menu", () => {
+    const { onShare } = setup();
+    expect(screen.queryByRole("button", { name: "Compartilhar" })).toBeNull();
+    openMenu();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Compartilhar" }));
+    expect(onShare).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("menu")).toBeNull();
   });
 });
 
@@ -178,14 +188,15 @@ describe("CampaignHeader", () => {
     expect(onCheckPublications).toHaveBeenCalledTimes(1);
   });
 
-  it("somente leitura: só convite e compartilhar, com o convite em destaque", () => {
+  it("somente leitura: só o convite à vista (em destaque) e Compartilhar no menu", () => {
     const { onOpenInvite, onShare } = setup({ canWrite: false });
     expect(screen.queryByRole("button", { name: "Editar" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Verificar publicações" })).toBeNull();
     const invite = screen.getByRole("button", { name: "Ver convite" });
     expect(invite).toHaveClass("btn");
     fireEvent.click(invite);
-    fireEvent.click(screen.getByRole("button", { name: "Compartilhar" }));
+    openMenu();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Compartilhar" }));
     expect(onOpenInvite).toHaveBeenCalledTimes(1);
     expect(onShare).toHaveBeenCalledTimes(1);
   });

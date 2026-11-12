@@ -5,9 +5,11 @@ import {
   createCampaign,
   updateCampaign,
   deleteCampaign,
+  activateCampaignBoost,
   type CreateCampaignData,
   type UpdateCampaignData,
 } from "@/shared/services/campaign";
+import type { CampaignBoost } from "@/shared/types";
 import {
   useWorkspaceQueryKey,
   withWorkspaceKey,
@@ -76,3 +78,27 @@ export function useDeleteCampaign() {
   });
 }
 
+
+/**
+ * Usar o Boost. No sucesso grava o `boost` devolvido direto no detalhe da campanha em cache (o cartão muda na hora) e
+ * consulta de novo; numa recusa (409: já usado, campanha não publicada ou inscrições fechadas) só consulta de novo, para o
+ * cartão refletir o que a API diz.
+ */
+export function useActivateCampaignBoost(campaignId: string) {
+  const queryClient = useQueryClient();
+  const workspaceId = useWorkspaceQueryKey();
+  const detailKey = withWorkspaceKey(["campaigns", campaignId], workspaceId);
+
+  return useMutation({
+    mutationFn: () => activateCampaignBoost(campaignId),
+    onSuccess: (boost: CampaignBoost) => {
+      queryClient.setQueryData(detailKey, (current: unknown) =>
+        current && typeof current === "object" ? { ...current, boost } : current,
+      );
+      void queryClient.invalidateQueries({ queryKey: detailKey });
+    },
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: detailKey });
+    },
+  });
+}
