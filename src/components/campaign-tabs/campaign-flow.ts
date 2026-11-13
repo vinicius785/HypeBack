@@ -1,7 +1,11 @@
 import type { CampaignManagementParticipant } from "@/shared/services/campaign-management";
-import { mapUserStatusToKanbanColumn } from "./management-status-map";
+import { boardColumnOf, mapUserStatusToKanbanColumn } from "./management-status-map";
 
-/** Rótulos das colunas do kanban (idênticos ao protótipo). */
+/**
+ * Rótulos por STATUS do cartão (granularidade fina: painel do card, histórico). Nomeados por função: o status `script_pending` é
+ * a aprovação do ROTEIRO e o `pending_approval` é a revisão do CONTEÚDO (ver `boardColumnOf` em management-status-map.ts).
+ * O título das COLUNAS do quadro está em `BOARD_LABEL`.
+ */
 export const COLUMN_LABEL: Record<string, string> = {
   applications: "Inscrições",
   pre_selection: "Pré-seleção",
@@ -12,18 +16,42 @@ export const COLUMN_LABEL: Record<string, string> = {
   price_countered: "Contraproposta recebida",
   contract_pending: "Contrato pendente",
   approved: "Aprovado / Em andamento",
-  script_pending: "Aguardando aprovação do roteiro",
+  script_pending: "Roteiro: aguardando aprovação",
   script_correction: "Roteiro em correção",
   awaiting_shipment: "Aguardando envio",
   awaiting_receipt: "Aguardando recebimento",
   content_pending: "Aguardando conteúdo",
-  pending_approval: "Aguardando aprovação do conteúdo",
-  in_correction: "Em correção",
+  pending_approval: "Revisão do conteúdo: aguardando aprovação",
+  in_correction: "Conteúdo em correção",
   content_approved: "Conteúdo aprovado",
   payment_pending: "Aguardando pagamento",
   published: "Publicado",
   rejected: "Recusados",
 };
+
+/** Título de cada coluna do QUADRO (as que reúnem vários status têm nome de função). */
+export const BOARD_LABEL: Record<string, string> = {
+  applications: "Inscrições",
+  pre_selection: "Pré-seleção",
+  curation: "Curadoria",
+  invited: "Convidados",
+  price_proposed: "Proposta enviada",
+  price_countered: "Contraproposta recebida",
+  contract_pending: "Contrato pendente",
+  approved: "Aprovado (aguardando roteiro)",
+  script_pending: "Roteiro",
+  awaiting_shipment: "Aguardando envio",
+  awaiting_receipt: "Aguardando recebimento",
+  content_pending: "Gravando",
+  pending_approval: "Revisão do conteúdo",
+  content_approved: "Pronto para publicar",
+  payment_pending: "Aguardando pagamento",
+  published: "Concluído",
+  rejected: "Recusados",
+};
+
+/** Status em que a vez é do criador ajustar (roteiro ou conteúdo recusado): são "secundários" das colunas Roteiro e Revisão. */
+export const CREATOR_ADJUSTING = ["script_correction", "in_correction"];
 
 export const HOT_COLUMNS = [
   "price_countered",
@@ -32,15 +60,27 @@ export const HOT_COLUMNS = [
   "in_correction",
 ];
 
+/**
+ * A coluna do quadro chama atenção? `price_countered` e `rejected` sempre; Roteiro e Revisão do conteúdo quando há criador
+ * ajustando. `statuses` são os status finos dos cartões que estão na coluna.
+ */
+export function isHotBoardColumn(columnId: string, statuses: readonly string[]): boolean {
+  if (columnId === "price_countered" || columnId === "rejected") return true;
+  if (columnId === "script_pending" || columnId === "pending_approval") {
+    return statuses.some((s) => CREATOR_ADJUSTING.includes(s));
+  }
+  return false;
+}
+
 export type StageKey = "sel" | "con" | "rot" | "env" | "cont" | "pag" | "rec";
 
 /** Grupos de colunas por etapa da campanha. */
 export const STAGES: Array<[StageKey, string, string[]]> = [
-  ["sel", "Seleção", ["applications", "pre_selection", "pre_selection_curation", "curation", "invited"]],
+  ["sel", "Seleção", ["applications", "pre_selection", "curation", "invited"]],
   ["con", "Proposta e contrato", ["price_proposed", "price_countered", "contract_pending"]],
-  ["rot", "Roteiros", ["approved", "script_pending", "script_correction"]],
+  ["rot", "Roteiros", ["approved", "script_pending"]],
   ["env", "Envio", ["awaiting_shipment", "awaiting_receipt"]],
-  ["cont", "Conteúdo", ["content_pending", "pending_approval", "in_correction", "content_approved"]],
+  ["cont", "Conteúdo", ["content_pending", "pending_approval", "content_approved"]],
   ["pag", "Pagamento", ["payment_pending", "published"]],
   ["rec", "Recusados", ["rejected"]],
 ];
@@ -70,6 +110,10 @@ export const NEEDME = [
 /** Colunas em que o criador pode estar atrasado. */
 export const LATE_COLUMNS = ["script_correction", "content_pending", "awaiting_receipt"];
 export const LATE_AFTER_DAYS = 3;
+
+/** Etiquetas de quem tem a vez em Roteiro e Revisão do conteúdo (colunas que reúnem "aguardando aprovação" e "criador ajustando"). */
+export const NEEDS_YOU_TAG = "Precisa de você";
+export const CREATOR_ADJUSTING_TAG = "Criador ajustando";
 
 export const WAITING: Record<string, string> = {
   pre_selection: "Aguardando decisão",
@@ -147,8 +191,9 @@ export const isLate = (p: FlowParticipant) =>
 export const lateLabel = (p: FlowParticipant) =>
   `${p.idleDays} ${p.idleDays === 1 ? "dia" : "dias"} sem avanço`;
 
+/** Etapa de uma coluna do quadro OU de um status fino (um status secundário cai na etapa da coluna que o reúne). */
 export const stageOf = (column: string) =>
-  STAGES.find((s) => s[2].includes(column));
+  STAGES.find((s) => s[2].includes(boardColumnOf(column)));
 
 export function formatFollowers(n: number): string {
   if (!n) return "—";

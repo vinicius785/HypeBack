@@ -62,3 +62,24 @@ export function cardNote(
   }
   return null;
 }
+
+export interface NetworkRow {
+  key: string;
+  label: string;
+  members: number;
+}
+
+/** Redes em que o criador se inscreveu, cada uma com seus seguidores; sem lista da API, cai na rede principal com o total. */
+export function networkRows(
+  inf: Pick<ExtendedInfluencer, "socialNetwork" | "social_networks" | "followers">,
+): NetworkRow[] {
+  const nets = inf.social_networks ?? [];
+  if (nets.length === 0) {
+    return [{ key: "main", label: getNetworkLabel(inf.socialNetwork, "Rede"), members: inf.followers }];
+  }
+  return nets.map((n, i) => ({
+    key: `${n.id}-${i}`,
+    label: getNetworkLabel(n.type, n.name),
+    members: n.members ?? 0,
+  }));
+}

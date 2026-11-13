@@ -9,12 +9,15 @@ import {
   LATE_AFTER_DAYS,
   LATE_COLUMNS,
   WAITING,
-  formatEngagement,
   formatFollowers,
+  CREATOR_ADJUSTING,
+  CREATOR_ADJUSTING_TAG,
+  NEEDS_YOU_TAG,
 } from "../campaign-flow";
 import type { ExtendedInfluencer } from "../management-kanban-config";
 import { SocialHandle } from "@/components/social-handle";
-import { canRejectFromMenu, cardNote, networkSummary } from "./card-info";
+import { canRejectFromMenu, cardNote, networkRows } from "./card-info";
+import { isNegotiationColumn, waitBadgeText, waitDays, waitText, waitTone } from "./negotiation-wait";
 
 /** Dias desde a última mudança de status de um criador. */
 export function idleDaysOf(inf: ExtendedInfluencer): number | undefined {
@@ -138,35 +141,51 @@ export function InfluencerCardView({ influencer, column, moving, overlay, handle
   const idle = idleDaysOf(influencer);
   const late = LATE_COLUMNS.includes(column) && (idle ?? 0) >= LATE_AFTER_DAYS;
   const note = cardNote(influencer, column, idle, late);
-  const net = networkSummary(influencer);
+  const nets = networkRows(influencer);
   const waiting = WAITING[column];
+  // Roteiro e Revisão do conteúdo reúnem "aguardando aprovação" (vez do gestor) e "criador ajustando": a etiqueta diz qual é.
+  const adjusting = CREATOR_ADJUSTING.includes(column);
+  const needsYou = column === "script_pending" || column === "pending_approval";
+  const roleTag = adjusting ? CREATOR_ADJUSTING_TAG : needsYou ? NEEDS_YOU_TAG : null;
+  // Negociação de valor: há quanto tempo a marca ou o criador não responde (só com histórico; sem ele não mostra nada).
+  const wait = isNegotiationColumn(column) ? waitDays(influencer) : undefined;
+  const waitToneOf = waitTone(wait);
 
   return (
     <>
       <div className="kc-h">
-        <Av name={influencer.name} src={influencer.avatar} size={40} />
+        <Av name={influencer.name} src={influencer.avatar} size={56} />
         <div className="kc-n">
           <b title={influencer.name}>{influencer.name}</b>
           <small>
             {influencer.username ? <SocialHandle className="kc-at" username={influencer.username} network={influencer.socialNetwork ?? influencer.social_networks?.[0]?.type} /> : "Sem usuário"}
-            {net ? <span className="kc-net"> · {net}</span> : null}
           </small>
         </div>
         {!overlay && handlers ? <CardMenu inf={influencer} column={column} handlers={handlers} /> : null}
       </div>
-      <dl className="kc-mt">
-        <div>
-          <dt>Seguidores</dt>
-          <dd>{formatFollowers(influencer.followers)}</dd>
-        </div>
-        <div>
-          <dt>Engajamento</dt>
-          <dd>{influencer.engagement ? formatEngagement(influencer.engagement) : "—"}</dd>
-        </div>
-      </dl>
-      {note || influencer.isExternal ? (
+      <ul className="kc-nets" aria-label="Redes em que se inscreveu">
+        {nets.map((n) => (
+          <li key={n.key}>
+            <span className="kc-nl">{n.label}</span>
+            <b>{formatFollowers(n.members)}</b>
+            <small>seguidores</small>
+          </li>
+        ))}
+      </ul>
+      {note || influencer.isExternal || roleTag || wait !== undefined ? (
         <div className="kc-ft">
           {influencer.isExternal ? <em className="ext">Externo</em> : null}
+          {roleTag ? <em className={`kc-tag ${adjusting ? "adj" : "need"}`}>{roleTag}</em> : null}
+          {wait !== undefined ? (
+            waitToneOf === "none" ? (
+              <span className="kc-since">{waitText(wait)}</span>
+            ) : (
+              <em className={`kc-wait ${waitToneOf}`} title={waitText(wait)}>
+                <I n="clock" cls="sm" />
+                {waitBadgeText(wait)}
+              </em>
+            )
+          ) : null}
           {note ? (
             <p className={`kc-cx ${note.tone}`}>
               {note.tone === "warn" ? <I n="clock" cls="sm" /> : null}
@@ -185,7 +204,8 @@ export function InfluencerCardView({ influencer, column, moving, overlay, handle
             handlers?.onAction(influencer, column);
           }}
         >
-          {action}
+          <span>{action}</span>
+          <I n="chev" cls="sm kc-ar" />
         </button>
       ) : waiting ? (
         <div className="kc-w">{waiting}</div>

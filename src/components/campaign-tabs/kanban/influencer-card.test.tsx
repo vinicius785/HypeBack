@@ -26,14 +26,12 @@ const handlers = (): CardHandlers => ({
 });
 
 describe("InfluencerCardView", () => {
-  it("mostra nome inteiro, @usuário, rede e métricas com rótulo", () => {
+  it("mostra nome inteiro, @usuário, redes com seguidores", () => {
     render(<InfluencerCardView influencer={inf} column="applications" handlers={handlers()} />);
     expect(screen.getByText("Maria Fernanda de Albuquerque Souza")).toBeTruthy();
     expect(screen.getByText(/@mariafe/)).toBeTruthy();
-    expect(screen.getByText(/Instagram/)).toBeTruthy();
-    expect(screen.getByText("Seguidores")).toBeTruthy();
-    expect(screen.getByText("Engajamento")).toBeTruthy();
-    expect(screen.getByText("4,2%")).toBeTruthy();
+    expect(screen.getByText("Instagram")).toBeTruthy();
+    expect(screen.getByText("seguidores")).toBeTruthy();
     expect(screen.getByText("Inscrito em 05/03")).toBeTruthy();
   });
 

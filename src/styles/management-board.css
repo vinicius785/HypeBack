@@ -653,7 +653,6 @@
 .pv .mg.mgv .kc.kc2 .kc-a:not(:disabled) { height: 36px; background: var(--bg); color: var(--ink); font-size: 13px; font-weight: 650; box-shadow: none; transition: background-color .22s, color .22s, transform .2s; }
 .pv .mg.mgv .kc.kc2 .kc-a:not(:disabled):hover { background: #0a0a0b; color: #fff; }
 .pv .mg.mgv .kc.kc2 .kc-a:not(:disabled):active { transform: scale(.98); }
-.pv .mg.mgv .kc.kc2.sel .kc-a:not(:disabled) { background: #0a0a0b; color: #fff; }
 
 /* cabeçalho do grupo ("1 Seleção 15") */
 .pv .mg.mgv .kgh b { font-size: 14.5px; font-weight: 700; letter-spacing: -.02em; }
@@ -1146,3 +1145,122 @@
 .pv .chd.chi .chd-boost-on .ico { width: 15px; height: 15px; color: #fff; fill: currentColor; filter: drop-shadow(0 0 5px color-mix(in srgb, var(--brand, #9e2cfa) 90%, white)); animation: chd-boost-zap 1.3s ease-in-out infinite; transform-origin: 50% 50%; }
 @keyframes chd-boost-zap { 0%, 100% { transform: scale(1); opacity: .85; } 50% { transform: scale(1.28); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .pv .chd.chi .chd-boost-on .ico { animation: none; } }
+
+/* coluna vazia = faixa fina (nome na vertical + 0); ao arrastar um cartão ela volta ao tamanho normal para receber */
+
+/* resumo de espera no cabeçalho das colunas de negociação */
+.pv .mg.mgv .kcol-wait { margin: 0 6px 4px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pv .mg.mgv .kcol-wait b { color: #b45309; font-weight: 700; }
+
+/* etiquetas do cartão: vez de quem, e tempo de espera das negociações */
+.pv .mg.mgv .kc-tag { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 99px; font-size: 11.5px; font-style: normal; font-weight: 650; }
+.pv .mg.mgv .kc-tag.need { background: var(--tint); color: var(--brand); }
+.pv .mg.mgv .kc-tag.adj { background: rgba(5,5,5,.06); color: var(--muted); }
+.pv .mg.mgv .kc-since { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pv .mg.mgv .kc-wait { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 99px; font-size: 11.5px; font-style: normal; font-weight: 650; }
+.pv .mg.mgv .kc-wait.warn { background: #fdf0d9; color: #92400e; }
+.pv .mg.mgv .kc-wait.alert { background: #fde8e9; color: #c62027; }
+
+/* Cartão do criador: foto em destaque, redes com seguidores e ação embaixo */
+.pv .mg.mgv .kc.kc2 .kc-h { align-items: center; gap: 12px; }
+.pv .mg.mgv .kc.kc2 .kc-n b { font-size: 15px; }
+.pv .mg.mgv .kc-nets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pv .mg.mgv .kc-nets li { display: flex; align-items: baseline; gap: 6px; padding: 8px 11px; border-radius: 14px; background: var(--bg); min-width: 0; }
+.pv .mg.mgv .kc-nets .kc-nl { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .mg.mgv .kc-nets b { font-size: 14px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.pv .mg.mgv .kc-nets small { font-size: 11px; color: var(--muted); }
+
+/* Botão de ação: no hover o fundo escurece de uma vez (sem passo intermediário com texto branco sobre claro), a seta desliza e o botão levanta */
+.pv .mg.mgv .kc.kc2 .kc-a:not(:disabled) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background-color .18s ease, color .18s ease, transform .2s, box-shadow .25s; }
+.pv .mg.mgv .kc.kc2 .kc-a:not(:disabled):hover { background: #0a0a0b; color: #fff; transform: translateY(-1px); box-shadow: 0 8px 16px -10px rgba(5,5,5,.55); }
+.pv .mg.mgv .kc.kc2 .kc-a .kc-ar { width: 0; opacity: 0; margin-left: -6px; transition: width .25s, opacity .25s, margin .25s, transform .25s; }
+.pv .mg.mgv .kc.kc2 .kc-a:not(:disabled):hover .kc-ar { width: 14px; opacity: 1; margin-left: 0; transform: translateX(2px); }
+.pv .mg.mgv .kc.kc2 .kc-a:not(:disabled):active { transform: scale(.97); }
+.pv .mg.mgv .kc.kc2 .kc-a:focus-visible { outline: 2px solid #0a0a0b; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .pv .mg.mgv .kc.kc2 .kc-a, .pv .mg.mgv .kc.kc2 .kc-a .kc-ar { transition: none; } }
+
+/* ===== Refino do detalhe do criador na ilha ===== */
+.pv .isl-sheet .mgp-row { gap: 0 16px; }
+/* resumo do perfil */
+.pv .isl-sheet .mgp-prof { background: linear-gradient(180deg, #fff 0, var(--bg) 62%); box-shadow: 0 0 0 1.5px var(--line) inset; border-radius: 26px; padding: 16px; gap: 12px; }
+.pv .isl-sheet .mgp-ptop { gap: 14px; margin: 0; }
+.pv .isl-sheet .mgp-ph .iav { width: 84px !important; height: 84px !important; border-radius: 26px; font-size: 26px !important; box-shadow: 0 0 0 3px #fff, 0 0 0 4.5px rgba(5,5,5,.1), 0 10px 20px -10px rgba(5,5,5,.45); }
+.pv .isl-sheet .mgp-pn { font-size: 17px; font-weight: 700; letter-spacing: -.03em; line-height: 1.2; }
+.pv .isl-sheet .mgp-pu { font-size: 12.5px; margin-top: 3px; }
+.pv .isl-sheet .mgp-pc { margin: 0; gap: 6px; }
+.pv .isl-sheet .mgp-pc li { height: 28px; background: #fff; box-shadow: 0 0 0 1px rgba(5,5,5,.07) inset; font-weight: 600; }
+.pv .isl-sheet .mgp-pc .rt { box-shadow: none; }
+.pv .isl-sheet .mgp-pbtns { gap: 8px; }
+.pv .isl-sheet .mgp-pbtns .btn { height: 40px; border-radius: 99px; font-weight: 650; transition: background-color .18s ease, color .18s ease, transform .2s, box-shadow .25s; }
+.pv .isl-sheet .mgp-pbtns .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 16px -10px rgba(5,5,5,.5); }
+.pv .isl-sheet .mgp-pbtns .btn:active { transform: scale(.97); }
+/* cartão de cada rede */
+.pv .isl-sheet .kb2-prof { padding: 16px; gap: 12px; border-radius: 26px; box-shadow: 0 0 0 1.5px var(--line) inset, 0 10px 24px -20px rgba(5,5,5,.35); transition: box-shadow .25s, transform .25s; }
+.pv .isl-sheet .kb2-prof:hover { box-shadow: 0 0 0 1.5px rgba(5,5,5,.14) inset, 0 16px 28px -20px rgba(5,5,5,.45); }
+.pv .isl-sheet .kb2-prof-h > b { display: block; font-size: 16px; font-weight: 700; letter-spacing: -.03em; }
+.pv .isl-sheet .kb2-st { margin: 12px 0 8px; gap: 8px; }
+.pv .isl-sheet .kb2-st > span { padding: 11px 13px 12px; border-radius: 18px; }
+.pv .isl-sheet .kb2-st b { font-size: 21px; }
+.pv .isl-sheet .kb2-prof-h em { padding: 11px 14px; border-radius: 18px; font-size: 16px; font-weight: 700; letter-spacing: -.02em; }
+.pv .isl-sheet .kb2-prof .btn { height: 40px; font-weight: 650; transition: background-color .18s ease, color .18s ease, transform .2s, box-shadow .25s; }
+.pv .isl-sheet .kb2-prof .kb2-r .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 16px -10px rgba(5,5,5,.5); }
+.pv .isl-sheet .kb2-prof .btn:active:not(:disabled) { transform: scale(.97); }
+@media (prefers-reduced-motion: reduce) { .pv .isl-sheet .kb2-prof, .pv .isl-sheet .kb2-prof .btn, .pv .isl-sheet .mgp-pbtns .btn { transition: none; } }
+
+/* Perfil à esquerda: foto grande ocupando o cartão, com sombra embaixo carregando as infos */
+.pv .isl-sheet .mgp-prof { padding: 8px; gap: 8px; background: #fff; }
+.pv .isl-sheet .mgp-hero { position: relative; flex: 1; min-height: 220px; border-radius: 20px; overflow: hidden; background: #0a0a0b; }
+.pv .isl-sheet .mgp-hero .mgp-ph { position: absolute; inset: 0; margin: 0; }
+.pv .isl-sheet .mgp-hero .mgp-ph .iav { width: 100% !important; height: 100% !important; border-radius: 0; box-shadow: none; font-size: 64px !important; }
+.pv .isl-sheet .mgp-hero .mgp-ph .iav img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+.pv .isl-sheet .mgp-shade { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; display: flex; flex-direction: column; gap: 4px; padding: 56px 14px 14px; background: linear-gradient(180deg, rgba(5,5,5,0) 0, rgba(5,5,5,.55) 42%, rgba(5,5,5,.88) 100%); color: #fff; }
+.pv .isl-sheet .mgp-shade .mgp-pn { font-size: 18px; color: #fff; }
+.pv .isl-sheet .mgp-shade .mgp-pu, .pv .isl-sheet .mgp-shade .mgp-pu a, .pv .isl-sheet .mgp-shade .mgp-pu button { color: rgba(255,255,255,.75); margin: 0; }
+.pv .isl-sheet .mgp-shade .mgp-pc { margin-top: 6px; }
+.pv .isl-sheet .mgp-shade .mgp-pc li { background: rgba(255,255,255,.16); color: #fff; box-shadow: none; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.pv .isl-sheet .mgp-shade .mgp-pc .rt { background: #fff; color: #0a0a0b; }
+.pv .isl-sheet .mgp-shade .mgp-pc .rt span { color: rgba(5,5,5,.55); }
+.pv .isl-sheet .mgp-shade .mgp-pc .rt.none { background: rgba(255,255,255,.16); color: rgba(255,255,255,.8); }
+.pv .isl-sheet .mgp-shade .mgp-pc .rt.none span { color: rgba(255,255,255,.8); }
+.pv .isl-sheet .mgp-shade .mgp-pc .rt.none .ico { color: rgba(255,255,255,.8); }
+.pv .isl-sheet .mgp-shade .mgp-pn .ext { background: #fff; color: #0a0a0b; }
+
+/* "Perfil completo": sem roxo no hover — inverte para branco com contorno preto e o ícone dá um pulo */
+.pv .isl-sheet .mgp-prof .mgp-pbtns .mgp-pbtn.btn.out:hover:not(:disabled) { background: #fff; color: #0a0a0b; box-shadow: 0 0 0 1.5px #0a0a0b inset, 0 8px 16px -10px rgba(5,5,5,.5); transform: translateY(-1px); }
+.pv .isl-sheet .mgp-pbtn .ico { transition: transform .25s cubic-bezier(.2,.8,.2,1); }
+.pv .isl-sheet .mgp-pbtn:hover:not(:disabled) .ico { transform: scale(1.18) translateY(-1px); }
+@media (prefers-reduced-motion: reduce) { .pv .isl-sheet .mgp-pbtn .ico { transition: none; } }
+
+/* "Abrir chat" e "Perfil completo": mesmo botão branco; no hover escurece de uma vez, levanta e o ícone se anima */
+.pv .isl-sheet .mgp-prof .mgp-pbtns .btn.out { background: #fff; color: #0a0a0b; box-shadow: 0 0 0 1.5px rgba(5,5,5,.1) inset; transition: background-color .18s ease, color .18s ease, transform .2s, box-shadow .25s; }
+.pv .isl-sheet .mgp-prof .mgp-pbtns .btn.out:hover:not(:disabled), .pv .isl-sheet .mgp-prof .mgp-pbtns .mgp-pbtn.btn.out:hover:not(:disabled) { background: #0a0a0b; color: #fff; box-shadow: 0 10px 18px -10px rgba(5,5,5,.6); transform: translateY(-2px); }
+.pv .isl-sheet .mgp-prof .mgp-pbtns .btn.out:active:not(:disabled) { transform: scale(.97); }
+.pv .isl-sheet .mgp-prof .mgp-pbtns .btn .ico { transition: transform .3s cubic-bezier(.34,1.56,.64,1); }
+.pv .isl-sheet .mgp-prof .mgp-pbtns .btn:hover:not(:disabled) .ico { transform: scale(1.2) rotate(-8deg); }
+@media (prefers-reduced-motion: reduce) { .pv .isl-sheet .mgp-prof .mgp-pbtns .btn, .pv .isl-sheet .mgp-prof .mgp-pbtns .btn .ico { transition: none; } }
+
+/* Corrige: "Perfil completo" fica BRANCO como o chat (a regra .mgp-pbtn do preto tinha mais força). Hover sem escurecer: contorno firme, sombra, sobe e o ícone se anima */
+.pv .isl-sheet .mgp-prof .mgp-pbtns .mgp-pbtn.btn.out, .pv .isl-sheet .mgp-prof .mgp-pbtns .btn.out { background: #fff; color: #0a0a0b; box-shadow: 0 0 0 1.5px rgba(5,5,5,.1) inset; }
+.pv .isl-sheet .mgp-prof .mgp-pbtns .mgp-pbtn.btn.out:hover:not(:disabled), .pv .isl-sheet .mgp-prof .mgp-pbtns .btn.out:hover:not(:disabled) { background: #fff; color: #0a0a0b; box-shadow: 0 0 0 1.5px #0a0a0b inset, 0 10px 18px -12px rgba(5,5,5,.45); transform: translateY(-2px); }
+
+/* ===== Cartão da rede, versão editorial: ícone da rede, números em linha com divisórias (sem caixinhas cinzas), valor em linha e ação clara ===== */
+.pv .isl-sheet .kb2-prof { padding: 18px; gap: 14px; background: #fff; box-shadow: 0 0 0 1.5px var(--line) inset; }
+.pv .isl-sheet .kb2-prof-h { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "i n" "i u" "s s" "c c"; column-gap: 12px; row-gap: 1px; align-items: center; }
+.pv .isl-sheet .kb2-ic { grid-area: i; width: 40px; height: 40px; border-radius: 14px; background: #0a0a0b; display: grid; place-items: center; }
+.pv .isl-sheet .kb2-prof-h > b { font-size: 15px; align-self: end; }
+.pv .isl-sheet .kb2-prof-h > small { align-self: start; }
+.pv .isl-sheet .kb2-st { margin: 16px 0 0; gap: 0; padding-top: 14px; border-top: 1.5px solid var(--line); }
+.pv .isl-sheet .kb2-st > span { background: transparent; padding: 0 0 0 0; border-radius: 0; gap: 2px; font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.pv .isl-sheet .kb2-st > span + span { padding-left: 16px; border-left: 1.5px solid var(--line); }
+.pv .isl-sheet .kb2-st b { font-size: 24px; font-weight: 700; letter-spacing: -.045em; }
+.pv .isl-sheet .kb2-prof-h em { margin-top: 14px; padding: 12px 0 0; border-radius: 0; background: transparent; border-top: 1.5px solid var(--line); font-size: 15px; }
+.pv .isl-sheet .kb2-prof-h em span { font-size: 12.5px; font-weight: 500; color: var(--muted); }
+.pv .isl-sheet .kb2-prof-h em.bad { background: transparent; color: var(--danger); }
+.pv .isl-sheet .kb2-prof .kb2-r .btn.ok, .pv .isl-sheet .kb2-prof .kb2-r .btn:not(.out) { height: 42px; }
+.pv .isl-sheet .kb2-prof .kb2-r .btn.out { height: 42px; background: #fff; box-shadow: 0 0 0 1.5px rgba(5,5,5,.12) inset; }
+.pv .isl-sheet .kb2-prof .kb2-r .btn.out:hover:not(:disabled) { background: #fff; color: #0a0a0b; box-shadow: 0 0 0 1.5px #0a0a0b inset, 0 10px 18px -12px rgba(5,5,5,.45); }
+.pv .isl-sheet .kb2-prof .kb2-r .btn:not(.out):hover:not(:disabled) { background: #0a0a0b; box-shadow: 0 10px 18px -10px rgba(5,5,5,.6); }
+.pv .isl-sheet .mgp .kb2-prof > .btn.dng, .pv .isl-sheet .kb2-prof > .btn.out.dng { height: 32px; font-size: 12.5px; font-weight: 600; color: var(--muted); background: transparent; box-shadow: none; }
+.pv .isl-sheet .mgp .kb2-prof > .btn.dng:hover:not(:disabled), .pv .isl-sheet .kb2-prof > .btn.out.dng:hover:not(:disabled) { color: var(--danger); background: rgba(220,38,38,.08); box-shadow: none; transform: none; }
+.pv .isl-sheet .kb2-m.kb2-prof > .kb2-fold .kb2-fi > .btn.out.dng { height: 34px; font-size: 12.5px; font-weight: 600; color: var(--muted); background: transparent; box-shadow: none; }
+.pv .isl-sheet .kb2-m.kb2-prof > .kb2-fold .kb2-fi > .btn.out.dng:hover:not(:disabled) { color: var(--danger); background: rgba(220,38,38,.08); box-shadow: none; transform: none; }
