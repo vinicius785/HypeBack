@@ -24,6 +24,7 @@ vi.mock("@/contexts/workspace-context", () => {
     useWorkspacePermissions: () => ({ campaigns_read: true, catalog_read: true, community_lives_read: true, financial_read: true }),
   };
 });
+vi.mock("@/hooks/admin/use-admin-security", () => ({ useSecuritySummary: () => ({ data: undefined }) }));
 vi.mock("@/hooks/use-campaigns", () => ({ useCampaigns: () => ({ data: [] }) }));
 vi.mock("@/shared/services/auth", () => ({ logout: vi.fn() }));
 

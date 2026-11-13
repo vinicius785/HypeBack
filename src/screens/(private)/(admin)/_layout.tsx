@@ -4,7 +4,8 @@ import { createFileRoute, Outlet, useLocation, useNavigate } from "@tanstack/rea
 import { WorkspaceProvider } from "@/contexts/workspace-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useAdminSessionGuard } from "@/hooks/admin/use-admin-session-guard";
-import { isPlatformStaff } from "@/lib/utils/platform-admin";
+import { SecurityBell } from "@/components/admin/security/security-bell";
+import { isPlatformAdmin, isPlatformStaff } from "@/lib/utils/platform-admin";
 import { Sidebar } from "@/components/sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 
@@ -28,7 +29,8 @@ const KEEP_SCROLL_PREFIXES = ["/admin/groups"];
  *   de workspace; o provider fica só porque o menu compartilhado com o app o exige, e faz a mesma
  *   inicialização de sempre (restaura o workspace guardado, ou grava o primeiro quando não há um válido —
  *   o que acontece igual ao abrir o app). Não existe ação na tela do Admin que troque o workspace.
- * - Sem o `Header` do app: o sino e o chat são do workspace selecionado, não da plataforma.
+ * - Sem o `Header` do app: o sino e o chat são do workspace selecionado, não da plataforma. O Admin tem o seu
+ *   próprio sino, o da sentinela de segurança (`SecurityBell`), só para o administrador da plataforma.
  * - As requisições do Admin NÃO enviam `Workspace-Id` (ver `src/lib/admin/admin-client.ts`).
  * - Sessão vencida ou conta suspensa no meio do uso (401 do Admin): `useAdminSessionGuard` faz o mesmo
  *   que o app faz quando `/me` volta 401 e leva para o login.
@@ -77,6 +79,11 @@ function AdminLayout() {
             className="w-full flex-1 overflow-y-auto px-2 pb-10 max-[900px]:px-5 max-[900px]:pb-32"
           >
             <div className="pt-4">
+              {isPlatformAdmin(user) ? (
+                <div className="pv adm-sec-topbar">
+                  <SecurityBell />
+                </div>
+              ) : null}
               <Outlet />
             </div>
           </main>

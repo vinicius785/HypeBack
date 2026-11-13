@@ -37,6 +37,7 @@ vi.mock("@/components/mobile-nav", () => ({
     return <nav data-testid="mobile-nav" data-scope={scope} />;
   },
 }));
+vi.mock("@/components/admin/security/security-bell", () => ({ SecurityBell: () => <button data-testid="security-bell" /> }));
 vi.mock("@/components/header", () => ({ Header: () => <div data-testid="header" /> }));
 
 import { Route } from "@/screens/(private)/(admin)/_layout";

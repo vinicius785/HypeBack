@@ -145,6 +145,7 @@ export const ADMIN_ERROR_CODES = [
   'LAST_PLATFORM_ADMIN', // 409: tirar o papel do último administrador ativo da plataforma
   'IDEMPOTENCY_CONFLICT', // 409
   'EMAIL_ALREADY_REGISTERED', // 409: criar conta com um e-mail que já tem cadastro
+  'WATCH_ALREADY_ACTIVE', // 409: o e-mail já está na lista de vigiados da sentinela de segurança
   'NOT_STAFF_ACCOUNT', // 400: gerar código de recuperação de senha para quem não é da equipe da plataforma
   'APPROVAL_CODE_REQUIRED', // 400: faltou o código do Google Authenticator de quem aprova
   'APPROVAL_CODE_INVALID', // 403: código do Authenticator errado ou já usado
@@ -1274,3 +1275,122 @@ export const ADMIN_ENDPOINTS = [
   { key: 'health.system', method: 'GET', path: '/admin/health/system' },
 ] as const;
 export type AdminEndpointKey = (typeof ADMIN_ENDPOINTS)[number]['key'];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Segurança (sentinela) — só o administrador da plataforma; `/admin/security/*`
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const SECURITY_ALERT_SEVERITIES = ['low', 'medium', 'high'] as const;
+export type SecurityAlertSeverity = (typeof SECURITY_ALERT_SEVERITIES)[number];
+
+/** `mobile-app` (app) ou `backoffice` (painel); a API pode mandar outro valor no futuro. */
+export type SecurityAlertChannel = 'mobile-app' | 'backoffice' | (string & {});
+
+export interface SecurityAlertUser {
+  id: number;
+  name: string | null;
+  email: string | null;
+}
+
+/** Campos comuns a todo alerta. `user` é a PESSOA do alerta: em `watched_login` é a conta vigiada; em `admin_action` é quem fez a ação. */
+interface SecurityAlertBase {
+  id: number;
+  severity: SecurityAlertSeverity;
+  title: string;
+  /** ISO em UTC (termina com Z). */
+  created_at: string;
+  seen_at: string | null;
+  note: string | null;
+  user: SecurityAlertUser | null;
+}
+
+/** Conta vigiada abriu sessão. */
+export interface WatchedLoginAlert extends SecurityAlertBase {
+  kind: 'watched_login';
+  details: { channel?: SecurityAlertChannel };
+}
+
+/** Papel de quem fez a ação de risco no Admin. */
+export type SecurityActorRole = 'platform_admin' | 'platform_staff' | (string & {});
+
+export interface AdminActionDetails {
+  action_log_id: number;
+  /** Código da ação, ex.: `user.platform_role_change`. */
+  action: string;
+  /** Frase pronta em português. */
+  action_label: string;
+  actor_name: string | null;
+  actor_role: SecurityActorRole;
+  /** `user`, `workspace`, `campaign`...; a API pode mandar outro valor. */
+  target_type: string;
+  target_id: string;
+  target_label: string | null;
+  /** Motivo informado por quem fez a ação (texto digitado por uma pessoa: nunca renderizar como HTML). */
+  reason: string;
+  ip: string | null;
+}
+
+/** Ação de risco feita no Admin. Sem canal (App/Painel). */
+export interface AdminActionAlert extends SecurityAlertBase {
+  kind: 'admin_action';
+  details: AdminActionDetails;
+}
+
+/** Tipo que esta versão do painel ainda não conhece: mostra só o título e a pessoa, sem detalhes. */
+export interface UnknownSecurityAlert extends SecurityAlertBase {
+  kind: string & {};
+  details?: Record<string, unknown> | null;
+}
+
+/** União por `kind`. `kind` desconhecido cai em `UnknownSecurityAlert`; use `isAdminActionAlert` / `isWatchedLoginAlert` para estreitar. */
+export type SecurityAlert = WatchedLoginAlert | AdminActionAlert | UnknownSecurityAlert;
+
+export function isAdminActionAlert(alert: SecurityAlert): alert is AdminActionAlert {
+  return alert.kind === 'admin_action';
+}
+
+export function isWatchedLoginAlert(alert: SecurityAlert): alert is WatchedLoginAlert {
+  return alert.kind === 'watched_login';
+}
+
+export type SecurityAlertStatus = 'unseen' | 'all';
+
+/** Paginação por `limit`/`offset` (não é a `AdminPageMeta` das outras listas). */
+export interface SecurityAlertsMeta {
+  total: number;
+  unseen: number;
+  limit: number;
+  offset: number;
+}
+
+export interface SecurityAlertsSummary {
+  unseen: number;
+}
+
+/** Corpo opcional de `POST /admin/security/alerts/:alertId/seen`. */
+export interface SecurityAlertSeenBody {
+  /** Até 500 caracteres. */
+  note?: string;
+}
+
+export interface SecurityWatch {
+  id: number;
+  email: string;
+  reason: string;
+  active: boolean;
+  created_at: string;
+  deactivated_at: string | null;
+  /** `null`: o e-mail ainda não tem conta. */
+  registered_user: { id: number; name: string | null; photo?: string | null } | null;
+}
+
+/** Corpo de `POST /admin/security/watchlist`. `reason`: 5 a 500 caracteres. */
+export interface SecurityWatchBody {
+  email: string;
+  reason: string;
+}
+
+export interface SecurityWatchCreated {
+  id: number;
+  reactivated: boolean;
+}

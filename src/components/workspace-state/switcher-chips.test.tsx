@@ -27,6 +27,7 @@ vi.mock("@/contexts/workspace-context", () => ({
   useWorkspaceContext: () => ({ workspaces: ctx.workspaces, selectedWorkspace: ctx.selected, selectWorkspace: ctx.selectWorkspace }),
   useWorkspacePermissions: () => ({ campaigns_read: true, catalog_read: true, community_lives_read: true, financial_read: true }),
 }));
+vi.mock("@/hooks/admin/use-admin-security", () => ({ useSecuritySummary: () => ({ data: undefined }) }));
 vi.mock("@/hooks/use-campaigns", () => ({
   useCampaigns: (options: unknown) => {
     ctx.useCampaigns(options);
