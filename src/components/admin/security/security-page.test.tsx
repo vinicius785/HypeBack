@@ -656,9 +656,30 @@ describe("Segurança: a ilha só esquenta quando aconteceu algo", () => {
 });
 
 describe("Segurança: vigiados", () => {
-  it("lista ativos primeiro, com a indicação de conta e o aviso de privacidade", async () => {
-    await renderPage("/admin/security?tab=watchlist");
+  it("abre mostrando só os ativos; o encerrado só aparece em Todos ou Inativos", async () => {
+    const { user } = await renderPage("/admin/security?tab=watchlist");
     const list = await screen.findByRole("list", { name: "E-mails vigiados" });
+    expect(screen.getByRole("combobox", { name: "Estado" })).toHaveValue("active");
+    expect(within(list).getAllByRole("listitem").map((row) => within(row).getByText(/@marca\.com$/).textContent)).toEqual(["sem-conta@marca.com", "novo@marca.com"]);
+    await chooseFilter(user, "Estado", "inactive");
+    expect(within(screen.getByRole("list", { name: "E-mails vigiados" })).getAllByRole("listitem")).toHaveLength(1);
+    await chooseFilter(user, "Estado", "all");
+    expect(within(screen.getByRole("list", { name: "E-mails vigiados" })).getAllByRole("listitem")).toHaveLength(3);
+  });
+
+  it("sem nenhum ativo, avisa e oferece 'Ver todos' (o histórico dos encerrados)", async () => {
+    serve({ watches: [WATCHES[0]] });
+    const { user } = await renderPage("/admin/security?tab=watchlist");
+    expect(await screen.findByText("Nenhum vigiado ativo")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ver todos" }));
+    expect(await screen.findByText("antigo@marca.com")).toBeInTheDocument();
+  });
+
+  it("lista ativos primeiro, com a indicação de conta e o aviso de privacidade", async () => {
+    const { user } = await renderPage("/admin/security?tab=watchlist");
+    await screen.findByRole("list", { name: "E-mails vigiados" });
+    await chooseFilter(user, "Estado", "all");
+    const list = screen.getByRole("list", { name: "E-mails vigiados" });
     const rows = within(list).getAllByRole("listitem");
     expect(rows.map((row) => within(row).getByText(/@marca\.com$/).textContent)).toEqual(["sem-conta@marca.com", "novo@marca.com", "antigo@marca.com"]);
     expect(within(rows[0]).getByText("Ainda sem conta")).toBeInTheDocument();

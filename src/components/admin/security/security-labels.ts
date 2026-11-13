@@ -30,10 +30,12 @@ export const SECURITY_TABS: readonly SecurityTab[] = ["alerts", "watchlist"];
 export const SECURITY_STATUSES = ["unseen", "all"] as const;
 
 export type WatchFilter = "all" | "active" | "inactive";
+/** A lista de vigiados abre mostrando só quem está sendo vigiado agora; os encerrados ficam em "Inativos" ou "Todos". */
+export const DEFAULT_WATCH_FILTER: WatchFilter = "active";
 export const WATCH_FILTERS: ReadonlyArray<{ id: WatchFilter; label: string }> = [
-  { id: "all", label: "Todos" },
   { id: "active", label: "Ativos" },
   { id: "inactive", label: "Inativos" },
+  { id: "all", label: "Todos" },
 ];
 export const ALERT_FILTERS: ReadonlyArray<{ id: "unseen" | "all"; label: string }> = [
   { id: "unseen", label: "Novos" },
