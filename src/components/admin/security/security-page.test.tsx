@@ -39,7 +39,20 @@ vi.mock("@/contexts/auth-context", () => ({ useAuth: () => ({ user: mocks.auth.u
 vi.mock("sonner", () => ({ toast: { success: mocks.toastSuccess, error: vi.fn() } }));
 
 import { toAdminApiError } from "@/lib/admin/admin-client";
-import type { AdminActionAlert, AttackIpDeniedAlert, AttackUserProbingAlert, SecurityAlert, SecurityWatch, SignupWaveAlert } from "@/shared/admin-platform.types";
+import type {
+  AdminActionAlert,
+  AttackAnonymizerWaveAlert,
+  AttackCodeGuessingAlert,
+  AttackEnumerationAlert,
+  AttackIpDeniedAlert,
+  AttackUserProbingAlert,
+  AttackVolumeAlert,
+  SecurityAlert,
+  SecurityWatch,
+  SignupDomainClusterAlert,
+  SignupWaveAlert,
+  StaffResetAttemptAlert,
+} from "@/shared/admin-platform.types";
 
 import { renderRoutes, stubRoute } from "../users/admin-users-test-utils";
 import { SecurityPage } from "./security-page";
@@ -77,6 +90,12 @@ function serve(options: { alerts?: SecurityAlert[]; watches?: SecurityWatch[] } 
   });
 }
 
+/** Escolhe uma opção no painel do botão de filtro da ilha (um botão só, com os filtros "Mostrar", "Tipo" e "Estado"). */
+async function chooseFilter(user: ReturnType<typeof userEvent.setup>, filter: "Mostrar" | "Tipo" | "Estado", value: string) {
+  await user.click(screen.getByRole("button", { name: /^Filtros/ }));
+  await user.selectOptions(screen.getByRole("combobox", { name: filter }), value);
+}
+
 const ROUTES = [
   {
     path: "/admin/security",
@@ -84,6 +103,7 @@ const ROUTES = [
     validateSearch: (raw: Record<string, unknown>) => ({ tab: raw.tab, status: raw.status }),
   },
   stubRoute("/admin/users/$userId"),
+  stubRoute("/admin/users"),
 ];
 
 async function renderPage(url = "/admin/security") {
@@ -115,7 +135,7 @@ describe("Segurança: alertas", () => {
     await userEvent.keyboard("{Escape}");
     expect(screen.getByText("Estas informações são visíveis apenas para administradores da plataforma.")).toBeInTheDocument();
     // o filtro padrão é "Novos", e a API é chamada com status=unseen, limit e offset
-    expect(screen.getByRole("button", { name: "Novos" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("combobox", { name: "Mostrar" })).toHaveValue("unseen");
     expect(mocks.adminGetEnvelope).toHaveBeenCalledWith(
       "/admin/security/alerts",
       { status: "unseen", limit: 50, offset: 0 },
@@ -298,13 +318,13 @@ describe("Segurança: alertas de ações no Admin (admin_action)", () => {
     const { user } = await renderPage();
     await screen.findAllByRole("listitem");
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
-    await user.click(screen.getByRole("button", { name: "Ações no Admin" }));
+    await chooseFilter(user, "Tipo", "admin_action");
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
     expect(screen.getByText("Ação no Admin")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Contas vigiadas" }));
+    await chooseFilter(user, "Tipo", "watched_login");
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
     expect(screen.getByText("Conta vigiada abriu sessão")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Todos os tipos" }));
+    await chooseFilter(user, "Tipo", "all");
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
   });
 });
@@ -421,19 +441,192 @@ describe("Segurança: alertas de ataque à API", () => {
     expect(row.querySelector("img")).toBeNull();
   });
 
-  it("filtro por tipo inclui os três novos", async () => {
+  it("filtro por tipo agrupa: Ataques reúne os de ataque e Cadastros reúne onda e domínio", async () => {
     serve({ alerts: [ALERT, IP_DENIED, PROBING, WAVE] });
     const { user } = await renderPage();
     await screen.findAllByRole("listitem");
     expect(screen.getAllByRole("listitem")).toHaveLength(4);
-    await user.click(screen.getByRole("button", { name: "IPs suspeitos" }));
-    expect(screen.getAllByRole("listitem")).toHaveLength(1);
-    await user.click(screen.getByRole("button", { name: "Contas suspeitas" }));
-    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    await chooseFilter(user, "Tipo", "attacks");
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
     expect(screen.getByText("Conta suspeita: Bia Santos")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Ondas de cadastros" }));
+    await chooseFilter(user, "Tipo", "signups");
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
     expect(screen.getByText("40 contas novas em 10 min")).toBeInTheDocument();
+  });
+});
+
+const BASE = { created_at: "2026-11-10T01:30:00Z", seen_at: null, note: null } as const;
+
+const CODE_GUESSING: AttackCodeGuessingAlert = {
+  ...BASE,
+  id: 50,
+  kind: "attack_code_guessing",
+  severity: "high",
+  title: "Chute de código de verificação",
+  details: { target: "b***@marca.com", count: 30, distinct_ips: 6, window_minutes: 10, last_status: 400, last_path: "/api/auth/first-access" },
+  user: { id: 5, name: "Dani Lima", email: "dani@marca.com" },
+};
+const VOLUME: AttackVolumeAlert = {
+  ...BASE,
+  id: 51,
+  kind: "attack_volume",
+  severity: "medium",
+  title: "Volume anormal de chamadas",
+  details: { ip: "203.0.113.20", count: 900, window_minutes: 5, new_account: true, last_path: "/api/creators" },
+  user: { id: 6, name: "Leo Ramos", email: "leo@marca.com" },
+};
+const ENUMERATION: AttackEnumerationAlert = {
+  ...BASE,
+  id: 52,
+  kind: "attack_enumeration",
+  severity: "high",
+  title: "Varredura de dados",
+  details: { ip: "203.0.113.21", distinct_ids: 250, window_minutes: 10, route: "/api/creators/:id" },
+  user: { id: 7, name: "Ana Prado", email: "ana@marca.com" },
+};
+const ANONYMIZER: AttackAnonymizerWaveAlert = {
+  ...BASE,
+  id: 53,
+  kind: "attack_anonymizer_wave",
+  severity: "medium",
+  title: "Onda de rede anônima",
+  details: { count: 18, window_minutes: 15, last_path: "/api/auth/login" },
+  user: null,
+};
+const STAFF_RESET: StaffResetAttemptAlert = {
+  ...BASE,
+  id: 54,
+  kind: "staff_reset_attempt",
+  severity: "high",
+  title: "Tentativas de redefinir a senha de uma conta da equipe",
+  details: { target: "m***@hype.com", staff: true, watched: false, attempts: 7, distinct_ips: 2, ips: ["198.51.100.1", "198.51.100.2"], paths: ["/api/auth/forgot-password", "/api/auth/reset-password"] },
+  user: { id: 1, name: "Marina Alves", email: "marina@hype.com" },
+};
+const DOMAIN_CLUSTER: SignupDomainClusterAlert = {
+  ...BASE,
+  id: 55,
+  kind: "signup_domain_cluster",
+  severity: "medium",
+  title: "Muitos cadastros do mesmo domínio",
+  details: { domain: "mailbox.example", count: 25, window_minutes: 30 },
+  user: null,
+};
+
+describe("Segurança: todos os tipos de alerta da sentinela", () => {
+  it("attack_code_guessing: 'Conta alvo:', resumo com o alvo e os IPs, e o aviso de rede Tor com 5 IPs ou mais", async () => {
+    serve({ alerts: [CODE_GUESSING] });
+    const { user } = await renderPage();
+    const row = await screen.findByRole("listitem");
+    expect(within(row).getByText("Chute de código")).toBeInTheDocument();
+    expect(within(row).getByText("Conta alvo: Dani Lima")).toBeInTheDocument();
+    expect(within(row).getByText(/30 códigos errados em 10 min para/)).toHaveTextContent("30 códigos errados em 10 min para b***@marca.com, vindos de 6 IPs");
+    expect(within(row).getByText("b***@marca.com")).toHaveClass("adm-sec-mono");
+    expect(within(row).getByText("IPs diferentes: possível rede Tor")).toBeInTheDocument();
+    expect(within(row).queryByText("App")).toBeNull();
+    await user.click(within(row).getByRole("button", { name: "Ações do alerta 50" }));
+    expect(await screen.findByRole("menuitem", { name: "Ver conta" })).toBeInTheDocument();
+    await user.click(screen.getByRole("menuitem", { name: "Ver detalhes" }));
+    expect(within(row).getByText("/api/auth/first-access")).toBeInTheDocument();
+  });
+
+  it("attack_code_guessing com poucos IPs não tem o aviso; sem conta mostra o e-mail mascarado como alvo", async () => {
+    serve({ alerts: [{ ...CODE_GUESSING, user: null, details: { ...CODE_GUESSING.details, distinct_ips: 1 } }] });
+    const { user } = await renderPage();
+    const row = await screen.findByRole("listitem");
+    expect(within(row).queryByText(/possível rede Tor/)).toBeNull();
+    expect(within(row).getByText(/Conta alvo:/)).toHaveTextContent("Conta alvo: b***@marca.com");
+    expect(within(row).getByText(/vindo de 1 IP$/)).toBeInTheDocument();
+    await user.click(within(row).getByRole("button", { name: "Ações do alerta 50" }));
+    expect(screen.queryByRole("menuitem", { name: "Ver conta" })).toBeNull();
+  });
+
+  it("attack_volume: resumo e a etiqueta de conta nova só quando new_account é verdadeiro", async () => {
+    serve({ alerts: [VOLUME] });
+    const first = await renderPage();
+    const row = await screen.findByRole("listitem");
+    expect(within(row).getByText("Volume anormal")).toBeInTheDocument();
+    expect(within(row).getByText("Conta suspeita: Leo Ramos")).toBeInTheDocument();
+    expect(within(row).getByText("900 chamadas em 5 min")).toBeInTheDocument();
+    expect(within(row).getByText("Conta nova (menos de 48 h)")).toBeInTheDocument();
+    first.unmount();
+    serve({ alerts: [{ ...VOLUME, details: { ...VOLUME.details, new_account: false } }] });
+    await renderPage();
+    expect(within(await screen.findByRole("listitem")).queryByText("Conta nova (menos de 48 h)")).toBeNull();
+  });
+
+  it("attack_enumeration: resumo com a rota em monoespaçada e 'Conta suspeita:'", async () => {
+    serve({ alerts: [ENUMERATION] });
+    const { user } = await renderPage();
+    const row = await screen.findByRole("listitem");
+    expect(within(row).getByText("Varredura de dados", { selector: ".adm-sec-tag-item" })).toBeInTheDocument();
+    expect(within(row).getByText("Conta suspeita: Ana Prado")).toBeInTheDocument();
+    expect(within(row).getByText(/Leu 250 registros diferentes em 10 min na rota/)).toBeInTheDocument();
+    expect(within(row).getByText("/api/creators/:id")).toHaveClass("adm-sec-mono");
+    await user.click(within(row).getByRole("button", { name: "Ações do alerta 52" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Ver detalhes" }));
+    expect(within(row).getByText("Registros diferentes").nextElementSibling).toHaveTextContent("250");
+  });
+
+  it("attack_anonymizer_wave: selo e resumo, sem conta e sem canal", async () => {
+    serve({ alerts: [ANONYMIZER] });
+    await renderPage();
+    const row = await screen.findByRole("listitem");
+    expect(within(row).getByText("Rede anônima")).toBeInTheDocument();
+    expect(within(row).getByText("18 tentativas bloqueadas de rede anônima (Tor/VPN) em 15 min")).toBeInTheDocument();
+    expect(within(row).queryByText("App")).toBeNull();
+    expect(within(row).queryByText("Painel")).toBeNull();
+  });
+
+  it("staff_reset_attempt com equipe: em vermelho, 'Conta visada:', etiqueta Equipe e a lista de IPs e rotas", async () => {
+    serve({ alerts: [STAFF_RESET] });
+    const { user } = await renderPage();
+    const row = await screen.findByRole("listitem");
+    expect(row).toHaveAttribute("data-critical", "true");
+    expect(within(row).getByText("Conta da equipe visada")).toBeInTheDocument();
+    expect(within(row).getByText("Conta visada: Marina Alves")).toBeInTheDocument();
+    expect(within(row).getByText(/7 tentativas de redefinir a senha de/)).toHaveTextContent("7 tentativas de redefinir a senha de m***@hype.com");
+    expect(within(row).getByText("Equipe")).toBeInTheDocument();
+    expect(within(row).queryByText("Vigiado")).toBeNull();
+    expect(within(row).getByText("Tentativas de redefinir a senha de uma conta da equipe")).toBeInTheDocument();
+    await user.click(within(row).getByRole("button", { name: "Ações do alerta 54" }));
+    expect(await screen.findByRole("menuitem", { name: "Ver conta" })).toBeInTheDocument();
+    await user.click(screen.getByRole("menuitem", { name: "Ver detalhes" }));
+    for (const text of ["198.51.100.1", "198.51.100.2", "/api/auth/forgot-password", "/api/auth/reset-password"]) {
+      expect(within(row).getByText(text)).toBeInTheDocument();
+    }
+  });
+
+  it("staff_reset_attempt só vigiado e sem conta: etiqueta Vigiado, sem Equipe, alvo mascarado no lugar da conta", async () => {
+    serve({ alerts: [{ ...STAFF_RESET, user: null, details: { ...STAFF_RESET.details, staff: false, watched: true, ips: [], paths: [] } }] });
+    const { user } = await renderPage();
+    const row = await screen.findByRole("listitem");
+    expect(within(row).getByText("Vigiado")).toBeInTheDocument();
+    expect(within(row).queryByText("Equipe")).toBeNull();
+    expect(within(row).getByText(/Conta visada:/)).toHaveTextContent("Conta visada: m***@hype.com");
+    await user.click(within(row).getByRole("button", { name: "Ações do alerta 54" }));
+    expect(screen.queryByRole("menuitem", { name: "Ver conta" })).toBeNull();
+  });
+
+  it("signup_domain_cluster: resumo com o domínio e o botão que leva a Pessoas com a busca por @domínio", async () => {
+    serve({ alerts: [DOMAIN_CLUSTER] });
+    const { user, router } = await renderPage();
+    const row = await screen.findByRole("listitem");
+    expect(within(row).getByText("Domínio repetido")).toBeInTheDocument();
+    expect(within(row).getByText("@mailbox.example")).toBeInTheDocument();
+    expect(within(row).getByText(/25 contas novas do domínio/)).toHaveTextContent("25 contas novas do domínio mailbox.example em 30 min");
+    await user.click(within(row).getByRole("button", { name: "Ver cadastros deste domínio" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/admin/users"));
+    expect(router.state.location.search).toMatchObject({ search: "@mailbox.example" });
+  });
+
+  it("filtros Equipe visada e Cadastros mostram só os seus tipos", async () => {
+    serve({ alerts: [ALERT, STAFF_RESET, WAVE, DOMAIN_CLUSTER] });
+    const { user } = await renderPage();
+    await screen.findAllByRole("listitem");
+    await chooseFilter(user, "Tipo", "staff");
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    await chooseFilter(user, "Tipo", "signups");
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
   });
 });
 

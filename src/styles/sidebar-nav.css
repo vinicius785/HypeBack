@@ -27,6 +27,10 @@
 /* todos os itens têm a mesma estrutura: ícone, nome e (quando houver) o selo */
 .pv .side .sb-item { position: relative; flex: none; height: 40px; }
 .pv .side .sb-item .ico { transition: transform .3s var(--ease); }
+/* Segurança com alerta novo: o item fica preto, com uma luz vermelha que acende por dentro e pulsa (sem contorno) */
+.pv .side .sb-item[data-alert="true"], .pv .side .sb-item[data-alert="true"]:hover { color: #fff; background: radial-gradient(120% 140% at 14% 50%, rgba(255, 59, 67, 0.5), rgba(255, 59, 67, 0) 62%), #000; box-shadow: 0 0 14px 1px rgba(255, 59, 67, 0.4); animation: sb-alert-glow 1.8s ease-in-out infinite; }
+.pv .side .sb-item[data-alert="true"] .ico { color: #ff6b72; filter: drop-shadow(0 0 5px rgba(255, 59, 67, 0.9)); }
+@keyframes sb-alert-glow { 0%, 100% { box-shadow: 0 0 8px 0 rgba(255, 59, 67, 0.25); } 50% { box-shadow: 0 0 20px 4px rgba(255, 59, 67, 0.55); } }
 .pv .side .sb-item:hover .ico { transform: scale(1.12); }
 
 /* foco do teclado: anel branco por dentro, que aparece tanto sobre o preto quanto sobre o item roxo */
@@ -96,5 +100,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pv .side .sb-item .ico, .pv .side .sb-exit .ico { transition: none; }
+  .pv .side .sb-item[data-alert="true"] { animation: none; }
   .pv .side .sb-item:hover .ico, .pv .side .sb-exit:hover .ico { transform: none; }
 }

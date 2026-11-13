@@ -62,6 +62,12 @@ export function kindLabel(kind: string): string | null {
   if (kind === "attack_ip_denied") return "IP suspeito";
   if (kind === "attack_user_probing") return "Conta suspeita";
   if (kind === "signup_wave") return "Onda de cadastros";
+  if (kind === "attack_code_guessing") return "Chute de código";
+  if (kind === "attack_volume") return "Volume anormal";
+  if (kind === "attack_enumeration") return "Varredura de dados";
+  if (kind === "attack_anonymizer_wave") return "Rede anônima";
+  if (kind === "staff_reset_attempt") return "Conta da equipe visada";
+  if (kind === "signup_domain_cluster") return "Domínio repetido";
   return null;
 }
 
@@ -80,23 +86,32 @@ export function actorRoleLabel(role: string): string {
   return role;
 }
 
-export type KindFilter = "all" | "watched_login" | "admin_action" | "attack_ip_denied" | "attack_user_probing" | "signup_wave";
+/** Os filtros por tipo agrupam os tipos de alerta: ataques à API, equipe visada e cadastros reúnem vários. */
+export type KindFilter = "all" | "watched_login" | "admin_action" | "attacks" | "staff" | "signups";
 export const KIND_FILTERS: ReadonlyArray<{ id: KindFilter; label: string }> = [
   { id: "all", label: "Todos os tipos" },
   { id: "watched_login", label: "Contas vigiadas" },
   { id: "admin_action", label: "Ações no Admin" },
-  { id: "attack_ip_denied", label: "IPs suspeitos" },
-  { id: "attack_user_probing", label: "Contas suspeitas" },
-  { id: "signup_wave", label: "Ondas de cadastros" },
+  { id: "attacks", label: "Ataques" },
+  { id: "staff", label: "Equipe visada" },
+  { id: "signups", label: "Cadastros" },
 ];
+
+const KIND_GROUPS: Record<Exclude<KindFilter, "all">, readonly string[]> = {
+  watched_login: ["watched_login"],
+  admin_action: ["admin_action"],
+  attacks: ["attack_ip_denied", "attack_user_probing", "attack_code_guessing", "attack_volume", "attack_enumeration", "attack_anonymizer_wave"],
+  staff: ["staff_reset_attempt"],
+  signups: ["signup_wave", "signup_domain_cluster"],
+};
 
 /** Filtro por tipo, só no cliente, sobre o que já foi carregado. Tipo desconhecido só aparece em "Todos os tipos". */
 export function matchesKind(kind: string, filter: KindFilter): boolean {
-  return filter === "all" || kind === filter;
+  return filter === "all" || KIND_GROUPS[filter].includes(kind);
 }
 
 /** Singular ou plural pelo número ("1 conta nova", "3 contas novas"). */
-function plural(count: number, one: string, many: string): string {
+export function plural(count: number, one: string, many: string): string {
   return count === 1 ? one : many;
 }
 
