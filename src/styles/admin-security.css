@@ -1,0 +1,270 @@
+/*
+ * Admin da plataforma — Segurança (`src/components/admin/security`).
+ *
+ * Mesmas regras do kit (`admin-platform.css`): prefixo `adm-sec-` e tudo sob `.pv`. Cartão, abas, etiquetas, diálogos e
+ * estados vêm do kit; aqui só a lista de alertas/vigiados, o filtro Novos/Todos e o sino no topo.
+ */
+
+/* ───────────────────────── sino (topo do Admin) ───────────────────────── */
+
+.pv.adm-sec-topbar { display: flex; justify-content: flex-end; margin-bottom: 4px; }
+.pv .adm-sec-bell { position: relative; display: inline-flex; align-items: center; justify-content: center; width: var(--adm-hit, 40px); height: var(--adm-hit, 40px); padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--ink); cursor: pointer; }
+.pv .adm-sec-bell:hover { background: var(--adm-surface); }
+.pv .adm-sec-bell:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+.pv .adm-sec-bell-n { position: absolute; top: 2px; right: 0; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--adm-bad); color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* ───────────────────────── filtro Novos / Todos ───────────────────────── */
+
+
+/* ───────────────────────── lista ───────────────────────── */
+
+.pv .adm-sec-list { list-style: none; margin: 0; padding: 0; }
+.pv .adm-sec-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 24px; border-top: 1.5px solid var(--line); }
+.pv .adm-sec-row[data-seen="true"] { opacity: 0.6; }
+.pv .adm-sec-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pv .adm-sec-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pv .adm-sec-head b { font-size: 15px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.pv .adm-sec-who, .pv .adm-sec-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; font-size: 13px; line-height: 1.4; color: var(--adm-text-muted); }
+.pv .adm-sec-who span:first-child:not(.adm-sec-mail) { color: var(--ink); }
+.pv .adm-sec-mail { overflow-wrap: anywhere; }
+.pv .adm-sec-meta { font-variant-numeric: tabular-nums; }
+.pv .adm-sec-note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
+.pv .adm-sec-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px 16px; flex: none; }
+
+/* ação de risco no Admin: botão de expandir e a lista de detalhes */
+.pv .adm-sec-head { flex-wrap: wrap; }
+.pv .adm-sec-toggle { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .2s; }
+.pv .adm-sec-toggle:hover { background: rgba(5, 5, 5, 0.06); }
+.pv .adm-sec-toggle:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+.pv .adm-sec-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 24px; margin: 10px 0 0; padding: 14px 16px; border-radius: var(--adm-r-md); background: var(--bg); animation: adm-sec-rise 0.35s var(--out, cubic-bezier(0.22, 1, 0.36, 1)) backwards; }
+.pv .adm-sec-details > div { min-width: 0; }
+.pv .adm-sec-details dt { font-size: 12px; font-weight: 600; color: var(--adm-text-muted); }
+.pv .adm-sec-details dd { margin: 2px 0 0; font-size: 13.5px; line-height: 1.45; color: var(--ink); overflow-wrap: anywhere; }
+.pv .adm-sec-details-reason { white-space: pre-wrap; }
+.pv .adm-sec-details-ip { font-variant-numeric: tabular-nums; }
+.pv .adm-sec-details > div:has(.adm-sec-details-reason) { grid-column: 1 / -1; }
+
+.pv .adm-sec-privacy { margin: 0; font-size: 13px; line-height: 1.5; color: var(--adm-text-muted); }
+
+@media (max-width: 720px) {
+  .pv .adm-sec-row { flex-direction: column; padding: 16px 20px; }
+  .pv .adm-sec-actions { justify-content: flex-start; }
+}
+
+/* ───────────────────────── ferramentas dentro da ilha (filtros, busca, ações) ───────────────────────── */
+
+.pv .isl-x.adm-sec-isl .isl-tools { position: relative; z-index: 1; padding: 0 24px 18px; }
+/* ao trocar de aba a barra de ferramentas troca (key no React): a nova sobe e cada item entra um depois do outro */
+.pv .adm-sec-tools > * { animation: adm-sec-tool-in 0.5s var(--out, cubic-bezier(0.22, 1, 0.36, 1)) backwards; }
+.pv .adm-sec-tools > :nth-child(2) { animation-delay: 0.06s; }
+.pv .adm-sec-tools > :nth-child(3) { animation-delay: 0.12s; }
+@keyframes adm-sec-tool-in { from { opacity: 0; transform: translateY(10px) scale(0.98); } }
+.pv .adm-sec-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.pv .adm-sec-filter { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+/* dois grupos de filtro lado a lado (Novos/Todos e o tipo): uma linha fina separa um do outro */
+.pv .adm-sec-filter + .adm-sec-filter { margin-left: 4px; padding-left: 16px; border-left: 1px solid rgba(255, 255, 255, 0.16); }
+.pv .adm-sec-search { position: relative; display: block; flex: 1 1 220px; max-width: 340px; }
+.pv .adm-sec-search .ico { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: rgba(255, 255, 255, 0.55); pointer-events: none; }
+.pv .adm-sec-search input { width: 100%; height: 36px; border: 0; outline: 0; border-radius: 999px; padding: 0 14px 0 38px; background: rgba(255, 255, 255, 0.1); color: #fff; font: inherit; font-size: 13.5px; transition: background .2s, box-shadow .2s; }
+.pv .adm-sec-search input::placeholder { color: rgba(255, 255, 255, 0.5); }
+.pv .adm-sec-search input:focus { background: rgba(255, 255, 255, 0.16); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85); }
+.pv .adm-sec-tool { display: inline-flex; align-items: center; gap: 7px; height: 36px; margin-left: auto; padding: 0 16px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.12); color: #fff; font: inherit; font-size: 13.5px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background .2s, transform .2s, opacity .2s; }
+.pv .adm-sec-tool:hover:not(:disabled) { background: rgba(255, 255, 255, 0.22); }
+.pv .adm-sec-tool:active:not(:disabled) { transform: scale(0.96); }
+.pv .adm-sec-tool:disabled { opacity: 0.4; cursor: not-allowed; }
+.pv .adm-sec-tool[data-primary="true"] { background: #fff; color: #0a0a0b; }
+.pv .adm-sec-tool[data-primary="true"]:hover:not(:disabled) { background: #ece3ff; }
+.pv .adm-sec-tool:focus-visible, .pv .isl-x.adm-sec-isl .isl-seg:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (max-width: 720px) { .pv .isl-x.adm-sec-isl .isl-tools { padding: 0 16px 16px; } .pv .adm-sec-tool { margin-left: 0; } }
+
+/* ───────────────────────── vigiados (cartões) ───────────────────────── */
+
+.pv .adm-sec-cards { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; margin: 0; padding: 4px 26px 26px; }
+
+/* o cartão de quem é vigiado: o mesmo desenho dos cartões do Admin (cartão do papel da Equipe): contorno fino, raio do kit, fundo branco */
+.pv .adm-sec-card { display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 18px 20px; border: 1.5px solid var(--line); border-radius: var(--adm-r-md); background: var(--adm-surface); color: var(--ink); transition: border-color .2s; animation: adm-sec-rise 0.5s var(--out, cubic-bezier(0.22, 1, 0.36, 1)) backwards; animation-delay: calc(var(--i, 0) * 60ms); }
+.pv .adm-sec-card:hover, .pv .adm-sec-card:focus-within { border-color: var(--ink); }
+.pv .adm-sec-card-top { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pv .adm-sec-card-id { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.pv .adm-sec-card-id .adm-sec-mail { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); overflow-wrap: anywhere; }
+.pv .adm-sec-name { font-size: 13px; color: var(--adm-text-muted); overflow-wrap: anywhere; }
+.pv .adm-sec-name-empty { font-style: italic; }
+.pv .adm-sec-card-top .adm-actmenu { flex: none; align-self: flex-start; margin: -4px -8px 0 0; }
+
+.pv .adm-sec-card-status { display: flex; align-items: center; }
+
+/* a etiqueta preta que alterna "Ativo" e "já tem conta": os dois textos ocupam o mesmo lugar (a largura é a do maior) e cada
+   um sobe e some enquanto o outro entra; parada com o mouse em cima, para dar tempo de ler */
+.pv .adm-sec-tag { position: relative; display: inline-grid; overflow: hidden; height: 28px; padding: 0 14px; border-radius: 999px; background: #0a0a0b; color: #fff; box-shadow: 0 6px 14px -8px rgba(5, 5, 5, 0.55); }
+.pv .adm-sec-tag[data-active="false"] { background: var(--adm-text-muted); box-shadow: none; }
+.pv .adm-sec-tag-item { grid-area: 1 / 1; display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; letter-spacing: -0.005em; line-height: 1; white-space: nowrap; animation: adm-sec-tag 6s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+.pv .adm-sec-tag-item[data-slot="b"] { animation-delay: -3s; }
+.pv .adm-sec-tag:hover .adm-sec-tag-item { animation-play-state: paused; }
+.pv .adm-sec-tag-item i { width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: adm-sec-dot 2.4s ease-out infinite; --dot: 52, 211, 153; }
+.pv .adm-sec-tag[data-active="false"] .adm-sec-tag-item i { background: rgba(255, 255, 255, 0.7); animation: none; }
+.pv .adm-sec-tag-item .ico { width: 14px; height: 14px; color: #d9a8ff; }
+@keyframes adm-sec-tag {
+  0%, 38% { opacity: 1; transform: translateY(0); }
+  46% { opacity: 0; transform: translateY(-120%); }
+  47% { transform: translateY(120%); }
+  54%, 88% { opacity: 0; transform: translateY(120%); }
+  96%, 100% { opacity: 1; transform: translateY(0); }
+}
+
+.pv .adm-sec-reason { margin: 0; padding-top: 14px; border-top: 1.5px solid var(--line); font-size: 13.5px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* encerrado: o mesmo cartão, só mais apagado */
+.pv .adm-sec-card[data-active="false"] .adm-entity-av { opacity: 0.5; }
+.pv .adm-sec-card[data-active="false"] .adm-sec-mail, .pv .adm-sec-card[data-active="false"] .adm-sec-reason { color: var(--adm-text-muted); }
+
+@media (max-width: 900px) { .pv .adm-sec-cards { grid-template-columns: 1fr; padding: 4px 16px 16px; } }
+@media (prefers-reduced-motion: reduce) { .pv .adm-sec-card, .pv .adm-sec-details { animation: none !important; }
+  /* sem movimento: as duas informações ficam lado a lado, paradas */
+  .pv .adm-sec-tag { display: inline-flex; gap: 12px; }
+  .pv .adm-sec-tag-item { animation: none !important; opacity: 1; transform: none; } .pv .adm-sec-card { transition: none; } }
+
+/* ───────────────────────── sentinela (de binóculos, dentro da ilha) ───────────────────────── */
+
+/* a ilha de Segurança é mais alta que as outras: a sentinela mora dentro dela, no canto direito */
+.pv .isl.isl-x.adm-sec-isl { overflow: hidden; }
+.pv .isl-x.adm-sec-isl .isl-x-h { min-height: 156px; padding: 0 0 0 24px; align-items: stretch; }
+.pv .isl-x.adm-sec-isl .isl-x-end { align-items: flex-end; }
+/* o brilho de fundo: duas camadas que se dissolvem uma na outra (roxa em calma, vermelha em alerta) em vez de trocar de repente */
+.pv .isl.isl-x.adm-sec-isl::before, .pv .isl.isl-x.adm-sec-isl::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; transition: opacity 0.9s ease; }
+.pv .isl.isl-x.adm-sec-isl::before { background: radial-gradient(60% 120% at 92% 70%, rgba(158, 44, 250, 0.3), rgba(158, 44, 250, 0) 70%); opacity: 1; }
+.pv .isl.isl-x.adm-sec-isl::after { background: radial-gradient(60% 120% at 92% 70%, rgba(255, 59, 67, 0.34), rgba(255, 59, 67, 0) 70%); opacity: 0; }
+.pv .isl.isl-x.adm-sec-isl-alert::before { opacity: 0; }
+.pv .isl.isl-x.adm-sec-isl-alert::after { opacity: 1; animation: adm-sec-glow 1.8s ease-in-out infinite; }
+.pv .isl-x.adm-sec-isl .isl-x-h { position: relative; z-index: 1; }
+@keyframes adm-sec-glow { 0%, 100% { filter: brightness(0.85); } 50% { filter: brightness(1.25); } }
+
+/* o lado esquerdo: o estado em uma frase e, embaixo, as abas */
+.pv .adm-sec-isl-main { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 16px; padding: 22px 0; min-width: 0; }
+.pv .adm-sec-isl-t h2 { display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.15; }
+.pv .adm-sec-isl-t h2 i { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #34d399; animation: adm-sec-dot 2.6s ease-out infinite; --dot: 52, 211, 153; }
+.pv .adm-sec-isl-t h2[data-alert="true"] i { background: #ff5a5f; --dot: 255, 90, 95; animation-duration: 1.1s; }
+.pv .adm-sec-isl-t p { margin-top: 6px; font-size: 13.5px; line-height: 1.4; white-space: normal; }
+@keyframes adm-sec-dot { 0% { box-shadow: 0 0 0 0 rgba(var(--dot), 0.5); } 70%, 100% { box-shadow: 0 0 0 9px rgba(var(--dot), 0); } }
+/* entrada em cascata: título, frase e abas sobem um depois do outro; quando o texto muda, o novo sobe no lugar do antigo */
+.pv .adm-sec-isl-t h2, .pv .adm-sec-isl-t p, .pv .isl-x.adm-sec-isl .isl-segs { animation: adm-sec-rise 0.6s var(--out, cubic-bezier(0.22, 1, 0.36, 1)) both; }
+.pv .adm-sec-isl-t h2 { animation-delay: 0.12s; }
+.pv .adm-sec-isl-t p { animation-delay: 0.2s; }
+.pv .isl-x.adm-sec-isl .isl-segs { animation-delay: 0.28s; }
+.pv .adm-sec-isl-t h2 .adm-sec-swap { display: inline-block; }
+.pv .adm-sec-swap { animation: adm-sec-swap 0.45s var(--out, cubic-bezier(0.22, 1, 0.36, 1)) both; }
+.pv .isl-x.adm-sec-isl .isl-seg small { animation: adm-sec-pop 0.5s cubic-bezier(0.34, 1.6, 0.64, 1) both; }
+@keyframes adm-sec-rise { from { opacity: 0; transform: translateY(10px); } }
+@keyframes adm-sec-swap { from { opacity: 0; transform: translateY(8px); filter: blur(3px); } }
+@keyframes adm-sec-pop { from { opacity: 0; transform: scale(0.4); } }
+
+/* a pílula branca que desliza entre as abas (a posição vem do React, medida na aba pressionada) */
+.pv .adm-sec-segs { position: relative; }
+.pv .adm-sec-pill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: #fff; pointer-events: none; box-shadow: 0 4px 14px -4px rgba(255, 255, 255, 0.35); }
+.pv .adm-sec-pill[data-ready="true"] { transition: transform 0.5s cubic-bezier(0.34, 1.35, 0.5, 1), width 0.5s cubic-bezier(0.34, 1.35, 0.5, 1), opacity 0.2s; }
+.pv .adm-sec-segs .isl-seg { position: relative; z-index: 1; background: transparent; }
+.pv .isl-x.adm-sec-isl .adm-sec-segs .isl-seg[aria-pressed="false"]:hover { background: rgba(255, 255, 255, 0.14); }
+.pv .isl-x.adm-sec-isl .adm-sec-segs .isl-seg[aria-pressed="true"] { background: transparent; }
+.pv .adm-sec-segs .isl-seg { background: rgba(255, 255, 255, 0.1); }
+/* o conteúdo da aba entra deslizando do lado de onde a aba está (some o antigo na hora, entra o novo com mola) */
+.pv .adm-sec-panel { display: contents; }
+.pv .adm-sec-panel > * { animation: adm-sec-slide-next 0.55s var(--out, cubic-bezier(0.22, 1, 0.36, 1)) backwards; }
+.pv .adm-sec-panel[data-dir="prev"] > * { animation-name: adm-sec-slide-prev; }
+@keyframes adm-sec-slide-next { from { opacity: 0; transform: translateX(36px); filter: blur(4px); } }
+@keyframes adm-sec-slide-prev { from { opacity: 0; transform: translateX(-36px); filter: blur(4px); } }
+
+/* as abas da ilha: a ativa fica branca */
+.pv .isl-x.adm-sec-isl .isl-segs { display: flex; flex-wrap: wrap; gap: 8px; }
+.pv .isl-x.adm-sec-isl .isl-seg { cursor: pointer; border: 0; color: inherit; transition: background .2s, color .2s, transform .2s; }
+.pv .isl-x.adm-sec-isl .isl-seg:hover { background: rgba(255, 255, 255, 0.18); }
+.pv .isl-x.adm-sec-isl .isl-seg:active { transform: scale(0.96); }
+.pv .isl-x.adm-sec-isl .isl-seg[aria-pressed="true"] { background: #fff; color: #0a0a0b; }
+.pv .isl-x.adm-sec-isl .isl-seg[aria-pressed="true"] i { background: #0a0a0b; }
+.pv .isl-x.adm-sec-isl .isl-seg small { min-width: 18px; padding: 0 6px; border-radius: 99px; background: #ff3b43; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+.pv .adm-sentinel { --s-h: 156px; --t: 9s; position: relative; flex: none; width: calc(var(--s-h) * 656 / 599); height: var(--s-h); margin-left: 16px; pointer-events: none; }
+.pv .adm-sentinel[data-state="alert"] { --t: 2.8s; }
+
+.pv .adm-sentinel-flip { position: absolute; inset: 0; display: block; transform: scaleX(-1); }
+
+/* partículas de luz que sobem atrás dela (roxas em calma; brasas vermelhas e mais rápidas em alerta) */
+.pv .adm-sentinel-mote { position: absolute; bottom: 8%; width: 4px; height: 4px; border-radius: 50%; background: #d9a8ff; box-shadow: 0 0 6px 1px rgba(190, 120, 255, 0.8); opacity: 0; animation: adm-sentinel-mote 6s ease-in infinite; }
+.pv .adm-sentinel-mote[data-n="1"] { left: 8%; animation-delay: 0s; }
+.pv .adm-sentinel-mote[data-n="2"] { left: 30%; width: 3px; height: 3px; animation-delay: 1.8s; animation-duration: 7s; }
+.pv .adm-sentinel-mote[data-n="3"] { left: 78%; animation-delay: 3.2s; animation-duration: 5.5s; }
+.pv .adm-sentinel-mote[data-n="4"] { left: 92%; width: 3px; height: 3px; animation-delay: 4.4s; animation-duration: 6.5s; }
+.pv .adm-sentinel[data-state="alert"] .adm-sentinel-mote { background: #ff7a7f; box-shadow: 0 0 7px 2px rgba(255, 70, 80, 0.9); animation-duration: 2.4s; }
+@keyframes adm-sentinel-mote { 0% { opacity: 0; transform: translateY(0) scale(0.6); } 15% { opacity: 0.9; } 100% { opacity: 0; transform: translateY(-70px) translateX(8px) scale(1); } }
+
+/* refletor atrás dela e o chão onde ela se apoia */
+.pv .adm-sentinel-spot { position: absolute; left: -20%; right: -20%; top: 0; bottom: -10%; border-radius: 50%; background: radial-gradient(closest-side, rgba(158, 44, 250, 0.5), rgba(158, 44, 250, 0)); animation: adm-sentinel-spot 4s ease-in-out infinite; }
+.pv .adm-sentinel-floor { display: none; }
+
+/* o corpo: a imagem inteira. Entra com mola, respira (preso embaixo) e gira devagar procurando */
+.pv .adm-sentinel-body { position: absolute; inset: 0; display: block; transform-origin: 42% 100%; animation: adm-sentinel-enter 1s cubic-bezier(0.2, 1.2, 0.35, 1) 0.35s both, adm-sentinel-breathe 3.8s ease-in-out 1.35s infinite, adm-sentinel-turn var(--t) cubic-bezier(0.65, 0, 0.35, 1) 1.35s infinite; }
+.pv .adm-sentinel-body img { display: block; width: 100%; height: 100%; user-select: none; }
+.pv .adm-sentinel-base { filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.45)); }
+.pv .adm-sentinel-hoop, .pv .adm-sentinel-optics { position: absolute; inset: 0; display: block; }
+
+/* o brinco: balança pendurado pelo alto */
+.pv .adm-sentinel-hoop { transform-origin: 32.5% 48.6%; animation: adm-sentinel-hoop 3.2s ease-in-out infinite alternate; }
+.pv .adm-sentinel-hoop img { clip-path: ellipse(5.6% 6.2% at 32.5% 53.8%); }
+
+/* os binóculos (com as mãos): camada própria que "foca" — avança para o rosto, volta e se ajusta */
+.pv .adm-sentinel-optics { transform-origin: 52% 46%; animation: adm-sentinel-focus var(--t) ease-in-out 1.35s infinite; }
+.pv .adm-sentinel-optics > img { clip-path: polygon(47.6% 33.4%, 57.9% 28.7%, 71.6% 27.5%, 82.3% 28.0%, 89.6% 31.7%, 90.2% 43.7%, 89.2% 55.1%, 86.9% 60.9%, 76.2% 60.9%, 69.4% 55.1%, 64.8% 50.1%, 61.0% 58.4%, 57.9% 63.4%, 48.8% 63.4%, 47.0% 56.8%, 50.3% 48.4%, 48.5% 41.7%); }
+
+/* as lentes (centros em 67,8% / 39,2% e 83% / 37,6% da figura): um brilho corre por cada uma e o halo pulsa */
+.pv .adm-sentinel-lens { position: absolute; width: 12.4%; height: 13.6%; border-radius: 50%; overflow: hidden; box-shadow: 0 0 10px 3px rgba(190, 120, 255, 0.55); animation: adm-sentinel-halo 2.8s ease-in-out infinite; }
+.pv .adm-sentinel-lens[data-lens="l"] { left: 61.6%; top: 32.4%; }
+.pv .adm-sentinel-lens[data-lens="r"] { left: 76.8%; top: 30.8%; animation-delay: 0.25s; }
+.pv .adm-sentinel-lens i { position: absolute; top: -20%; bottom: -20%; left: 0; width: 38%; background: linear-gradient(100deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0)); transform: translateX(-160%) skewX(-18deg); animation: adm-sentinel-shine 3.6s ease-in-out infinite; }
+.pv .adm-sentinel-lens[data-lens="r"] i { animation-delay: 0.2s; }
+
+/* a faísca: estrela de quatro pontas que pisca no canto da lente, uma de cada vez */
+.pv .adm-sentinel-spark { position: absolute; width: 9%; height: 9.8%; margin: -4.9% 0 0 -4.5%; opacity: 0; background: radial-gradient(circle, #fff 0 12%, rgba(255, 255, 255, 0) 14%), linear-gradient(90deg, transparent 38%, #fff 50%, transparent 62%) center / 100% 14% no-repeat, linear-gradient(0deg, transparent 38%, #fff 50%, transparent 62%) center / 14% 100% no-repeat; animation: adm-sentinel-spark 4.5s ease-in-out infinite; }
+.pv .adm-sentinel-spark[data-lens="l"] { left: 64.4%; top: 35.4%; }
+.pv .adm-sentinel-spark[data-lens="r"] { left: 79.6%; top: 33.8%; animation-delay: 2.25s; }
+
+/* anéis que se abrem das lentes (só em alerta) */
+.pv .adm-sentinel-ring { position: absolute; width: 12.4%; height: 13.6%; border-radius: 50%; border: 2px solid #ff3b43; opacity: 0; }
+.pv .adm-sentinel-ring[data-lens="l"] { left: 61.6%; top: 32.4%; }
+.pv .adm-sentinel-ring[data-lens="r"] { left: 76.8%; top: 30.8%; animation-delay: 0.2s !important; }
+
+/* o "!" que pula sobre a cabeça (só em alerta) */
+.pv .adm-sentinel-bang { position: absolute; left: 20%; top: -10%; display: none; width: 22px; height: 22px; border-radius: 999px; background: #ff3b43; color: #fff; font-size: 14px; font-weight: 800; line-height: 22px; text-align: center; box-shadow: 0 0 10px rgba(255, 59, 67, 0.8); }
+
+/* alerta: viu algo — refletor e lentes vermelhos, anéis, o "!" pula, ela se inclina e os binóculos sobem num salto */
+.pv .adm-sentinel[data-state="alert"] .adm-sentinel-spot { background: radial-gradient(closest-side, rgba(255, 59, 67, 0.5), rgba(255, 59, 67, 0)); animation-duration: 1.2s; }
+.pv .adm-sentinel[data-state="alert"] .adm-sentinel-body { animation: adm-sentinel-breathe 1.2s ease-in-out infinite, adm-sentinel-startle var(--t) cubic-bezier(0.34, 1.4, 0.64, 1) infinite; }
+.pv .adm-sentinel[data-state="alert"] .adm-sentinel-optics { animation: adm-sentinel-lift var(--t) cubic-bezier(0.34, 1.4, 0.64, 1) infinite; }
+.pv .adm-sentinel[data-state="alert"] .adm-sentinel-lens { box-shadow: 0 0 12px 4px rgba(255, 59, 67, 0.8); animation-duration: 0.9s; }
+.pv .adm-sentinel[data-state="alert"] .adm-sentinel-ring { animation: adm-sentinel-rings 1.3s ease-out infinite; }
+.pv .adm-sentinel[data-state="alert"] .adm-sentinel-bang { display: block; animation: adm-sentinel-bang var(--t) cubic-bezier(0.34, 1.6, 0.64, 1) infinite; }
+
+@keyframes adm-sentinel-spot { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+@keyframes adm-sentinel-enter { 0% { opacity: 0; transform: translateX(-34px) scale(0.92); } 55% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes adm-sentinel-breathe { 0%, 100% { scale: 1 1; } 50% { scale: 1.006 1.018; } }
+/* ela procura: olha para um lado, segura, para o outro, volta ao centro */
+@keyframes adm-sentinel-turn { 0%, 6% { rotate: -2.6deg; translate: -2px 1px; } 28%, 46% { rotate: 2.4deg; translate: 2px -1px; } 64%, 74% { rotate: -0.6deg; translate: 0 0; } 94%, 100% { rotate: -2.6deg; translate: -2px 1px; } }
+/* foco: avança, ajusta, recua */
+@keyframes adm-sentinel-focus { 0%, 14% { transform: none; } 24% { transform: translate(-1.5px, 0.6px) scale(1.025) rotate(0.8deg); } 30% { transform: translate(-2.2px, 1px) scale(1.04) rotate(-0.4deg); } 36%, 52% { transform: translate(-2px, 0.8px) scale(1.035) rotate(0.3deg); } 60% { transform: translate(0.6px, -0.4px) scale(0.99) rotate(0deg); } 68%, 100% { transform: none; } }
+@keyframes adm-sentinel-hoop { from { rotate: -4deg; } to { rotate: 4deg; } }
+@keyframes adm-sentinel-shine { 0%, 30% { transform: translateX(-160%) skewX(-18deg); } 62%, 100% { transform: translateX(380%) skewX(-18deg); } }
+@keyframes adm-sentinel-halo { 0%, 100% { box-shadow: 0 0 6px 1px rgba(190, 120, 255, 0.4); } 50% { box-shadow: 0 0 14px 4px rgba(190, 120, 255, 0.8); } }
+@keyframes adm-sentinel-spark { 0%, 70%, 100% { opacity: 0; transform: scale(0.2) rotate(0deg); } 80% { opacity: 1; transform: scale(1) rotate(45deg); } 92% { opacity: 0; transform: scale(0.5) rotate(90deg); } }
+/* alerta */
+@keyframes adm-sentinel-startle { 0%, 10% { rotate: -1deg; scale: 1 1; translate: 0 0; } 22% { rotate: 1.5deg; scale: 1.07 1.07; translate: 4px -2px; } 70% { rotate: 1deg; scale: 1.05 1.05; translate: 3px -1px; } 100% { rotate: -1deg; scale: 1 1; translate: 0 0; } }
+@keyframes adm-sentinel-lift { 0%, 10% { transform: none; } 20% { transform: translate(-2px, -5px) scale(1.07) rotate(-3deg); } 28% { transform: translate(-1px, -3px) scale(1.04) rotate(1deg); } 70% { transform: translate(-1px, -3px) scale(1.04) rotate(0deg); } 100% { transform: none; } }
+@keyframes adm-sentinel-rings { 0% { opacity: 0.9; transform: scale(1); } 100% { opacity: 0; transform: scale(2.2); } }
+@keyframes adm-sentinel-bang { 0%, 8% { opacity: 0; transform: translateY(8px) scale(0.2); } 20% { opacity: 1; transform: translateY(-4px) scale(1.25); } 28% { transform: translateY(0) scale(1); } 74% { opacity: 1; transform: translateY(0) scale(1); } 90%, 100% { opacity: 0; transform: translateY(-6px) scale(0.6); } }
+
+@media (max-width: 720px) {
+  .pv .adm-sentinel { display: none; }
+  .pv .isl-x.adm-sec-isl .isl-x-h { min-height: 0; padding: 0 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pv .adm-sentinel *, .pv .adm-sentinel-spot, .pv .adm-sentinel-body { animation: none !important; }
+  .pv .adm-sentinel-mote { display: none; }
+  .pv .adm-sec-isl-t h2, .pv .adm-sec-isl-t p, .pv .adm-sec-isl .isl-segs, .pv .adm-sec-swap, .pv .adm-sec-tools > *, .pv .adm-sec-panel > *, .pv .adm-sec-pill, .pv .adm-sec-isl .isl-seg small, .pv .adm-sec-isl-t h2 i, .pv .isl.isl-x.adm-sec-isl-alert::after { animation: none !important; }
+  .pv .adm-sentinel-spark { display: none; }
+  .pv .adm-sentinel[data-state="alert"] .adm-sentinel-bang { opacity: 1; }
+}

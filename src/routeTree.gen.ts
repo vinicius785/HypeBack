@@ -43,6 +43,7 @@ import { Route as privateadminAdminFinancialRouteImport } from './screens/(priva
 import { Route as privateadminAdminGroupsRouteImport } from './screens/(private)/(admin)/admin.groups'
 import { Route as privateadminAdminHealthRouteImport } from './screens/(private)/(admin)/admin.health'
 import { Route as privateadminAdminNotificationsRouteImport } from './screens/(private)/(admin)/admin.notifications'
+import { Route as privateadminAdminSecurityRouteImport } from './screens/(private)/(admin)/admin.security'
 import { Route as privateadminAdminSupportRouteImport } from './screens/(private)/(admin)/admin.support'
 import { Route as privateadminAdminTeamRouteImport } from './screens/(private)/(admin)/admin.team'
 import { Route as privateadminAdminUsersRouteImport } from './screens/(private)/(admin)/admin.users'
@@ -243,6 +244,12 @@ const privateadminAdminNotificationsRoute =
     path: '/admin/notifications',
     getParentRoute: () => privateadminLayoutRoute,
   } as any)
+const privateadminAdminSecurityRoute =
+  privateadminAdminSecurityRouteImport.update({
+    id: '/admin/security',
+    path: '/admin/security',
+    getParentRoute: () => privateadminLayoutRoute,
+  } as any)
 const privateadminAdminSupportRoute =
   privateadminAdminSupportRouteImport.update({
     id: '/admin/support',
@@ -402,6 +409,7 @@ export interface FileRoutesByFullPath {
   '/admin/groups': typeof privateadminAdminGroupsRouteWithChildren
   '/admin/health': typeof privateadminAdminHealthRoute
   '/admin/notifications': typeof privateadminAdminNotificationsRoute
+  '/admin/security': typeof privateadminAdminSecurityRoute
   '/admin/support': typeof privateadminAdminSupportRoute
   '/admin/team': typeof privateadminAdminTeamRoute
   '/admin/users': typeof privateadminAdminUsersRouteWithChildren
@@ -454,6 +462,7 @@ export interface FileRoutesByTo {
   '/admin/groups': typeof privateadminAdminGroupsRouteWithChildren
   '/admin/health': typeof privateadminAdminHealthRoute
   '/admin/notifications': typeof privateadminAdminNotificationsRoute
+  '/admin/security': typeof privateadminAdminSecurityRoute
   '/admin/support': typeof privateadminAdminSupportRoute
   '/admin/team': typeof privateadminAdminTeamRoute
   '/campaigns/$campaignId': typeof privateappCampaignsCampaignIdRouteWithChildren
@@ -511,6 +520,7 @@ export interface FileRoutesById {
   '/(private)/(admin)/admin/groups': typeof privateadminAdminGroupsRouteWithChildren
   '/(private)/(admin)/admin/health': typeof privateadminAdminHealthRoute
   '/(private)/(admin)/admin/notifications': typeof privateadminAdminNotificationsRoute
+  '/(private)/(admin)/admin/security': typeof privateadminAdminSecurityRoute
   '/(private)/(admin)/admin/support': typeof privateadminAdminSupportRoute
   '/(private)/(admin)/admin/team': typeof privateadminAdminTeamRoute
   '/(private)/(admin)/admin/users': typeof privateadminAdminUsersRouteWithChildren
@@ -567,6 +577,7 @@ export interface FileRouteTypes {
     | '/admin/groups'
     | '/admin/health'
     | '/admin/notifications'
+    | '/admin/security'
     | '/admin/support'
     | '/admin/team'
     | '/admin/users'
@@ -619,6 +630,7 @@ export interface FileRouteTypes {
     | '/admin/groups'
     | '/admin/health'
     | '/admin/notifications'
+    | '/admin/security'
     | '/admin/support'
     | '/admin/team'
     | '/campaigns/$campaignId'
@@ -675,6 +687,7 @@ export interface FileRouteTypes {
     | '/(private)/(admin)/admin/groups'
     | '/(private)/(admin)/admin/health'
     | '/(private)/(admin)/admin/notifications'
+    | '/(private)/(admin)/admin/security'
     | '/(private)/(admin)/admin/support'
     | '/(private)/(admin)/admin/team'
     | '/(private)/(admin)/admin/users'
@@ -944,6 +957,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof privateadminAdminNotificationsRouteImport
       parentRoute: typeof privateadminLayoutRoute
     }
+    '/(private)/(admin)/admin/security': {
+      id: '/(private)/(admin)/admin/security'
+      path: '/admin/security'
+      fullPath: '/admin/security'
+      preLoaderRoute: typeof privateadminAdminSecurityRouteImport
+      parentRoute: typeof privateadminLayoutRoute
+    }
     '/(private)/(admin)/admin/support': {
       id: '/(private)/(admin)/admin/support'
       path: '/admin/support'
@@ -1178,6 +1198,7 @@ interface privateadminLayoutRouteChildren {
   privateadminAdminGroupsRoute: typeof privateadminAdminGroupsRouteWithChildren
   privateadminAdminHealthRoute: typeof privateadminAdminHealthRoute
   privateadminAdminNotificationsRoute: typeof privateadminAdminNotificationsRoute
+  privateadminAdminSecurityRoute: typeof privateadminAdminSecurityRoute
   privateadminAdminSupportRoute: typeof privateadminAdminSupportRoute
   privateadminAdminTeamRoute: typeof privateadminAdminTeamRoute
   privateadminAdminUsersRoute: typeof privateadminAdminUsersRouteWithChildren
@@ -1194,6 +1215,7 @@ const privateadminLayoutRouteChildren: privateadminLayoutRouteChildren = {
   privateadminAdminGroupsRoute: privateadminAdminGroupsRouteWithChildren,
   privateadminAdminHealthRoute: privateadminAdminHealthRoute,
   privateadminAdminNotificationsRoute: privateadminAdminNotificationsRoute,
+  privateadminAdminSecurityRoute: privateadminAdminSecurityRoute,
   privateadminAdminSupportRoute: privateadminAdminSupportRoute,
   privateadminAdminTeamRoute: privateadminAdminTeamRoute,
   privateadminAdminUsersRoute: privateadminAdminUsersRouteWithChildren,

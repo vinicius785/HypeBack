@@ -287,7 +287,7 @@ function isAbortError(error: unknown): boolean {
 // ---------------------------------------------------------------------------
 
 interface RequestInitInternal {
-  method: "GET" | "POST" | "PATCH";
+  method: "GET" | "POST" | "PATCH" | "DELETE";
   path: string;
   query?: AdminQuery;
   body?: unknown;
@@ -455,5 +455,20 @@ export async function adminPatch<T = void>(path: string, body: unknown, options:
     idempotencyKey: options.idempotencyKey,
     signal: options.signal,
   });
+  return (json === undefined ? undefined : asEnvelope(json).data) as T;
+}
+
+/**
+ * POST sem `Idempotency-Key` (rotas que a API não trata como idempotentes, como as da sentinela de segurança). O
+ * corpo é opcional: sem ele nem o `Content-Type` vai.
+ */
+export async function adminPostPlain<T = void>(path: string, body?: unknown, options: AdminRequestOptions = {}): Promise<T> {
+  const json = await request({ method: "POST", path, body, signal: options.signal });
+  return (json === undefined ? undefined : asEnvelope(json).data) as T;
+}
+
+/** DELETE sem corpo e sem `Idempotency-Key`. Devolve o `data` do envelope. */
+export async function adminDelete<T = void>(path: string, options: AdminRequestOptions = {}): Promise<T> {
+  const json = await request({ method: "DELETE", path, signal: options.signal });
   return (json === undefined ? undefined : asEnvelope(json).data) as T;
 }

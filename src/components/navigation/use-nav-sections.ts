@@ -4,7 +4,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { useWorkspaceContext, useWorkspacePermissions } from "@/contexts/workspace-context";
 import { useCampaigns } from "@/hooks/use-campaigns";
 import { useIsClientRole } from "@/hooks/use-is-client-role";
-import { isPlatformStaff } from "@/lib/utils/platform-admin";
+import { useSecuritySummary } from "@/hooks/admin/use-admin-security";
+import { isPlatformAdmin, isPlatformStaff } from "@/lib/utils/platform-admin";
 import { getCampaignStatusValue } from "@/shared/utils/campaign-status";
 
 import { NAV_BY_SCOPE, PLATFORM_SECTION_GROUPS, type NavScope, type VisibleNavSection } from "./nav-config";
@@ -20,6 +21,7 @@ export function useNavSections(scope: NavScope = "workspace") {
   const { pathname } = useLocation();
   const { selectedWorkspace } = useWorkspaceContext();
   const showPlatformStaff = isPlatformStaff(user);
+  const showPlatformAdmin = isPlatformAdmin(user);
   const isAgency = selectedWorkspace?.account_type === "agency";
   const isClient = useIsClientRole();
 
@@ -32,6 +34,8 @@ export function useNavSections(scope: NavScope = "workspace") {
       selectedWorkspace.status !== "suspended" &&
       permissions.campaigns_read,
   });
+  // Alertas novos da sentinela (selo do item Segurança): só o administrador, só no Admin.
+  const security = useSecuritySummary({ enabled: scope === "platform" });
   const activeCampaigns = campaigns.filter((c: { status?: unknown }) => {
     const v = getCampaignStatusValue(c.status);
     return v === "active" || v === "published";
@@ -52,12 +56,16 @@ export function useNavSections(scope: NavScope = "workspace") {
       items: section.items
         .filter((item) => {
           if (item.platformStaffOnly && !showPlatformStaff) return false;
+          if (item.platformAdminOnly && !showPlatformAdmin) return false;
           if (item.agencyOnly && !isAgency) return false;
           if (item.teamOnly && isClient) return false;
           if (item.permission && !permissions[item.permission]) return false;
           return true;
         })
-        .map((item) => ({ ...item, count: item.badge === "activeCampaigns" ? activeCampaigns : undefined })),
+        .map((item) => ({
+          ...item,
+          count: item.badge === "activeCampaigns" ? activeCampaigns : item.badge === "securityAlerts" ? security.data?.unseen : undefined,
+        })),
     }))
     // Seção sem nenhum item visível (ex.: "Administração" para um cliente) não deixa título solto.
     .filter((section) => section.items.length > 0);

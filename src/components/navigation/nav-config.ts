@@ -25,14 +25,16 @@ export interface NavItem {
   permission?: NavPermission;
   /** Só aparece para a equipe da plataforma (admin, suporte ou somente leitura); o backend segue sendo a barreira real (403). */
   platformStaffOnly?: boolean;
+  /** Só aparece para o administrador da plataforma (`platform_role = admin`); suporte e somente leitura não veem. A API segue sendo a barreira (403). */
+  platformAdminOnly?: boolean;
   /** Só aparece quando o workspace selecionado é de agência (`account_type = agency`); o backend responde 403 nos demais. */
   agencyOnly?: boolean;
   /** Área interna da agência: não aparece para o Cliente (papel `cliente`), que só acompanha as campanhas das marcas dele. */
   teamOnly?: boolean;
   /** Atalho fixo da barra inferior do celular; o resto fica na gaveta "Mais". */
   pinned?: boolean;
-  /** Mostra o número de campanhas ativas do workspace como selo. */
-  badge?: "activeCampaigns";
+  /** Selo com número: campanhas ativas do workspace (`activeCampaigns`) ou alertas novos da sentinela (`securityAlerts`, só administrador). */
+  badge?: "activeCampaigns" | "securityAlerts";
 }
 
 export interface NavSection {
@@ -126,7 +128,10 @@ export const PLATFORM_NAV: readonly NavSection[] = [
   {
     id: "administracao",
     label: "Administração",
-    items: [{ id: "team", label: "Equipe", icon: "shield", href: "/admin/team" }],
+    items: [
+      { id: "team", label: "Equipe", icon: "shield", href: "/admin/team" },
+      { id: "security", label: "Segurança", icon: "lock", href: "/admin/security", platformAdminOnly: true, badge: "securityAlerts" },
+    ],
   },
 ];
 
