@@ -18,21 +18,32 @@
 
 /* ───────────────────────── lista ───────────────────────── */
 
-.pv .adm-sec-list { list-style: none; margin: 0; padding: 0; }
-.pv .adm-sec-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 24px; border-top: 1.5px solid var(--line); }
-.pv .adm-sec-row[data-seen="true"] { opacity: 0.6; }
-.pv .adm-sec-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.pv .adm-sec-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.pv .adm-sec-head b { font-size: 15px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
-.pv .adm-sec-who, .pv .adm-sec-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; font-size: 13px; line-height: 1.4; color: var(--adm-text-muted); }
-.pv .adm-sec-who span:first-child:not(.adm-sec-mail) { color: var(--ink); }
-.pv .adm-sec-mail { overflow-wrap: anywhere; }
+/* os alertas usam o cartão de vigiado (.adm-sec-card); aqui só o que é próprio deles */
+.pv .adm-sec-day { grid-column: 1 / -1; margin: 6px 0 -4px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--adm-text-muted); }
+.pv .adm-sec-day:first-child { margin-top: 0; }
+.pv .adm-sec-alert { align-content: start; }
+.pv .adm-sec-alert[data-seen="true"] { background: transparent; }
+.pv .adm-sec-alert[data-seen="true"] > * { opacity: 0.62; }
+.pv .adm-sec-tag { --dot-color: #34d399; }
+.pv .adm-sec-alert .adm-sec-tag-item i { background: var(--dot-color); animation: none; }
+.pv .adm-sec-alert:not([data-seen="true"])[data-severity="high"] .adm-sec-tag-item i { animation: adm-sec-dot 1.6s ease-out infinite; --dot: 255, 90, 95; }
+.pv .adm-sec-alert-title { font-weight: 600; font-size: 14.5px; -webkit-line-clamp: 3; }
+.pv .adm-sec-who, .pv .adm-sec-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; margin: 0; font-size: 13px; line-height: 1.4; color: var(--adm-text-muted); }
 .pv .adm-sec-meta { font-variant-numeric: tabular-nums; }
-.pv .adm-sec-note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
-.pv .adm-sec-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px 16px; flex: none; }
+.pv .adm-sec-chan { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; background: var(--bg); color: var(--ink); font-size: 12px; font-weight: 600; }
+.pv .adm-sec-when { display: inline-flex; align-items: baseline; gap: 6px; }
+.pv .adm-sec-rel::before { content: "·"; margin-right: 6px; }
+.pv .adm-sec-note { margin: 0; padding: 8px 12px; border-left: 3px solid var(--line); border-radius: 0 var(--adm-r-sm) var(--adm-r-sm) 0; background: var(--bg); font-size: 13px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
+.pv .adm-sec-alert-foot { margin-top: auto; padding-top: 14px; border-top: 1.5px solid var(--line); }
+.pv .adm-sec-seen { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--ink); color: #fff; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: transform .2s, opacity .2s; }
+.pv .adm-sec-seen:hover { opacity: 0.86; }
+.pv .adm-sec-seen:active { transform: scale(0.96); }
+.pv .adm-sec-seen:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+
+.pv .adm-sec-more { display: flex; justify-content: center; padding: 0 26px 26px; }
+.pv .adm-sec-more .btn[aria-disabled="true"] { opacity: 0.6; cursor: progress; }
 
 /* ação de risco no Admin: botão de expandir e a lista de detalhes */
-.pv .adm-sec-head { flex-wrap: wrap; }
 .pv .adm-sec-toggle { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .2s; }
 .pv .adm-sec-toggle:hover { background: rgba(5, 5, 5, 0.06); }
 .pv .adm-sec-toggle:focus-visible { outline: none; box-shadow: var(--adm-ring); }
@@ -46,10 +57,7 @@
 
 .pv .adm-sec-privacy { margin: 0; font-size: 13px; line-height: 1.5; color: var(--adm-text-muted); }
 
-@media (max-width: 720px) {
-  .pv .adm-sec-row { flex-direction: column; padding: 16px 20px; }
-  .pv .adm-sec-actions { justify-content: flex-start; }
-}
+
 
 /* ───────────────────────── ferramentas dentro da ilha (filtros, busca, ações) ───────────────────────── */
 
