@@ -218,7 +218,9 @@ export function CreatorsChatTab({ top, request, extra, onExtraChange, onThreadCh
               {recovering
                 ? recovering.phase === "campaigns"
                   ? "Lendo campanhas…"
-                  : `Verificando ${recovering.done}/${recovering.total}`
+                  : recovering.waiting
+                    ? "Aguardando o limite da API…"
+                    : `Verificando ${recovering.done}/${recovering.total}`
                 : "Recuperar conversas antigas"}
             </button>
             {recoveredN !== null && !recovering ? (

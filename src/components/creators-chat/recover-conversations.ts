@@ -1,9 +1,15 @@
 import { getCampaignUsers } from "@/shared/services/campaign-users";
-import { getInfluencerMessages } from "@/shared/services/chat";
+import { RateLimitError, getInfluencerMessages } from "@/shared/services/chat";
 
 import type { Conversation } from "./creators-conversations";
 
 const MAX_CHECKS = 1500;
+/** Poucas consultas ao mesmo tempo e uma pausa entre elas: a API limita as requisições (429). */
+const CONCURRENCY = 2;
+const PAUSE_MS = 150;
+const MAX_RATE_WAITS = 2;
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** Roda `fn` sobre `items` com no máximo `limit` chamadas ao mesmo tempo. */
 async function pool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
@@ -21,6 +27,8 @@ export interface RecoverProgress {
   phase: "campaigns" | "messages";
   done: number;
   total: number;
+  /** A API pediu para esperar (429): a varredura está em pausa. */
+  waiting?: boolean;
 }
 
 /**
@@ -33,7 +41,7 @@ export async function recoverConversations(
 ): Promise<Conversation[]> {
   const targets: Array<{ campaignId: string; campaign: string; userId: string; name: string; avatar?: string }> = [];
   let done = 0;
-  await pool(campaigns, 4, async (c) => {
+  await pool(campaigns, 2, async (c) => {
     try {
       for (const u of await getCampaignUsers(c.id)) {
         if (u.user_id == null) continue;
@@ -48,9 +56,26 @@ export async function recoverConversations(
   const list = targets.slice(0, MAX_CHECKS);
   const found: Conversation[] = [];
   done = 0;
-  await pool(list, 6, async (t) => {
+  let stopped = false;
+  await pool(list, CONCURRENCY, async (t) => {
+    if (stopped) return;
     try {
-      const msgs = await getInfluencerMessages(t.campaignId, t.userId);
+      let msgs: Awaited<ReturnType<typeof getInfluencerMessages>> = [];
+      for (let attempt = 0; ; attempt++) {
+        try {
+          msgs = await getInfluencerMessages(t.campaignId, t.userId);
+          break;
+        } catch (err) {
+          // 429: espera o que a API pediu e tenta de novo; se continuar limitando, para a varredura (o que já veio fica).
+          if (err instanceof RateLimitError && attempt < MAX_RATE_WAITS) {
+            onProgress({ phase: "messages", done, total: list.length, waiting: true });
+            await sleep(err.retryAfterMs);
+            continue;
+          }
+          if (err instanceof RateLimitError) stopped = true;
+          throw err;
+        }
+      }
       if (msgs.length > 0) {
         const last = [...msgs].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))[0];
         found.push({
@@ -69,6 +94,7 @@ export async function recoverConversations(
       // Sem chat com este criador.
     }
     onProgress({ phase: "messages", done: ++done, total: list.length });
+    await sleep(PAUSE_MS);
   });
   return found;
 }
