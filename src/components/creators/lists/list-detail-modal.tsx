@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
 
-import { NET_ICON, NET_LABEL } from "@/components/creators/creator-accounts";
+import { NET_LABEL } from "@/components/creators/creator-accounts";
 import { Av, I } from "@/components/prototype/ui";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreatorCard } from "@/components/creators/creator-card";
@@ -19,7 +19,6 @@ import { ListIndicators } from "./list-indicators";
 import {
   MEMBER_SORTS,
   countLabel,
-  fmtCompact,
   filterAndSortMembers,
   listDateLabel,
   memberStats,
@@ -44,7 +43,7 @@ export function ListDetailModal({ list, canWrite, onClose, onEdit }: Props) {
   const total = detail.data?.influencers_total ?? members.length;
   const reach = useInfluencerListReach(list.id, total);
 
-  const { map: accounts, loading: accountsLoading } = useInfluencerAccountsMap(members.map((m) => m.id));
+  const { map: accounts } = useInfluencerAccountsMap(members.map((m) => m.id));
   const stats = useMemo(() => new Map(members.map((m) => [m.id, memberStats(accounts.get(m.id))])), [members, accounts]);
 
   const [query, setQuery] = useState("");

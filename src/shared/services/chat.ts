@@ -2,6 +2,29 @@ import { getApiUrl, getAuthToken, getWorkspaceId } from "@/lib/utils/api";
 import type { ChatMessage } from "../types";
 import { getCampaignUsers } from "./campaign-users";
 
+/** Limite de requisições (HTTP 429): `retryAfterMs` vem do cabeçalho Retry-After (segundos ou data) quando a API o envia. */
+export class RateLimitError extends Error {
+  readonly status = 429;
+  readonly retryAfterMs: number;
+  constructor(retryAfterMs: number) {
+    super("Muitas requisições. Aguarde um instante e tente de novo.");
+    this.name = "RateLimitError";
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+const DEFAULT_RETRY_AFTER_MS = 30_000;
+const MAX_RETRY_AFTER_MS = 5 * 60_000;
+
+/** Lê o Retry-After (segundos ou data HTTP) em milissegundos, com piso e teto. */
+export function parseRetryAfter(value: string | null | undefined, now = Date.now()): number {
+  if (!value) return DEFAULT_RETRY_AFTER_MS;
+  const secs = Number(value);
+  const ms = Number.isFinite(secs) ? secs * 1000 : new Date(value).getTime() - now;
+  if (!Number.isFinite(ms) || ms <= 0) return DEFAULT_RETRY_AFTER_MS;
+  return Math.min(Math.max(ms, 1000), MAX_RETRY_AFTER_MS);
+}
+
 export interface SendMessageData {
   message: string;
   attachments?: string[];
@@ -80,7 +103,22 @@ export async function getCampaignUserId(
 /**
  * Lista todas as mensagens do chat com o influenciador
  */
-export async function getInfluencerMessages(
+const inFlight = new Map<string, Promise<ChatMessage[]>>();
+
+/**
+ * Lista as mensagens do chat com o influenciador. Não repete a chamada enquanto uma igual está em andamento (quem pedir
+ * junto recebe a mesma resposta) e, em 429, falha com `RateLimitError` para quem chamou esperar antes de tentar de novo.
+ */
+export function getInfluencerMessages(campaignId: string, influencerId: string): Promise<ChatMessage[]> {
+  const key = `${getWorkspaceId()}:${campaignId}:${influencerId}`;
+  const running = inFlight.get(key);
+  if (running) return running;
+  const p = fetchInfluencerMessages(campaignId, influencerId).finally(() => inFlight.delete(key));
+  inFlight.set(key, p);
+  return p;
+}
+
+async function fetchInfluencerMessages(
   campaignId: string,
   influencerId: string
 ): Promise<ChatMessage[]> {
@@ -103,6 +141,10 @@ export async function getInfluencerMessages(
       },
     }
   );
+
+  if (request.status === 429) {
+    throw new RateLimitError(parseRetryAfter(request.headers.get("Retry-After")));
+  }
 
   if (!request.ok) {
     let errorData;
