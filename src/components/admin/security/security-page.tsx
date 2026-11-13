@@ -9,7 +9,7 @@ import type { SecurityAlertStatus } from "@/shared/admin-platform.types";
 
 import { Sentinel } from "./sentinel";
 import { SecurityAlertsTab } from "./security-alerts-tab";
-import { ALERT_FILTERS, KIND_FILTERS, SECURITY_PRIVACY_NOTE, SECURITY_STATUSES, SECURITY_TABS, WATCH_FILTERS, type KindFilter, type SecurityTab, type WatchFilter } from "./security-labels";
+import { ALERT_FILTERS, DEFAULT_WATCH_FILTER, KIND_FILTERS, SECURITY_PRIVACY_NOTE, SECURITY_STATUSES, SECURITY_TABS, WATCH_FILTERS, type KindFilter, type SecurityTab, type WatchFilter } from "./security-labels";
 import { SecurityWatchlistTab } from "./security-watchlist-tab";
 
 import "@/styles/admin-security.css";
@@ -22,7 +22,7 @@ const ALERT_FILTER_DEFS: readonly AdminFilterDef[] = [
 
 /** Filtro da aba Vigiados: o estado da vigilância. */
 const WATCH_FILTER_DEFS: readonly AdminFilterDef[] = [
-  { kind: "select", key: "state", label: "Estado", defaultValue: "all", options: WATCH_FILTERS.map((option) => ({ value: option.id, label: option.label })) },
+  { kind: "select", key: "state", label: "Estado", defaultValue: DEFAULT_WATCH_FILTER, options: WATCH_FILTERS.map((option) => ({ value: option.id, label: option.label })) },
 ];
 
 const TAB_LABEL: Record<SecurityTab, string> = { alerts: "Alertas", watchlist: "Vigiados" };
@@ -37,7 +37,7 @@ export function SecurityPage() {
   const [tab, setTab] = useAdminSearchParam<SecurityTab>("tab", "alerts", SECURITY_TABS);
   const [status, setStatus] = useAdminSearchParam<SecurityAlertStatus>("status", "unseen", SECURITY_STATUSES);
   const summary = useSecuritySummary();
-  const [watchFilter, setWatchFilter] = useState<WatchFilter>("all");
+  const [watchFilter, setWatchFilter] = useState<WatchFilter>(DEFAULT_WATCH_FILTER);
   const [term, setTerm] = useState("");
   const [adding, setAdding] = useState(false);
   const [confirmAll, setConfirmAll] = useState(false);
@@ -147,7 +147,7 @@ export function SecurityPage() {
                 onChange={(patch) => {
                   if (patch.state !== undefined) setWatchFilter(patch.state as WatchFilter);
                 }}
-                onClear={() => setWatchFilter("all")}
+                onClear={() => setWatchFilter(DEFAULT_WATCH_FILTER)}
                 trailing={
                   <button type="button" className="adm-sec-tool" data-primary="true" onClick={() => setAdding(true)}>
                     <I n="plus" cls="sm" />
@@ -168,8 +168,9 @@ export function SecurityPage() {
           term={term}
           adding={adding}
           onAddingChange={setAdding}
+          onShowAll={() => setWatchFilter("all")}
           onClearFilters={() => {
-            setWatchFilter("all");
+            setWatchFilter(DEFAULT_WATCH_FILTER);
             setTerm("");
           }}
         />

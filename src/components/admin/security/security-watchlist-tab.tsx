@@ -21,7 +21,7 @@ import { describeAdminError } from "@/lib/admin/admin-errors";
 import { formatDate, formatRelativeTime } from "@/lib/admin/format";
 import type { SecurityWatch } from "@/shared/admin-platform.types";
 
-import { filterWatchlist, REASON_MAX, REASON_MIN, WATCH_ALREADY_TEXT, type WatchFilter } from "./security-labels";
+import { DEFAULT_WATCH_FILTER, filterWatchlist, REASON_MAX, REASON_MIN, WATCH_ALREADY_TEXT, type WatchFilter } from "./security-labels";
 
 import "@/styles/admin-security.css";
 
@@ -192,12 +192,15 @@ export function SecurityWatchlistTab({
   adding,
   onAddingChange,
   onClearFilters,
+  onShowAll,
 }: {
   filter: WatchFilter;
   term: string;
   adding: boolean;
   onAddingChange: (adding: boolean) => void;
   onClearFilters: () => void;
+  /** Passa o filtro para "Todos" (quando não há nenhum vigiado ativo e só restam os encerrados). */
+  onShowAll: () => void;
 }) {
   const query = useSecurityWatchlist();
   const stop = useStopWatching();
@@ -229,6 +232,20 @@ export function SecurityWatchlistTab({
   else if (query.error) body = <AdminErrorState compact error={query.error} onRetry={() => void query.refetch()} retrying={query.isRefetching} />;
   else if (all.length === 0) {
     body = <AdminEmptyState compact icon="eye" title="Nenhum e-mail vigiado" description="Use “Vigiar e-mail”, na ilha, e a sentinela avisa quando essa conta abrir sessão." />;
+  } else if (list.length === 0 && filter === DEFAULT_WATCH_FILTER && !term.trim()) {
+    body = (
+      <AdminEmptyState
+        compact
+        icon="eye"
+        title="Nenhum vigiado ativo"
+        description="Todos os e-mails da lista já foram encerrados. O histórico está em “Todos”."
+        action={
+          <button type="button" className="btn out adm-btn-sm" onClick={onShowAll}>
+            Ver todos
+          </button>
+        }
+      />
+    );
   } else if (list.length === 0) {
     body = (
       <AdminEmptyState
