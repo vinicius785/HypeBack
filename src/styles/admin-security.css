@@ -40,6 +40,14 @@
 .pv .adm-sec-seen:active { transform: scale(0.96); }
 .pv .adm-sec-seen:focus-visible { outline: none; box-shadow: var(--adm-ring); }
 
+/* alertas de ataque: ícone no lugar da foto, resumo e fonte monoespaçada para IP e rota */
+.pv .adm-sec-attack-ico { flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--adm-bad-bg); color: var(--adm-bad); }
+.pv .adm-sec-alert[data-severity="medium"] .adm-sec-attack-ico { background: var(--adm-warn-bg); color: var(--adm-warn); }
+.pv .adm-sec-alert[data-seen="true"] .adm-sec-attack-ico { background: var(--bg); color: var(--adm-text-muted); }
+.pv .adm-sec-attack-ico .ico { width: 22px; height: 22px; }
+.pv .adm-sec-summary { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--adm-text-muted); overflow-wrap: anywhere; }
+.pv .adm-sec-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.pv code.adm-sec-mono { padding: 1px 6px; border-radius: 6px; background: var(--bg); color: var(--ink); font-size: 12.5px; }
 .pv .adm-sec-more { display: flex; justify-content: center; padding: 0 26px 26px; }
 .pv .adm-sec-more .btn[aria-disabled="true"] { opacity: 0.6; cursor: progress; }
 
