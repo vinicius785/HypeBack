@@ -91,7 +91,7 @@ describe("PLATFORM_NAV (Admin da plataforma)", () => {
           ["Monitoramento", "/admin/activity"],
         ],
       ],
-      ["Administração", [["Equipe", "/admin/team"], ["Segurança", "/admin/security"]]],
+      ["Administração", [["Segurança", "/admin/security"]]],
     ]);
   });
 
@@ -295,7 +295,7 @@ describe("Sidebar (escopo da plataforma, no layout do Admin)", () => {
     render(<Sidebar scope="platform" />);
     const items = within(screen.getByRole("navigation", { name: "Navegação do Admin" }));
     for (const label of ["Início", "Lives", "Backoffice"]) expect(items.queryByRole("button", { name: label })).not.toBeInTheDocument();
-    expect(items.getAllByRole("button")).toHaveLength(10);
+    expect(items.getAllByRole("button")).toHaveLength(9);
     for (const group of ["Visão geral", "Gestão da plataforma", "Operação", "Administração"]) {
       expect(items.getByRole("group", { name: group })).toBeInTheDocument();
     }
@@ -452,9 +452,9 @@ describe("Sidebar (volta ao app: o menu do Admin sai e o do app entra)", () => {
 
   it("a saída conta para trás a partir do 'Voltar ao app': `--n` é a vez dele na cascata", () => {
     render(<Sidebar scope="platform" />);
-    // 13 itens (Segurança incluída, só o administrador) + 4 títulos de grupo + o "Voltar ao app"
-    expect(aside().style.getPropertyValue("--n")).toBe("14");
-    expect(back().style.getPropertyValue("--i")).toBe("14");
+    // 12 itens (Segurança incluída, só o administrador; Equipe é aba de Pessoas) + 4 títulos de grupo + o "Voltar ao app"
+    expect(aside().style.getPropertyValue("--n")).toBe("13");
+    expect(back().style.getPropertyValue("--i")).toBe("13");
   });
 
   it("enquanto o menu sai, outros cliques não navegam e um segundo clique não agenda outra volta", () => {
@@ -538,7 +538,7 @@ describe("Sidebar: item Segurança (só administrador)", () => {
       ctx.user = { name: "Equipe", email: "e@hype.com", platform_role: role };
       const { unmount } = render(<Sidebar scope="platform" />);
       expect(screen.queryByRole("button", { name: "Segurança" })).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Equipe" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Pessoas" })).toBeInTheDocument();
       unmount();
     }
     ctx.user = { name: "Admin", email: "a@hype.com", platform_role: "admin", is_platform_admin: true };

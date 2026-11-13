@@ -88,6 +88,7 @@ export const PLATFORM_SECTION_GROUPS = {
       { label: "Usuários", href: "/admin/users" },
       { label: "Criadores", href: "/admin/creators" },
       { label: "Workspaces", href: "/admin/workspaces" },
+      { label: "Equipe", href: "/admin/team" },
     ],
   },
 } as const;
@@ -129,7 +130,6 @@ export const PLATFORM_NAV: readonly NavSection[] = [
     id: "administracao",
     label: "Administração",
     items: [
-      { id: "team", label: "Equipe", icon: "shield", href: "/admin/team" },
       { id: "security", label: "Segurança", icon: "lock", href: "/admin/security", platformAdminOnly: true, badge: "securityAlerts" },
     ],
   },

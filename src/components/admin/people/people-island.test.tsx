@@ -19,6 +19,7 @@ vi.mock("@/styles/management-board.css", () => ({}));
 vi.mock("@/styles/admin-people.css", () => ({}));
 vi.mock("@/hooks/admin/use-admin-users", () => ({ useAdminUsers: (params: unknown, options?: unknown) => h.users(params, options) }));
 vi.mock("@/hooks/admin/use-admin-workspaces", () => ({ useAdminWorkspaceList: (params: unknown) => h.workspaces(params) }));
+vi.mock("@/hooks/admin/use-admin-team", () => ({ useAdminPlatformTeam: () => ({ data: { members: [{}, {}, {}] } }) }));
 
 import { PeopleIsland } from "./people-island";
 
@@ -52,12 +53,14 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("PeopleIsland (Pessoas)", () => {
-  it("Usuários, Criadores e Workspaces são links com a contagem; o da tela atual é a página", () => {
+  it("Usuários, Criadores, Workspaces e Equipe são links com a contagem; o da tela atual é a página", () => {
     render(<PeopleIsland current="workspaces" />);
     const nav = within(screen.getByRole("navigation", { name: "Pessoas" }));
     expect(nav.getByRole("link", { name: /^Usuários/ })).toHaveAttribute("href", "/admin/users");
     expect(nav.getByRole("link", { name: /^Usuários/ })).toHaveTextContent("120");
-    expect(nav.getAllByRole("link").map((l) => l.textContent?.replace(/\d|\./g, ""))).toEqual(["Usuários", "Criadores", "Workspaces"]);
+    expect(nav.getAllByRole("link").map((l) => l.textContent?.replace(/\d|\./g, ""))).toEqual(["Usuários", "Criadores", "Workspaces", "Equipe"]);
+    expect(nav.getByRole("link", { name: /^Equipe/ })).toHaveAttribute("href", "/admin/team");
+    expect(nav.getByRole("link", { name: /^Equipe/ })).toHaveTextContent("3");
     expect(nav.getByRole("link", { name: /^Criadores/ })).toHaveTextContent("3.874");
     // Criadores é a sua própria aba (a lista de usuários só com criadores), não um filtro
     expect(nav.getByRole("link", { name: /^Criadores/ })).toHaveAttribute("href", "/admin/creators");
@@ -129,6 +132,14 @@ describe("PeopleIsland: números vivos de cada aba", () => {
     expect(novos?.[0]).toMatchObject({ kind: "creator" });
     expect((novos?.[0] as { created_from: string; created_to: string }).created_from).toBe((novos?.[0] as { created_to: string }).created_to);
     expect(h.users.mock.calls.some(([params]) => (params as { trust_max?: number; kind?: string }).trust_max === 2 && (params as { kind?: string }).kind === "creator")).toBe(true);
+  });
+
+  it("Equipe é a quarta aba: fica marcada como a página e não tem número vivo", () => {
+    render(<PeopleIsland current="team" />);
+    const nav = within(screen.getByRole("navigation", { name: "Pessoas" }));
+    expect(nav.getByRole("link", { name: /^Equipe/ })).toHaveAttribute("aria-current", "page");
+    expect(nav.getByRole("link", { name: /^Workspaces/ })).not.toHaveAttribute("aria-current");
+    expect(screen.queryByRole("group", { name: "Agora" })).not.toBeInTheDocument();
   });
 
   it("Workspaces: nenhum número vivo", () => {

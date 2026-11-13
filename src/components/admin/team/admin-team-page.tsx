@@ -12,6 +12,7 @@ import {
   AdminTable,
   type AdminTableColumn,
 } from "@/components/admin/platform";
+import { PeopleIsland } from "@/components/admin/people/people-island";
 import { I } from "@/components/prototype/ui";
 import { useAuth } from "@/contexts/auth-context";
 import { useAdminCapabilities, useAdminPlatformTeam } from "@/hooks/admin/use-admin-team";
@@ -171,8 +172,8 @@ export function AdminTeamPage() {
   return (
     <AdminPage>
       <AdminPageHeader
-        title="Equipe"
-        subtitle="Quem tem acesso ao Admin da plataforma e o que cada pessoa pode fazer."
+        title="Pessoas"
+        subtitle="Quem acessa a plataforma: usuários, criadores, workspaces e a equipe do Admin, com o que cada pessoa pode fazer."
         actions={
           capabilities.isAdmin ? (
             <button type="button" className="btn" disabled={!team} onClick={() => setDialog({})}>
@@ -182,7 +183,9 @@ export function AdminTeamPage() {
         }
       />
 
-      <AdminSection flush title="Pessoas da equipe" description="Contas com algum papel no Admin, da mais antiga para a mais nova.">
+      <PeopleIsland current="team" />
+
+      <AdminSection flush title="Equipe da plataforma" description="Contas com algum papel no Admin, da mais antiga para a mais nova.">
         <AdminTable
           caption="Equipe da plataforma"
           columns={columns}

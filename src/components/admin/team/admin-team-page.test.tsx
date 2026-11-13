@@ -75,10 +75,13 @@ const ROUTES = [{ path: "/admin/team", component: AdminTeamPage }, stubRoute("/a
 
 async function renderPage() {
   const view = renderRoutes(ROUTES, "/admin/team");
-  await screen.findByRole("heading", { level: 1, name: "Equipe" });
+  await screen.findByRole("heading", { level: 1, name: "Pessoas" });
   await screen.findByText("Caio Teodoro");
   return { ...view, user: userEvent.setup() };
 }
+
+/** Buscas de conta feitas pelo seletor (a ilha de Pessoas também chama a API, só para as contagens das abas). */
+const searchCalls = () => mocks.adminList.mock.calls.filter(([, params]) => Boolean((params as { search?: unknown } | undefined)?.search));
 
 const rowOf = (name: string) => screen.getByText(name).closest('[role="row"]') as HTMLElement;
 
@@ -101,7 +104,7 @@ describe("Equipe: papéis e pessoas", () => {
   it("enquanto a equipe carrega, o bloco de papéis é um esqueleto e o erro da tabela não troca a página", async () => {
     mocks.adminGet.mockImplementation(() => new Promise(() => undefined));
     const { container } = renderRoutes(ROUTES, "/admin/team");
-    await screen.findByRole("heading", { level: 1, name: "Equipe" });
+    await screen.findByRole("heading", { level: 1, name: "Pessoas" });
     expect(container.querySelector(".adm-team-roles-skel")).toBeInTheDocument();
     // uma só região de status para o carregamento (a da tabela)
     expect(screen.getAllByRole("status")).toHaveLength(1);
@@ -239,7 +242,7 @@ describe("Equipe: adicionar pessoa", () => {
     expect(pill).not.toHaveTextContent("Todos");
     expect(within(dialog).queryByText(new RegExp(`pelo menos ${TEAM_SEARCH_MIN} letras`))).not.toBeInTheDocument();
     expect(within(dialog).queryByRole("button", { name: /Limpar/ })).not.toBeInTheDocument();
-    expect(mocks.adminList).not.toHaveBeenCalled();
+    expect(searchCalls()).toHaveLength(0);
 
     await user.click(pill);
     const search = await screen.findByRole("combobox", { name: "Buscar conta" });
@@ -249,7 +252,7 @@ describe("Equipe: adicionar pessoa", () => {
     expect(screen.queryByText("Nenhuma conta ativa encontrada")).not.toBeInTheDocument();
     await user.type(search, "b");
     expect(screen.getAllByText(`Digite pelo menos ${TEAM_SEARCH_MIN} letras`).length).toBeGreaterThan(0);
-    expect(mocks.adminList).not.toHaveBeenCalled();
+    expect(searchCalls()).toHaveLength(0);
     await user.type(search, "ia");
     const option = await screen.findByRole("option", { name: /Bia Santos/ });
     expect(mocks.adminList).toHaveBeenCalledWith(
@@ -331,7 +334,7 @@ describe("Equipe: sem permissão de administrador", () => {
     renderRoutes(ROUTES, "/admin/team");
     // o erro é da tabela, inline: a página (título e ação) continua, e os papéis não aparecem sem dados
     expect(await screen.findByRole("button", { name: /Tentar de novo|Tentar novamente/ })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1, name: "Equipe" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Pessoas" })).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Equipe da plataforma" })).toBeInTheDocument();
     expect(screen.queryByText("O que cada papel pode fazer")).not.toBeInTheDocument();
   });
