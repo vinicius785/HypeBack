@@ -1,6 +1,6 @@
 import type { Influencer } from "@/shared/types";
 import type { CampaignManagementParticipant } from "@/shared/services/campaign-management";
-import { mapUserStatusToKanbanColumn } from "./management-status-map";
+import { boardColumnOf, mapUserStatusToKanbanColumn } from "./management-status-map";
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -38,6 +38,11 @@ export interface ExtendedInfluencer extends Omit<Influencer, "id" | "user_id"> {
 // Configuração das colunas do Kanban
 // ---------------------------------------------------------------------------
 
+/**
+ * Catálogo de STATUS (granularidade fina): cada status que o cartão pode ter, com o rótulo antigo. O quadro de Gerenciamento
+ * NÃO usa este catálogo para desenhar colunas (ver `boardColumns`); ele serve de vocabulário de status (o Admin o lê para dar
+ * nome aos status de participação).
+ */
 export const kanbanColumns = [
   { id: "applications", label: "Inscrições", color: "bg-[#f5f5f5]" },
   { id: "pre_selection", label: "Pré-seleção", color: "bg-[#faf5ff]" },
@@ -67,7 +72,34 @@ export type KanbanColumn = {
   label: string;
   color: string;
   highlight?: boolean;
+  /** Nunca recolhe, nem vazia (Inscrições e Recusados). */
+  alwaysOpen?: boolean;
 };
+
+/**
+ * Colunas do QUADRO de Gerenciamento (só apresentação). Cada uma reúne um ou mais status (`boardColumnOf`, mapa no
+ * `management-status-map.ts`); o cartão continua com o status que a API gravou. Os ids reaproveitam os de antes: o id de uma
+ * coluna é também o status "principal" gravado ao soltar um cartão nela.
+ */
+export const boardColumns: readonly KanbanColumn[] = [
+  { id: "applications", label: "Inscrições", color: "bg-[#f5f5f5]", alwaysOpen: true },
+  { id: "pre_selection", label: "Pré-seleção", color: "bg-[#faf5ff]" },
+  { id: "curation", label: "Curadoria", color: "bg-[#f0f6ff]" },
+  { id: "invited", label: "Convidados", color: "bg-[#fdfce9]" },
+  { id: "price_proposed", label: "Proposta enviada", color: "bg-[#f5f3ff]" },
+  { id: "price_countered", label: "Contraproposta recebida", color: "bg-[#fff1f2]", highlight: true },
+  { id: "contract_pending", label: "Contrato pendente", color: "bg-[#f1fdfa]" },
+  { id: "approved", label: "Aprovado (aguardando roteiro)", color: "bg-[#f1fdf4]" },
+  { id: "script_pending", label: "Roteiro", color: "bg-[#eff2ff]" },
+  { id: "awaiting_shipment", label: "Aguardando envio", color: "bg-[#fff7ed]" },
+  { id: "awaiting_receipt", label: "Aguardando recebimento", color: "bg-[#fef3c7]" },
+  { id: "content_pending", label: "Gravando", color: "bg-[#fefbeb]" },
+  { id: "pending_approval", label: "Revisão do conteúdo", color: "bg-[#fef7ed]" },
+  { id: "content_approved", label: "Pronto para publicar", color: "bg-[#faf5ff]" },
+  { id: "payment_pending", label: "Aguardando pagamento", color: "bg-[#eefeff]" },
+  { id: "published", label: "Concluído", color: "bg-[#f1fdf5]" },
+  { id: "rejected", label: "Recusados", color: "bg-[#fdf2f2]", highlight: true, alwaysOpen: true },
+];
 
 /**
  * Colunas exclusivas do fluxo de permuta (envio físico de produto).
@@ -86,8 +118,8 @@ export function getKanbanColumnsForPaymentType(
   paymentType?: string | null,
 ): readonly KanbanColumn[] {
   const isSwap = paymentType === "swap" || paymentType === "exchange";
-  if (isSwap) return kanbanColumns;
-  return kanbanColumns.filter((c) => !SHIPMENT_COLUMN_IDS.has(c.id));
+  if (isSwap) return boardColumns;
+  return boardColumns.filter((c) => !SHIPMENT_COLUMN_IDS.has(c.id));
 }
 
 /**
@@ -120,8 +152,8 @@ export function resolveParticipantColumnId(
 
 /**
  * Garante que nenhum card desapareça do Kanban: parte das colunas da modalidade
- * (`getKanbanColumnsForPaymentType`) e RE-INCLUI qualquer coluna do catálogo
- * completo que tenha ao menos um participante — por exemplo, uma etapa de envio
+ * (`getKanbanColumnsForPaymentType`) e RE-INCLUI qualquer coluna do quadro
+ * completo (`boardColumns`) que tenha ao menos um participante — por exemplo, uma etapa de envio
  * ocupada numa campanha que deixou de ser permuta. Preserva a ordem do catálogo.
  */
 export function getVisibleKanbanColumns(
@@ -135,13 +167,14 @@ export function getVisibleKanbanColumns(
   if (!participants?.length) return base;
 
   const baseIds = new Set(base.map((c) => c.id));
-  const occupied = new Set(participants.map(resolveParticipantColumnId));
-  const hasHiddenOccupied = kanbanColumns.some(
+  // Ocupação pela coluna do quadro (um status secundário ocupa a coluna que o reúne).
+  const occupied = new Set(participants.map((p) => boardColumnOf(resolveParticipantColumnId(p))));
+  const hasHiddenOccupied = boardColumns.some(
     (c) => !baseIds.has(c.id) && occupied.has(c.id),
   );
   if (!hasHiddenOccupied) return base;
 
-  return kanbanColumns.filter((c) => baseIds.has(c.id) || occupied.has(c.id));
+  return boardColumns.filter((c) => baseIds.has(c.id) || occupied.has(c.id));
 }
 
 // ---------------------------------------------------------------------------

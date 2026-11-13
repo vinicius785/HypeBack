@@ -1,5 +1,4 @@
 import { Av, I } from "@/components/prototype/ui";
-import { SocialHandle } from "@/components/social-handle";
 import { useInfluencerProfile } from "@/hooks/use-influencer-profile";
 import type { ExtendedInfluencer } from "../management-kanban-config";
 
@@ -29,40 +28,37 @@ export function PanelProfile({ inf, influencerId, onProfile, onChat }: Props) {
 
   return (
     <aside className="mgp-prof" aria-label="Resumo do perfil">
-      <div className="mgp-ptop">
+      <div className="mgp-hero">
         <div className="mgp-ph">
-          <Av name={inf.name} src={p?.avatar || inf.avatar} size={100} />
+          <Av name={inf.name} src={p?.avatar || inf.avatar} size={240} />
         </div>
-        <div className="mgp-pid">
+        <div className="mgp-shade">
           <div className="mgp-pn">
             <strong>{inf.name}</strong>
             {inf.isExternal ? <em className="ext">Externo</em> : null}
           </div>
-          <p className="mgp-pu" title={inf.username ? `@${inf.username}` : undefined}>
-            {inf.username ? <SocialHandle username={inf.username} network={inf.socialNetwork ?? inf.social_networks?.[0]?.type} /> : "Sem usuário"}
-          </p>
+          <ul className="mgp-pc" aria-label="Destaques do perfil">
+            <li className={hasRating ? "rt" : "rt none"}>
+              <I n="star" cls="sm" />
+              {hasRating ? (
+                <>
+                  <b>{ratingFmt(p.rating as number)}</b>
+                  <span>de {ratingFmt(p.rating_max ?? 5)}</span>
+                </>
+              ) : (
+                <span>Sem avaliação</span>
+              )}
+            </li>
+            {niche ? <li>{niche}</li> : null}
+            {place ? (
+              <li>
+                <I n="pin" cls="sm" />
+                {place}
+              </li>
+            ) : null}
+          </ul>
         </div>
       </div>
-      <ul className="mgp-pc" aria-label="Destaques do perfil">
-        <li className={hasRating ? "rt" : "rt none"}>
-          <I n="star" cls="sm" />
-          {hasRating ? (
-            <>
-              <b>{ratingFmt(p.rating as number)}</b>
-              <span>de {ratingFmt(p.rating_max ?? 5)}</span>
-            </>
-          ) : (
-            <span>Sem avaliação</span>
-          )}
-        </li>
-        {niche ? <li>{niche}</li> : null}
-        {place ? (
-          <li>
-            <I n="pin" cls="sm" />
-            {place}
-          </li>
-        ) : null}
-      </ul>
       <div className="mgp-pbtns">
         <button type="button" className="btn out" onClick={onChat}>
           <I n="msg" cls="sm" />

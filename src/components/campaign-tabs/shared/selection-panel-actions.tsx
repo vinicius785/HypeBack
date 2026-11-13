@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SocialNetworkIcon } from "@/components/social-network-icon";
 import { SocialHandle } from "@/components/social-handle";
 import { toast } from "sonner";
 
@@ -238,9 +239,14 @@ export function SelectionPanelActions({
             <div className="kb2-fold kb2-idle" inert={mode !== "idle"} aria-hidden={mode !== "idle"}>
               <div className="kb2-fi">
                 <div className="kb2-prof-h">
+                  {row.type ? (
+                    <span className="kb2-ic" aria-hidden>
+                      <SocialNetworkIcon networkType={row.type} size={18} color="#fff" />
+                    </span>
+                  ) : null}
                   <b>{row.label}</b>
                   <small title={`@${row.username}`}>
-                    <SocialHandle username={row.username} network={row.type} />
+                    <SocialHandle username={row.username} network={row.type} withIcon />
                   </small>
                   {row.type ? (
                     <span className="kb2-st">

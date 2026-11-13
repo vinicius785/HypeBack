@@ -1,5 +1,6 @@
 import type { KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from "react";
 
+import { I } from "@/components/prototype/ui";
 import { getNetworkLabel, getSocialNetworkProfileUrl } from "@/shared/constants/network-labels";
 
 import "@/styles/social-handle.css";
@@ -30,6 +31,8 @@ interface SocialHandleProps {
   className?: string;
   /** O que mostrar no lugar de `@usuário` (padrão: o próprio @). */
   children?: ReactNode;
+  /** Mostra o ícone de "abrir em nova aba" depois do @ (quando é link). */
+  withIcon?: boolean;
 }
 
 /**
@@ -37,7 +40,7 @@ interface SocialHandleProps {
  * mandar a página de origem); sem rede, ou com um @ estranho, continua sendo só o texto. Dentro de cartões clicáveis ou arrastáveis,
  * o clique no @ não aciona o cartão (`stopPropagation`).
  */
-export function SocialHandle({ username, network, className, children }: SocialHandleProps) {
+export function SocialHandle({ username, network, className, children, withIcon }: SocialHandleProps) {
   const handle = cleanHandle(username);
   if (!handle) return null;
   const text = children ?? `@${handle}`;
@@ -57,6 +60,7 @@ export function SocialHandle({ username, network, className, children }: SocialH
       onKeyDown={stop}
     >
       {text}
+      {withIcon ? <I n="external" cls="sm social-handle-ic" /> : null}
     </a>
   );
 }

@@ -11,6 +11,7 @@ import {
   useSensor,
   useSensors,
   useDroppable,
+  MeasuringStrategy,
 } from "@dnd-kit/core";
 import type {
   DragStartEvent,
@@ -25,8 +26,9 @@ import { Modal } from "@/components/ui/modal";
 import { Avatar } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/text-area";
 import type { CampaignManagementParticipant } from "@/shared/services/campaign-management";
-import { mapUserStatusToKanbanColumn } from "./management-status-map";
+import { boardColumnOf, mapUserStatusToKanbanColumn } from "./management-status-map";
 import { I } from "@/components/prototype/ui";
+import { isNegotiationColumn, sortByWait, waitSummary } from "./kanban/negotiation-wait";
 import {
   DragOverlayCard,
   SortableInfluencerCard,
@@ -52,8 +54,9 @@ import "@/styles/management-board.css";
 import "@/styles/kanban-reject-zone.css";
 import {
   ACTION_TARGET,
+  BOARD_LABEL,
   COLUMN_LABEL,
-  HOT_COLUMNS,
+  isHotBoardColumn,
   LATE_AFTER_DAYS,
   LATE_COLUMNS,
   NEEDME,
@@ -173,20 +176,32 @@ function KanbanColumn({
   /** Quantos criadores desta coluna os filtros escondem (some do quadro, não fica esmaecido). */
   hiddenCount: number;
   handlers: CardHandlers;
+  /** Coluna vazia fora do arrasto: vira uma faixa fina (nome + 0). Ao arrastar um cartão ela se expande para receber. */
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
+  const title = BOARD_LABEL[column.id] ?? COLUMN_LABEL[column.id] ?? column.label;
+  // Quem tem a vez: Roteiro/Revisão chamam atenção quando há criador ajustando (status secundário dentro da coluna).
+  const hot = isHotBoardColumn(column.id, influencers.map((inf) => getCurrentStatus(inf)));
+  // Negociação de valor: quantos esperam há 7 dias ou mais (a lista já vem do mais antigo para o mais novo).
+  const waits = isNegotiationColumn(column.id) && influencers.length > 0 ? waitSummary(influencers) : null;
 
   return (
     <section
       ref={setNodeRef}
       data-col={column.id}
-      aria-label={`${COLUMN_LABEL[column.id] ?? column.label}: ${influencers.length}`}
-      className={`kcol ${HOT_COLUMNS.includes(column.id) ? "hot" : ""} ${isOver ? "over" : ""} ${dropState ? `drop-${dropState}` : ""}`}
+      aria-label={`${title}: ${influencers.length}`}
+      className={`kcol ${hot ? "hot" : ""} ${isOver ? "over" : ""} ${dropState ? `drop-${dropState}` : ""}`}
     >
       <header>
-        <h4>{COLUMN_LABEL[column.id] ?? column.label}</h4>
+        <h4>{title}</h4>
         <span className={influencers.length === 0 ? "zero" : ""}>{influencers.length}</span>
       </header>
+      {waits ? (
+        <p className="kcol-wait" data-over={waits.overdue > 0 ? "true" : undefined}>
+          {waits.total} esperando
+          {waits.overdue > 0 ? <b> · {waits.overdue} há mais de 7 dias</b> : null}
+        </p>
+      ) : null}
       <SortableContext items={influencerIds} strategy={verticalListSortingStrategy}>
         <div className="kl">
           {influencers.map((influencer) => (
@@ -513,11 +528,11 @@ export function ManagementTab({
     return "applications";
   };
 
+  // `status` é o id de uma COLUNA do quadro: ela reúne os status que `boardColumnOf` manda para ela (o cartão segue com o seu
+  // status; só aparece na coluna reunida). Nas negociações de valor o mais antigo fica no topo.
   const getInfluencersByStatus = (status: string) => {
-    return extendedInfluencers.filter((inf) => {
-      const currentStatus = getCurrentStatus(inf);
-      return currentStatus === status;
-    });
+    const inColumn = extendedInfluencers.filter((inf) => boardColumnOf(getCurrentStatus(inf)) === status);
+    return isNegotiationColumn(status) ? sortByWait(inColumn) : inColumn;
   };
 
   const updateInfluencerStatus = (
@@ -623,8 +638,9 @@ export function ManagementTab({
   };
 
   const getStatusLabel = (status: string) => {
+    // Status fino (ex.: pre_selection_curation) tem rótulo próprio; a coluna do quadro dá o nome dos demais.
     const column = kanbanColumns.find((col) => col.id === status);
-    return column?.label || status;
+    return COLUMN_LABEL[status] ?? column?.label ?? status;
   };
 
   const getSocialNetworkIcon = (network?: string) => {
@@ -710,15 +726,16 @@ export function ManagementTab({
       kanbanColumns.map((col) => col.id),
       (cardId) => {
         const card = extendedInfluencers.find((inf) => inf.id === cardId);
-        return card ? getCurrentStatus(card) : undefined;
+        return card ? boardColumnOf(getCurrentStatus(card)) : undefined;
       },
     );
     const targetColumn = kanbanColumns.find((col) => col.id === targetColumnId);
     if (targetColumn) {
       const currentStatus = getCurrentStatus(draggedInfluencer);
       const targetStatus = targetColumn.id;
-      // Solto sobre um cartão da mesma coluna: é só reordenar, não há movimento nem erro.
-      if (currentStatus === targetStatus) return;
+      // Solto na mesma coluna (sobre um cartão dela, ou com o cartão num status secundário que ela reúne): é só reordenar, não há
+      // movimento nem erro. Ao soltar numa coluna que reúne vários status grava-se o status PRINCIPAL dela (o id da coluna).
+      if (boardColumnOf(currentStatus) === targetStatus) return;
 
 
       // Verifica se é um usuário da campanha
@@ -1077,7 +1094,8 @@ export function ManagementTab({
   const dropStateFor = (colId: string): "ok" | "no" | undefined => {
     if (!draggedInf) return undefined;
     const from = getCurrentStatus(draggedInf);
-    if (from === colId) return undefined;
+    // Já está nesta coluna (inclusive num status secundário que ela reúne): não há movimento.
+    if (boardColumnOf(from) === colId) return undefined;
     return validateUserStatusTransition(from, colId) ? "ok" : "no";
   };
 
@@ -1467,6 +1485,8 @@ export function ManagementTab({
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCorners}
+                  // As colunas vazias se expandem ao começar o arrasto: as áreas de soltar mudam de lugar, então são medidas sempre.
+                  measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
                   onDragStart={handleDragStart}
                   onDragOver={handleDragOver}
                   onDragEnd={handleDragEnd}
@@ -1488,7 +1508,7 @@ export function ManagementTab({
                   >
                     {groups.map((g) => {
                       const tot = extendedInfluencers.filter(
-                        (i) => g.cols.includes(getCurrentStatus(i)) && !isDimmed(i),
+                        (i) => g.cols.includes(boardColumnOf(getCurrentStatus(i))) && !isDimmed(i),
                       ).length;
                       return (
                         <div
