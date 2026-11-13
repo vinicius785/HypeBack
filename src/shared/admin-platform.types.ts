@@ -1365,6 +1365,79 @@ export interface SignupWaveAlert extends SecurityAlertBase {
   details: { count: number; window_minutes: number };
 }
 
+/** Chute de código: muitos códigos errados para um e-mail. `user` é a conta ALVO (null se o e-mail não tem conta). */
+export interface AttackCodeGuessingAlert extends SecurityAlertBase {
+  kind: 'attack_code_guessing';
+  details: {
+    /** E-mail mascarado do alvo. */
+    target: string;
+    count: number;
+    distinct_ips: number;
+    window_minutes: number;
+    last_status: number;
+    last_path: string;
+  };
+}
+
+/** Volume anormal de chamadas. `user` é a conta que fez as chamadas. */
+export interface AttackVolumeAlert extends SecurityAlertBase {
+  kind: 'attack_volume';
+  details: {
+    ip: string | null;
+    count: number;
+    window_minutes: number;
+    /** Conta com menos de 48 h. */
+    new_account: boolean;
+    last_path: string;
+  };
+}
+
+/** Varredura de dados: a conta leu muitos registros diferentes numa rota. `user` é a conta que fez a varredura. */
+export interface AttackEnumerationAlert extends SecurityAlertBase {
+  kind: 'attack_enumeration';
+  details: {
+    ip: string | null;
+    distinct_ids: number;
+    window_minutes: number;
+    route: string;
+  };
+}
+
+/** Onda de tentativas bloqueadas de rede anônima (Tor/VPN). Sem `user`. */
+export interface AttackAnonymizerWaveAlert extends SecurityAlertBase {
+  kind: 'attack_anonymizer_wave';
+  details: {
+    count: number;
+    window_minutes: number;
+    last_path: string;
+  };
+}
+
+/** Tentativas de redefinir a senha de uma conta da equipe (ou de um e-mail vigiado). `user` é a conta visada (null se for só um e-mail vigiado sem conta). */
+export interface StaffResetAttemptAlert extends SecurityAlertBase {
+  kind: 'staff_reset_attempt';
+  details: {
+    /** E-mail mascarado da conta visada. */
+    target: string;
+    staff: boolean;
+    watched: boolean;
+    attempts: number;
+    distinct_ips: number;
+    ips: string[];
+    paths: string[];
+  };
+}
+
+/** Vários cadastros novos do mesmo domínio de e-mail. Sem `user`. */
+export interface SignupDomainClusterAlert extends SecurityAlertBase {
+  kind: 'signup_domain_cluster';
+  details: {
+    domain: string;
+    count: number;
+    window_minutes: number;
+  };
+}
+
 /** Tipo que esta versão do painel ainda não conhece: mostra só o título e a pessoa, sem detalhes. */
 export interface UnknownSecurityAlert extends SecurityAlertBase {
   kind: string & {};
@@ -1378,6 +1451,12 @@ export type SecurityAlert =
   | AttackIpDeniedAlert
   | AttackUserProbingAlert
   | SignupWaveAlert
+  | AttackCodeGuessingAlert
+  | AttackVolumeAlert
+  | AttackEnumerationAlert
+  | AttackAnonymizerWaveAlert
+  | StaffResetAttemptAlert
+  | SignupDomainClusterAlert
   | UnknownSecurityAlert;
 
 export function isAdminActionAlert(alert: SecurityAlert): alert is AdminActionAlert {
@@ -1398,6 +1477,30 @@ export function isAttackUserProbingAlert(alert: SecurityAlert): alert is AttackU
 
 export function isSignupWaveAlert(alert: SecurityAlert): alert is SignupWaveAlert {
   return alert.kind === 'signup_wave';
+}
+
+export function isAttackCodeGuessingAlert(alert: SecurityAlert): alert is AttackCodeGuessingAlert {
+  return alert.kind === 'attack_code_guessing';
+}
+
+export function isAttackVolumeAlert(alert: SecurityAlert): alert is AttackVolumeAlert {
+  return alert.kind === 'attack_volume';
+}
+
+export function isAttackEnumerationAlert(alert: SecurityAlert): alert is AttackEnumerationAlert {
+  return alert.kind === 'attack_enumeration';
+}
+
+export function isAttackAnonymizerWaveAlert(alert: SecurityAlert): alert is AttackAnonymizerWaveAlert {
+  return alert.kind === 'attack_anonymizer_wave';
+}
+
+export function isStaffResetAttemptAlert(alert: SecurityAlert): alert is StaffResetAttemptAlert {
+  return alert.kind === 'staff_reset_attempt';
+}
+
+export function isSignupDomainClusterAlert(alert: SecurityAlert): alert is SignupDomainClusterAlert {
+  return alert.kind === 'signup_domain_cluster';
 }
 
 export type SecurityAlertStatus = 'unseen' | 'all';

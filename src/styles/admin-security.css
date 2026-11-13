@@ -34,7 +34,7 @@
 .pv .adm-sec-when { display: inline-flex; align-items: baseline; gap: 6px; }
 .pv .adm-sec-rel::before { content: "·"; margin-right: 6px; }
 .pv .adm-sec-note { margin: 0; padding: 8px 12px; border-left: 3px solid var(--line); border-radius: 0 var(--adm-r-sm) var(--adm-r-sm) 0; background: var(--bg); font-size: 13px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
-.pv .adm-sec-alert-foot { margin-top: auto; padding-top: 14px; border-top: 1.5px solid var(--line); }
+.pv .adm-sec-alert-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: auto; padding-top: 14px; border-top: 1.5px solid var(--line); }
 .pv .adm-sec-seen { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--ink); color: #fff; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: transform .2s, opacity .2s; }
 .pv .adm-sec-seen:hover { opacity: 0.86; }
 .pv .adm-sec-seen:active { transform: scale(0.96); }
@@ -48,6 +48,20 @@
 .pv .adm-sec-summary { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--adm-text-muted); overflow-wrap: anywhere; }
 .pv .adm-sec-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
 .pv code.adm-sec-mono { padding: 1px 6px; border-radius: 6px; background: var(--bg); color: var(--ink); font-size: 12.5px; }
+/* etiquetas sob o resumo e botão secundário do rodapé */
+.pv .adm-sec-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.pv .adm-sec-pillchip { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; background: var(--bg); color: var(--ink); font-size: 12px; font-weight: 600; }
+.pv .adm-sec-pillchip[data-tone="warn"] { background: var(--adm-warn-bg); color: var(--adm-warn); }
+.pv .adm-sec-pillchip[data-tone="bad"] { background: var(--adm-bad-bg); color: var(--adm-bad); }
+.pv .adm-sec-secondary { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; box-shadow: inset 0 0 0 1.5px var(--line); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: box-shadow .2s, transform .2s; }
+.pv .adm-sec-secondary:hover { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.pv .adm-sec-secondary:active { transform: scale(0.96); }
+.pv .adm-sec-secondary:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+.pv .adm-sec-plain-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.pv .adm-sec-details > div[data-wide="true"] { grid-column: 1 / -1; }
+/* conta da equipe visada: sempre vermelho enquanto não visto */
+.pv .adm-sec-alert[data-critical="true"] { border-color: var(--adm-bad); box-shadow: inset 0 0 0 1px var(--adm-bad); background: var(--adm-bad-bg); }
+.pv .adm-sec-alert[data-critical="true"] .adm-sec-tag-item i { animation: adm-sec-dot 1.2s ease-out infinite; --dot: 255, 90, 95; }
 .pv .adm-sec-more { display: flex; justify-content: center; padding: 0 26px 26px; }
 .pv .adm-sec-more .btn[aria-disabled="true"] { opacity: 0.6; cursor: progress; }
 
@@ -76,14 +90,8 @@
 .pv .adm-sec-tools > :nth-child(3) { animation-delay: 0.12s; }
 @keyframes adm-sec-tool-in { from { opacity: 0; transform: translateY(10px) scale(0.98); } }
 .pv .adm-sec-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
-.pv .adm-sec-filter { display: inline-flex; flex-wrap: wrap; gap: 8px; }
-/* dois grupos de filtro lado a lado (Novos/Todos e o tipo): uma linha fina separa um do outro */
-.pv .adm-sec-filter + .adm-sec-filter { margin-left: 4px; padding-left: 16px; border-left: 1px solid rgba(255, 255, 255, 0.16); }
-.pv .adm-sec-search { position: relative; display: block; flex: 1 1 220px; max-width: 340px; }
-.pv .adm-sec-search .ico { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: rgba(255, 255, 255, 0.55); pointer-events: none; }
-.pv .adm-sec-search input { width: 100%; height: 36px; border: 0; outline: 0; border-radius: 999px; padding: 0 14px 0 38px; background: rgba(255, 255, 255, 0.1); color: #fff; font: inherit; font-size: 13.5px; transition: background .2s, box-shadow .2s; }
-.pv .adm-sec-search input::placeholder { color: rgba(255, 255, 255, 0.5); }
-.pv .adm-sec-search input:focus { background: rgba(255, 255, 255, 0.16); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85); }
+/* aqui o botão de filtro é o primeiro da linha (sem busca à esquerda): o painel abre para a direita dele, não para a esquerda */
+.pv .adm-sec-tools .adm-filters-panel[data-compact="true"] { left: 0; right: auto; }
 .pv .adm-sec-tool { display: inline-flex; align-items: center; gap: 7px; height: 36px; margin-left: auto; padding: 0 16px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.12); color: #fff; font: inherit; font-size: 13.5px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background .2s, transform .2s, opacity .2s; }
 .pv .adm-sec-tool:hover:not(:disabled) { background: rgba(255, 255, 255, 0.22); }
 .pv .adm-sec-tool:active:not(:disabled) { transform: scale(0.96); }
@@ -142,7 +150,6 @@
 /* ───────────────────────── sentinela (de binóculos, dentro da ilha) ───────────────────────── */
 
 /* a ilha de Segurança é mais alta que as outras: a sentinela mora dentro dela, no canto direito */
-.pv .isl.isl-x.adm-sec-isl { overflow: hidden; }
 .pv .isl-x.adm-sec-isl .isl-x-h { min-height: 156px; padding: 0 0 0 24px; align-items: stretch; }
 .pv .isl-x.adm-sec-isl .isl-x-end { align-items: flex-end; }
 /* o brilho de fundo: duas camadas que se dissolvem uma na outra (roxa em calma, vermelha em alerta) em vez de trocar de repente */
@@ -196,7 +203,7 @@
 .pv .isl-x.adm-sec-isl .isl-seg[aria-pressed="true"] { background: #fff; color: #0a0a0b; }
 .pv .isl-x.adm-sec-isl .isl-seg[aria-pressed="true"] i { background: #0a0a0b; }
 .pv .isl-x.adm-sec-isl .isl-seg small { min-width: 18px; padding: 0 6px; border-radius: 99px; background: #ff3b43; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; }
-.pv .adm-sentinel { --s-h: 156px; --t: 9s; position: relative; flex: none; width: calc(var(--s-h) * 656 / 599); height: var(--s-h); margin-left: 16px; pointer-events: none; }
+.pv .adm-sentinel { --s-h: 156px; --t: 9s; position: relative; flex: none; width: calc(var(--s-h) * 656 / 599); height: var(--s-h); margin-left: 16px; pointer-events: none; clip-path: inset(0 0 0 -80px round 0 0 32px 0); }
 .pv .adm-sentinel[data-state="alert"] { --t: 2.8s; }
 
 .pv .adm-sentinel-flip { position: absolute; inset: 0; display: block; transform: scaleX(-1); }

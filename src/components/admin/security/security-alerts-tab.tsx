@@ -17,31 +17,10 @@ import { I } from "@/components/prototype/ui";
 import { useMarkAlertSeen, useMarkAllAlertsSeen, useSecurityAlerts } from "@/hooks/admin/use-admin-security";
 import { describeAdminError } from "@/lib/admin/admin-errors";
 import { civilDateInSaoPaulo, formatDate, formatDateTime, formatInt, formatRelativeTime, parseInstant } from "@/lib/admin/format";
-import {
-  isAdminActionAlert,
-  isAttackIpDeniedAlert,
-  isAttackUserProbingAlert,
-  isSignupWaveAlert,
-  isWatchedLoginAlert,
-  type AdminActionDetails,
-  type AttackDetails,
-  type SecurityAlert,
-  type SecurityAlertStatus,
-} from "@/shared/admin-platform.types";
+import { isWatchedLoginAlert, type SecurityAlert, type SecurityAlertStatus } from "@/shared/admin-platform.types";
 
-import {
-  actorRoleLabel,
-  channelLabel,
-  ipDeniedSummary,
-  kindLabel,
-  matchesKind,
-  NOTE_MAX,
-  probingSummary,
-  SEVERITY_LABEL,
-  signupWaveSummary,
-  targetTypeLabel,
-  type KindFilter,
-} from "./security-labels";
+import { AlertIcon, describeAlert, type AlertDetailRow } from "./security-alert-view";
+import { channelLabel, kindLabel, matchesKind, NOTE_MAX, SEVERITY_LABEL, type KindFilter } from "./security-labels";
 
 import "@/styles/admin-security.css";
 
@@ -131,55 +110,16 @@ function dayLabel(iso: string, now: number): string {
   return formatDate(iso);
 }
 
-/** Detalhes de uma ação de risco no Admin: motivo, alvo, quem fez (papel) e IP. Os textos vêm de digitação humana: só texto. */
-function AdminActionDetailsList({ details, id }: { details: AdminActionDetails; id: string }) {
-  const target = [details.target_label?.trim(), targetTypeLabel(details.target_type)].filter(Boolean);
+/** O detalhe expandido do alerta: as linhas do descritor do tipo. Só texto (o React escapa), IP e rota em monoespaçada. */
+function AlertDetails({ rows, id }: { rows: AlertDetailRow[]; id: string }) {
   return (
     <dl className="adm-sec-details" id={id}>
-      {details.action_label ? (
-        <div>
-          <dt>Ação</dt>
-          <dd>{details.action_label}</dd>
+      {rows.map((row) => (
+        <div key={row.label} data-wide={row.wide ? "true" : undefined}>
+          <dt>{row.label}</dt>
+          <dd className={`${row.mono ? "adm-sec-mono" : ""}${row.pre ? " adm-sec-details-reason" : ""}`.trim() || undefined}>{row.value}</dd>
         </div>
-      ) : null}
-      <div>
-        <dt>Motivo informado</dt>
-        <dd className="adm-sec-details-reason">{details.reason || "—"}</dd>
-      </div>
-      <div>
-        <dt>Alvo</dt>
-        <dd>{target.length === 2 ? `${target[0]} · ${target[1]}` : (target[0] ?? "—")}</dd>
-      </div>
-      <div>
-        <dt>Feito por</dt>
-        <dd>{details.actor_role ? actorRoleLabel(details.actor_role) : "—"}</dd>
-      </div>
-      {details.ip ? (
-        <div>
-          <dt>IP</dt>
-          <dd className="adm-sec-details-ip">{details.ip}</dd>
-        </div>
-      ) : null}
-    </dl>
-  );
-}
-
-/** Detalhes de um ataque à API: IP, última rota e último status. Vêm do cliente atacante: só texto, em fonte monoespaçada. */
-function AttackDetailsList({ details, id }: { details: AttackDetails; id: string }) {
-  return (
-    <dl className="adm-sec-details" id={id}>
-      <div>
-        <dt>IP</dt>
-        <dd className="adm-sec-mono">{details.ip || "—"}</dd>
-      </div>
-      <div>
-        <dt>Última rota tentada</dt>
-        <dd className="adm-sec-mono adm-sec-details-reason">{details.last_path || "—"}</dd>
-      </div>
-      <div>
-        <dt>Último status</dt>
-        <dd className="adm-sec-mono">{details.last_status ?? "—"}</dd>
-      </div>
+      ))}
     </dl>
   );
 }
@@ -188,31 +128,30 @@ function AttackDetailsList({ details, id }: { details: AttackDetails; id: string
 const SEVERITY_DOT: Record<string, string> = { high: "#ff5a5f", medium: "#fbbf24", low: "rgba(255,255,255,0.7)" };
 
 /**
- * O cartão do alerta, no mesmo desenho do cartão de vigiado: foto, e-mail e nome da pessoa; abaixo a etiqueta preta que alterna
- * a gravidade e o tipo; abaixo o que aconteceu; e o menu "⋯" (Ver detalhes, Ver conta). "Marcar como visto" fica à vista no rodapé.
- * Em `admin_action` a pessoa é quem fez a ação ("Feito por…"); em `watched_login`, a conta vigiada.
+ * O cartão do alerta, no mesmo desenho do cartão de vigiado: foto (ou ícone), pessoa; abaixo a etiqueta preta que alterna a
+ * gravidade e o tipo; abaixo o que aconteceu (título e resumo do tipo, com etiquetas); e o menu "⋯" (Ver detalhes, Ver conta).
+ * "Marcar como visto" fica à vista no rodapé. O que muda por tipo (rótulo da pessoa, resumo, detalhe) vem de `describeAlert`.
  */
 function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (alert: SecurityAlert) => void }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const detailsId = useId();
   const seen = alert.seen_at !== null;
-  const watched = isWatchedLoginAlert(alert);
-  const adminAction = isAdminActionAlert(alert);
-  const ipAlert = isAttackIpDeniedAlert(alert) ? alert : null;
-  const probing = isAttackUserProbingAlert(alert) ? alert : null;
-  const wave = isSignupWaveAlert(alert) ? alert : null;
-  const attack = ipAlert ?? probing;
-  const channel = watched ? channelLabel(alert.details?.channel) : null;
+  const view = describeAlert(alert);
+  const channel = isWatchedLoginAlert(alert) ? channelLabel(alert.details?.channel) : null;
   const kind = kindLabel(alert.kind);
   const user = alert.user;
-  const name = user?.name?.trim() || (adminAction ? alert.details?.actor_name?.trim() : "") || "";
-  const attackIcon = ipAlert ? "ban" : wave ? "users" : null;
+  const adminActor = alert.kind === "admin_action" ? (alert.details as { actor_name?: string | null } | undefined)?.actor_name?.trim() : "";
+  const name = user?.name?.trim() || adminActor || "";
   const severity = SEVERITY_LABEL[alert.severity] ?? alert.severity;
   const second = kind ?? (seen ? "Visto" : "Novo");
+  const critical = Boolean(view?.critical) && !seen;
+  const dotColor = seen ? "rgba(255,255,255,0.7)" : critical ? SEVERITY_DOT.high : (SEVERITY_DOT[alert.severity] ?? SEVERITY_DOT.low);
 
   const items: AdminActionMenuItem[] = [];
-  if (adminAction || attack) items.push({ id: "details", label: open ? "Ocultar detalhes" : "Ver detalhes", icon: "eye", onSelect: () => setOpen((value) => !value) });
+  if (view?.details && view.details.length > 0) {
+    items.push({ id: "details", label: open ? "Ocultar detalhes" : "Ver detalhes", icon: "eye", onSelect: () => setOpen((value) => !value) });
+  }
   if (user) {
     items.push({
       id: "account",
@@ -222,36 +161,29 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
     });
   }
 
+  const person = view?.person;
   return (
-    <li className="adm-sec-card adm-sec-alert" data-seen={seen ? "true" : undefined} data-kind={alert.kind} data-severity={alert.severity}>
+    <li
+      className="adm-sec-card adm-sec-alert"
+      data-seen={seen ? "true" : undefined}
+      data-kind={alert.kind}
+      data-severity={alert.severity}
+      data-critical={critical ? "true" : undefined}
+    >
       <header className="adm-sec-card-top">
-        {attackIcon ? (
-          <span className="adm-sec-attack-ico" aria-hidden="true">
-            <I n={attackIcon} />
-          </span>
-        ) : (
-          <AdminAvatar name={name || user?.email || "?"} size={48} />
-        )}
+        {view?.icon ? <AlertIcon name={view.icon} /> : <AdminAvatar name={name || user?.email || "?"} size={48} />}
         <div className="adm-sec-card-id">
-          {adminAction ? (
+          {person ? (
             <>
-              <b className="adm-sec-mail">Feito por {name || (user ? `Conta #${user.id}` : "autor não identificado")}</b>
-              {user?.email ? <span className="adm-sec-name">{user.email}</span> : null}
-            </>
-          ) : probing ? (
-            <>
-              <b className="adm-sec-mail">Conta suspeita: {user ? name || user.email || `Conta #${user.id}` : "não identificada"}</b>
+              <b className={`adm-sec-mail${!user && person.fallbackMono ? " adm-sec-mono" : ""}`}>
+                {person.label} {user ? name || user.email || `Conta #${user.id}` : person.fallback}
+              </b>
               {user && name && user.email ? <span className="adm-sec-name">{user.email}</span> : null}
             </>
-          ) : ipAlert ? (
+          ) : view?.head ? (
             <>
-              <b className="adm-sec-mail adm-sec-mono">{ipAlert.details?.ip || "IP não informado"}</b>
-              <span className="adm-sec-name">Tentativas negadas na API</span>
-            </>
-          ) : wave ? (
-            <>
-              <b className="adm-sec-mail">Cadastros acima do normal</b>
-              <span className="adm-sec-name">Possível criação de contas em massa</span>
+              <b className={`adm-sec-mail${view.head.mono ? " adm-sec-mono" : ""}`}>{view.head.primary}</b>
+              <span className="adm-sec-name">{view.head.secondary}</span>
             </>
           ) : user ? (
             <>
@@ -272,28 +204,29 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
           data-active={seen ? "false" : "true"}
           role="img"
           aria-label={`Gravidade ${severity}, ${second}`}
-          style={{ ["--dot-color" as string]: seen ? "rgba(255,255,255,0.7)" : (SEVERITY_DOT[alert.severity] ?? SEVERITY_DOT.low) }}
+          style={{ ["--dot-color" as string]: dotColor }}
         >
           <span className="adm-sec-tag-item" data-slot="a">
             <i aria-hidden="true" />
             {severity}
           </span>
           <span className="adm-sec-tag-item" data-slot="b">
-            <I n={adminAction ? "gear" : ipAlert ? "ban" : probing ? "alert" : wave ? "users" : "eye"} cls="sm" />
+            <I n={view?.tagIcon ?? "eye"} cls="sm" />
             {second}
           </span>
         </span>
       </div>
 
       <p className="adm-sec-reason adm-sec-alert-title">{alert.title}</p>
-      {ipAlert ? (
-        <p className="adm-sec-summary">
-          {ipDeniedSummary(ipAlert.details?.count ?? 0, ipAlert.details?.window_minutes ?? 0)} <code className="adm-sec-mono">{ipAlert.details?.ip || "—"}</code>
+      {view?.summary ? <p className="adm-sec-summary">{view.summary}</p> : null}
+      {view?.chips && view.chips.length > 0 ? (
+        <p className="adm-sec-chips">
+          {view.chips.map((chip) => (
+            <span key={chip.text} className="adm-sec-pillchip" data-tone={chip.tone}>
+              {chip.text}
+            </span>
+          ))}
         </p>
-      ) : probing ? (
-        <p className="adm-sec-summary">{probingSummary(probing.details?.count ?? 0, probing.details?.window_minutes ?? 0)}</p>
-      ) : wave ? (
-        <p className="adm-sec-summary">{signupWaveSummary(wave.details?.count ?? 0, wave.details?.window_minutes ?? 0)}</p>
       ) : null}
 
       <p className="adm-sec-meta">
@@ -305,15 +238,26 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
         {seen ? <span>Visto em {formatDateTime(alert.seen_at)}</span> : null}
       </p>
       {alert.note ? <p className="adm-sec-note">“{alert.note}”</p> : null}
-      {adminAction && open ? <AdminActionDetailsList details={alert.details} id={detailsId} /> : null}
-      {attack && open ? <AttackDetailsList details={attack.details} id={detailsId} /> : null}
+      {open && view?.details ? <AlertDetails rows={view.details} id={detailsId} /> : null}
 
-      {!seen ? (
+      {!seen || view?.action ? (
         <footer className="adm-sec-alert-foot">
-          <button type="button" className="adm-sec-seen" onClick={() => onMarkSeen(alert)}>
-            <I n="check" cls="sm" />
-            Marcar como visto
-          </button>
+          {!seen ? (
+            <button type="button" className="adm-sec-seen" onClick={() => onMarkSeen(alert)}>
+              <I n="check" cls="sm" />
+              Marcar como visto
+            </button>
+          ) : null}
+          {view?.action ? (
+            <button
+              type="button"
+              className="adm-sec-secondary"
+              onClick={() => void navigate({ to: view.action!.to, search: view.action!.search } as never)}
+            >
+              <I n="users" cls="sm" />
+              {view.action.label}
+            </button>
+          ) : null}
         </footer>
       ) : null}
     </li>

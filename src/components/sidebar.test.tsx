@@ -14,6 +14,7 @@ const ctx = vi.hoisted(() => ({
   useCampaigns: vi.fn(),
   user: { name: "Vini", email: "vini@hype.com", is_platform_admin: true } as Record<string, unknown>,
   campaigns: [] as Array<{ status: string }>,
+  securityUnseen: 0,
   edges: { before: false, after: false },
   permissions: { campaigns_read: true, catalog_read: true, community_lives_read: true, financial_read: true } as Record<string, boolean>,
   accountType: "brand" as string,
@@ -39,7 +40,7 @@ vi.mock("@/hooks/use-campaigns", () => ({
     return { data: ctx.campaigns };
   },
 }));
-vi.mock("@/hooks/admin/use-admin-security", () => ({ useSecuritySummary: () => ({ data: undefined }) }));
+vi.mock("@/hooks/admin/use-admin-security", () => ({ useSecuritySummary: () => ({ data: ctx.securityUnseen > 0 ? { unseen: ctx.securityUnseen } : undefined }) }));
 vi.mock("@/shared/services/auth", () => ({ logout: vi.fn() }));
 // A geometria de rolagem não existe no jsdom: o teste diz se a lista continua além das bordas.
 vi.mock("@/hooks/admin/use-scroll-edges", () => ({ useScrollEdges: () => ({ ref: { current: null }, edges: ctx.edges }) }));
@@ -50,6 +51,7 @@ import { LEAVE_MS, Sidebar } from "./sidebar";
 
 beforeEach(() => {
   ctx.pathname = "/";
+  ctx.securityUnseen = 0;
   ctx.navigate.mockReset();
   ctx.selectWorkspace.mockReset();
   ctx.useCampaigns.mockReset();
@@ -544,5 +546,20 @@ describe("Sidebar: item Segurança (só administrador)", () => {
     ctx.user = { name: "Admin", email: "a@hype.com", platform_role: "admin", is_platform_admin: true };
     render(<Sidebar scope="platform" />);
     expect(screen.getByRole("button", { name: "Segurança" })).toBeInTheDocument();
+  });
+});
+
+describe("Sidebar: Segurança vermelha com alerta novo", () => {
+  it("com alerta novo o item Segurança fica vermelho (data-alert) e mostra o número; sem alerta, nada", () => {
+    ctx.user = { name: "Admin", email: "a@hype.com", platform_role: "admin", is_platform_admin: true };
+    const { unmount } = render(<Sidebar scope="platform" />);
+    expect(screen.getByRole("button", { name: "Segurança" })).not.toHaveAttribute("data-alert");
+    unmount();
+
+    ctx.securityUnseen = 3;
+    render(<Sidebar scope="platform" />);
+    expect(screen.getByRole("button", { name: "Segurança (3)" })).toHaveAttribute("data-alert", "true");
+    // só a Segurança fica vermelha: os outros itens não
+    expect(document.querySelectorAll('[data-alert="true"]')).toHaveLength(1);
   });
 });

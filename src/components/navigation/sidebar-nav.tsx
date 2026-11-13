@@ -54,11 +54,14 @@ export function SidebarNav({ sections, isOn, onNavigate, ariaLabel, cascade }: S
           </h6>
           {section.items.map((item, ii) => {
             const on = isOn(item.href);
+            // Segurança com alerta novo: o item inteiro fica vermelho (como o roxo do item selecionado, só que vermelho)
+            const alert = item.badge === "securityAlerts" && !!item.count;
             return (
               <button
                 key={item.id}
                 type="button"
                 className={`sb-item${on ? " on" : ""}`}
+                data-alert={alert ? "true" : undefined}
                 aria-label={item.count ? `${item.label} (${item.count})` : item.label}
                 aria-current={on ? "page" : undefined}
                 data-tip={item.label}
