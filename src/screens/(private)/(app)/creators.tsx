@@ -483,7 +483,8 @@ function FiltersDrawer({
 // Cards / linhas
 // ---------------------------------------------------------------------------
 
-type CardProps = CreatorCardProps;
+/** No catálogo o cartão e a linha sempre têm selecionar e salvar (dentro de uma lista, o cartão dispensa os dois). */
+type CardProps = CreatorCardProps & Required<Pick<CreatorCardProps, "onSelect" | "onSave">>;
 
 function CreatorRow({ group, k, selected, near, saved, onSelect, onOpen, onInvite, onSave, rosterStatus, onRoster }: CardProps) {
   const { networks: rows, ugc } = useAccountRows(group);

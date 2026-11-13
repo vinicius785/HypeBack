@@ -40,7 +40,7 @@ describe("CampaignPickerModal", () => {
     fireEvent.click(screen.getByRole("radio", { name: /Verão/ }));
     fireEvent.click(screen.getByRole("button", { name: /Adicionar à pré-seleção/ }));
     await waitFor(() => expect(h.pre).toHaveBeenCalled());
-    expect(h.pre.mock.calls[0][0]).not.toHaveProperty("entry_status");
+    expect((h.pre.mock.calls as unknown as unknown[][])[0][0]).not.toHaveProperty("entry_status");
   });
 
   it("lote: um pedido com os ids e a fase; falhas aparecem no aviso", async () => {

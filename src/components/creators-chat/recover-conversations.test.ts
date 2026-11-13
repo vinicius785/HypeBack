@@ -8,8 +8,10 @@ vi.mock("@/shared/services/campaign-users", () => ({ getCampaignUsers: h.users }
 vi.mock("@/shared/services/chat", () => ({
   getInfluencerMessages: h.messages,
   RateLimitError: class RateLimitError extends Error {
-    constructor(readonly retryAfterMs: number) {
+    retryAfterMs: number;
+    constructor(retryAfterMs: number) {
       super("429");
+      this.retryAfterMs = retryAfterMs;
     }
   },
 }));
