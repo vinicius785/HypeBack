@@ -5,9 +5,11 @@ import { getCampaignUsers } from "./campaign-users";
 /** Limite de requisições (HTTP 429): `retryAfterMs` vem do cabeçalho Retry-After (segundos ou data) quando a API o envia. */
 export class RateLimitError extends Error {
   readonly status = 429;
-  constructor(readonly retryAfterMs: number) {
+  readonly retryAfterMs: number;
+  constructor(retryAfterMs: number) {
     super("Muitas requisições. Aguarde um instante e tente de novo.");
     this.name = "RateLimitError";
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
