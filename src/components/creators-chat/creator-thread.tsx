@@ -7,6 +7,12 @@ import { useIncomingSound } from "@/components/chat/use-incoming-sound";
 import { useSmartScroll } from "@/components/chat/use-smart-scroll";
 import { ThreadHeader } from "@/components/message-center/thread-header";
 import { Av, I } from "@/components/prototype/ui";
+import { COLUMN_LABEL } from "@/components/campaign-tabs/campaign-flow";
+import { boardColumnOf, mapUserStatusToKanbanColumn } from "@/components/campaign-tabs/management-status-map";
+import { useCampaign } from "@/hooks/use-campaigns";
+import { useWorkspaceQueryKey, withWorkspaceKey } from "@/hooks/use-workspace-query-key";
+import { getCampaignUsers } from "@/shared/services/campaign-users";
+import { useQuery } from "@tanstack/react-query";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useInfluencerMessages, useSendMessage } from "@/hooks/use-campaign-chat";
 import { useMarkChatNotificationsAsRead } from "@/hooks/use-notifications";
@@ -52,6 +58,19 @@ export function CreatorThread({
     () => [...data].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
     [data],
   );
+  // Em qual campanha o criador está, e em que fase dela: o título vem da conversa ou da própria campanha, a fase da
+  // lista de inscritos (mesma consulta e cache da lista de conversas).
+  const workspaceId = useWorkspaceQueryKey();
+  const { data: campaign } = useCampaign(conv.campaignId);
+  const { data: campaignUsers } = useQuery({
+    queryKey: withWorkspaceKey(["campaigns", conv.campaignId, "users"], workspaceId),
+    queryFn: () => getCampaignUsers(conv.campaignId),
+    enabled: !!workspaceId,
+    staleTime: 5 * 60 * 1000,
+  });
+  const campaignTitle = conv.campaign || campaign?.title || "";
+  const member = campaignUsers?.find((u) => String(u.user_id) === String(conv.influencerId));
+  const phase = member ? (COLUMN_LABEL[boardColumnOf(mapUserStatusToKanbanColumn(member.status))] ?? null) : null;
   const send = useSendMessage(conv.campaignId, conv.influencerId);
   const markRead = useMarkChatNotificationsAsRead();
   const [pending, setPending] = useState<Pending[]>([]);
@@ -171,9 +190,11 @@ export function CreatorThread({
         title={conv.name}
         subtitle={
           <>
-            Criador
-            {" · "}
-            {conv.campaign || "Conversa da campanha"}
+            <span className="mc-camp" title={campaignTitle ? `Campanha: ${campaignTitle}` : undefined}>
+              <I n="mega" cls="sm" />
+              <span>{campaignTitle || "Campanha"}</span>
+            </span>
+            {phase ? <span className="mc-phase">{phase}</span> : null}
           </>
         }
         actions={
