@@ -19,13 +19,29 @@ import { describeAdminError } from "@/lib/admin/admin-errors";
 import { civilDateInSaoPaulo, formatDate, formatDateTime, formatInt, formatRelativeTime, parseInstant } from "@/lib/admin/format";
 import {
   isAdminActionAlert,
+  isAttackIpDeniedAlert,
+  isAttackUserProbingAlert,
+  isSignupWaveAlert,
   isWatchedLoginAlert,
   type AdminActionDetails,
+  type AttackDetails,
   type SecurityAlert,
   type SecurityAlertStatus,
 } from "@/shared/admin-platform.types";
 
-import { actorRoleLabel, channelLabel, kindLabel, matchesKind, NOTE_MAX, SEVERITY_LABEL, targetTypeLabel, type KindFilter } from "./security-labels";
+import {
+  actorRoleLabel,
+  channelLabel,
+  ipDeniedSummary,
+  kindLabel,
+  matchesKind,
+  NOTE_MAX,
+  probingSummary,
+  SEVERITY_LABEL,
+  signupWaveSummary,
+  targetTypeLabel,
+  type KindFilter,
+} from "./security-labels";
 
 import "@/styles/admin-security.css";
 
@@ -148,6 +164,26 @@ function AdminActionDetailsList({ details, id }: { details: AdminActionDetails; 
   );
 }
 
+/** Detalhes de um ataque à API: IP, última rota e último status. Vêm do cliente atacante: só texto, em fonte monoespaçada. */
+function AttackDetailsList({ details, id }: { details: AttackDetails; id: string }) {
+  return (
+    <dl className="adm-sec-details" id={id}>
+      <div>
+        <dt>IP</dt>
+        <dd className="adm-sec-mono">{details.ip || "—"}</dd>
+      </div>
+      <div>
+        <dt>Última rota tentada</dt>
+        <dd className="adm-sec-mono adm-sec-details-reason">{details.last_path || "—"}</dd>
+      </div>
+      <div>
+        <dt>Último status</dt>
+        <dd className="adm-sec-mono">{details.last_status ?? "—"}</dd>
+      </div>
+    </dl>
+  );
+}
+
 /** Cor da bolinha da etiqueta, pela gravidade (alerta já visto fica cinza). */
 const SEVERITY_DOT: Record<string, string> = { high: "#ff5a5f", medium: "#fbbf24", low: "rgba(255,255,255,0.7)" };
 
@@ -163,15 +199,20 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
   const seen = alert.seen_at !== null;
   const watched = isWatchedLoginAlert(alert);
   const adminAction = isAdminActionAlert(alert);
+  const ipAlert = isAttackIpDeniedAlert(alert) ? alert : null;
+  const probing = isAttackUserProbingAlert(alert) ? alert : null;
+  const wave = isSignupWaveAlert(alert) ? alert : null;
+  const attack = ipAlert ?? probing;
   const channel = watched ? channelLabel(alert.details?.channel) : null;
   const kind = kindLabel(alert.kind);
   const user = alert.user;
   const name = user?.name?.trim() || (adminAction ? alert.details?.actor_name?.trim() : "") || "";
+  const attackIcon = ipAlert ? "ban" : wave ? "users" : null;
   const severity = SEVERITY_LABEL[alert.severity] ?? alert.severity;
   const second = kind ?? (seen ? "Visto" : "Novo");
 
   const items: AdminActionMenuItem[] = [];
-  if (adminAction) items.push({ id: "details", label: open ? "Ocultar detalhes" : "Ver detalhes", icon: "eye", onSelect: () => setOpen((value) => !value) });
+  if (adminAction || attack) items.push({ id: "details", label: open ? "Ocultar detalhes" : "Ver detalhes", icon: "eye", onSelect: () => setOpen((value) => !value) });
   if (user) {
     items.push({
       id: "account",
@@ -184,12 +225,33 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
   return (
     <li className="adm-sec-card adm-sec-alert" data-seen={seen ? "true" : undefined} data-kind={alert.kind} data-severity={alert.severity}>
       <header className="adm-sec-card-top">
-        <AdminAvatar name={name || user?.email || "?"} size={48} />
+        {attackIcon ? (
+          <span className="adm-sec-attack-ico" aria-hidden="true">
+            <I n={attackIcon} />
+          </span>
+        ) : (
+          <AdminAvatar name={name || user?.email || "?"} size={48} />
+        )}
         <div className="adm-sec-card-id">
           {adminAction ? (
             <>
               <b className="adm-sec-mail">Feito por {name || (user ? `Conta #${user.id}` : "autor não identificado")}</b>
               {user?.email ? <span className="adm-sec-name">{user.email}</span> : null}
+            </>
+          ) : probing ? (
+            <>
+              <b className="adm-sec-mail">Conta suspeita: {user ? name || user.email || `Conta #${user.id}` : "não identificada"}</b>
+              {user && name && user.email ? <span className="adm-sec-name">{user.email}</span> : null}
+            </>
+          ) : ipAlert ? (
+            <>
+              <b className="adm-sec-mail adm-sec-mono">{ipAlert.details?.ip || "IP não informado"}</b>
+              <span className="adm-sec-name">Tentativas negadas na API</span>
+            </>
+          ) : wave ? (
+            <>
+              <b className="adm-sec-mail">Cadastros acima do normal</b>
+              <span className="adm-sec-name">Possível criação de contas em massa</span>
             </>
           ) : user ? (
             <>
@@ -217,13 +279,22 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
             {severity}
           </span>
           <span className="adm-sec-tag-item" data-slot="b">
-            <I n={adminAction ? "gear" : "eye"} cls="sm" />
+            <I n={adminAction ? "gear" : ipAlert ? "ban" : probing ? "alert" : wave ? "users" : "eye"} cls="sm" />
             {second}
           </span>
         </span>
       </div>
 
       <p className="adm-sec-reason adm-sec-alert-title">{alert.title}</p>
+      {ipAlert ? (
+        <p className="adm-sec-summary">
+          {ipDeniedSummary(ipAlert.details?.count ?? 0, ipAlert.details?.window_minutes ?? 0)} <code className="adm-sec-mono">{ipAlert.details?.ip || "—"}</code>
+        </p>
+      ) : probing ? (
+        <p className="adm-sec-summary">{probingSummary(probing.details?.count ?? 0, probing.details?.window_minutes ?? 0)}</p>
+      ) : wave ? (
+        <p className="adm-sec-summary">{signupWaveSummary(wave.details?.count ?? 0, wave.details?.window_minutes ?? 0)}</p>
+      ) : null}
 
       <p className="adm-sec-meta">
         {channel ? <span className="adm-sec-chan">{channel}</span> : null}
@@ -235,6 +306,7 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
       </p>
       {alert.note ? <p className="adm-sec-note">“{alert.note}”</p> : null}
       {adminAction && open ? <AdminActionDetailsList details={alert.details} id={detailsId} /> : null}
+      {attack && open ? <AttackDetailsList details={attack.details} id={detailsId} /> : null}
 
       {!seen ? (
         <footer className="adm-sec-alert-foot">

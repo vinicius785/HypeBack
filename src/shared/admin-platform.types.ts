@@ -1336,6 +1336,35 @@ export interface AdminActionAlert extends SecurityAlertBase {
   details: AdminActionDetails;
 }
 
+/** Detalhes dos alertas de ataque à API (IP com tentativas negadas e conta que varre dados). */
+export interface AttackDetails {
+  /** `null` só em `attack_user_probing` quando a API não registrou o IP. */
+  ip: string | null;
+  count: number;
+  window_minutes: number;
+  last_status: number;
+  /** Última rota tentada (texto vindo do cliente atacante: nunca renderizar como HTML). */
+  last_path: string;
+}
+
+/** IP com muitas tentativas negadas. Sem `user`. */
+export interface AttackIpDeniedAlert extends SecurityAlertBase {
+  kind: 'attack_ip_denied';
+  details: AttackDetails;
+}
+
+/** Conta logada recebendo muitos erros 403/404 (possível varredura de dados). `user` é a conta SUSPEITA, não quem fez uma ação. */
+export interface AttackUserProbingAlert extends SecurityAlertBase {
+  kind: 'attack_user_probing';
+  details: AttackDetails;
+}
+
+/** Onda de cadastros. Sem `user`. */
+export interface SignupWaveAlert extends SecurityAlertBase {
+  kind: 'signup_wave';
+  details: { count: number; window_minutes: number };
+}
+
 /** Tipo que esta versão do painel ainda não conhece: mostra só o título e a pessoa, sem detalhes. */
 export interface UnknownSecurityAlert extends SecurityAlertBase {
   kind: string & {};
@@ -1343,7 +1372,13 @@ export interface UnknownSecurityAlert extends SecurityAlertBase {
 }
 
 /** União por `kind`. `kind` desconhecido cai em `UnknownSecurityAlert`; use `isAdminActionAlert` / `isWatchedLoginAlert` para estreitar. */
-export type SecurityAlert = WatchedLoginAlert | AdminActionAlert | UnknownSecurityAlert;
+export type SecurityAlert =
+  | WatchedLoginAlert
+  | AdminActionAlert
+  | AttackIpDeniedAlert
+  | AttackUserProbingAlert
+  | SignupWaveAlert
+  | UnknownSecurityAlert;
 
 export function isAdminActionAlert(alert: SecurityAlert): alert is AdminActionAlert {
   return alert.kind === 'admin_action';
@@ -1351,6 +1386,18 @@ export function isAdminActionAlert(alert: SecurityAlert): alert is AdminActionAl
 
 export function isWatchedLoginAlert(alert: SecurityAlert): alert is WatchedLoginAlert {
   return alert.kind === 'watched_login';
+}
+
+export function isAttackIpDeniedAlert(alert: SecurityAlert): alert is AttackIpDeniedAlert {
+  return alert.kind === 'attack_ip_denied';
+}
+
+export function isAttackUserProbingAlert(alert: SecurityAlert): alert is AttackUserProbingAlert {
+  return alert.kind === 'attack_user_probing';
+}
+
+export function isSignupWaveAlert(alert: SecurityAlert): alert is SignupWaveAlert {
+  return alert.kind === 'signup_wave';
 }
 
 export type SecurityAlertStatus = 'unseen' | 'all';

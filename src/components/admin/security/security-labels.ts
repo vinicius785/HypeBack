@@ -59,6 +59,9 @@ export function filterWatchlist<T extends { active: boolean; email: string; reas
 export function kindLabel(kind: string): string | null {
   if (kind === "admin_action") return "Ação no Admin";
   if (kind === "watched_login") return "Conta vigiada";
+  if (kind === "attack_ip_denied") return "IP suspeito";
+  if (kind === "attack_user_probing") return "Conta suspeita";
+  if (kind === "signup_wave") return "Onda de cadastros";
   return null;
 }
 
@@ -77,14 +80,35 @@ export function actorRoleLabel(role: string): string {
   return role;
 }
 
-export type KindFilter = "all" | "watched_login" | "admin_action";
+export type KindFilter = "all" | "watched_login" | "admin_action" | "attack_ip_denied" | "attack_user_probing" | "signup_wave";
 export const KIND_FILTERS: ReadonlyArray<{ id: KindFilter; label: string }> = [
   { id: "all", label: "Todos os tipos" },
   { id: "watched_login", label: "Contas vigiadas" },
   { id: "admin_action", label: "Ações no Admin" },
+  { id: "attack_ip_denied", label: "IPs suspeitos" },
+  { id: "attack_user_probing", label: "Contas suspeitas" },
+  { id: "signup_wave", label: "Ondas de cadastros" },
 ];
 
 /** Filtro por tipo, só no cliente, sobre o que já foi carregado. Tipo desconhecido só aparece em "Todos os tipos". */
 export function matchesKind(kind: string, filter: KindFilter): boolean {
   return filter === "all" || kind === filter;
+}
+
+/** Singular ou plural pelo número ("1 conta nova", "3 contas novas"). */
+function plural(count: number, one: string, many: string): string {
+  return count === 1 ? one : many;
+}
+
+/** Resumo em português dos alertas de ataque e de onda de cadastros: "N tentativas negadas em M min vindas do IP " (o IP vem à parte, em fonte monoespaçada). */
+export function ipDeniedSummary(count: number, windowMinutes: number): string {
+  return `${count} ${plural(count, "tentativa negada", "tentativas negadas")} em ${windowMinutes} min ${plural(count, "vinda", "vindas")} do IP`;
+}
+
+export function probingSummary(count: number, windowMinutes: number): string {
+  return `${count} ${plural(count, "erro", "erros")} de acesso (403/404) em ${windowMinutes} min`;
+}
+
+export function signupWaveSummary(count: number, windowMinutes: number): string {
+  return `${count} ${plural(count, "conta nova", "contas novas")} em ${windowMinutes} min`;
 }

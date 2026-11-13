@@ -39,7 +39,7 @@ vi.mock("@/contexts/auth-context", () => ({ useAuth: () => ({ user: mocks.auth.u
 vi.mock("sonner", () => ({ toast: { success: mocks.toastSuccess, error: vi.fn() } }));
 
 import { toAdminApiError } from "@/lib/admin/admin-client";
-import type { AdminActionAlert, SecurityAlert, SecurityWatch } from "@/shared/admin-platform.types";
+import type { AdminActionAlert, AttackIpDeniedAlert, AttackUserProbingAlert, SecurityAlert, SecurityWatch, SignupWaveAlert } from "@/shared/admin-platform.types";
 
 import { renderRoutes, stubRoute } from "../users/admin-users-test-utils";
 import { SecurityPage } from "./security-page";
@@ -306,6 +306,134 @@ describe("Segurança: alertas de ações no Admin (admin_action)", () => {
     expect(screen.getByText("Conta vigiada abriu sessão")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Todos os tipos" }));
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
+  });
+});
+
+const IP_DENIED: AttackIpDeniedAlert = {
+  id: 40,
+  kind: "attack_ip_denied",
+  severity: "high",
+  title: "IP com muitas tentativas negadas",
+  details: { ip: "198.51.100.9", count: 5, window_minutes: 10, last_status: 403, last_path: "/api/backoffice/admin/users" },
+  created_at: "2026-11-10T01:30:00Z",
+  seen_at: null,
+  note: null,
+  user: null,
+};
+
+const PROBING: AttackUserProbingAlert = {
+  id: 41,
+  kind: "attack_user_probing",
+  severity: "medium",
+  title: "Conta recebendo muitos erros de acesso",
+  details: { ip: "203.0.113.50", count: 12, window_minutes: 5, last_status: 404, last_path: "/api/campaigns/999/contracts" },
+  created_at: "2026-11-10T01:30:00Z",
+  seen_at: null,
+  note: null,
+  user: { id: 3, name: "Bia Santos", email: "bia@marca.com" },
+};
+
+const WAVE: SignupWaveAlert = {
+  id: 42,
+  kind: "signup_wave",
+  severity: "medium",
+  title: "Muitos cadastros em pouco tempo",
+  details: { count: 40, window_minutes: 10 },
+  created_at: "2026-11-10T01:30:00Z",
+  seen_at: null,
+  note: null,
+  user: null,
+};
+
+describe("Segurança: alertas de ataque à API", () => {
+  it("attack_ip_denied: selo, resumo com o IP, sem canal e sem Ver conta; o detalhe traz IP, rota e status", async () => {
+    serve({ alerts: [IP_DENIED] });
+    const { user } = await renderPage();
+    const row = await screen.findByRole("listitem");
+    expect(within(row).getByText("IP suspeito")).toBeInTheDocument();
+    expect(within(row).getByText(/5 tentativas negadas em 10 min vindas do IP/)).toBeInTheDocument();
+    expect(within(row).getAllByText("198.51.100.9").length).toBeGreaterThan(0);
+    expect(within(row).queryByText("App")).toBeNull();
+    expect(within(row).queryByText("Painel")).toBeNull();
+    expect(within(row).queryByText(/Feito por|Conta suspeita:/)).toBeNull();
+    await user.click(within(row).getByRole("button", { name: "Ações do alerta 40" }));
+    expect(screen.queryByRole("menuitem", { name: "Ver conta" })).toBeNull();
+    await user.click(await screen.findByRole("menuitem", { name: "Ver detalhes" }));
+    expect(within(row).getByText("/api/backoffice/admin/users")).toBeInTheDocument();
+    expect(within(row).getByText("403")).toBeInTheDocument();
+    expect(within(row).getByText("/api/backoffice/admin/users")).toHaveClass("adm-sec-mono");
+  });
+
+  it("attack_user_probing: 'Conta suspeita:' com nome e e-mail, resumo, Ver conta e detalhe com IP, rota e status", async () => {
+    serve({ alerts: [PROBING] });
+    const { user } = await renderPage();
+    const row = await screen.findByRole("listitem");
+    expect(within(row).getByText("Conta suspeita: Bia Santos")).toBeInTheDocument();
+    expect(within(row).getByText("bia@marca.com")).toBeInTheDocument();
+    expect(within(row).getByText("12 erros de acesso (403/404) em 5 min")).toBeInTheDocument();
+    expect(within(row).queryByText(/Feito por/)).toBeNull();
+    expect(within(row).queryByText("App")).toBeNull();
+    await user.click(within(row).getByRole("button", { name: "Ações do alerta 41" }));
+    expect(await screen.findByRole("menuitem", { name: "Ver conta" })).toBeInTheDocument();
+    await user.click(screen.getByRole("menuitem", { name: "Ver detalhes" }));
+    expect(within(row).getByText("203.0.113.50")).toBeInTheDocument();
+    expect(within(row).getByText("/api/campaigns/999/contracts")).toBeInTheDocument();
+    expect(within(row).getByText("404")).toBeInTheDocument();
+  });
+
+  it("attack_user_probing sem conta e sem IP: não quebra, mostra 'não identificada' e um traço no IP", async () => {
+    serve({ alerts: [{ ...PROBING, user: null, details: { ...PROBING.details, ip: null } }] });
+    const { user } = await renderPage();
+    const row = await screen.findByRole("listitem");
+    expect(within(row).getByText("Conta suspeita: não identificada")).toBeInTheDocument();
+    await user.click(within(row).getByRole("button", { name: "Ações do alerta 41" }));
+    expect(screen.queryByRole("menuitem", { name: "Ver conta" })).toBeNull();
+    await user.click(await screen.findByRole("menuitem", { name: "Ver detalhes" }));
+    expect(within(row).getByText("IP").nextElementSibling).toHaveTextContent("—");
+  });
+
+  it("attack_ip_denied com uma conta (não esperado): continua mostrando o IP e ganha Ver conta", async () => {
+    serve({ alerts: [{ ...IP_DENIED, user: { id: 8, name: "Caio", email: "caio@marca.com" } }] });
+    const { user } = await renderPage();
+    const row = await screen.findByRole("listitem");
+    await user.click(within(row).getByRole("button", { name: "Ações do alerta 40" }));
+    expect(await screen.findByRole("menuitem", { name: "Ver conta" })).toBeInTheDocument();
+  });
+
+  it("signup_wave: selo, resumo; sem canal, sem detalhes e sem menu (não há o que abrir)", async () => {
+    serve({ alerts: [WAVE] });
+    await renderPage();
+    const row = await screen.findByRole("listitem");
+    expect(within(row).getByText("Onda de cadastros")).toBeInTheDocument();
+    expect(within(row).getByText("40 contas novas em 10 min")).toBeInTheDocument();
+    expect(within(row).queryByText("App")).toBeNull();
+    expect(within(row).queryByRole("button", { name: /Ações do alerta/ })).toBeNull();
+  });
+
+  it("IP e rota com HTML aparecem como texto, nunca como HTML", async () => {
+    const evil = '<img src=x onerror="alert(1)">/admin';
+    serve({ alerts: [{ ...IP_DENIED, details: { ...IP_DENIED.details, last_path: evil } }] });
+    const { user } = await renderPage();
+    const row = await screen.findByRole("listitem");
+    await user.click(within(row).getByRole("button", { name: "Ações do alerta 40" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Ver detalhes" }));
+    expect(within(row).getByText(evil)).toBeInTheDocument();
+    expect(row.querySelector("img")).toBeNull();
+  });
+
+  it("filtro por tipo inclui os três novos", async () => {
+    serve({ alerts: [ALERT, IP_DENIED, PROBING, WAVE] });
+    const { user } = await renderPage();
+    await screen.findAllByRole("listitem");
+    expect(screen.getAllByRole("listitem")).toHaveLength(4);
+    await user.click(screen.getByRole("button", { name: "IPs suspeitos" }));
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Contas suspeitas" }));
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.getByText("Conta suspeita: Bia Santos")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ondas de cadastros" }));
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.getByText("40 contas novas em 10 min")).toBeInTheDocument();
   });
 });
 
