@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type MouseEvent } from "react";
+import { useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 
 import { Av, I } from "@/components/prototype/ui";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,10 +20,14 @@ export interface CreatorCardProps {
   selected: boolean;
   near: boolean;
   saved: boolean;
-  onSelect: () => void;
+  /** Ausente = sem a caixa de seleção (ex.: dentro de uma lista). */
+  onSelect?: () => void;
   onOpen: () => void;
   onInvite: () => void;
-  onSave: () => void;
+  /** Ausente = sem o coração. */
+  onSave?: () => void;
+  /** Painel sobre o cartão (ex.: confirmar a remoção da lista). */
+  overlay?: ReactNode;
   /** Agência: estado do criador no elenco (`invited` | `active`), ou null. */
   rosterStatus?: "invited" | "active" | null;
   /** Agência com permissão de convidar: convida o criador para o elenco. Ausente = sem a ação. */
@@ -52,6 +56,7 @@ export function CreatorCard({
   onOpen,
   onInvite,
   onSave,
+  overlay,
   rosterStatus,
   onRoster,
   rosterBusy,
@@ -65,7 +70,6 @@ export function CreatorCard({
   const visibleRows = expanded ? rows : rows.slice(0, VISIBLE_NETWORKS);
   const hiddenCount = rows.length - VISIBLE_NETWORKS;
   const handle = rows[0]?.username;
-  const netTypes = [...new Set(rows.map((r) => r.type))];
   const canRoster = !!onRoster && !rosterStatus;
 
   return (
@@ -74,30 +78,22 @@ export function CreatorCard({
       style={{ "--k": Math.min(k, 14) } as CSSProperties}
       onClick={onOpen}
     >
-      <header className="ccd-top">
-        <div className="ccd-av">
-          <Av name={name} src={groupPhoto(group)} size={56} />
-          <button
-            type="button"
-            className={`ccd-ck${selected ? " on" : ""}`}
-            aria-label={`Selecionar ${name}`}
-            aria-pressed={selected}
-            onClick={stop(onSelect)}
-          >
-            <I n="check" cls="sm" />
-          </button>
+      <div className="ccd-hero">
+        <div className="ccd-photo">
+          <Av name={name} src={groupPhoto(group)} size={320} />
         </div>
-        <div className="ccd-id">
-          <b title={name}>{name}</b>
-          {handle ? <span className="ccd-h">@{handle}</span> : <span className="ccd-h mute">Sem redes sociais</span>}
-          {netTypes.length > 0 && (
-            <span className="ccd-nets" aria-label={`Redes: ${rows.map((r) => r.label).join(", ")}`}>
-              {netTypes.map((t) => (
-                <I key={t} n={NET_ICON[t] ?? "video"} cls="sm" />
-              ))}
-            </span>
-          )}
-        </div>
+        {onSelect ? (
+        <button
+          type="button"
+          className={`ccd-ck${selected ? " on" : ""}`}
+          aria-label={`Selecionar ${name}`}
+          aria-pressed={selected}
+          onClick={stop(onSelect)}
+        >
+          <I n="check" cls="sm" />
+        </button>
+        ) : null}
+        {onSave ? (
         <button
           type="button"
           className={`ccd-fav${saved ? " on" : ""}`}
@@ -108,24 +104,30 @@ export function CreatorCard({
         >
           <I n="heart" cls="sm" />
         </button>
-      </header>
-
-      {((near && group.distance_km != null) || tags.length > 0) && (
-        <div className="ccd-tags">
-          {near && group.distance_km != null && (
-            <span className="ccd-d">
-              <I n="flag" cls="sm" />
-              {fmtDistance(group.distance_km)}
-            </span>
+        ) : null}
+        <div className="ccd-shade">
+          <div className="ccd-id">
+            <b title={name}>{name}</b>
+            {handle ? null : <span className="ccd-h mute">Sem redes sociais</span>}
+          </div>
+          {((near && group.distance_km != null) || tags.length > 0) && (
+            <div className="ccd-tags">
+              {near && group.distance_km != null && (
+                <span className="ccd-d">
+                  <I n="flag" cls="sm" />
+                  {fmtDistance(group.distance_km)}
+                </span>
+              )}
+              {tags.map((t) => (
+                <span key={t} className={t === "UGC" ? "ugc" : undefined}>
+                  {t}
+                </span>
+              ))}
+              {extraTags > 0 && <span className="more" title={labels.slice(2).join(", ")}>+{extraTags}</span>}
+            </div>
           )}
-          {tags.map((t) => (
-            <span key={t} className={t === "UGC" ? "ugc" : undefined}>
-              {t}
-            </span>
-          ))}
-          {extraTags > 0 && <span className="more" title={labels.slice(2).join(", ")}>+{extraTags}</span>}
         </div>
-      )}
+      </div>
 
       {rows.length > 0 ? (
         <div className="ccd-m">
@@ -170,10 +172,12 @@ export function CreatorCard({
 
       <footer className="ccd-a">
         <button type="button" className="btn" onClick={stop(onOpen)}>
-          Ver perfil
+          <span>Ver perfil</span>
+          <I n="chev" cls="sm ccd-ar" />
         </button>
         <button type="button" className="btn out" onClick={stop(onInvite)}>
-          Convidar
+          <I n="send" cls="sm ccd-ic" />
+          <span>Convidar</span>
         </button>
         {rosterStatus ? (
           <span className={`ccd-roster st ${rosterStatus}`}>
@@ -196,6 +200,7 @@ export function CreatorCard({
           </button>
         )}
       </footer>
+      {overlay}
     </article>
   );
 }

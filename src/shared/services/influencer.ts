@@ -353,6 +353,57 @@ export interface InfluencerInviteData {
    * negociação por rede. Redes fora da campanha são descartadas no backend.
    */
   network_prices?: { network_id: number; proposed_price_cents: number }[];
+  /** Fase em que o criador entra ao ACEITAR o convite. Sem o campo, o comportamento anterior (Aprovado). */
+  entry_status?: InviteEntryStatus;
+}
+
+export type InviteEntryStatus = "applications" | "pre_selection" | "curation";
+
+export interface InviteBulkData {
+  influencer_ids: Array<string | number>;
+  message?: string;
+  /** Obrigatório em campanha `individual_price`; o mesmo valor vale para todos do lote. */
+  proposed_price_cents?: number;
+  entry_status?: InviteEntryStatus;
+}
+
+export interface InviteBulkResult {
+  influencer_id: string | number;
+  ok: boolean;
+  error?: string;
+}
+
+/**
+ * Convida vários criadores de uma vez (POST /campaigns/:id/users/invite-bulk, até 200). Cada um é processado à parte: quem
+ * falha volta com `ok: false` e a mensagem, e os demais seguem. Sem rede fixa (vale para todas as redes do criador).
+ */
+export async function inviteInfluencersBulk(campaignId: string, data: InviteBulkData): Promise<InviteBulkResult[]> {
+  const workspaceId = getWorkspaceId();
+  if (!workspaceId) {
+    throw new Error("Workspace ID é obrigatório");
+  }
+  const request = await fetch(getApiUrl(`/campaigns/${campaignId}/users/invite-bulk`), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "Client-Type": "backoffice",
+      Authorization: `Bearer ${getAuthToken()}`,
+      "Workspace-Id": workspaceId,
+    },
+    body: JSON.stringify(data),
+  });
+  if (!request.ok) {
+    let errorData;
+    try {
+      errorData = await request.json();
+    } catch {
+      errorData = { message: "Failed to invite influencers" };
+    }
+    throw errorData || "Failed to invite influencers";
+  }
+  const response = await request.json();
+  return Array.isArray(response?.results) ? response.results : (response?.data?.results ?? []);
 }
 
 /**
