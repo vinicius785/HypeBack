@@ -5,8 +5,16 @@ const h = vi.hoisted(() => ({
   messages: vi.fn(),
 }));
 vi.mock("@/shared/services/campaign-users", () => ({ getCampaignUsers: h.users }));
-vi.mock("@/shared/services/chat", () => ({ getInfluencerMessages: h.messages }));
+vi.mock("@/shared/services/chat", () => ({
+  getInfluencerMessages: h.messages,
+  RateLimitError: class RateLimitError extends Error {
+    constructor(readonly retryAfterMs: number) {
+      super("429");
+    }
+  },
+}));
 
+import { RateLimitError } from "@/shared/services/chat";
 import { recoverConversations } from "./recover-conversations";
 
 beforeEach(() => vi.clearAllMocks());
@@ -44,5 +52,19 @@ describe("recoverConversations", () => {
     const found = await recoverConversations([{ id: "c1", title: "A" }], progress);
     expect(found[0].preview).toBe("Anexo");
     expect(progress).toHaveBeenCalledWith(expect.objectContaining({ phase: "messages", done: 1, total: 1 }));
+  });
+
+  it("em 429 espera e tenta de novo; se continuar limitando, para e mantém o que já veio", async () => {
+    vi.useFakeTimers();
+    h.users.mockResolvedValue([{ user_id: 1, name: "Ana" }, { user_id: 2, name: "Bia" }]);
+    h.messages
+      .mockRejectedValueOnce(new RateLimitError(1000))
+      .mockResolvedValueOnce([{ message: "oi", attachments: [], created_at: "2026-10-01T10:00:00Z" }])
+      .mockRejectedValue(new RateLimitError(1000));
+    const p = recoverConversations([{ id: "c1", title: "A" }], vi.fn());
+    await vi.runAllTimersAsync();
+    const found = await p;
+    vi.useRealTimers();
+    expect(found).toHaveLength(1);
   });
 });
