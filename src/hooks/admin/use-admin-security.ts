@@ -26,6 +26,8 @@ import type {
   SecurityAlertsSummary,
   SecurityAlertStatus,
   SecurityWatch,
+  SecurityWatchActivityMeta,
+  SecurityWatchActivityRow,
   SecurityWatchBody,
   SecurityWatchCreated,
 } from "@/shared/admin-platform.types";
@@ -94,6 +96,35 @@ export function useSecurityWatchlist() {
     resource: ADMIN_SECURITY_RESOURCE,
     scope: ["watchlist"],
     path: `${BASE}/watchlist`,
+  });
+}
+
+export const SECURITY_ACTIVITY_PAGE_SIZE = 100;
+
+type ActivityPage = AdminEnvelope<SecurityWatchActivityRow[], SecurityWatchActivityMeta>;
+
+/** Atividade de um vigiado (rotas, IPs e aparelhos dos últimos 30 dias), do mais recente ao mais antigo, com "Carregar mais" por `offset`. */
+export function useWatchActivity(watchId: number | null): UseInfiniteQueryResult<InfiniteData<ActivityPage, number>, unknown> {
+  return useInfiniteQuery({
+    queryKey: adminKeys.of(ADMIN_SECURITY_RESOURCE, "activity", watchId ?? 0),
+    queryFn: async ({ pageParam, signal }): Promise<ActivityPage> => {
+      const page = await adminGetEnvelope<SecurityWatchActivityRow[], SecurityWatchActivityMeta>(
+        `${BASE}${adminPath`/watchlist/${watchId ?? 0}/activity`}`,
+        { limit: SECURITY_ACTIVITY_PAGE_SIZE, offset: pageParam },
+        { signal },
+      );
+      return { data: Array.isArray(page.data) ? page.data : [], meta: page.meta };
+    },
+    enabled: watchId !== null,
+    initialPageParam: 0,
+    getNextPageParam: (last, all) => {
+      const loaded = all.reduce((sum, page) => sum + page.data.length, 0);
+      const total = last.meta?.total ?? 0;
+      return last.data.length > 0 && loaded < total ? loaded : undefined;
+    },
+    retry: adminRetry,
+    refetchOnWindowFocus: false,
+    staleTime: 15_000,
   });
 }
 

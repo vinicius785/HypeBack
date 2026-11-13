@@ -12,6 +12,8 @@ import {
   isSignupDomainClusterAlert,
   isSignupWaveAlert,
   isStaffResetAttemptAlert,
+  isWatchedActiveAlert,
+  isWatchedLoginAlert,
   type SecurityAlert,
 } from "@/shared/admin-platform.types";
 
@@ -68,8 +70,57 @@ function list(items: readonly string[]): ReactNode {
   );
 }
 
-/** Descritor do alerta, ou `null` para o que usa o cabeçalho padrão (conta vigiada e tipo desconhecido). */
+/** Aparelho e IP de onde a conta vigiada entrou, para a linha de resumo: "iPhone/iPad (iOS) · IP 203.0.113.7". */
+function accessParts(device: string | null | undefined, ip: string | null | undefined): ReactNode {
+  return (
+    <>
+      {device ? ` · ${device}` : null}
+      {ip ? (
+        <>
+          {" · IP "}
+          {mono(ip)}
+        </>
+      ) : null}
+    </>
+  );
+}
+
+/** Descritor do alerta, ou `null` para o que usa só o cabeçalho padrão (tipo desconhecido). */
 export function describeAlert(alert: SecurityAlert): AlertView | null {
+  if (isWatchedLoginAlert(alert) || isWatchedActiveAlert(alert)) {
+    const d = alert.details;
+    const active = isWatchedActiveAlert(alert);
+    const firstPath = active ? (alert.details as { first_path?: string | null }).first_path : null;
+    const details: AlertDetailRow[] = [
+      ...(firstPath ? [{ label: "Primeira rota vista no minuto", value: firstPath, mono: true, wide: true, pre: true }] : []),
+      ...(d?.ip ? [{ label: "IP", value: d.ip, mono: true }] : []),
+      ...(d?.device ? [{ label: "Aparelho", value: d.device }] : []),
+      ...(d?.user_agent ? [{ label: "User-Agent", value: d.user_agent, mono: true, wide: true, pre: true }] : []),
+    ];
+    const hasAccess = Boolean(d?.device || d?.ip);
+    return {
+      tagIcon: "eye",
+      summary: active ? (
+        <>
+          Conta vigiada está ativa
+          {accessParts(d?.device, d?.ip)}
+        </>
+      ) : hasAccess ? (
+        <>
+          {d?.device ?? "Aparelho não identificado"}
+          {d?.ip ? (
+            <>
+              {" · IP "}
+              {mono(d.ip)}
+            </>
+          ) : null}
+        </>
+      ) : undefined,
+      chips: d?.new_ip === true ? [{ text: "IP novo", tone: "bad" }] : [],
+      details: details.length > 0 ? details : undefined,
+    };
+  }
+
   if (isAdminActionAlert(alert)) {
     const d = alert.details;
     const target = [d?.target_label?.trim(), d?.target_type ? targetTypeLabel(d.target_type) : ""].filter(Boolean);

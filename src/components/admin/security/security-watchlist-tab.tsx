@@ -16,12 +16,12 @@ import {
   AdminSection,
 } from "@/components/admin/platform";
 import { useStopWatching, useSecurityWatchlist, useWatchEmail } from "@/hooks/admin/use-admin-security";
-import { isAdminApiError } from "@/lib/admin/admin-client";
 import { describeAdminError } from "@/lib/admin/admin-errors";
-import { formatDate, formatRelativeTime } from "@/lib/admin/format";
+import { formatDate, formatDateTime, formatRelativeTime } from "@/lib/admin/format";
 import type { SecurityWatch } from "@/shared/admin-platform.types";
 
-import { DEFAULT_WATCH_FILTER, filterWatchlist, REASON_MAX, REASON_MIN, WATCH_ALREADY_TEXT, type WatchFilter } from "./security-labels";
+import { DEFAULT_WATCH_FILTER, filterWatchlist, REASON_MAX, REASON_MIN, type WatchFilter } from "./security-labels";
+import { WatchActivityDrawer } from "./security-watch-activity";
 
 import "@/styles/admin-security.css";
 
@@ -54,7 +54,8 @@ function WatchDialog({ onClose }: { onClose: () => void }) {
       adminToast.success(result.reactivated ? "Vigilância reativada." : "E-mail adicionado aos vigiados.");
       onClose();
     } catch (failure) {
-      setError(isAdminApiError(failure, "WATCH_ALREADY_ACTIVE") ? WATCH_ALREADY_TEXT : describeAdminError(failure));
+      // 409 WATCH_ALREADY_ACTIVE: a API diz se é o mesmo e-mail ou uma variação (Gmail com pontos ou +algo); a mensagem dela vale
+      setError(describeAdminError(failure));
     }
   };
 
@@ -127,7 +128,7 @@ function WatchDialog({ onClose }: { onClose: () => void }) {
 }
 
 /** O cartão de quem é vigiado: foto, e-mail e nome; abaixo o estado e se já tem conta; abaixo o motivo; e o menu "⋯" (Ver conta, Parar de vigiar). */
-function WatchCard({ watch, index, onStop }: { watch: SecurityWatch; index: number; onStop: (watch: SecurityWatch) => void }) {
+function WatchCard({ watch, index, onStop, onActivity }: { watch: SecurityWatch; index: number; onStop: (watch: SecurityWatch) => void; onActivity: (watch: SecurityWatch) => void }) {
   const navigate = useNavigate();
   const account = watch.registered_user;
   const accountName = account ? account.name?.trim() || `Conta #${account.id}` : null;
@@ -135,7 +136,11 @@ function WatchCard({ watch, index, onStop }: { watch: SecurityWatch; index: numb
     !watch.active && watch.deactivated_at ? ` · parou em ${formatDate(watch.deactivated_at)}` : ""
   }`;
 
-  const items: AdminActionMenuItem[] = [];
+  // Conta de uma variação do e-mail (Gmail com pontos ou +algo): mostra o e-mail verdadeiro da conta
+  const accountEmail = account?.email?.trim();
+  const isVariation = Boolean(accountEmail) && accountEmail!.toLowerCase() !== watch.email.trim().toLowerCase();
+
+  const items: AdminActionMenuItem[] = [{ id: "activity", label: "Ver atividade", icon: "clock", onSelect: () => onActivity(watch) }];
   if (account) {
     items.push({
       id: "account",
@@ -153,6 +158,7 @@ function WatchCard({ watch, index, onStop }: { watch: SecurityWatch; index: numb
         <div className="adm-sec-card-id">
           <b className="adm-sec-mail">{watch.email}</b>
           {accountName ? <span className="adm-sec-name">{accountName}</span> : <span className="adm-sec-name adm-sec-name-empty">Sem nome ainda</span>}
+          {isVariation ? <span className="adm-sec-name">Conta: {accountEmail}</span> : null}
         </div>
         {items.length > 0 ? <AdminActionMenu iconOnly variant="ghost" label="Ações" ariaLabel={`Ações de ${watch.email}`} items={items} /> : null}
       </header>
@@ -178,6 +184,24 @@ function WatchCard({ watch, index, onStop }: { watch: SecurityWatch; index: numb
       </div>
 
       <p className="adm-sec-reason">{watch.reason}</p>
+
+      <div className="adm-sec-lastact">
+        <span className="adm-sec-lastact-text">
+          {watch.last_activity_at ? (
+            <>
+              Última atividade{" "}
+              <time dateTime={watch.last_activity_at} title={formatDateTime(watch.last_activity_at)}>
+                {formatDateTime(watch.last_activity_at)} · {formatRelativeTime(watch.last_activity_at)}
+              </time>
+            </>
+          ) : (
+            "Nenhuma atividade ainda"
+          )}
+        </span>
+        <button type="button" className="adm-sec-link" onClick={() => onActivity(watch)}>
+          Ver atividade
+        </button>
+      </div>
     </li>
   );
 }
@@ -206,6 +230,7 @@ export function SecurityWatchlistTab({
   const stop = useStopWatching();
   const [target, setTarget] = useState<SecurityWatch | null>(null);
   const [stopError, setStopError] = useState<string | null>(null);
+  const [activityFor, setActivityFor] = useState<SecurityWatch | null>(null);
 
   const all = useMemo(() => (query.data ? sortWatchlist(query.data) : []), [query.data]);
   const list = useMemo(() => filterWatchlist(all, filter, term), [all, filter, term]);
@@ -264,7 +289,7 @@ export function SecurityWatchlistTab({
     body = (
       <ul className="adm-sec-cards" aria-label="E-mails vigiados">
         {list.map((watch, index) => (
-          <WatchCard key={watch.id} watch={watch} index={index} onStop={setTarget} />
+          <WatchCard key={watch.id} watch={watch} index={index} onStop={setTarget} onActivity={setActivityFor} />
         ))}
       </ul>
     );
@@ -276,6 +301,7 @@ export function SecurityWatchlistTab({
         {body}
       </AdminSection>
       {adding ? <WatchDialog onClose={() => onAddingChange(false)} /> : null}
+      {activityFor ? <WatchActivityDrawer watch={activityFor} onClose={() => setActivityFor(null)} /> : null}
       <AdminConfirmDialog
         open={target !== null}
         title="Parar de vigiar"

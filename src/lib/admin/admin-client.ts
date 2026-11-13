@@ -209,6 +209,7 @@ const DEFAULT_MESSAGE: Record<string, string> = {
   IDEMPOTENCY_CONFLICT: "Esta solicitação já foi enviada com outros dados. Recarregue e tente de novo.",
   EMAIL_ALREADY_REGISTERED:
     "Este e-mail já está cadastrado. Para dar acesso a quem já tem conta, adicione como membro do workspace.",
+  WATCH_ALREADY_ACTIVE: "Esse e-mail já está na lista de vigiados.",
   // Genéricos do cliente.
   UNAUTHENTICATED: "Sua sessão expirou. Entre novamente.",
   FORBIDDEN: "Você não tem permissão para acessar este recurso.",

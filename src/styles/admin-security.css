@@ -62,6 +62,18 @@
 /* conta da equipe visada: sempre vermelho enquanto não visto */
 .pv .adm-sec-alert[data-critical="true"] { border-color: var(--adm-bad); box-shadow: inset 0 0 0 1px var(--adm-bad); background: var(--adm-bad-bg); }
 .pv .adm-sec-alert[data-critical="true"] .adm-sec-tag-item i { animation: adm-sec-dot 1.2s ease-out infinite; --dot: 255, 90, 95; }
+/* vigiados: a linha da última atividade e o painel de atividade */
+.pv .adm-sec-lastact { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding-top: 12px; border-top: 1.5px solid var(--line); font-size: 12.5px; color: var(--adm-text-muted); font-variant-numeric: tabular-nums; }
+.pv .adm-sec-link { display: inline-flex; align-items: center; height: 30px; padding: 0 10px; margin-right: -8px; border: 0; border-radius: 999px; background: transparent; color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .2s; }
+.pv .adm-sec-link:hover { background: rgba(5, 5, 5, 0.06); }
+.pv .adm-sec-link:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+.pv .adm-sec-act { display: flex; flex-direction: column; gap: 16px; }
+.pv .adm-sec-actfilters { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+.pv .adm-sec-actfilters label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--adm-text-muted); }
+.pv .adm-sec-actfilters .adm-input { width: auto; min-width: 150px; padding: 8px 12px; font-size: 13px; }
+.pv .adm-sec-act-path { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; min-width: 0; overflow-wrap: anywhere; }
+.pv .adm-sec-act-path code { font-size: 12.5px; }
+.pv .adm-sec-act-hits { color: var(--adm-text-muted); font-weight: 600; font-variant-numeric: tabular-nums; }
 .pv .adm-sec-more { display: flex; justify-content: center; padding: 0 26px 26px; }
 .pv .adm-sec-more .btn[aria-disabled="true"] { opacity: 0.6; cursor: progress; }
 
