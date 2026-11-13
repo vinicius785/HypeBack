@@ -63,7 +63,8 @@ function UsersLive() {
 function CreatorsLive() {
   const today = civilDateInSaoPaulo();
   const base = { ...ONE, kind: "creator" } as const;
-  const novos = useAdminUsers({ ...base, status: "active,suspended,pending", created_from: today, created_to: today }, { refetchInterval: LIVE_REFRESH_MS });
+  // Só ativos e suspensos, como a lista de Criadores: conta "em cadastro" não aparece lá, e o número daria uma pessoa a mais do que a lista mostra.
+  const novos = useAdminUsers({ ...base, status: "active,suspended", created_from: today, created_to: today }, { refetchInterval: LIVE_REFRESH_MS });
   // A primeira consulta por confiança pode levar alguns segundos (a API calcula e guarda as notas): o número aparece quando chega.
   const alertas = useAdminUsers({ ...base, status: "active,suspended", trust_max: 2 }, { refetchInterval: 5 * LIVE_REFRESH_MS });
   const alertCount = alertas.data?.meta.total;

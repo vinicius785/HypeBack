@@ -100,7 +100,7 @@ export function DashboardStatAreas({ overview, period }: DashboardStatAreasProps
   const campaigns = useAdminCampaigns({ page: 1, per_page: 1 }, { refetchInterval: 60_000 });
   const workspaceFaces = useAdminWorkspaceList({ ...NEWEST });
   const creatorsActive = useAdminUsers({ page: 1, per_page: 1, status: "active", kind: "creator" });
-  const creatorFaces = useAdminUsers({ ...NEWEST, status: "active,suspended,pending", kind: "creator" });
+  const creatorFaces = useAdminUsers({ ...NEWEST, status: "active,suspended", kind: "creator" });
 
   if (isError && !data) {
     return (

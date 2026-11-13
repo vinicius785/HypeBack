@@ -30,8 +30,10 @@ const NEWEST = { page: 1, per_page: 1, sort_by: "created_at", order: "desc" } as
 export function useDashboardNews(activity: readonly AdminActivityEvent[] | undefined): DashboardNews | null {
   const refresh = { refetchInterval: NEWS_REFRESH_MS } as const;
   const workspace = useAdminWorkspaceList({ ...NEWEST });
-  const user = useAdminUsers({ ...NEWEST, status: "active,suspended,pending" }, refresh);
-  const creator = useAdminUsers({ ...NEWEST, status: "active,suspended,pending", kind: "creator" }, refresh);
+  // Só contas ativas ou suspensas, as mesmas que a lista de Pessoas mostra por padrão. Conta "em cadastro" (pending) ainda
+  // não tem acesso ao app e não aparece na lista, então anunciá-la aqui deixaria a novidade sem rastro nas Pessoas.
+  const user = useAdminUsers({ ...NEWEST, status: "active,suspended" }, refresh);
+  const creator = useAdminUsers({ ...NEWEST, status: "active,suspended", kind: "creator" }, refresh);
   const campaign = useAdminCampaigns({ page: 1, per_page: 1 }, refresh);
 
   // Inscrições: só o contador do dia. Aumentou desde a leitura anterior = chegou inscrição agora.
