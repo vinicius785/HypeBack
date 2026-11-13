@@ -61,7 +61,8 @@ describe("MobileNav no escopo da plataforma", () => {
     // grupos cujos itens estão todos na barra não aparecem vazios
     expect(sheet.queryByText("Visão geral")).not.toBeInTheDocument();
     expect(sheet.getByText("Gestão da plataforma")).toBeInTheDocument();
-    expect(sheet.getByRole("button", { name: "Equipe" })).toBeInTheDocument();
+    // a Equipe é uma aba de Pessoas (que está na barra): não tem item próprio na gaveta
+    expect(sheet.queryByRole("button", { name: "Equipe" })).not.toBeInTheDocument();
     for (const label of ["Campanhas", "Comunidade", "Atendimento", "Monitoramento"]) {
       expect(sheet.getByRole("button", { name: label })).toBeInTheDocument();
     }

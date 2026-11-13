@@ -7,11 +7,12 @@ import { I } from "@/components/prototype/ui";
 import { useAdminUsers } from "@/hooks/admin/use-admin-users";
 import { ACTIVITY_PAGE, useUsersActivity } from "@/hooks/admin/use-users-activity";
 import { useAdminWorkspaceList } from "@/hooks/admin/use-admin-workspaces";
+import { useAdminPlatformTeam } from "@/hooks/admin/use-admin-team";
 import { civilDateInSaoPaulo, formatInt } from "@/lib/admin/format";
 
 import "@/styles/admin-people.css";
 
-export type PeopleSection = "users" | "creators" | "workspaces";
+export type PeopleSection = "users" | "creators" | "workspaces" | "team";
 
 const n = (value: number | undefined) => (value === undefined ? "—" : formatInt(value));
 
@@ -110,7 +111,7 @@ function PillLink({ to, search, on, children }: { to: string; search?: Record<st
 }
 
 /**
- * "Ilha" (padrão Dynamic Island do Gerenciamento) de Pessoas: a única navegação entre Usuários, Criadores e Workspaces
+ * "Ilha" (padrão Dynamic Island do Gerenciamento) de Pessoas: a única navegação entre Usuários, Criadores, Workspaces e Equipe
  * (cada pílula é um link e leva a contagem da lista). Embaixo das pílulas, `children` é a barra da lista (busca, ordenar,
  * filtros e atualizar), que mora dentro da ilha. À direita, "Em cadastro" com bolinhas pulsando enquanto houver conta que ainda
  * não terminou o cadastro (leva direto à lista filtrada). A seta abre uma folha com o que merece olhar: suspensos,
@@ -141,6 +142,7 @@ export function PeopleIsland({ current, children }: { current: PeopleSection; ch
   // A aba Criadores é a lista de usuários só com criadores (tipo fixo, não é filtro): a contagem é a dos criadores ATIVOS (`kind=creator`, `status=active`), a mesma do Dashboard.
   const creators = useAdminUsers({ ...ONE, status: "active", kind: "creator" });
   const workspaces = useAdminWorkspaceList({ ...ONE });
+  const team = useAdminPlatformTeam();
 
   // Só ao abrir a folha (a de suspeitos pode demorar na primeira vez: a API calcula e guarda as notas).
   const suspended = useAdminUsers({ ...ONE, status: "suspended" }, { enabled: open });
@@ -148,7 +150,7 @@ export function PeopleIsland({ current, children }: { current: PeopleSection; ch
   const wsSuspended = useAdminWorkspaceList({ ...ONE, status: "suspended" });
   const wsArchived = useAdminWorkspaceList({ ...ONE, status: "archived" });
 
-  const [usersTab, creatorsTab, workspacesTab] = PLATFORM_SECTION_GROUPS.people.tabs;
+  const [usersTab, creatorsTab, workspacesTab, teamTab] = PLATFORM_SECTION_GROUPS.people.tabs;
 
   return (
     <AdminIsland
@@ -175,6 +177,11 @@ export function PeopleIsland({ current, children }: { current: PeopleSection; ch
             <i aria-hidden="true" />
             Workspaces
             <em>{n(workspaces.data?.meta.total)}</em>
+          </PillLink>
+          <PillLink to={teamTab.href} on={current === "team"}>
+            <i aria-hidden="true" />
+            Equipe
+            <em>{n(team.data?.members.length)}</em>
           </PillLink>
         </nav>
       }
