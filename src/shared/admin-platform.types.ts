@@ -1307,7 +1307,27 @@ interface SecurityAlertBase {
 /** Conta vigiada abriu sessão. */
 export interface WatchedLoginAlert extends SecurityAlertBase {
   kind: 'watched_login';
-  details: { channel?: SecurityAlertChannel };
+  details: WatchedAccessDetails & { channel?: SecurityAlertChannel };
+}
+
+/** De onde a conta vigiada entrou: IP, aparelho e se o IP é novo para a conta. Tudo pode faltar (alertas antigos, IP desconhecido). */
+export interface WatchedAccessDetails {
+  ip?: string | null;
+  /** User-Agent completo (texto vindo do aparelho: nunca renderizar como HTML). */
+  user_agent?: string | null;
+  /** Aparelho já traduzido pela API: "iPhone/iPad (iOS)", "Android", "Windows", "Mac", "Script/automação". */
+  device?: string | null;
+  /** `true`: IP que a conta nunca usou antes; `null`: IP desconhecido. */
+  new_ip?: boolean | null;
+}
+
+/** Conta vigiada está ativa (inclusive com uma sessão que já estava aberta, sem novo login). Gravidade média. */
+export interface WatchedActiveAlert extends SecurityAlertBase {
+  kind: 'watched_active';
+  details: WatchedAccessDetails & {
+    /** Primeira rota vista no minuto. */
+    first_path?: string | null;
+  };
 }
 
 /** Papel de quem fez a ação de risco no Admin. */
@@ -1447,6 +1467,7 @@ export interface UnknownSecurityAlert extends SecurityAlertBase {
 /** União por `kind`. `kind` desconhecido cai em `UnknownSecurityAlert`; use `isAdminActionAlert` / `isWatchedLoginAlert` para estreitar. */
 export type SecurityAlert =
   | WatchedLoginAlert
+  | WatchedActiveAlert
   | AdminActionAlert
   | AttackIpDeniedAlert
   | AttackUserProbingAlert
@@ -1465,6 +1486,10 @@ export function isAdminActionAlert(alert: SecurityAlert): alert is AdminActionAl
 
 export function isWatchedLoginAlert(alert: SecurityAlert): alert is WatchedLoginAlert {
   return alert.kind === 'watched_login';
+}
+
+export function isWatchedActiveAlert(alert: SecurityAlert): alert is WatchedActiveAlert {
+  return alert.kind === 'watched_active';
 }
 
 export function isAttackIpDeniedAlert(alert: SecurityAlert): alert is AttackIpDeniedAlert {
@@ -1531,7 +1556,10 @@ export interface SecurityWatch {
   created_at: string;
   deactivated_at: string | null;
   /** `null`: o e-mail ainda não tem conta. */
-  registered_user: { id: number; name: string | null; photo?: string | null } | null;
+  /** `email` é o da conta; quando difere do e-mail vigiado, a conta é uma variação (Gmail com pontos ou +algo). */
+  registered_user: { id: number; name: string | null; email?: string | null; photo?: string | null } | null;
+  /** ISO UTC da última atividade registrada; `null`: nenhuma ainda. */
+  last_activity_at?: string | null;
 }
 
 /** Corpo de `POST /admin/security/watchlist`. `reason`: 5 a 500 caracteres. */
@@ -1543,4 +1571,25 @@ export interface SecurityWatchBody {
 export interface SecurityWatchCreated {
   id: number;
   reactivated: boolean;
+}
+
+/** Uma linha da atividade de um vigiado (`GET watchlist/:watchId/activity`): as chamadas do mesmo minuto vêm juntas (`hits`). */
+export interface SecurityWatchActivityRow {
+  id: number;
+  /** ISO UTC; é o minuto em que as chamadas foram juntadas. */
+  created_at: string;
+  method: string;
+  path: string;
+  status: number | null;
+  ip: string | null;
+  user_agent: string | null;
+  hits: number;
+  user: SecurityAlertUser | null;
+}
+
+/** Paginação por `limit`/`offset` da atividade. */
+export interface SecurityWatchActivityMeta {
+  total: number;
+  limit: number;
+  offset: number;
 }

@@ -61,6 +61,7 @@ export function filterWatchlist<T extends { active: boolean; email: string; reas
 export function kindLabel(kind: string): string | null {
   if (kind === "admin_action") return "Ação no Admin";
   if (kind === "watched_login") return "Conta vigiada";
+  if (kind === "watched_active") return "Vigiado ativo";
   if (kind === "attack_ip_denied") return "IP suspeito";
   if (kind === "attack_user_probing") return "Conta suspeita";
   if (kind === "signup_wave") return "Onda de cadastros";
@@ -100,7 +101,7 @@ export const KIND_FILTERS: ReadonlyArray<{ id: KindFilter; label: string }> = [
 ];
 
 const KIND_GROUPS: Record<Exclude<KindFilter, "all">, readonly string[]> = {
-  watched_login: ["watched_login"],
+  watched_login: ["watched_login", "watched_active"],
   admin_action: ["admin_action"],
   attacks: ["attack_ip_denied", "attack_user_probing", "attack_code_guessing", "attack_volume", "attack_enumeration", "attack_anonymizer_wave"],
   staff: ["staff_reset_attempt"],
@@ -128,4 +129,29 @@ export function probingSummary(count: number, windowMinutes: number): string {
 
 export function signupWaveSummary(count: number, windowMinutes: number): string {
   return `${count} ${plural(count, "conta nova", "contas novas")} em ${windowMinutes} min`;
+}
+
+/** Aparelho a partir do User-Agent, para a tabela de atividade: iPhone/iPad, Android, Windows, Mac ou outro. */
+export function deviceFromUserAgent(userAgent: string | null | undefined): string {
+  const ua = userAgent?.trim();
+  if (!ua) return "—";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "iPhone/iPad";
+  if (/Android/i.test(ua)) return "Android";
+  if (/Windows/i.test(ua)) return "Windows";
+  if (/Macintosh|Mac OS X/i.test(ua)) return "Mac";
+  return "Outro";
+}
+
+/** Cor do status HTTP na atividade: verde 2xx, âmbar 4xx, vermelho 5xx; o resto, neutro. */
+export function statusTone(status: number | null): "ok" | "warn" | "bad" | "neutral" {
+  if (status === null) return "neutral";
+  if (status >= 200 && status < 300) return "ok";
+  if (status >= 400 && status < 500) return "warn";
+  if (status >= 500) return "bad";
+  return "neutral";
+}
+
+/** Erro de acesso (4xx ou 5xx): é o que o filtro "Só erros" da atividade mostra. */
+export function isErrorStatus(status: number | null): boolean {
+  return status !== null && status >= 400;
 }

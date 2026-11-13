@@ -50,8 +50,10 @@ import type {
   SecurityAlert,
   SecurityWatch,
   SignupDomainClusterAlert,
+  SecurityWatchActivityRow,
   SignupWaveAlert,
   StaffResetAttemptAlert,
+  WatchedActiveAlert,
 } from "@/shared/admin-platform.types";
 
 import { renderRoutes, stubRoute } from "../users/admin-users-test-utils";
@@ -81,8 +83,15 @@ function alertsPage(data: SecurityAlert[], unseen = data.filter((a) => !a.seen_a
   return { data, meta: { total: data.length, unseen, limit: 50, offset: 0 } };
 }
 
-function serve(options: { alerts?: SecurityAlert[]; watches?: SecurityWatch[] } = {}) {
-  mocks.adminGetEnvelope.mockImplementation(async () => alertsPage(options.alerts ?? [ALERT]));
+function serve(options: { alerts?: SecurityAlert[]; watches?: SecurityWatch[]; activity?: SecurityWatchActivityRow[] | "forbidden" } = {}) {
+  mocks.adminGetEnvelope.mockImplementation(async (path: string) => {
+    if (path.includes("/activity")) {
+      if (options.activity === "forbidden") throw toAdminApiError(403, { message: "Forbidden resource" });
+      const rows = options.activity ?? [];
+      return { data: rows, meta: { total: rows.length, limit: 100, offset: 0 } };
+    }
+    return alertsPage(options.alerts ?? [ALERT]);
+  });
   mocks.adminGet.mockImplementation(async (path: string) => {
     if (path === "/admin/security/alerts/summary") return { unseen: (options.alerts ?? [ALERT]).filter((a) => !a.seen_at).length };
     if (path === "/admin/security/watchlist") return options.watches ?? WATCHES;
@@ -630,6 +639,184 @@ describe("Segurança: todos os tipos de alerta da sentinela", () => {
   });
 });
 
+const ACCESS = { ip: "203.0.113.7", user_agent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", device: "iPhone/iPad (iOS)", new_ip: true };
+
+const WATCHED_ACTIVE: WatchedActiveAlert = {
+  id: 60,
+  kind: "watched_active",
+  severity: "medium",
+  title: "Conta vigiada está ativa",
+  details: { ...ACCESS, first_path: "/api/campaigns" },
+  created_at: "2026-11-10T01:30:00Z",
+  seen_at: null,
+  note: null,
+  user: { id: 2, name: "Bia Santos", email: "bia@marca.com" },
+};
+
+describe("Segurança: conta vigiada com IP e aparelho", () => {
+  it("watched_login com IP novo: canal, aparelho, IP, etiqueta IP novo e o User-Agent só ao expandir", async () => {
+    serve({ alerts: [{ ...ALERT, title: "Conta vigiada abriu sessão de um IP novo", details: { channel: "mobile-app", ...ACCESS } }] });
+    const { user } = await renderPage();
+    const row = await screen.findByRole("listitem");
+    expect(within(row).getByText("Conta vigiada abriu sessão de um IP novo")).toBeInTheDocument();
+    expect(within(row).getByText("App")).toBeInTheDocument();
+    expect(within(row).getByText(/iPhone\/iPad \(iOS\)/)).toHaveTextContent("iPhone/iPad (iOS) · IP 203.0.113.7");
+    expect(within(row).getByText("203.0.113.7")).toHaveClass("adm-sec-mono");
+    expect(within(row).getByText("IP novo")).toBeInTheDocument();
+    expect(within(row).queryByText(/Mozilla/)).toBeNull();
+    await user.click(within(row).getByRole("button", { name: "Ações do alerta 5" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Ver detalhes" }));
+    expect(within(row).getByText(/Mozilla\/5.0/)).toHaveClass("adm-sec-mono");
+  });
+
+  it("watched_login sem IP novo (new_ip falso ou desconhecido) não tem a etiqueta; sem IP nem aparelho não tem resumo nem detalhes", async () => {
+    serve({ alerts: [{ ...ALERT, details: { channel: "backoffice", ip: "203.0.113.8", device: "Windows", new_ip: false, user_agent: null } }] });
+    const first = await renderPage();
+    const row = await screen.findByRole("listitem");
+    expect(within(row).getByText("Painel")).toBeInTheDocument();
+    expect(within(row).getByText(/Windows/)).toHaveTextContent("Windows · IP 203.0.113.8");
+    expect(within(row).queryByText("IP novo")).toBeNull();
+    first.unmount();
+
+    serve({ alerts: [{ ...ALERT, details: { channel: "mobile-app", ip: null, user_agent: null, device: null, new_ip: null } }] });
+    const { user } = await renderPage();
+    const bare = await screen.findByRole("listitem");
+    expect(within(bare).queryByText("IP novo")).toBeNull();
+    expect(within(bare).queryByText(/IP/)).toBeNull();
+    await user.click(within(bare).getByRole("button", { name: "Ações do alerta 5" }));
+    expect(screen.queryByRole("menuitem", { name: "Ver detalhes" })).toBeNull();
+  });
+
+  it("watched_active: selo Vigiado ativo, resumo com aparelho e IP, IP novo e a primeira rota ao expandir", async () => {
+    serve({ alerts: [WATCHED_ACTIVE] });
+    const { user } = await renderPage();
+    const row = await screen.findByRole("listitem");
+    expect(within(row).getByText("Vigiado ativo")).toBeInTheDocument();
+    expect(within(row).getByText(/Conta vigiada está ativa ·/)).toHaveTextContent("Conta vigiada está ativa · iPhone/iPad (iOS) · IP 203.0.113.7");
+    expect(within(row).getByText("IP novo")).toBeInTheDocument();
+    expect(within(row).queryByText("App")).toBeNull();
+    await user.click(within(row).getByRole("button", { name: "Ações do alerta 60" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Ver detalhes" }));
+    expect(within(row).getByText("/api/campaigns")).toHaveClass("adm-sec-mono");
+    expect(within(row).getByText("Primeira rota vista no minuto")).toBeInTheDocument();
+  });
+
+  it("User-Agent e rota com HTML aparecem como texto", async () => {
+    const evil = '<img src=x onerror="alert(1)">';
+    serve({ alerts: [{ ...WATCHED_ACTIVE, details: { ...ACCESS, user_agent: evil, first_path: evil } }] });
+    const { user } = await renderPage();
+    const row = await screen.findByRole("listitem");
+    await user.click(within(row).getByRole("button", { name: "Ações do alerta 60" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Ver detalhes" }));
+    expect(within(row).getAllByText(evil).length).toBe(2);
+    expect(row.querySelector("img")).toBeNull();
+  });
+
+  it("o filtro Contas vigiadas inclui o vigiado ativo", async () => {
+    serve({ alerts: [ALERT, WATCHED_ACTIVE, IP_DENIED] });
+    const { user } = await renderPage();
+    await screen.findAllByRole("listitem");
+    await chooseFilter(user, "Tipo", "watched_login");
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+  });
+});
+
+const ACTIVITY: SecurityWatchActivityRow[] = [
+  { id: 3, created_at: "2026-11-10T13:05:00Z", method: "GET", path: "/api/campaigns", status: 200, ip: "203.0.113.7", user_agent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", hits: 3, user: null },
+  { id: 2, created_at: "2026-11-10T13:04:00Z", method: "POST", path: "/api/auth/login", status: 401, ip: "203.0.113.7", user_agent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", hits: 1, user: null },
+  { id: 1, created_at: "2026-11-10T13:00:00Z", method: "GET", path: "/api/me", status: 500, ip: "198.51.100.4", user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", hits: 1, user: null },
+];
+
+async function openActivity(user: ReturnType<typeof userEvent.setup>, email = "novo@marca.com") {
+  const row = (await screen.findByText(email)).closest("li") as HTMLElement;
+  await user.click(within(row).getByRole("button", { name: "Ver atividade" }));
+  return screen.findByRole("dialog", { name: /Atividade/ });
+}
+
+describe("Segurança: atividade dos vigiados", () => {
+  it("cada vigiado mostra a última atividade (data, hora e há quanto tempo) ou 'Nenhuma atividade ainda'", async () => {
+    serve({
+      watches: [
+        { ...WATCHES[1], last_activity_at: "2026-11-10T13:05:00Z" },
+        { ...WATCHES[2], last_activity_at: null },
+      ],
+    });
+    await renderPage("/admin/security?tab=watchlist");
+    const withActivity = (await screen.findByText("novo@marca.com")).closest("li") as HTMLElement;
+    expect(within(withActivity).getByText(/Última atividade/)).toHaveTextContent("10/11/2026 10:05");
+    const without = screen.getByText("sem-conta@marca.com").closest("li") as HTMLElement;
+    expect(within(without).getByText("Nenhuma atividade ainda")).toBeInTheDocument();
+  });
+
+  it("variação do e-mail: mostra 'Conta: {e-mail da conta}' só quando difere do e-mail vigiado", async () => {
+    serve({
+      watches: [
+        { ...WATCHES[1], email: "fulano@gmail.com", registered_user: { id: 9, name: "Fulano", email: "fu.lano+x@gmail.com" } },
+        { ...WATCHES[2], email: "igual@marca.com", registered_user: { id: 10, name: "Igual", email: "IGUAL@marca.com" } },
+      ],
+    });
+    await renderPage("/admin/security?tab=watchlist");
+    const variation = (await screen.findByText("fulano@gmail.com")).closest("li") as HTMLElement;
+    expect(within(variation).getByText("Conta: fu.lano+x@gmail.com")).toBeInTheDocument();
+    const same = screen.getByText("igual@marca.com").closest("li") as HTMLElement;
+    expect(within(same).queryByText(/^Conta:/)).toBeNull();
+  });
+
+  it("sem atividade: estado vazio e o aviso de 30 dias", async () => {
+    serve({ activity: [] });
+    const { user } = await renderPage("/admin/security?tab=watchlist");
+    const dialog = await openActivity(user);
+    expect(await within(dialog).findByText("Sem atividade registrada nos últimos 30 dias.")).toBeInTheDocument();
+    expect(within(dialog).getByText("Registro de rotas e IPs, guardado por 30 dias, visível só para administradores. Não inclui o conteúdo das requisições.")).toBeInTheDocument();
+    expect(mocks.adminGetEnvelope).toHaveBeenCalledWith("/admin/security/watchlist/2/activity", { limit: 100, offset: 0 }, expect.anything());
+  });
+
+  it("com dados: horário de Brasília, método, rota, status, ×hits, IP e aparelho", async () => {
+    serve({ activity: ACTIVITY });
+    const { user } = await renderPage("/admin/security?tab=watchlist");
+    const dialog = await openActivity(user);
+    expect(await within(dialog).findByText("/api/campaigns")).toHaveClass("adm-sec-mono");
+    expect(within(dialog).getByText("10/11/2026 10:05")).toBeInTheDocument();
+    expect(within(dialog).getByText("×3")).toBeInTheDocument();
+    expect(within(dialog).getByText("200")).toBeInTheDocument();
+    expect(within(dialog).getByText("401")).toBeInTheDocument();
+    expect(within(dialog).getByText("500")).toBeInTheDocument();
+    expect(within(dialog).getAllByText("iPhone/iPad").length).toBe(2);
+    expect(within(dialog).getByText("Windows")).toBeInTheDocument();
+    expect(within(dialog).getByText("POST")).toBeInTheDocument();
+  });
+
+  it("filtros no cliente: por IP e só erros", async () => {
+    serve({ activity: ACTIVITY });
+    const { user } = await renderPage("/admin/security?tab=watchlist");
+    const dialog = await openActivity(user);
+    await within(dialog).findByText("/api/campaigns");
+    await user.selectOptions(within(dialog).getByRole("combobox", { name: "Filtrar por IP" }), "198.51.100.4");
+    expect(within(dialog).queryByText("/api/campaigns")).toBeNull();
+    expect(within(dialog).getByText("/api/me")).toBeInTheDocument();
+    await user.selectOptions(within(dialog).getByRole("combobox", { name: "Filtrar por IP" }), "");
+    await user.selectOptions(within(dialog).getByRole("combobox", { name: "Filtrar por status" }), "errors");
+    expect(within(dialog).queryByText("/api/campaigns")).toBeNull();
+    expect(within(dialog).getByText("/api/auth/login")).toBeInTheDocument();
+    expect(within(dialog).getByText("/api/me")).toBeInTheDocument();
+  });
+
+  it("403 na atividade mostra Sem permissão; rota com HTML vira texto", async () => {
+    serve({ activity: "forbidden" });
+    const first = await renderPage("/admin/security?tab=watchlist");
+    const dialog = await openActivity(first.user);
+    expect(await within(dialog).findByText("Sem permissão")).toBeInTheDocument();
+    first.unmount();
+
+    const evil = '<img src=x onerror="alert(1)">';
+    serve({ activity: [{ ...ACTIVITY[0], path: evil }] });
+    const second = await renderPage("/admin/security?tab=watchlist");
+    const again = await openActivity(second.user);
+    expect(await within(again).findByText(evil)).toBeInTheDocument();
+    expect(again.querySelector("img")).toBeNull();
+  });
+});
+
 describe("Segurança: a ilha só esquenta quando aconteceu algo", () => {
   it("sem alertas novos: tranquila, sem o vermelho nem o alerta na sentinela", async () => {
     serve({ alerts: [] });
@@ -686,8 +873,12 @@ describe("Segurança: vigiados", () => {
     expect(within(rows[1]).getByText("Caio Teodoro")).toBeInTheDocument();
     expect(within(rows[1]).getByText("Já tem conta")).toBeInTheDocument();
     expect(within(rows[2]).getByText("Inativo")).toBeInTheDocument();
-    // encerrado e sem conta: não há o que fazer, então nem o menu "⋯" aparece
-    expect(within(rows[2]).queryByRole("button", { name: /Ações de/ })).toBeNull();
+    // encerrado e sem conta: o menu "⋯" só tem "Ver atividade" (nada de Ver conta nem Parar de vigiar)
+    await userEvent.click(within(rows[2]).getByRole("button", { name: "Ações de antigo@marca.com" }));
+    expect(await screen.findByRole("menuitem", { name: "Ver atividade" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Ver conta" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Parar de vigiar" })).toBeNull();
+    await userEvent.keyboard("{Escape}");
     // ativo com conta: o menu tem Ver conta e Parar de vigiar
     await userEvent.click(within(rows[1]).getByRole("button", { name: "Ações de novo@marca.com" }));
     expect(await screen.findByRole("menuitem", { name: "Ver conta" })).toBeInTheDocument();
@@ -712,7 +903,7 @@ describe("Segurança: vigiados", () => {
   });
 
   it("409 WATCH_ALREADY_ACTIVE mostra que o e-mail já é vigiado e mantém o diálogo aberto", async () => {
-    mocks.adminPostPlain.mockRejectedValue(toAdminApiError(409, { statusCode: 409, error: "WATCH_ALREADY_ACTIVE", message: "Already watched" }));
+    mocks.adminPostPlain.mockRejectedValue(toAdminApiError(409, { statusCode: 409, error: "WATCH_ALREADY_ACTIVE", message: "Esse e-mail já está na lista de vigiados." }));
     const { user } = await renderPage("/admin/security?tab=watchlist");
     await user.click(await screen.findByRole("button", { name: "Vigiar e-mail" }));
     const dialog = await screen.findByRole("dialog");
@@ -721,6 +912,17 @@ describe("Segurança: vigiados", () => {
     await user.click(within(dialog).getByRole("button", { name: "Vigiar" }));
     expect(await within(dialog).findByText("Esse e-mail já está na lista de vigiados.")).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("409 de variação do e-mail (Gmail com pontos ou +algo) mostra a mensagem da API", async () => {
+    mocks.adminPostPlain.mockRejectedValue(toAdminApiError(409, { statusCode: 409, error: "WATCH_ALREADY_ACTIVE", message: "Uma variação desse e-mail já está na lista de vigiados." }));
+    const { user } = await renderPage("/admin/security?tab=watchlist");
+    await user.click(await screen.findByRole("button", { name: "Vigiar e-mail" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("E-mail"), "no.vo+x@marca.com");
+    await user.type(within(dialog).getByLabelText("Motivo"), "Suspeita de fraude");
+    await user.click(within(dialog).getByRole("button", { name: "Vigiar" }));
+    expect(await within(dialog).findByText("Uma variação desse e-mail já está na lista de vigiados.")).toBeInTheDocument();
   });
 
   it("Parar de vigiar pede confirmação e chama DELETE", async () => {
