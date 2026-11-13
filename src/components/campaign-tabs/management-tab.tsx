@@ -48,6 +48,7 @@ import {
 import { ManagementSummary } from "./kanban/management-summary";
 import { nextPanelId, revealDelta } from "./kanban/panel-nav";
 import "@/styles/management-board.css";
+import "@/styles/kanban-reject-zone.css";
 import {
   ACTION_TARGET,
   COLUMN_LABEL,
@@ -73,6 +74,9 @@ import {
   validateStatusTransition,
   validateUserStatusTransition,
   getTransitionNote,
+  resolveDropColumnId,
+  REJECT_ZONE_ID,
+  canDropOnRejectZone,
 } from "./management-status-transitions";
 import { useUpdateInfluencerStatus } from "@/hooks/use-campaign-influencers";
 import { openChatDrawer } from "@/components/chat-drawer";
@@ -130,6 +134,20 @@ interface ManagementTabProps {
 
 // StatusHistory, ExtendedInfluencer, kanbanColumns, idToString e participantToExtended
 // foram extraídos para management-kanban-config.ts
+
+/**
+ * Zona de recusa: aparece durante o arrasto de um cartão que pode ser recusado. Soltar nela abre a recusa (com o motivo
+ * obrigatório), em vez de ter de levar o cartão até a coluna Recusados, na última etapa do quadro.
+ */
+function RejectDropZone() {
+  const { setNodeRef, isOver } = useDroppable({ id: REJECT_ZONE_ID });
+  return (
+    <div ref={setNodeRef} className={`kreject${isOver ? " over" : ""}`} role="region" aria-label="Zona para recusar o criador">
+      <I n="ban" />
+      <b>{isOver ? "Solte para recusar" : "Arraste aqui para recusar"}</b>
+    </div>
+  );
+}
 
 // Componente de Coluna do Kanban (`.kcol`)
 function KanbanColumn({
@@ -664,17 +682,43 @@ export function ManagementTab({
     const activeId = active.id as string;
     const overId = over.id as string;
 
+    // Solto na zona de recusa: abre a recusa (motivo obrigatório) para esse criador.
+    if (overId === REJECT_ZONE_ID) {
+      const dragged = extendedInfluencers.find((inf) => inf.id === activeId);
+      if (!dragged) return;
+      if (!canDropOnRejectZone(getCurrentStatus(dragged))) {
+        toast.error(`Não é possível recusar quem está em "${getStatusLabel(getCurrentStatus(dragged))}"`);
+        return;
+      }
+      setSelectedInfluencer(dragged);
+      setIsRejectModalOpen(true);
+      return;
+    }
+
+
     // Encontra o influenciador sendo arrastado
     const draggedInfluencer = extendedInfluencers.find(
       (inf) => inf.id === activeId,
     );
     if (!draggedInfluencer) return;
 
-    // Verifica se foi solto sobre uma coluna
-    const targetColumn = kanbanColumns.find((col) => col.id === overId);
+    // Verifica em que coluna foi solto: sobre o espaço da coluna ou sobre um cartão dela (a coluna com cartões cobrindo
+    // a altura não tem área livre, e antes o movimento era ignorado: só dava para passar 2 por coluna).
+    const targetColumnId = resolveDropColumnId(
+      overId,
+      kanbanColumns.map((col) => col.id),
+      (cardId) => {
+        const card = extendedInfluencers.find((inf) => inf.id === cardId);
+        return card ? getCurrentStatus(card) : undefined;
+      },
+    );
+    const targetColumn = kanbanColumns.find((col) => col.id === targetColumnId);
     if (targetColumn) {
       const currentStatus = getCurrentStatus(draggedInfluencer);
       const targetStatus = targetColumn.id;
+      // Solto sobre um cartão da mesma coluna: é só reordenar, não há movimento nem erro.
+      if (currentStatus === targetStatus) return;
+
 
       // Verifica se é um usuário da campanha
       const isUser = isCampaignUser(idToString(draggedInfluencer.id));
@@ -1483,6 +1527,7 @@ export function ManagementTab({
                       );
                     })}
                   </div>
+                  {activeId && draggedInf && canDropOnRejectZone(getCurrentStatus(draggedInf)) ? <RejectDropZone /> : null}
                   <DragOverlay>
                     {activeId && draggedInf ? (
                       <DragOverlayCard

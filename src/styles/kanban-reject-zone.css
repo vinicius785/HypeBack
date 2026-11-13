@@ -1,0 +1,7 @@
+/* Zona de recusa do kanban: faixa fixa na base da tela, só enquanto um cartão é arrastado. */
+.pv .kreject { position: fixed; left: 50%; bottom: 28px; z-index: 60; display: flex; align-items: center; gap: 10px; transform: translateX(-50%); padding: 16px 28px; border-radius: 999px; background: var(--adm-bad-bg, #fde8e9); color: var(--adm-bad, #c62027); box-shadow: 0 0 0 2px var(--adm-bad, #c62027), 0 12px 32px -10px rgba(198, 32, 39, 0.5); font-size: 14.5px; animation: kreject-in .25s cubic-bezier(.22, 1, .36, 1) both; }
+.pv .kreject.over { background: var(--adm-bad, #c62027); color: #fff; transform: translateX(-50%) scale(1.06); transition: transform .15s, background .15s; }
+.pv .kreject .ico { width: 20px; height: 20px; }
+@keyframes kreject-in { from { opacity: 0; transform: translateX(-50%) translateY(16px); } }
+@media (prefers-reduced-motion: reduce) { .pv .kreject { animation: none; } }
+@media (max-width: 900px) { .pv .kreject { bottom: 96px; } }

@@ -151,3 +151,26 @@ export function getTransitionNote(fromStatus: string, toStatus: string): string 
   return TRANSITION_NOTES[`${fromStatus}->${toStatus}`]
     ?? `Movido de ${fromStatus} para ${toStatus}`;
 }
+
+/**
+ * Em que coluna o cartão foi solto. Soltar sobre o espaço da coluna dá o id da própria coluna; soltar sobre OUTRO CARTÃO dá o id
+ * desse cartão, e vale a coluna em que ele está. Sem isso, uma coluna com cartões suficientes para cobrir a altura (duas
+ * já bastam) não deixa área livre para soltar e o movimento é ignorado.
+ */
+export function resolveDropColumnId(
+  overId: string,
+  columnIds: readonly string[],
+  statusOfCard: (cardId: string) => string | undefined,
+): string | undefined {
+  if (columnIds.includes(overId)) return overId;
+  const status = statusOfCard(overId);
+  return status !== undefined && columnIds.includes(status) ? status : undefined;
+}
+
+/** Id da zona "Arraste aqui para recusar" que aparece durante o arrasto (a coluna Recusados fica na última etapa, longe das outras). */
+export const REJECT_ZONE_ID = "reject-zone";
+
+/** O cartão neste status pode ser recusado soltando-o na zona de recusa? */
+export function canDropOnRejectZone(status: string): boolean {
+  return status !== "rejected" && validateUserStatusTransition(status, "rejected");
+}
