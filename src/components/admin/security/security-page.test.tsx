@@ -109,7 +109,10 @@ describe("Segurança: alertas", () => {
     expect(within(row).getByText("bia@marca.com")).toBeInTheDocument();
     expect(within(row).getByText("App")).toBeInTheDocument();
     expect(within(row).getByText("09/11/2026 22:30")).toBeInTheDocument();
-    expect(within(row).getByRole("link", { name: /Ver conta de Bia Santos/ })).toBeInTheDocument();
+    // "Ver conta" mora no menu "⋯" do cartão
+    await userEvent.click(within(row).getByRole("button", { name: "Ações do alerta 5" }));
+    expect(await screen.findByRole("menuitem", { name: "Ver conta" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
     expect(screen.getByText("Estas informações são visíveis apenas para administradores da plataforma.")).toBeInTheDocument();
     // o filtro padrão é "Novos", e a API é chamada com status=unseen, limit e offset
     expect(screen.getByRole("button", { name: "Novos" })).toHaveAttribute("aria-pressed", "true");
@@ -210,6 +213,12 @@ const ADMIN_ACTION: AdminActionAlert = {
   user: { id: 1, name: "Marina Alves", email: "marina@hype.com" },
 };
 
+/** Abre os detalhes de uma ação no Admin pelo menu "⋯" do cartão. */
+async function openDetails(user: ReturnType<typeof userEvent.setup>, row: HTMLElement, id = 20) {
+  await user.click(within(row).getByRole("button", { name: `Ações do alerta ${id}` }));
+  await user.click(await screen.findByRole("menuitem", { name: /Ver detalhes/ }));
+}
+
 describe("Segurança: alertas de ações no Admin (admin_action)", () => {
   it("mostra o selo do tipo, o título e quem fez; sem canal App/Painel", async () => {
     serve({ alerts: [ADMIN_ACTION] });
@@ -217,7 +226,8 @@ describe("Segurança: alertas de ações no Admin (admin_action)", () => {
     const row = await screen.findByRole("listitem");
     expect(within(row).getByText("Ação no Admin")).toBeInTheDocument();
     expect(within(row).getByText("Papel na equipe da plataforma alterado — Fulano Alvo")).toBeInTheDocument();
-    expect(within(row).getByText(/Feito por Marina Alves/)).toHaveTextContent("Feito por Marina Alves (marina@hype.com)");
+    expect(within(row).getByText("Feito por Marina Alves")).toBeInTheDocument();
+    expect(within(row).getByText("marina@hype.com")).toBeInTheDocument();
     expect(within(row).queryByText("App")).toBeNull();
     expect(within(row).queryByText("Painel")).toBeNull();
     expect(within(row).queryByText("Conta vigiada")).toBeNull();
@@ -228,15 +238,13 @@ describe("Segurança: alertas de ações no Admin (admin_action)", () => {
     const { user } = await renderPage();
     const row = await screen.findByRole("listitem");
     expect(within(row).queryByText("Motivo informado")).toBeNull();
-    const toggle = within(row).getByRole("button", { name: /Ver detalhes/ });
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    await user.click(toggle);
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await openDetails(user, row);
     expect(within(row).getByText("Promoção aprovada pela diretoria")).toBeInTheDocument();
     expect(within(row).getByText("Fulano Alvo · Usuário")).toBeInTheDocument();
     expect(within(row).getByText("Administrador")).toBeInTheDocument();
     expect(within(row).getByText("203.0.113.7")).toBeInTheDocument();
-    await user.click(within(row).getByRole("button", { name: /Ocultar detalhes/ }));
+    await user.click(within(row).getByRole("button", { name: "Ações do alerta 20" }));
+    await user.click(await screen.findByRole("menuitem", { name: /Ocultar detalhes/ }));
     expect(within(row).queryByText("Promoção aprovada pela diretoria")).toBeNull();
   });
 
@@ -246,7 +254,7 @@ describe("Segurança: alertas de ações no Admin (admin_action)", () => {
     });
     const { user } = await renderPage();
     const row = await screen.findByRole("listitem");
-    await user.click(within(row).getByRole("button", { name: /Ver detalhes/ }));
+    await openDetails(user, row);
     expect(within(row).queryByText("IP")).toBeNull();
     expect(within(row).getByText("Equipe")).toBeInTheDocument();
     expect(within(row).getByText("Acme · Workspace")).toBeInTheDocument();
@@ -257,7 +265,7 @@ describe("Segurança: alertas de ações no Admin (admin_action)", () => {
     serve({ alerts: [{ ...ADMIN_ACTION, details: { ...ADMIN_ACTION.details, reason: evil, target_label: "<script>x</script>" } }] });
     const { user } = await renderPage();
     const row = await screen.findByRole("listitem");
-    await user.click(within(row).getByRole("button", { name: /Ver detalhes/ }));
+    await openDetails(user, row);
     expect(within(row).getByText(evil)).toBeInTheDocument();
     expect(row.querySelector("img")).toBeNull();
     expect(row.querySelector("script")).toBeNull();
@@ -270,7 +278,8 @@ describe("Segurança: alertas de ações no Admin (admin_action)", () => {
     const row = await screen.findByRole("listitem");
     expect(within(row).getByText("Conta vigiada")).toBeInTheDocument();
     expect(within(row).getByText("App")).toBeInTheDocument();
-    expect(within(row).queryByRole("button", { name: /detalhes/ })).toBeNull();
+    await userEvent.click(within(row).getByRole("button", { name: /Ações do alerta/ }));
+    expect(screen.queryByRole("menuitem", { name: /detalhes/ })).toBeNull();
   });
 
   it("tipo desconhecido não quebra: título e pessoa, sem selo nem detalhes", async () => {

@@ -1,21 +1,22 @@
-import { useId, useState } from "react";
+import { Fragment, useId, useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 
 import {
   adminToast,
-  AdminBadge,
+  AdminActionMenu,
+  AdminAvatar,
+  type AdminActionMenuItem,
   AdminConfirmDialog,
   AdminDialog,
   AdminEmptyState,
   AdminErrorState,
   AdminListSkeleton,
-  AdminLink,
-  AdminLoadMore,
   AdminSection,
 } from "@/components/admin/platform";
 import { I } from "@/components/prototype/ui";
 import { useMarkAlertSeen, useMarkAllAlertsSeen, useSecurityAlerts } from "@/hooks/admin/use-admin-security";
 import { describeAdminError } from "@/lib/admin/admin-errors";
-import { formatDateTime, formatInt } from "@/lib/admin/format";
+import { civilDateInSaoPaulo, formatDate, formatDateTime, formatInt, formatRelativeTime, parseInstant } from "@/lib/admin/format";
 import {
   isAdminActionAlert,
   isWatchedLoginAlert,
@@ -24,8 +25,7 @@ import {
   type SecurityAlertStatus,
 } from "@/shared/admin-platform.types";
 
-import { userDetailLink } from "../users/admin-users-links";
-import { actorRoleLabel, channelLabel, kindLabel, matchesKind, NOTE_MAX, SEVERITY_LABEL, SEVERITY_TONE, targetTypeLabel, type KindFilter } from "./security-labels";
+import { actorRoleLabel, channelLabel, kindLabel, matchesKind, NOTE_MAX, SEVERITY_LABEL, targetTypeLabel, type KindFilter } from "./security-labels";
 
 import "@/styles/admin-security.css";
 
@@ -94,27 +94,25 @@ function SeenDialog({ alert, onClose }: { alert: SecurityAlert; onClose: () => v
   );
 }
 
-/** Quem aparece na linha: a conta vigiada (watched_login) ou quem fez a ação (admin_action). Texto simples, nunca HTML. */
-function AlertPerson({ alert }: { alert: SecurityAlert }) {
-  const user = alert.user;
-  const name = user?.name?.trim();
-  if (!user) return <span>{isAdminActionAlert(alert) ? "Autor não identificado" : "Conta não identificada"}</span>;
-  if (isAdminActionAlert(alert)) {
-    const who = name || alert.details?.actor_name?.trim() || `Conta #${user.id}`;
-    return (
-      <span>
-        Feito por {who}
-        {user.email ? <span className="adm-sec-mail"> ({user.email})</span> : null}
-      </span>
-    );
-  }
+/** Fim da lista: só aparece quando há mais alertas no servidor ("Carregar mais", com quantos faltam); no fim da lista não mostra nada. */
+function MoreAlerts({ loaded, total, hasMore, loading, onLoadMore }: { loaded: number; total: number; hasMore: boolean; loading: boolean; onLoadMore: () => void }) {
+  if (!hasMore) return null;
+  const left = Math.max(0, total - loaded);
   return (
-    <>
-      {name ? <span>{name}</span> : null}
-      {user.email ? <span className="adm-sec-mail">{user.email}</span> : null}
-      {!name && !user.email ? <span>Conta #{user.id}</span> : null}
-    </>
+    <div className="adm-sec-more">
+      <button type="button" className="btn out adm-btn-sm" aria-disabled={loading ? true : undefined} onClick={() => (loading ? undefined : onLoadMore())}>
+        {loading ? "Carregando…" : left > 0 ? `Carregar mais (${formatInt(left)})` : "Carregar mais"}
+      </button>
+    </div>
   );
+}
+
+/** "Hoje", "Ontem" ou a data: o título de cada dia na lista (dia no fuso de São Paulo). */
+function dayLabel(iso: string, now: number): string {
+  const day = civilDateInSaoPaulo(parseInstant(iso) ?? new Date(iso));
+  if (day === civilDateInSaoPaulo(now)) return "Hoje";
+  if (day === civilDateInSaoPaulo(now - 86_400_000)) return "Ontem";
+  return formatDate(iso);
 }
 
 /** Detalhes de uma ação de risco no Admin: motivo, alvo, quem fez (papel) e IP. Os textos vêm de digitação humana: só texto. */
@@ -150,7 +148,16 @@ function AdminActionDetailsList({ details, id }: { details: AdminActionDetails; 
   );
 }
 
+/** Cor da bolinha da etiqueta, pela gravidade (alerta já visto fica cinza). */
+const SEVERITY_DOT: Record<string, string> = { high: "#ff5a5f", medium: "#fbbf24", low: "rgba(255,255,255,0.7)" };
+
+/**
+ * O cartão do alerta, no mesmo desenho do cartão de vigiado: foto, e-mail e nome da pessoa; abaixo a etiqueta preta que alterna
+ * a gravidade e o tipo; abaixo o que aconteceu; e o menu "⋯" (Ver detalhes, Ver conta). "Marcar como visto" fica à vista no rodapé.
+ * Em `admin_action` a pessoa é quem fez a ação ("Feito por…"); em `watched_login`, a conta vigiada.
+ */
 function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (alert: SecurityAlert) => void }) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const detailsId = useId();
   const seen = alert.seen_at !== null;
@@ -158,52 +165,85 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
   const adminAction = isAdminActionAlert(alert);
   const channel = watched ? channelLabel(alert.details?.channel) : null;
   const kind = kindLabel(alert.kind);
-  const name = alert.user?.name?.trim();
+  const user = alert.user;
+  const name = user?.name?.trim() || (adminAction ? alert.details?.actor_name?.trim() : "") || "";
+  const severity = SEVERITY_LABEL[alert.severity] ?? alert.severity;
+  const second = kind ?? (seen ? "Visto" : "Novo");
+
+  const items: AdminActionMenuItem[] = [];
+  if (adminAction) items.push({ id: "details", label: open ? "Ocultar detalhes" : "Ver detalhes", icon: "eye", onSelect: () => setOpen((value) => !value) });
+  if (user) {
+    items.push({
+      id: "account",
+      label: "Ver conta",
+      icon: "user",
+      onSelect: () => void navigate({ to: "/admin/users/$userId", params: { userId: String(user.id) } } as never),
+    });
+  }
+
   return (
-    <li className="adm-sec-row" data-seen={seen ? "true" : undefined} data-kind={alert.kind}>
-      <div className="adm-sec-main">
-        <div className="adm-sec-head">
-          {/* vermelho e âmbar só para o que ainda não foi visto: alerta já visto vira cinza */}
-          <AdminBadge tone={seen ? "muted" : (SEVERITY_TONE[alert.severity] ?? "neutral")} size="sm">
-            {SEVERITY_LABEL[alert.severity] ?? alert.severity}
-          </AdminBadge>
-          {kind ? (
-            <AdminBadge tone="outline" size="sm">
-              {kind}
-            </AdminBadge>
-          ) : null}
-          <b>{alert.title}</b>
+    <li className="adm-sec-card adm-sec-alert" data-seen={seen ? "true" : undefined} data-kind={alert.kind} data-severity={alert.severity}>
+      <header className="adm-sec-card-top">
+        <AdminAvatar name={name || user?.email || "?"} size={48} />
+        <div className="adm-sec-card-id">
+          {adminAction ? (
+            <>
+              <b className="adm-sec-mail">Feito por {name || (user ? `Conta #${user.id}` : "autor não identificado")}</b>
+              {user?.email ? <span className="adm-sec-name">{user.email}</span> : null}
+            </>
+          ) : user ? (
+            <>
+              <b className="adm-sec-mail">{user.email || name || `Conta #${user.id}`}</b>
+              {name && user.email ? <span className="adm-sec-name">{name}</span> : null}
+            </>
+          ) : (
+            <b className="adm-sec-mail">Conta não identificada</b>
+          )}
         </div>
-        <p className="adm-sec-who">
-          <AlertPerson alert={alert} />
-        </p>
-        <p className="adm-sec-meta">
-          {channel ? <span>{channel}</span> : null}
-          <time dateTime={alert.created_at}>{formatDateTime(alert.created_at)}</time>
-          {seen ? <span>Visto em {formatDateTime(alert.seen_at)}</span> : null}
-        </p>
-        {alert.note ? <p className="adm-sec-note">“{alert.note}”</p> : null}
-        {adminAction && open ? <AdminActionDetailsList details={alert.details} id={detailsId} /> : null}
+        {items.length > 0 ? <AdminActionMenu iconOnly variant="ghost" label="Ações" ariaLabel={`Ações do alerta ${alert.id}`} items={items} /> : null}
+      </header>
+
+      {/* a etiqueta preta alterna a gravidade e o tipo (passa o mouse e ela para) */}
+      <div className="adm-sec-card-status">
+        <span
+          className="adm-sec-tag"
+          data-active={seen ? "false" : "true"}
+          role="img"
+          aria-label={`Gravidade ${severity}, ${second}`}
+          style={{ ["--dot-color" as string]: seen ? "rgba(255,255,255,0.7)" : (SEVERITY_DOT[alert.severity] ?? SEVERITY_DOT.low) }}
+        >
+          <span className="adm-sec-tag-item" data-slot="a">
+            <i aria-hidden="true" />
+            {severity}
+          </span>
+          <span className="adm-sec-tag-item" data-slot="b">
+            <I n={adminAction ? "gear" : "eye"} cls="sm" />
+            {second}
+          </span>
+        </span>
       </div>
-      <div className="adm-sec-actions">
-        {adminAction ? (
-          <button type="button" className="adm-sec-toggle" aria-expanded={open} aria-controls={open ? detailsId : undefined} onClick={() => setOpen((value) => !value)}>
-            {open ? "Ocultar detalhes" : "Ver detalhes"}
-            <I n={open ? "chevup" : "chevdown"} cls="sm" />
-          </button>
-        ) : null}
-        {alert.user ? (
-          <AdminLink to={userDetailLink(alert.user.id)} textLink aria-label={`Ver conta de ${name || `#${alert.user.id}`}`}>
-            Ver conta
-          </AdminLink>
-        ) : null}
-        {!seen ? (
-          <button type="button" className="btn out adm-btn-sm" onClick={() => onMarkSeen(alert)}>
+
+      <p className="adm-sec-reason adm-sec-alert-title">{alert.title}</p>
+
+      <p className="adm-sec-meta">
+        {channel ? <span className="adm-sec-chan">{channel}</span> : null}
+        <span className="adm-sec-when" title={formatDateTime(alert.created_at)}>
+          <time dateTime={alert.created_at}>{formatDateTime(alert.created_at)}</time>
+          <span className="adm-sec-rel">{formatRelativeTime(alert.created_at)}</span>
+        </span>
+        {seen ? <span>Visto em {formatDateTime(alert.seen_at)}</span> : null}
+      </p>
+      {alert.note ? <p className="adm-sec-note">“{alert.note}”</p> : null}
+      {adminAction && open ? <AdminActionDetailsList details={alert.details} id={detailsId} /> : null}
+
+      {!seen ? (
+        <footer className="adm-sec-alert-foot">
+          <button type="button" className="adm-sec-seen" onClick={() => onMarkSeen(alert)}>
             <I n="check" cls="sm" />
             Marcar como visto
           </button>
-        ) : null}
-      </div>
+        </footer>
+      ) : null}
     </li>
   );
 }
@@ -229,6 +269,7 @@ export function SecurityAlertsTab({
   const [target, setTarget] = useState<SecurityAlert | null>(null);
   const [allError, setAllError] = useState<string | null>(null);
 
+  const now = useMemo(() => Date.now(), [query.dataUpdatedAt]);
   const pages = query.data?.pages ?? [];
   const loadedAlerts = pages.flatMap((page) => page.data);
   const alerts = loadedAlerts.filter((alert) => matchesKind(alert.kind, kind));
@@ -258,14 +299,7 @@ export function SecurityAlertsTab({
     body = (
       <>
         <AdminEmptyState compact icon="shield" title="Nenhum alerta deste tipo entre os carregados." description="O filtro vale só para os alertas já carregados; use “Carregar mais” para ver outros." />
-        <AdminLoadMore
-          loaded={loadedAlerts.length}
-          total={total}
-          hasMore={!!query.hasNextPage}
-          loading={query.isFetchingNextPage}
-          onLoadMore={() => void query.fetchNextPage()}
-          noun={{ singular: "alerta", plural: "alertas" }}
-        />
+        <MoreAlerts loaded={loadedAlerts.length} total={total} hasMore={!!query.hasNextPage} loading={query.isFetchingNextPage} onLoadMore={() => void query.fetchNextPage()} />
       </>
     );
   } else if (alerts.length === 0) {
@@ -279,19 +313,23 @@ export function SecurityAlertsTab({
   } else {
     body = (
       <>
-        <ul className="adm-sec-list" aria-label="Alertas de segurança">
-          {alerts.map((alert) => (
-            <AlertRow key={alert.id} alert={alert} onMarkSeen={setTarget} />
-          ))}
+        <ul className="adm-sec-cards adm-sec-alerts" aria-label="Alertas de segurança">
+          {alerts.map((alert, index) => {
+            const label = dayLabel(alert.created_at, now);
+            const header = index === 0 || label !== dayLabel(alerts[index - 1].created_at, now);
+            return (
+              <Fragment key={alert.id}>
+                {header ? (
+                  <li role="presentation" className="adm-sec-day">
+                    {label}
+                  </li>
+                ) : null}
+                <AlertRow alert={alert} onMarkSeen={setTarget} />
+              </Fragment>
+            );
+          })}
         </ul>
-        <AdminLoadMore
-          loaded={loadedAlerts.length}
-          total={total}
-          hasMore={!!query.hasNextPage}
-          loading={query.isFetchingNextPage}
-          onLoadMore={() => void query.fetchNextPage()}
-          noun={{ singular: "alerta", plural: "alertas" }}
-        />
+        <MoreAlerts loaded={loadedAlerts.length} total={total} hasMore={!!query.hasNextPage} loading={query.isFetchingNextPage} onLoadMore={() => void query.fetchNextPage()} />
       </>
     );
   }
