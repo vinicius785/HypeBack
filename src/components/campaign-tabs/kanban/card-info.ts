@@ -1,4 +1,5 @@
 import { getNetworkLabel } from "@/shared/constants/network-labels";
+import { isSocialNetworkType } from "@/shared/utils/group-creators";
 import { fmtBRL } from "../shared/prices-utils";
 import type { ExtendedInfluencer } from "../management-kanban-config";
 
@@ -69,13 +70,22 @@ export interface NetworkRow {
   members: number;
 }
 
-/** Redes em que o criador se inscreveu, cada uma com seus seguidores; sem lista da API, cai na rede principal com o total. */
+/** UGC é um tipo de conteúdo, não uma rede social: o cartão mostra uma etiqueta e não uma linha de rede. */
+export function hasUgc(inf: Pick<ExtendedInfluencer, "social_networks">): boolean {
+  return (inf.social_networks ?? []).some((n) => !isSocialNetworkType(n.type));
+}
+
+/** Redes sociais em que o criador se inscreveu, cada uma com seus seguidores (sem UGC); sem lista da API, cai na rede principal com o total. */
 export function networkRows(
   inf: Pick<ExtendedInfluencer, "socialNetwork" | "social_networks" | "followers">,
 ): NetworkRow[] {
-  const nets = inf.social_networks ?? [];
+  const nets = (inf.social_networks ?? []).filter((n) => isSocialNetworkType(n.type));
   if (nets.length === 0) {
-    return [{ key: "main", label: getNetworkLabel(inf.socialNetwork, "Rede"), members: inf.followers }];
+    // Só tem UGC (sem rede social): não há linha de rede para mostrar.
+    if ((inf.social_networks ?? []).length > 0) return [];
+    const main = inf.socialNetwork;
+    if (main && !isSocialNetworkType(main)) return [];
+    return [{ key: "main", label: getNetworkLabel(main, "Rede"), members: inf.followers }];
   }
   return nets.map((n, i) => ({
     key: `${n.id}-${i}`,

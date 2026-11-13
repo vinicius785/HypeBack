@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { isSocialNetworkType } from "@/shared/utils/group-creators";
 import { SocialNetworkIcon } from "@/components/social-network-icon";
 import { SocialHandle } from "@/components/social-handle";
 import { toast } from "sonner";
@@ -125,6 +126,8 @@ export function SelectionPanelActions({
         const key = String(p.id);
         if (seen.has(key)) return false;
         seen.add(key);
+        // UGC é tipo de conteúdo, não rede social: não tem card de decisão próprio.
+        if (!isSocialNetworkType(p.type)) return false;
         return statusMatches(p.status);
       });
     if (profiles.length === 0) {

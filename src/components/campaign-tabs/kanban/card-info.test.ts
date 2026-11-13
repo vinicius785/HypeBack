@@ -76,3 +76,28 @@ describe("menu do cartão", () => {
     expect(canRejectFromMenu("script_pending")).toBe(true);
   });
 });
+
+describe("UGC não é rede", () => {
+  const base = { socialNetwork: "instagram", followers: 100 };
+  it("networkRows não lista UGC e hasUgc avisa", async () => {
+    const { networkRows, hasUgc } = await import("./card-info");
+    const inf = {
+      ...base,
+      social_networks: [
+        { id: 1, type: "instagram", name: "ig", members: 1000 },
+        { id: 2, type: "ugc", name: "ugc", members: 0 },
+        { id: 3, type: "tiktok", name: "tt", members: 500 },
+      ],
+    };
+    expect(networkRows(inf as never).map((r) => r.label)).toEqual(["Instagram", "TikTok"]);
+    expect(hasUgc(inf as never)).toBe(true);
+  });
+  it("só UGC: nenhuma linha de rede", async () => {
+    const { networkRows } = await import("./card-info");
+    expect(networkRows({ ...base, social_networks: [{ id: 2, type: "ugc", name: "u", members: 0 }] } as never)).toEqual([]);
+  });
+  it("sem UGC: hasUgc é falso", async () => {
+    const { hasUgc } = await import("./card-info");
+    expect(hasUgc({ social_networks: [{ id: 1, type: "instagram", name: "i" }] } as never)).toBe(false);
+  });
+});
