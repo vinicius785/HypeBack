@@ -6,6 +6,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
+import { SocialHandle } from "@/components/social-handle";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useDebounce } from "@/hooks/use-debounce";
 import { normalizeForSearch, parseSearchTerm } from "@/shared/utils/search-text";
@@ -1639,7 +1640,7 @@ export function InfluencerSelectionTab({
                         {selectedInfluencer.name}
                       </p>
                       <p className="truncate text-sm leading-5 text-neutral-500">
-                        @{selectedInfluencer.username}
+                        <SocialHandle username={selectedInfluencer.username} network={selectedInfluencer.socialNetwork} />
                       </p>
                       {selectedInfluencer.socialNetwork ? (
                         <p className="mt-1 text-xs font-medium text-neutral-600">
@@ -1769,7 +1770,9 @@ export function InfluencerSelectionTab({
                   <h3 className="text-[22px] font-semibold tracking-[-0.03em] text-neutral-950">
                     {selectedInfluencer?.name}
                   </h3>
-                  <p className="text-neutral-600">@{selectedInfluencer?.username}</p>
+                  <p className="text-neutral-600">
+                    <SocialHandle username={selectedInfluencer?.username} network={selectedInfluencer?.socialNetwork} />
+                  </p>
                 </div>
               </div>
             )}

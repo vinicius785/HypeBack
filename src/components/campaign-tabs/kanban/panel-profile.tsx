@@ -1,4 +1,5 @@
 import { Av, I } from "@/components/prototype/ui";
+import { SocialHandle } from "@/components/social-handle";
 import { useInfluencerProfile } from "@/hooks/use-influencer-profile";
 import type { ExtendedInfluencer } from "../management-kanban-config";
 
@@ -38,7 +39,7 @@ export function PanelProfile({ inf, influencerId, onProfile, onChat }: Props) {
             {inf.isExternal ? <em className="ext">Externo</em> : null}
           </div>
           <p className="mgp-pu" title={inf.username ? `@${inf.username}` : undefined}>
-            {inf.username ? `@${inf.username}` : "Sem usuário"}
+            {inf.username ? <SocialHandle username={inf.username} network={inf.socialNetwork ?? inf.social_networks?.[0]?.type} /> : "Sem usuário"}
           </p>
         </div>
       </div>

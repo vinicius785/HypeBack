@@ -13,6 +13,7 @@ import {
   formatFollowers,
 } from "../campaign-flow";
 import type { ExtendedInfluencer } from "../management-kanban-config";
+import { SocialHandle } from "@/components/social-handle";
 import { canRejectFromMenu, cardNote, networkSummary } from "./card-info";
 
 /** Dias desde a última mudança de status de um criador. */
@@ -147,7 +148,7 @@ export function InfluencerCardView({ influencer, column, moving, overlay, handle
         <div className="kc-n">
           <b title={influencer.name}>{influencer.name}</b>
           <small>
-            {influencer.username ? <span className="kc-at">@{influencer.username}</span> : "Sem usuário"}
+            {influencer.username ? <SocialHandle className="kc-at" username={influencer.username} network={influencer.socialNetwork ?? influencer.social_networks?.[0]?.type} /> : "Sem usuário"}
             {net ? <span className="kc-net"> · {net}</span> : null}
           </small>
         </div>

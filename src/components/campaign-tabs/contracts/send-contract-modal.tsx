@@ -54,6 +54,8 @@ export interface InfluencerOption {
   name: string;
   avatar: string;
   username?: string;
+  /** Tipo da rede principal (`instagram`, `tiktok`…): o @ abre o perfil dele nela. */
+  socialNetwork?: string;
   /** Status no kanban da campanha — `contract_pending` aparece priorizado. */
   status?: string;
 }

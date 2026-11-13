@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SocialHandle } from "@/components/social-handle";
 import { toast } from "sonner";
 
 import { Avatar } from "@/components/ui/avatar";
@@ -313,7 +314,7 @@ function ParticipantCard({
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-neutral-900">{participant.name}</p>
           <p className="truncate text-xs text-neutral-500">
-            {participant.username ? `@${participant.username}` : "—"}
+            {participant.username ? <SocialHandle username={participant.username} network={network} /> : "—"}
             {network && <span className="ml-1.5 capitalize text-neutral-400">· {network}</span>}
           </p>
         </div>

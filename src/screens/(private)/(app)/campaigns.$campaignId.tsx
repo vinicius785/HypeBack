@@ -600,6 +600,8 @@ function RouteComponent() {
               name: inf.name,
               avatar: inf.avatar,
               username: inf.username,
+              // Rede principal do criador: o @ na aba Contratos abre o perfil dele nela.
+              socialNetwork: inf.socialNetwork ?? inf.social_networks?.[0]?.type,
               status: inf.status,
             }))}
           />
