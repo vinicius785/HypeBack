@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { SocialHandle } from "@/components/social-handle";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -260,7 +261,7 @@ export function InfluencerProfileCard({
 
         </div>
         <p className="truncate text-sm leading-6 text-neutral-600">
-          @{data.profileUsername}
+          <SocialHandle username={data.profileUsername} network={data.profileType} />
         </p>
         {data.distanceKm != null && (
           <span className="mt-0.5 flex w-max items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700">

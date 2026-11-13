@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SocialHandle } from "@/components/social-handle";
 import { toast } from "sonner";
 
 import { useWorkspaceBalance } from "@/hooks/use-balance";
@@ -238,7 +239,9 @@ export function SelectionPanelActions({
               <div className="kb2-fi">
                 <div className="kb2-prof-h">
                   <b>{row.label}</b>
-                  <small title={`@${row.username}`}>@{row.username}</small>
+                  <small title={`@${row.username}`}>
+                    <SocialHandle username={row.username} network={row.type} />
+                  </small>
                   {row.type ? (
                     <span className="kb2-st">
                       <span>
@@ -306,7 +309,9 @@ export function SelectionPanelActions({
                   <div className="kb2-cf" role="group" aria-label={`Confirmar recusa de ${row.label}`}>
                     <div className="kb2-cf-h">
                       <b>Recusar {row.label}</b>
-                      <small title={`@${row.username}`}>@{row.username}</small>
+                      <small title={`@${row.username}`}>
+                    <SocialHandle username={row.username} network={row.type} />
+                  </small>
                     </div>
                     <label className="kb2-cf-t">
                       <span>Motivo da recusa</span>
@@ -336,7 +341,9 @@ export function SelectionPanelActions({
                   <div className="kb2-cf" role="group" aria-label={`Confirmar aprovação de ${row.label}`}>
                     <div className="kb2-cf-h">
                       <b>Aprovar {row.label}</b>
-                      <small title={`@${row.username}`}>@{row.username}</small>
+                      <small title={`@${row.username}`}>
+                    <SocialHandle username={row.username} network={row.type} />
+                  </small>
                     </div>
                     <dl className="kb2-cf-l">
                       <div className="em">

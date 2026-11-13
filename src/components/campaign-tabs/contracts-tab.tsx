@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SocialHandle } from "@/components/social-handle";
 import { useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
 
@@ -171,6 +172,16 @@ export function ContractsTab({ influencers = [] }: ContractsTabProps) {
     }
     return map;
   }, [influencers]);
+
+  const networkByUserId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const inf of influencers) {
+      if (inf.user_id && inf.socialNetwork) map.set(String(inf.user_id), inf.socialNetwork);
+    }
+    return map;
+  }, [influencers]);
+
+  const networkOf = (c: CampaignContract) => (c.influencer_id != null ? networkByUserId.get(String(c.influencer_id)) : undefined);
 
   const usernameOf = (c: CampaignContract) =>
     c.influencer_id != null
@@ -546,6 +557,7 @@ export function ContractsTab({ influencers = [] }: ContractsTabProps) {
               <ContractSide
                 row={selectedRow}
                 username={usernameOf(selectedRow)}
+                network={networkOf(selectedRow)}
                 onClose={() => setSelectedId(null)}
                 onAction={() => rowAction(selectedRow)}
                 onView={() => setDetail(selectedRow)}
@@ -576,6 +588,7 @@ export function ContractsTab({ influencers = [] }: ContractsTabProps) {
         <ContractDetailModal
           contract={detail}
           username={usernameOf(detail)}
+          network={networkOf(detail)}
           onClose={() => setDetail(null)}
           onResend={() => {
             handleResend(detail);
@@ -597,12 +610,14 @@ export function ContractsTab({ influencers = [] }: ContractsTabProps) {
 function ContractSide({
   row,
   username,
+  network,
   onClose,
   onAction,
   onView,
 }: {
   row: CampaignContract;
   username?: string;
+  network?: string;
   onClose: () => void;
   onAction: () => void;
   onView: () => void;
@@ -649,7 +664,11 @@ function ContractSide({
           size={60}
         />
         <h2 style={{ fontSize: 21 }}>{row.influencer_name}</h2>
-        {username && <p>@{username}</p>}
+        {username && (
+          <p>
+            <SocialHandle username={username} network={network} />
+          </p>
+        )}
       </div>
       <section className="s2">
         <h3>Andamento</h3>
@@ -724,6 +743,7 @@ function StatusBadge({ status }: { status: ContractStatus }) {
 function ContractDetailModal({
   contract,
   username,
+  network,
   onClose,
   onResend,
   onDownload,
@@ -732,6 +752,7 @@ function ContractDetailModal({
 }: {
   contract: CampaignContract;
   username?: string;
+  network?: string;
   onClose: () => void;
   onResend: () => void;
   onDownload: () => void;
@@ -764,7 +785,9 @@ function ContractDetailModal({
               {contract.influencer_name}
             </h3>
             {username && (
-              <span className="text-xs text-neutral-500">@{username}</span>
+              <span className="text-xs text-neutral-500">
+                <SocialHandle username={username} network={network} />
+              </span>
             )}
             <div className="flex items-center gap-2">
               <StatusBadge status={contract.status} />

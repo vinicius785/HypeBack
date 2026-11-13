@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { SocialHandle } from "@/components/social-handle";
 import {
   DndContext,
   DragOverlay,
@@ -1520,7 +1521,10 @@ export function ManagementTab({
                   {selectedInfluencer.name}
                 </h3>
                 <p className="text-neutral-600">
-                  @{selectedInfluencer.username}
+                  <SocialHandle
+                    username={selectedInfluencer.username}
+                    network={selectedInfluencer.socialNetwork ?? selectedInfluencer.social_networks?.[0]?.type}
+                  />
                 </p>
                 {/* Mostrar todas as redes sociais */}
                 {selectedInfluencer.social_networks &&
@@ -1610,7 +1614,7 @@ export function ManagementTab({
                               </p>
                               {network.username && (
                                 <p className="text-xs text-neutral-600">
-                                  @{network.username}
+                                  <SocialHandle username={network.username} network={network.type} />
                                 </p>
                               )}
                               {network.name &&
@@ -1772,7 +1776,10 @@ export function ManagementTab({
                   {selectedInfluencer.name}
                 </h3>
                 <p className="text-neutral-600">
-                  @{selectedInfluencer.username}
+                  <SocialHandle
+                    username={selectedInfluencer.username}
+                    network={selectedInfluencer.socialNetwork ?? selectedInfluencer.social_networks?.[0]?.type}
+                  />
                 </p>
               </div>
             </div>

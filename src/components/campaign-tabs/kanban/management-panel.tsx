@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Av, I } from "@/components/prototype/ui";
+import { SocialHandle } from "@/components/social-handle";
 import { getNetworkLabel } from "@/shared/constants/network-labels";
 import {
   ACTION_LABEL,
@@ -152,7 +153,7 @@ export function ManagementPanel({
               {inf.name}
               {inf.isExternal ? <em className="ext">Externo</em> : null}
             </h2>
-            <p>{inf.username ? `@${inf.username}` : "Sem usuário"}</p>
+            <p>{inf.username ? <SocialHandle username={inf.username} network={inf.socialNetwork ?? inf.social_networks?.[0]?.type} /> : "Sem usuário"}</p>
           </div>
         </div>
         <div className="isl-st isl-sw" key={`s${inf.id}`} data-hot={hot ? "" : undefined}>
