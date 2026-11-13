@@ -30,7 +30,7 @@ export function PanelProfile({ inf, influencerId, onProfile, onChat }: Props) {
     <aside className="mgp-prof" aria-label="Resumo do perfil">
       <div className="mgp-hero">
         <div className="mgp-ph">
-          <Av name={inf.name} src={p?.avatar || inf.avatar} size={240} />
+          <Av name={inf.name} src={inf.avatar || p?.avatar || undefined} size={240} />
         </div>
         <div className="mgp-shade">
           <div className="mgp-pn">

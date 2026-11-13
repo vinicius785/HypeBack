@@ -1264,3 +1264,6 @@
 .pv .isl-sheet .mgp .kb2-prof > .btn.dng:hover:not(:disabled), .pv .isl-sheet .kb2-prof > .btn.out.dng:hover:not(:disabled) { color: var(--danger); background: rgba(220,38,38,.08); box-shadow: none; transform: none; }
 .pv .isl-sheet .kb2-m.kb2-prof > .kb2-fold .kb2-fi > .btn.out.dng { height: 34px; font-size: 12.5px; font-weight: 600; color: var(--muted); background: transparent; box-shadow: none; }
 .pv .isl-sheet .kb2-m.kb2-prof > .kb2-fold .kb2-fi > .btn.out.dng:hover:not(:disabled) { color: var(--danger); background: rgba(220,38,38,.08); box-shadow: none; transform: none; }
+
+/* UGC é tipo de conteúdo, não rede: etiqueta discreta no rodapé do cartão */
+.pv .mg.mgv .kc-tag.ugc { background: #0a0a0b; color: #fff; }

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Av, I } from "@/components/prototype/ui";
 import { SocialHandle } from "@/components/social-handle";
+import { isSocialNetworkType } from "@/shared/utils/group-creators";
 import { getNetworkLabel } from "@/shared/constants/network-labels";
 import {
   ACTION_LABEL,
@@ -122,7 +123,7 @@ export function ManagementPanel({
   const rejected = column === "rejected";
   const reason = rejected ? rejectionReason(inf.statusHistory) : null;
   const hot = HOT_COLUMNS.includes(column);
-  const nets = inf.social_networks ?? [];
+  const nets = (inf.social_networks ?? []).filter((n) => isSocialNetworkType(n.type));
   const all = recentHistory(inf.statusHistory, Number.MAX_SAFE_INTEGER);
   const total = all.length;
   const negotiation = inf.price_negotiation

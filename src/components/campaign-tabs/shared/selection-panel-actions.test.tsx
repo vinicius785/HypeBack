@@ -24,7 +24,7 @@ const row = (networkId: number, type: string) => ({
 vi.mock("@/hooks/use-campaign-tab-influencers", () => ({
   useCampaignInscriptions: () => ({
     isLoading: false,
-    data: [row(1, "instagram"), row(2, "tiktok")],
+    data: [row(1, "instagram"), row(2, "tiktok"), row(3, "ugc")],
   }),
   useCampaignCuration: () => ({ isLoading: false, data: [] }),
 }));
@@ -54,6 +54,20 @@ describe("SelectionPanelActions", () => {
     expect(screen.getAllByRole("button", { name: "Curadoria" })).toHaveLength(2);
     expect(screen.getByText("@bia_instagram")).toBeInTheDocument();
     expect(screen.getByText("@bia_tiktok")).toBeInTheDocument();
+  });
+
+  it("UGC é tipo de conteúdo, não rede: não ganha card de decisão", () => {
+    render(
+      <SelectionPanelActions
+        campaignId="c-1"
+        influencerId="user-9"
+        column="applications"
+        paymentType="swap"
+      />,
+    );
+
+    expect(screen.queryByText("@bia_ugc")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Recusar UGC/)).not.toBeInTheDocument();
   });
 
   it("não mostra ações para um id que não está na lista", () => {
