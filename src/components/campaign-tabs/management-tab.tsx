@@ -547,20 +547,12 @@ export function ManagementTab({
     influencer: ExtendedInfluencer,
     targetStatus: string,
   ) => {
-    // Se o influenciador tiver apenas uma rede social, usar o network_id dela
-    const networkId =
-      influencer.social_networks && influencer.social_networks.length === 1
-        ? typeof influencer.social_networks[0].id === "string"
-          ? Number(influencer.social_networks[0].id)
-          : influencer.social_networks[0].id
-        : undefined;
 
     updateStatus(
       {
         influencer_id: idToString(influencer.id),
         status: targetStatus,
         feedback: "Aprovado pelo usuário",
-        network_id: networkId,
       },
       {
         onSuccess: () => {
@@ -580,26 +572,21 @@ export function ManagementTab({
     );
   };
 
+  // Aprovar, recusar e mover pelo quadro não mandam `network_id`: o `social_networks[].id` dos participantes do quadro não é o
+  // que a API espera (ela respondia "Rede social com ID … não está vinculada a este influenciador na campanha"). A escolha por
+  // rede mora no painel do card (Seleção), que usa o id da lista de inscrições.
   const handleReject = (influencer: ExtendedInfluencer, feedback: string) => {
     if (!feedback.trim()) {
       toast.error("Feedback é obrigatório ao recusar influenciador");
       return;
     }
 
-    // Se o influenciador tiver apenas uma rede social, usar o network_id dela
-    const networkId =
-      influencer.social_networks && influencer.social_networks.length === 1
-        ? typeof influencer.social_networks[0].id === "string"
-          ? Number(influencer.social_networks[0].id)
-          : influencer.social_networks[0].id
-        : undefined;
 
     updateStatus(
       {
         influencer_id: idToString(influencer.id),
         status: "rejected",
         feedback,
-        network_id: networkId,
       },
       {
         onSuccess: () => {
@@ -739,14 +726,6 @@ export function ManagementTab({
 
         // Atualizar status do influenciador via API usando a rota correta
         const notes = getTransitionNote(currentStatus, targetStatus);
-        // Se o influenciador tiver apenas uma rede social, usar o network_id dela
-        const networkId =
-          draggedInfluencer.social_networks &&
-            draggedInfluencer.social_networks.length === 1
-            ? typeof draggedInfluencer.social_networks[0].id === "string"
-              ? Number(draggedInfluencer.social_networks[0].id)
-              : draggedInfluencer.social_networks[0].id
-            : undefined;
 
         setMovingId(idToString(draggedInfluencer.id));
         updateStatus(
@@ -754,7 +733,6 @@ export function ManagementTab({
             influencer_id: idToString(draggedInfluencer.id),
             status: targetStatus,
             feedback: notes,
-            network_id: networkId,
           },
           {
             onSettled: () => setMovingId(null),
@@ -820,21 +798,12 @@ export function ManagementTab({
 
       // Atualiza o status do influenciador via API
       const notes = getTransitionNote(currentStatus, targetStatus);
-      // Se o influenciador tiver apenas uma rede social, usar o network_id dela
-      const networkId =
-        draggedInfluencer.social_networks &&
-          draggedInfluencer.social_networks.length === 1
-          ? typeof draggedInfluencer.social_networks[0].id === "string"
-            ? Number(draggedInfluencer.social_networks[0].id)
-            : draggedInfluencer.social_networks[0].id
-          : undefined;
 
       updateStatus(
         {
           influencer_id: idToString(draggedInfluencer.id),
           status: apiStatus,
           feedback: notes,
-          network_id: networkId,
         },
         {
           onSuccess: () => {
