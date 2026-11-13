@@ -246,7 +246,7 @@ export function SelectionPanelActions({
                   ) : null}
                   <b>{row.label}</b>
                   <small title={`@${row.username}`}>
-                    <SocialHandle username={row.username} network={row.type} />
+                    <SocialHandle username={row.username} network={row.type} withIcon />
                   </small>
                   {row.type ? (
                     <span className="kb2-st">
