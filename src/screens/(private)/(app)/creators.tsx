@@ -42,7 +42,6 @@ import {
   type ViewOption,
 } from "@/components/page/page-kit";
 import type { CityPlace } from "@/lib/city-search";
-import { InviteNetworksModal } from "@/components/influencer-lists/invite-networks-modal";
 import { defaultCatalogOrder } from "@/shared/utils/creators-default-order";
 import { groupCreators, type CreatorGroup } from "@/shared/utils/group-creators";
 import { CreatorCard, CreatorCardSkeleton, ROSTER_LABEL, type CreatorCardProps } from "@/components/creators/creator-card";
@@ -615,8 +614,7 @@ interface InviteTarget {
   name: string;
   /** Contas já carregadas do criador (reserva do seletor de redes). */
   accounts: CatalogItem[];
-  /** Contas escolhidas para o convite; ausente = ainda vai perguntar. */
-  profileIds?: string[];
+  photo?: string | null;
 }
 
 const VIEW_OPTIONS: ViewOption<"grid" | "list" | "map">[] = [
@@ -842,7 +840,7 @@ function CatalogTab({ tabs, onTotal }: { tabs: React.ReactNode; onTotal: (n: num
       saved: (membershipMap.get(group.user.id) ?? []).length > 0,
       onSelect: () => toggleSel(group.key),
       onOpen: () => openProfile(group.user.id),
-      onInvite: () => setInviteTarget({ userId: group.user.id, name: group.user.name, accounts: group.accounts }),
+      onInvite: () => setInviteTarget({ userId: group.user.id, name: group.user.name, accounts: group.accounts, photo: groupPhoto(group) }),
       onSave: () => setSelectedForList({ userId: group.user.id, name: group.user.name }),
       rosterStatus: rosterMap.get(group.user.id) ?? null,
       rosterBusy: inviteToRoster.isPending && inviteToRoster.variables === group.user.id,
@@ -1063,6 +1061,7 @@ function CatalogTab({ tabs, onTotal }: { tabs: React.ReactNode; onTotal: (n: num
                     userId: selectedCreators[0].user.id,
                     name: selectedCreators[0].user.name,
                     accounts: selectedCreators[0].accounts,
+                    photo: groupPhoto(selectedCreators[0]),
                   })
                 }
               >
@@ -1108,27 +1107,22 @@ function CatalogTab({ tabs, onTotal }: { tabs: React.ReactNode; onTotal: (n: num
           onClose={() => setBulkSave(false)}
         />
       )}
-      {inviteTarget && !inviteTarget.profileIds && (
-        <InviteNetworksModal
-          userId={inviteTarget.userId}
-          name={inviteTarget.name}
-          known={inviteTarget.accounts.map(({ social_network: sn }) => ({
-            id: String(sn.id),
-            type: sn.type,
-            label: netLabel(sn),
-            username: sn.username,
-            members: sn.members,
-          }))}
-          onConfirm={(profileIds) => setInviteTarget((t) => (t ? { ...t, profileIds } : t))}
-          onClose={() => setInviteTarget(null)}
-        />
-      )}
-      {inviteTarget && inviteTarget.profileIds && (
+      {inviteTarget && (
         <CampaignPickerModal
           mode="invite"
           influencerId={String(inviteTarget.userId)}
           influencerName={inviteTarget.name}
-          profileIds={inviteTarget.profileIds}
+          influencerPhoto={inviteTarget.photo}
+          networks={{
+            userId: inviteTarget.userId,
+            known: inviteTarget.accounts.map(({ social_network: sn }) => ({
+              id: String(sn.id),
+              type: sn.type,
+              label: netLabel(sn),
+              username: sn.username,
+              members: sn.members,
+            })),
+          }}
           onClose={() => setInviteTarget(null)}
         />
       )}

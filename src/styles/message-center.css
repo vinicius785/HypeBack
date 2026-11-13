@@ -180,3 +180,15 @@
 @media (prefers-reduced-motion: reduce) {
   .pv .mc-row, .pv .mc-th .mc-ti, .pv .ovp.mc.th .mc-thread { animation: none !important; }
 }
+
+/* Cabeçalho da conversa com criador: a campanha em que ele está e a fase dele nela */
+.pv .mc-ti small .mc-camp { display: inline-flex; align-items: center; gap: 5px; min-width: 0; color: var(--ink); font-weight: 600; }
+.pv .mc-ti small .mc-camp > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .mc-ti small .mc-camp .ico { width: 13px; height: 13px; flex: none; }
+.pv .mc-ti small .mc-phase { flex: none; height: 20px; padding: 0 9px; border-radius: 99px; background: var(--bg); color: var(--ink); font-size: 11.5px; font-weight: 650; display: inline-flex; align-items: center; }
+
+/* Rodapé da lista: recuperar conversas que já saíram das notificações */
+.pv .mc-recover { flex: none; padding: 10px 16px 14px; display: flex; flex-direction: column; align-items: center; gap: 6px; border-top: 1.5px solid var(--line); }
+.pv .mc-recover .btn { height: 38px; width: 100%; justify-content: center; gap: 8px; font-size: 13px; background: #fff; box-shadow: 0 0 0 1.5px rgba(5,5,5,.14) inset; }
+.pv .mc-recover .btn:hover:not(:disabled) { box-shadow: 0 0 0 1.5px #0a0a0b inset; }
+.pv .mc-recover small { color: var(--muted); font-size: 12px; }

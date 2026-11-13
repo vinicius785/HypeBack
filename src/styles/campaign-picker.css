@@ -1,0 +1,172 @@
+/* Modal "Convidar para campanha": criador em destaque, campanhas em lista (radio) e mensagem opcional. */
+.pv .cpk-who { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 22px; background: var(--bg); }
+.pv .cpk-who .iav { box-shadow: 0 0 0 3px #fff; }
+.pv .cpk-who small { display: block; font-size: 12px; color: var(--muted); font-weight: 500; }
+.pv .cpk-who b { font-size: 17px; font-weight: 700; letter-spacing: -.03em; }
+.pv .cpk-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 2px 0; }
+.pv .cpk-h b { font-size: 15px; letter-spacing: -.02em; }
+.pv .cpk-h small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+.pv .cpk-n { min-width: 26px; height: 24px; padding: 0 9px; border-radius: 99px; background: var(--bg); font-size: 12px; font-weight: 650; display: inline-grid; place-items: center; }
+.pv .cpk-find { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 16px; border-radius: 99px; background: var(--bg); color: var(--muted); transition: box-shadow .2s, background-color .2s; }
+.pv .cpk-find:focus-within { background: #fff; box-shadow: 0 0 0 1.5px #0a0a0b; color: var(--ink); }
+.pv .cpk-find input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 14px; color: var(--ink); }
+.pv .cpk-list { list-style: none; margin: 0; padding: 2px; display: flex; flex-direction: column; gap: 8px; max-height: 322px; overflow-y: auto; scrollbar-width: thin; flex: none; }
+.pv .cpk-row { width: 100%; display: flex; align-items: center; gap: 14px; padding: 8px 14px 8px 8px; border-radius: 20px; background: #fff; text-align: left; box-shadow: 0 0 0 1.5px var(--line) inset;
+  transition: box-shadow .2s, transform .2s, background-color .2s; animation: pv-ccrise .4s var(--ease) both; animation-delay: calc(min(var(--k), 8) * 30ms); }
+.pv .cpk-row:hover { box-shadow: 0 0 0 1.5px rgba(5,5,5,.3) inset; transform: translateY(-1px); }
+.pv .cpk-row.on { box-shadow: 0 0 0 2px #0a0a0b inset; background: #fff; }
+.pv .cpk-row:focus-visible { outline: 2px solid #0a0a0b; outline-offset: 2px; }
+.pv .cpk-th { flex: none; width: 56px; height: 56px; border-radius: 14px; overflow: hidden; background: #0a0a0b; display: grid; place-items: center; color: #fff; }
+.pv .cpk-th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pv .cpk-th i { font-style: normal; font-size: 20px; font-weight: 700; }
+.pv .cpk-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pv .cpk-tx b { font-size: 14.5px; font-weight: 650; letter-spacing: -.02em; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pv .cpk-tx small { font-size: 12px; color: var(--muted); }
+.pv .cpk-ck { flex: none; width: 24px; height: 24px; border-radius: 50%; box-shadow: 0 0 0 1.5px #d4d4d4 inset; display: grid; place-items: center; color: transparent; transition: background-color .2s, color .2s, box-shadow .2s, transform .25s cubic-bezier(.34,1.56,.64,1); }
+.pv .cpk-row.on .cpk-ck { background: #0a0a0b; color: #fff; box-shadow: none; transform: scale(1.08); }
+.pv .cpk-ck .ico { width: 13px; height: 13px; stroke-width: 3; }
+@media (prefers-reduced-motion: reduce) { .pv .cpk-row, .pv .cpk-ck { animation: none; transition: none; } }
+
+/* Escolha das redes do convite: mesma linguagem das campanhas (linha branca com contorno, marcada = contorno preto) */
+.pv .cx-inv-t { font-size: 15px; font-weight: 650; letter-spacing: -.02em; }
+.pv .cx-inv label { position: relative; background: #fff; box-shadow: 0 0 0 1.5px var(--line) inset; padding: 12px 14px 12px 12px; transition: box-shadow .2s, transform .2s; }
+.pv .cx-inv label:not(.off):hover { box-shadow: 0 0 0 1.5px rgba(5,5,5,.3) inset; transform: translateY(-1px); }
+.pv .cx-inv label:has(input:checked) { box-shadow: 0 0 0 2px #0a0a0b inset; }
+.pv .cx-inv-i { width: 40px; height: 40px; border-radius: 13px; background: #0a0a0b; color: #fff; }
+.pv .cx-inv-n { flex: 1; min-width: 0; }
+.pv .cx-inv-n small { font-size: 12.5px; }
+/* checkbox próprio: círculo que enche de preto com o ✓ */
+.pv .cx-inv input { appearance: none; -webkit-appearance: none; order: 3; width: 24px; height: 24px; border-radius: 50%; margin: 0; box-shadow: 0 0 0 1.5px #d4d4d4 inset; display: grid; place-items: center; transition: background-color .2s, box-shadow .2s, transform .25s cubic-bezier(.34,1.56,.64,1); cursor: pointer; }
+.pv .cx-inv input::after { content: ""; width: 10px; height: 6px; border-left: 2.5px solid #fff; border-bottom: 2.5px solid #fff; transform: translateY(-1px) rotate(-45deg) scale(0); transition: transform .2s; }
+.pv .cx-inv input:checked { background: #0a0a0b; box-shadow: none; transform: scale(1.08); }
+.pv .cx-inv input:checked::after { transform: translateY(-1px) rotate(-45deg) scale(1); }
+.pv .cx-inv input:disabled { cursor: default; }
+.pv .cx-inv input:focus-visible { outline: 2px solid #0a0a0b; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .pv .cx-inv label, .pv .cx-inv input, .pv .cx-inv input::after { transition: none; } }
+
+/* ===== Fluxo único: redes (estreito) -> campanha (largo). O diálogo cresce e a altura acompanha o conteúdo ===== */
+.pv .ovd.cpf { width: min(520px, 100%); transition: width .55s var(--ease); }
+.pv .ovd.cpf.xl { width: min(980px, 100%); }
+.pv .cpf .cm-b { padding-left: 26px; padding-right: 26px; overflow-y: auto; max-height: calc(100vh - 230px); }
+.pv .cpf-fit { flex: none; overflow: hidden; transition: height .5s var(--ease); }
+.pv .cpf-step { display: flex; flex-direction: column; gap: 14px; animation: pv-stepin .45s .08s var(--ease) both; }
+.pv .cpf-grid { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 20px; align-items: start; }
+.pv .cpf-who { display: flex; flex-direction: column; gap: 10px; }
+.pv .cpf-hero { position: relative; aspect-ratio: 1 / 1.1; border-radius: 22px; overflow: hidden; background: #0a0a0b; }
+.pv .cpf-photo { position: absolute; inset: 0; }
+.pv .cpf-photo .iav { width: 100% !important; height: 100% !important; border-radius: 0 !important; box-shadow: none !important; font-size: 56px !important; }
+.pv .cpf-photo .iav img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+.pv .cpf-shade { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; display: flex; flex-direction: column; gap: 3px; padding: 56px 14px 14px; color: #fff; background: linear-gradient(180deg, rgba(5,5,5,0) 0, rgba(5,5,5,.55) 40%, rgba(5,5,5,.9) 100%); }
+.pv .cpf-shade small { font-size: 11.5px; color: rgba(255,255,255,.7); font-weight: 500; }
+.pv .cpf-shade b { font-size: 18px; font-weight: 700; letter-spacing: -.03em; line-height: 1.2; }
+.pv .cpf-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.pv .cpf-tags span { background: rgba(255,255,255,.18); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-radius: 99px; padding: 3px 10px; font-size: 11.5px; font-weight: 600; }
+.pv .cpf-nets { list-style: none; margin: 0; padding: 0 4px; display: flex; flex-direction: column; }
+.pv .cpf-nets li { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 9px 0; font-size: 13px; }
+.pv .cpf-nets li + li { border-top: 1.5px solid var(--line); }
+.pv .cpf-nets span { color: var(--muted); font-weight: 500; }
+.pv .cpf-nets b { font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.pv .cpf-camps { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.pv .cpf-c .cpk-h { margin: 0 2px; }
+.pv .cpf-ph { display: flex; flex-direction: column; gap: 12px; }
+.pv .cpf-ph-g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pv .cpf-ph-o { text-align: left; padding: 14px 16px; border-radius: 20px; background: #fff; box-shadow: 0 0 0 1.5px var(--line) inset; display: flex; flex-direction: column; gap: 3px; transition: box-shadow .2s, transform .2s; }
+.pv .cpf-ph-o b { font-size: 14.5px; font-weight: 650; letter-spacing: -.02em; }
+.pv .cpf-ph-o small { font-size: 12px; color: var(--muted); }
+.pv .cpf-ph-o:hover { box-shadow: 0 0 0 1.5px rgba(5,5,5,.3) inset; transform: translateY(-1px); }
+.pv .cpf-ph-o.on { box-shadow: 0 0 0 2px #0a0a0b inset; }
+.pv .cpf-ph-o:focus-visible { outline: 2px solid #0a0a0b; outline-offset: 2px; }
+.pv .cpf .cm-f .btn { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 760px) { .pv .cpf-grid { grid-template-columns: 1fr; } .pv .cpf-hero { aspect-ratio: 16 / 9; } .pv .cpf-ph-g { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .pv .ovd.cpf, .pv .cpf-fit, .pv .cpf-step, .pv .cpf-ph-o { transition: none; animation: none; } }
+
+/* ===== Rodapé do fluxo: Cancelar/Voltar brancos com contorno, Continuar/Enviar pretos; ícones se animam no hover ===== */
+.pv .cpf .cm-f { gap: 10px; padding: 16px 26px 22px; }
+.pv .cpf .cm-f small { margin-right: auto; }
+.pv .cpf .cm-f .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 22px; border-radius: 99px; font-size: 14px; font-weight: 650;
+  transition: background-color .18s ease, color .18s ease, transform .2s, box-shadow .25s; }
+.pv .cpf .cm-f .btn.out { background: #fff; color: var(--ink); box-shadow: 0 0 0 1.5px rgba(5,5,5,.12) inset; }
+.pv .cpf .cm-f .btn.out:hover:not(:disabled) { background: #fff; color: var(--ink); box-shadow: 0 0 0 1.5px #0a0a0b inset, 0 10px 18px -12px rgba(5,5,5,.45); transform: translateY(-2px); }
+.pv .cpf .cm-f .btn:not(.out):hover:not(:disabled) { background: #0a0a0b; box-shadow: 0 12px 20px -10px rgba(5,5,5,.6); transform: translateY(-2px); }
+.pv .cpf .cm-f .btn:active:not(:disabled) { transform: scale(.97); }
+.pv .cpf .cm-f .btn[disabled] { opacity: .35; }
+.pv .cpf .cm-f .ico { transition: transform .3s cubic-bezier(.34,1.56,.64,1); }
+.pv .cpf .cm-f .cpf-go { width: 14px; height: 14px; }
+.pv .cpf .cm-f .btn:hover:not(:disabled) .cpf-go { transform: translateX(4px); }
+.pv .cpf .cm-f .cpf-back:hover:not(:disabled) .ico { transform: translateX(-4px); }
+.pv .cpf .cm-f .btn:hover:not(:disabled) .cpf-send { transform: translate(3px, -3px) rotate(8deg); }
+@media (prefers-reduced-motion: reduce) { .pv .cpf .cm-f .btn, .pv .cpf .cm-f .ico { transition: none; } }
+
+/* ===== Passo da campanha, minimalista e sem rolagem da página ===== */
+.pv .cpf .cm-b { max-height: none; overflow: visible; padding-top: 0; }
+.pv .cpf-step.cpf-c { gap: 14px; }
+.pv .cpf-grid { grid-template-columns: 210px minmax(0, 1fr); gap: 16px; }
+.pv .cpf-hero { aspect-ratio: auto; height: 100%; min-height: 250px; }
+.pv .cpf-shade { padding: 48px 14px 14px; }
+.pv .cpf-shade b { font-size: 17px; }
+.pv .cpf-shade small { font-size: 12px; margin-top: 2px; color: rgba(255,255,255,.75); }
+.pv .cpf-camps { gap: 10px; }
+.pv .cpf-camps .cpk-find { height: 40px; }
+.pv .cpf-camps .cpk-list { max-height: none; overflow-y: auto; scrollbar-width: none; gap: 6px; height: 214px; padding: 2px; }
+.pv .cpf-camps .cpk-list::-webkit-scrollbar { display: none; }
+.pv .cpf-camps .cpk-row { padding: 6px 12px 6px 6px; border-radius: 16px; gap: 12px; }
+.pv .cpf-camps .cpk-th { width: 40px; height: 40px; border-radius: 11px; }
+.pv .cpf-camps .cpk-tx b { font-size: 13.5px; -webkit-line-clamp: 1; }
+.pv .cpf-camps .cpk-tx small { font-size: 11.5px; }
+.pv .cpf-camps .cpk-ck { width: 22px; height: 22px; }
+.pv .cpf-msg { width: 100%; border: 0; outline: 0; resize: none; background: var(--bg); border-radius: 18px; padding: 12px 16px; font: inherit; font-size: 14px; line-height: 1.45; color: var(--ink); transition: background-color .2s, box-shadow .2s; }
+.pv .cpf-msg:focus { background: #fff; box-shadow: 0 0 0 1.5px #0a0a0b; }
+.pv .cpf-ph { flex-direction: row; align-items: center; gap: 14px; }
+.pv .cpf-ph > span { flex: none; font-size: 13.5px; font-weight: 600; color: var(--muted); }
+.pv .cpf-ph-g { flex: 1; gap: 6px; padding: 4px; border-radius: 99px; background: var(--bg); }
+.pv .cpf-ph-o { flex: 1; text-align: center; padding: 0; height: 36px; border-radius: 99px; background: transparent; box-shadow: none; font-size: 13.5px; font-weight: 600; color: var(--muted); display: grid; place-items: center; transition: background-color .22s, color .22s, box-shadow .22s; }
+.pv .cpf-ph-o:hover { transform: none; box-shadow: none; color: var(--ink); }
+.pv .cpf-ph-o.on { background: #0a0a0b; color: #fff; box-shadow: none; }
+@media (max-width: 760px) { .pv .cpf-grid { grid-template-columns: 1fr; } .pv .cpf-hero { min-height: 160px; } .pv .cpf-ph { flex-direction: column; align-items: stretch; } }
+
+/* Redes do convite: opções discretas sob a foto, na mesma tela */
+.pv .cpf-pick { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pv .cpf-pk { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 8px; border-radius: 16px; background: #fff; box-shadow: 0 0 0 1.5px var(--line) inset; text-align: left; transition: box-shadow .2s, transform .2s; }
+.pv .cpf-pi { flex: none; width: 30px; height: 30px; border-radius: 10px; background: #0a0a0b; color: #fff; display: grid; place-items: center; }
+.pv .cpf-pi .ico { width: 15px; height: 15px; }
+.pv .cpf-pn { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.pv .cpf-pn b { font-size: 13px; font-weight: 650; letter-spacing: -.01em; }
+.pv .cpf-pn small { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pv .cpf-pc { flex: none; width: 22px; height: 22px; border-radius: 50%; box-shadow: 0 0 0 1.5px #d4d4d4 inset; display: grid; place-items: center; color: transparent; transition: background-color .2s, color .2s, box-shadow .2s, transform .25s cubic-bezier(.34,1.56,.64,1); }
+.pv .cpf-pc .ico { width: 12px; height: 12px; stroke-width: 3; }
+.pv .cpf-pk:hover:not(:disabled) { box-shadow: 0 0 0 1.5px rgba(5,5,5,.3) inset; }
+.pv .cpf-pk.on { box-shadow: 0 0 0 2px #0a0a0b inset; }
+.pv .cpf-pk.on .cpf-pc { background: #0a0a0b; color: #fff; box-shadow: none; transform: scale(1.08); }
+.pv .cpf-pk:disabled { opacity: .45; cursor: default; }
+.pv .cpf-pk:focus-visible { outline: 2px solid #0a0a0b; outline-offset: 2px; }
+.pv .cpf-who .cpf-hero { min-height: 190px; }
+@media (prefers-reduced-motion: reduce) { .pv .cpf-pk { transition: none; } }
+
+/* ===== Refino: hierarquia (rótulos numerados), ritmo de 20px entre seções, resumo no rodapé ===== */
+.pv .cpf-step.cpf-c { gap: 22px; }
+.pv .cpf-sec { display: flex; flex-direction: column; gap: 10px; }
+.pv .cpf-lb { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; letter-spacing: -.01em; color: var(--ink); }
+.pv .cpf-lb em { font-style: normal; width: 20px; height: 20px; border-radius: 50%; background: #0a0a0b; color: #fff; display: inline-grid; place-items: center; font-size: 11px; font-weight: 700; }
+.pv .cpf-lb span { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--muted); }
+.pv .cpf-lb-s { margin-top: 6px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.pv .cpf-grid { grid-template-columns: 220px minmax(0, 1fr); gap: 22px; }
+.pv .cpf-who { gap: 8px; }
+.pv .cpf-hero { min-height: 200px; }
+.pv .cpf-camps { gap: 10px; }
+.pv .cpf-camps .cpk-list { height: 224px; }
+.pv .cpf-msg { padding: 13px 16px; }
+.pv .cpf-ph-g { padding: 4px; }
+.pv .cpf-hint { margin: 0 0 0 4px; font-size: 12.5px; color: var(--muted); }
+/* rodapé: resumo à esquerda, ações à direita */
+.pv .cpf .cm-f { padding: 16px 26px 22px; }
+.pv .cpf-sum { margin: 0 auto 0 0; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.pv .cpf-sum span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv .cpf-sum b { color: var(--ink); font-weight: 650; }
+.pv .cpf-sum .ico { flex: none; width: 15px; height: 15px; color: var(--ink); }
+.pv .cpf-sum.on { color: var(--muted); }
+
+/* A lista de campanhas termina na mesma linha que a última rede: a coluna da direita estica até a altura da esquerda */
+.pv .cpf-grid { align-items: stretch; }
+.pv .cpf-who .cpf-hero { flex: 1 1 auto; min-height: 210px; height: auto; }
+.pv .cpf-camps { min-height: 0; }
+.pv .cpf-camps .cpk-list { flex: 1 1 0; height: auto; min-height: 0; }

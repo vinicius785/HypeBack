@@ -8,6 +8,8 @@ import {
   respondToPriceCounter,
   type InfluencerStatusUpdate,
   type InfluencerInviteData,
+  type InviteBulkData,
+  inviteInfluencersBulk,
   type MoveToPreSelectionCurationData,
   type CampaignPriceResponseData,
 } from "@/shared/services/influencer";
@@ -77,6 +79,15 @@ export function useInviteInfluencer(campaignId: string) {
   return useMutation({
     mutationFn: (data: InfluencerInviteData) =>
       inviteInfluencer(campaignId, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useInviteInfluencersBulk(campaignId: string) {
+  const invalidate = useInvalidateCampaignInfluencerCaches(campaignId);
+
+  return useMutation({
+    mutationFn: (data: InviteBulkData) => inviteInfluencersBulk(campaignId, data),
     onSuccess: invalidate,
   });
 }

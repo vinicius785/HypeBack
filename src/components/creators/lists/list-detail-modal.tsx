@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
 
 import { NET_ICON, NET_LABEL } from "@/components/creators/creator-accounts";
 import { Av, I } from "@/components/prototype/ui";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CreatorCard } from "@/components/creators/creator-card";
+import type { CreatorGroup } from "@/shared/utils/group-creators";
+import { CampaignPickerModal } from "@/components/influencer-lists/campaign-picker-modal";
 import { useAddToInfluencerList, useCreatorsCatalog, useRemoveFromInfluencerList } from "@/hooks/use-creators-catalog";
 import { useInfluencerAccountsMap } from "@/hooks/use-influencer-accounts";
 import { useInfluencerList, useInfluencerListReach } from "@/hooks/use-influencer-lists";
@@ -48,15 +51,22 @@ export function ListDetailModal({ list, canWrite, onClose, onEdit }: Props) {
   const [sort, setSort] = useState<MemberSort>("added");
   const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState<number | null>(null);
+  const [bulkInvite, setBulkInvite] = useState(false);
+  const [inviteFor, setInviteFor] = useState<{ id: number; name: string; photo: string | null } | null>(null);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    // Com o convite aberto, o Esc fecha só o convite (ele tem o próprio tratamento).
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !inviteFor && !bulkInvite && onClose();
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, inviteFor, bulkInvite]);
 
   const handles = (m: { id: number }) => (accounts.get(m.id) ?? []).map((p) => p.username);
   const rows = filterAndSortMembers(members, stats, query, sort, handles);
+  const socialOf = (id: number) =>
+    (accounts.get(id) ?? [])
+      .filter((p) => p.type.toLowerCase() !== "ugc")
+      .sort((a, b) => (b.members || 0) - (a.members || 0));
   const showTools = members.length >= TOOLS_MIN;
   const date = listDateLabel(list);
 
@@ -135,43 +145,42 @@ export function ListDetailModal({ list, canWrite, onClose, onEdit }: Props) {
                     Criadores
                     <em>{total}</em>
                   </h3>
-                  {canWrite && (
-                    <button type="button" className={`btn out${adding ? " on" : ""}`} aria-expanded={adding} onClick={() => setAdding((v) => !v)}>
-                      <I n={adding ? "x" : "plus"} cls="sm" />
-                      {adding ? "Fechar" : "Adicionar criadores"}
-                    </button>
-                  )}
                 </div>
 
-                {showTools && (
-                  <div className="lst-tools">
-                    <label className="lst-q">
-                      <I n="search" cls="sm" />
-                      <input
-                        type="search"
-                        aria-label="Buscar na lista"
-                        placeholder="Buscar por nome ou @"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                      />
-                      {query && (
-                        <button type="button" aria-label="Limpar busca" onClick={() => setQuery("")}>
-                          <I n="x" cls="sm" />
-                        </button>
-                      )}
-                    </label>
-                    <label className="lst-s">
-                      <span className="sr-only">Ordenar por</span>
-                      <select value={sort} onChange={(e) => setSort(e.target.value as MemberSort)}>
-                        {MEMBER_SORTS.map(([v, l]) => (
-                          <option key={v} value={v}>
-                            {l}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                <div className="lst-tools">
+                  {showTools && (
+                    <>
+                      <label className="lst-q">
+                        <I n="search" cls="sm" />
+                        <input
+                          type="search"
+                          aria-label="Buscar na lista"
+                          placeholder="Buscar por nome ou @"
+                          value={query}
+                          onChange={(e) => setQuery(e.target.value)}
+                        />
+                        {query && (
+                          <button type="button" aria-label="Limpar busca" onClick={() => setQuery("")}>
+                            <I n="x" cls="sm" />
+                          </button>
+                        )}
+                      </label>
+                      <SortMenu value={sort} onChange={setSort} />
+                    </>
+                  )}
+                  <div className="lst-tr">
+                    {canWrite && (
+                      <button type="button" className={`lst-add-b${adding ? " on" : ""}`} aria-expanded={adding} onClick={() => setAdding((v) => !v)}>
+                        <I n={adding ? "x" : "plus"} cls="sm" />
+                        <span>{adding ? "Fechar" : "Adicionar criadores"}</span>
+                      </button>
+                    )}
+                    <button type="button" className="lst-bulk" onClick={() => setBulkInvite(true)} disabled={rows.length === 0}>
+                      <I n="send" cls="sm" />
+                      <span>Convidar</span>
+                    </button>
                   </div>
-                )}
+                </div>
 
                 {adding && canWrite && <AddCreators listId={list.id} memberIds={new Set(members.map((m) => m.id))} />}
 
@@ -200,71 +209,44 @@ export function ListDetailModal({ list, canWrite, onClose, onEdit }: Props) {
                     </button>
                   </div>
                 ) : (
-                  <ul className="lst-rows" aria-label="Criadores da lista">
-                    {rows.map((m) => {
-                      const st = stats.get(m.id);
-                      const primary = st?.primary;
+                  <ul className="crg lst-cards" aria-label="Criadores da lista">
+                    {rows.map((m, k) => {
                       const confirming = removingId === m.id;
+                      const group: CreatorGroup = {
+                        key: String(m.id),
+                        user: { id: m.id, name: m.name, photo: m.photo ?? null, gender: null },
+                        accounts: [],
+                        niches: [],
+                        distance_km: null,
+                      };
                       return (
-                        <li key={m.id} className={`lst-row${confirming ? " rm" : ""}`}>
-                          <Av name={m.name} src={m.photo ?? undefined} size={40} />
-                          <div className="lst-id">
-                            <b title={m.name}>{m.name}</b>
-                            {primary ? (
-                              <span>@{primary.username}</span>
-                            ) : accountsLoading && !accounts.get(m.id) ? (
-                              <span className="mute">carregando…</span>
-                            ) : (
-                              <span className="mute">{m.email || "Sem redes sociais"}</span>
-                            )}
-                          </div>
-                          <span className="lst-net" title={primary ? (NET_LABEL[primary.type.toLowerCase()] ?? primary.type_label ?? primary.type) : undefined}>
-                            {primary ? (
-                              <>
-                                <I n={NET_ICON[primary.type.toLowerCase()] ?? "video"} cls="sm" />
-                                <span className="sr-only">{NET_LABEL[primary.type.toLowerCase()] ?? primary.type_label ?? primary.type}</span>
-                                {st && st.networks.length > 1 ? <em>+{st.networks.length - 1}</em> : null}
-                              </>
-                            ) : null}
-                          </span>
-                          <span className="lst-fol" title="Seguidores somados nas redes sociais">
-                            {st && st.followers > 0 ? (
-                              <>
-                                <b>{fmtCompact(st.followers)}</b>
-                                <small>seguidores</small>
-                              </>
-                            ) : (
-                              <span className="mute">—</span>
-                            )}
-                          </span>
-                          {confirming ? (
-                            <div className="lst-rmq" role="group" aria-label={`Remover ${m.name} da lista`}>
-                              <span>Remover da lista?</span>
-                              <button type="button" className="btn out" onClick={() => setRemovingId(null)}>
-                                Cancelar
-                              </button>
-                              <button type="button" className="btn dng lst-del" disabled={removeMutation.isPending} onClick={() => remove(m.id)}>
-                                {removeMutation.isPending ? "Removendo…" : "Remover"}
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="lst-act">
-                              <button
-                                type="button"
-                                className="lst-ib"
-                                aria-label={`Ver perfil de ${m.name}`}
-                                title="Ver perfil"
-                                onClick={() => navigate({ to: "/influencer/$influencerId", params: { influencerId: String(m.id) } })}
-                              >
-                                <I n="external" cls="sm" />
-                              </button>
-                              {canWrite && (
-                                <button type="button" className="lst-ib dng" aria-label={`Remover ${m.name} da lista`} title="Remover da lista" onClick={() => setRemovingId(m.id)}>
-                                  <I n="trash" cls="sm" />
-                                </button>
-                              )}
-                            </div>
-                          )}
+                        <li key={m.id}>
+                          <CreatorCard
+                            group={group}
+                            k={k}
+                            selected={false}
+                            near={false}
+                            saved
+                            onOpen={() => navigate({ to: "/influencer/$influencerId", params: { influencerId: String(m.id) } })}
+                            onInvite={() => setInviteFor({ id: m.id, name: m.name, photo: m.photo ?? null })}
+                            onSave={canWrite ? () => setRemovingId(m.id) : undefined}
+                            overlay={
+                              confirming ? (
+                                <div className="lst-cov" role="group" aria-label={`Remover ${m.name} da lista`}>
+                                  <b>Remover da lista?</b>
+                                  <small>{m.name} sai de “{list.name}”.</small>
+                                  <div>
+                                    <button type="button" className="btn out" onClick={() => setRemovingId(null)}>
+                                      Cancelar
+                                    </button>
+                                    <button type="button" className="btn dng" disabled={removeMutation.isPending} onClick={() => remove(m.id)}>
+                                      {removeMutation.isPending ? "Removendo…" : "Remover"}
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : null
+                            }
+                          />
                         </li>
                       );
                     })}
@@ -281,8 +263,93 @@ export function ListDetailModal({ list, canWrite, onClose, onEdit }: Props) {
           </div>
         </section>
       </div>
+      {bulkInvite && (
+        <CampaignPickerModal
+          mode="invite"
+          influencerId="bulk"
+          influencerName={`${rows.length} criadores`}
+          bulk={{ creators: rows.map((m) => ({ id: m.id, name: m.name, photo: m.photo ?? null })) }}
+          onClose={() => setBulkInvite(false)}
+        />
+      )}
+      {inviteFor && (
+        <CampaignPickerModal
+          mode="invite"
+          influencerId={String(inviteFor.id)}
+          influencerName={inviteFor.name}
+          influencerPhoto={inviteFor.photo}
+          networks={{
+            userId: inviteFor.id,
+            known: socialOf(inviteFor.id).map((p) => ({
+              id: p.id,
+              type: p.type.toLowerCase(),
+              label: NET_LABEL[p.type.toLowerCase()] ?? p.type_label ?? p.type,
+              username: p.username,
+              members: p.members,
+            })),
+          }}
+          onClose={() => setInviteFor(null)}
+        />
+      )}
     </div>,
     document.body,
+  );
+}
+
+/** Ordenação em um botão de ícone com menu (no lugar do select). */
+function SortMenu({ value, onChange }: { value: MemberSort; onChange: (v: MemberSort) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey, true);
+    };
+  }, [open]);
+  return (
+    <div className="lst-sort" ref={ref}>
+      <button
+        type="button"
+        className={`lst-sb${open ? " on" : ""}`}
+        aria-label="Ordenar"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={`Ordenar: ${MEMBER_SORTS.find(([v]) => v === value)?.[1]}`}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <I n="sort" cls="sm" />
+      </button>
+      {open && (
+        <div className="lst-sm" role="menu">
+          {MEMBER_SORTS.map(([v, l]) => (
+            <button
+              key={v}
+              type="button"
+              role="menuitemradio"
+              aria-checked={v === value}
+              className={v === value ? "on" : ""}
+              onClick={() => {
+                onChange(v);
+                setOpen(false);
+              }}
+            >
+              {l}
+              {v === value ? <I n="check" cls="sm" /> : null}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

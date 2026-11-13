@@ -10,6 +10,7 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => h.navigate }));
+vi.mock("@/hooks/use-campaigns", () => ({ useCampaigns: () => ({ data: [] }) }));
 vi.mock("@/hooks/use-notifications", () => ({ useNotifications: () => h.notifications }));
 vi.mock("@/hooks/use-workspace-query-key", () => ({
   useWorkspaceQueryKey: () => "ws-1",

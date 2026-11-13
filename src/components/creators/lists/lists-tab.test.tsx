@@ -28,6 +28,9 @@ vi.mock("@/hooks/use-influencer-lists", () => ({
   }),
 }));
 vi.mock("@/hooks/use-influencer-accounts", () => ({
+  useInfluencerAccounts: (id: number) => ({
+    data: [{ id: `p${id}`, type: "instagram", type_label: "Instagram", name: "ig", username: `user${id}`, members: id * 1000 }],
+  }),
   useInfluencerAccountsMap: (ids: number[]) => ({
     loading: false,
     map: new Map(ids.map((id) => [id, [{ id: `p${id}`, type: "instagram", type_label: "Instagram", name: "ig", username: `user${id}`, members: id * 1000 }]])),
@@ -93,7 +96,7 @@ describe("Minhas listas", () => {
     expect(screen.getByRole("alert").textContent).toMatch(/Não foi possível carregar suas listas/);
   });
 
-  it("abrir mostra cabeçalho, indicadores e as linhas com @, rede e seguidores", () => {
+  it("abrir mostra cabeçalho, indicadores e os cartões com @, rede e seguidores", () => {
     render(<ListsTab />);
     fireEvent.click(screen.getAllByRole("button", { name: "Abrir lista" })[0]);
     const dlg = screen.getByRole("dialog", { name: "Lista Moda verão" });
@@ -106,23 +109,25 @@ describe("Minhas listas", () => {
   it("busca interna, sem resultados e ordenação por seguidores", () => {
     render(<ListsTab />);
     fireEvent.click(screen.getAllByRole("button", { name: "Abrir lista" })[0]);
-    const names = () => within(screen.getByRole("list", { name: "Criadores da lista" })).getAllByRole("listitem").map((li) => li.querySelector("b")?.textContent);
+    const names = () => [...screen.getByRole("list", { name: "Criadores da lista" }).querySelectorAll(":scope > li")].map((li) => li.querySelector(".ccd-id b")?.textContent);
     fireEvent.change(screen.getByLabelText("Buscar na lista"), { target: { value: "criador c" } });
     expect(names()).toEqual(["Criador C"]);
     fireEvent.change(screen.getByLabelText("Buscar na lista"), { target: { value: "zzz" } });
     expect(screen.getByText("Nenhum criador encontrado")).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: "Limpar busca" }).at(-1)!);
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "followers" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ordenar" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /Seguidores/ }));
     expect(names()[0]).toBe("Criador F");
   });
 
-  it("remover pede confirmação na própria linha", () => {
+  it("remover pede confirmação no próprio cartão", () => {
     render(<ListsTab />);
     fireEvent.click(screen.getAllByRole("button", { name: "Abrir lista" })[0]);
-    fireEvent.click(screen.getByRole("button", { name: "Remover Criador A da lista" }));
+    const heart = () => within(screen.getByRole("list", { name: "Criadores da lista" })).getAllByRole("button", { name: "Salvar em lista" })[0];
+    fireEvent.click(heart());
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(h.remove).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Remover Criador A da lista" }));
+    fireEvent.click(heart());
     fireEvent.click(screen.getByRole("button", { name: "Remover" }));
     expect(h.remove).toHaveBeenCalledWith({ listId: "l1", userId: 1 });
   });

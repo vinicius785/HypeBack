@@ -12,6 +12,12 @@ vi.mock("@/hooks/use-campaign-chat", () => ({
   useInfluencerMessages: () => ({ data: h.messages, isLoading: false }),
   useSendMessage: () => ({ mutateAsync: h.mutateAsync, isPending: false }),
 }));
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: () => ({ data: [{ user_id: 5, status: "curation" }] }),
+}));
+vi.mock("@/hooks/use-campaigns", () => ({ useCampaign: () => ({ data: { title: "Campanha da API" } }) }));
+vi.mock("@/hooks/use-workspace-query-key", () => ({ useWorkspaceQueryKey: () => "w1", withWorkspaceKey: (k: unknown[]) => k }));
+vi.mock("@/shared/services/campaign-users", () => ({ getCampaignUsers: vi.fn() }));
 vi.mock("@/hooks/use-notifications", () => ({ useMarkChatNotificationsAsRead: () => ({ mutate: h.markRead }) }));
 vi.mock("@/shared/services/chat", () => ({ uploadChatAttachment: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -34,6 +40,17 @@ const msg = (id: string, sender: number, iso: string, extra: Record<string, unkn
 const renderThread = () => render(<CreatorThread conv={conv} onBack={vi.fn()} onOpenCampaign={vi.fn()} />);
 
 describe("CreatorThread", () => {
+  it("o cabeçalho mostra a campanha e a fase do criador nela", () => {
+    renderThread();
+    expect(screen.getByText("Verão")).toBeTruthy();
+    expect(screen.getByText("Curadoria")).toBeTruthy();
+  });
+
+  it("sem título na conversa, usa o da campanha", () => {
+    render(<CreatorThread conv={{ ...(conv as object), campaign: "" } as never} onBack={vi.fn()} onOpenCampaign={vi.fn()} />);
+    expect(screen.getByText("Campanha da API")).toBeTruthy();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     h.messages = [];

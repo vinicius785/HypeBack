@@ -11,11 +11,13 @@ interface PvModalProps {
   /** Rodapé `.cm-f` (omitido quando não informado). */
   footer?: React.ReactNode;
   wide?: boolean;
+  /** Classe extra no diálogo (ex.: um tamanho próprio com transição). */
+  className?: string;
   children: React.ReactNode;
 }
 
 /** Casca `cmShell` do protótipo: backdrop + diálogo `ovd` com cabeçalho e rodapé. */
-export function PvModal({ sub, title, onClose, footer, wide, children }: PvModalProps) {
+export function PvModal({ sub, title, onClose, footer, wide, className, children }: PvModalProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -29,7 +31,7 @@ export function PvModal({ sub, title, onClose, footer, wide, children }: PvModal
       <div className="ovb on" onClick={onClose} />
       <div className="ovw">
         <section
-          className={`ovd on${wide ? " wide" : ""}`}
+          className={`ovd on${wide ? " wide" : ""}${className ? ` ${className}` : ""}`}
           role="dialog"
           aria-label={title}
         >
