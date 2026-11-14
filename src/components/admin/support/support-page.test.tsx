@@ -134,9 +134,11 @@ describe("Suporte (Admin)", () => {
     const { user } = await renderPage();
     await user.click(await screen.findByRole("button", { name: /Não consigo sacar/ }));
     const drawer = within(await screen.findByRole("dialog"));
-    expect(await drawer.findByText("Parece o bug do saque")).toBeInTheDocument();
-    expect(drawer.getAllByText("Nota interna").length).toBeGreaterThan(0);
-    await user.selectOptions(drawer.getByLabelText("Status"), "in_progress");
+    expect(await drawer.findByText("Ao tocar em sacar o app trava")).toBeInTheDocument();
+    // notas internas não aparecem: a conversa é só entre a equipe e quem pediu
+    expect(drawer.queryByText("Parece o bug do saque")).not.toBeInTheDocument();
+    await user.click(drawer.getByRole("button", { name: /^Status:/ }));
+    await user.click(await screen.findByRole("menuitemradio", { name: "Em andamento" }));
     await waitFor(() => expect(mocks.adminPatch).toHaveBeenCalledTimes(1));
     expect(mocks.adminPatch.mock.calls[0][0]).toBe("/admin/support/tickets/t1");
     expect(mocks.adminPatch.mock.calls[0][1]).toEqual({ status: "in_progress" });
@@ -146,28 +148,24 @@ describe("Suporte (Admin)", () => {
     expect(mocks.adminPatch.mock.calls[1][1]).toEqual({ assignee_id: 1 });
   });
 
-  it("responde marcando como resolvido, deixa nota e recusa mensagem vazia", async () => {
+  it("responde pelo chat: Enter envia, sem texto não envia e não há opção de status nem de nota", async () => {
     serve([ticket()]);
     const { user } = await renderPage();
     await user.click(await screen.findByRole("button", { name: /Não consigo sacar/ }));
     const drawer = within(await screen.findByRole("dialog"));
-    await drawer.findByLabelText("Resposta");
-    await user.click(drawer.getByRole("button", { name: "Enviar resposta" }));
-    expect(drawer.getByRole("alert")).toHaveTextContent("Escreva a resposta.");
+    const field = await drawer.findByLabelText("Mensagem");
+    // sem texto, o botão fica desabilitado e Enter não envia nada
+    expect(drawer.getByRole("button", { name: "Enviar mensagem" })).toBeDisabled();
+    await user.type(field, "{Enter}");
     expect(mocks.adminPost).not.toHaveBeenCalled();
-    await user.type(drawer.getByLabelText("Resposta"), "Já corrigimos, atualize o app.");
-    await user.selectOptions(drawer.getByLabelText("Depois de enviar"), "resolved");
-    await user.click(drawer.getByRole("button", { name: "Enviar resposta" }));
+    // sem "manter status" e sem nota interna
+    expect(drawer.queryByRole("button", { name: /^Depois de enviar:/ })).not.toBeInTheDocument();
+    expect(drawer.queryByRole("radio", { name: "Nota interna" })).not.toBeInTheDocument();
+    await user.type(field, "Já corrigimos, atualize o app.{Enter}");
     await waitFor(() => expect(mocks.adminPost).toHaveBeenCalledTimes(1));
     expect(mocks.adminPost.mock.calls[0][0]).toBe("/admin/support/tickets/t1/messages");
-    expect(mocks.adminPost.mock.calls[0][1]).toEqual({ body: "Já corrigimos, atualize o app.", kind: "reply", status: "resolved" });
+    expect(mocks.adminPost.mock.calls[0][1]).toEqual({ body: "Já corrigimos, atualize o app.", kind: "reply" });
     expect(mocks.adminPost.mock.calls[0][2].idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
-
-    await user.click(drawer.getByRole("radio", { name: "Nota interna" }));
-    await user.type(drawer.getByLabelText("Nota interna"), "Cliente já avisado por telefone");
-    await user.click(drawer.getByRole("button", { name: "Salvar nota" }));
-    await waitFor(() => expect(mocks.adminPost).toHaveBeenCalledTimes(2));
-    expect(mocks.adminPost.mock.calls[1][1]).toEqual({ body: "Cliente já avisado por telefone", kind: "note" });
   });
 
   it("pedido do site (sem conta) avisa que a resposta não chega e oferece o e-mail", async () => {
@@ -180,15 +178,14 @@ describe("Suporte (Admin)", () => {
     expect(drawer.getByRole("link", { name: "v@x.com" })).toHaveAttribute("href", expect.stringContaining("mailto:v@x.com"));
   });
 
-  it("pedido fechado só aceita nota interna", async () => {
+  it("pedido fechado bloqueia o campo e manda reabrir pelo status", async () => {
     const closed = ticket({ status: "closed" });
     serve([closed], detail({ ...closed }));
     const { user } = await renderPage();
     await user.click(await screen.findByRole("button", { name: /Não consigo sacar/ }));
     const drawer = within(await screen.findByRole("dialog"));
-    expect(await drawer.findByText(/só é possível deixar notas internas/)).toBeInTheDocument();
-    expect(drawer.getByRole("radio", { name: "Responder" })).toBeDisabled();
-    expect(drawer.getByRole("button", { name: "Salvar nota" })).toBeInTheDocument();
+    expect(await drawer.findByText(/Reabra pelo status para responder/)).toBeInTheDocument();
+    expect(drawer.getByLabelText("Mensagem")).toBeDisabled();
   });
 
   it("sem a permissão `support.manage` (somente leitura) não há edição nem resposta", async () => {
@@ -197,9 +194,10 @@ describe("Suporte (Admin)", () => {
     const { user } = await renderPage();
     await user.click(await screen.findByRole("button", { name: /Não consigo sacar/ }));
     const drawer = within(await screen.findByRole("dialog"));
-    expect(await drawer.findByText("Parece o bug do saque")).toBeInTheDocument();
-    expect(drawer.queryByLabelText("Status")).not.toBeInTheDocument();
-    expect(drawer.queryByLabelText("Resposta")).not.toBeInTheDocument();
+    expect(await drawer.findByText("Ao tocar em sacar o app trava")).toBeInTheDocument();
+    // sem permissão de gerenciar, as propriedades só mostram o valor (sem botão que abre menu)
+    expect(drawer.queryByRole("button", { name: /^Status:/ })).not.toBeInTheDocument();
+    expect(drawer.queryByLabelText("Mensagem")).not.toBeInTheDocument();
     expect(drawer.queryByRole("button", { name: "Assumir" })).not.toBeInTheDocument();
   });
 });

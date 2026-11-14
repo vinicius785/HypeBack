@@ -3,8 +3,6 @@
 .pv .adm-sup-bar .adm-search { min-width: 280px; }
 .pv .adm-sup-filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
 .pv .adm-sup-filters label, .pv .adm-sup-ctl label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--adm-text-muted); }
-.pv .adm-sup-filters select, .pv .adm-sup-ctl select, .pv .adm-sup-send select { height: 40px; min-width: 150px; padding: 0 34px 0 12px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; font: inherit; font-size: 13.5px; font-weight: 500; color: var(--ink); appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--adm-text-muted) 50%), linear-gradient(135deg, var(--adm-text-muted) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 12px) 50%; background-size: 6px 6px; background-repeat: no-repeat; }
-.pv .adm-sup-filters select:focus-visible, .pv .adm-sup-ctl select:focus-visible, .pv .adm-sup-send select:focus-visible { outline: none; border-color: var(--ink); }
 .pv .adm-sup-subj { display: flex; flex-direction: column; gap: 2px; min-width: 0; width: 100%; text-align: left; padding: 0; border-radius: 6px; }
 .pv .adm-sup-subj:hover b { text-decoration: underline; }
 .pv .adm-sup-subj:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(5,5,5,.3); }
@@ -18,23 +16,74 @@
 .pv .adm-sup-badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--adm-text-muted); }
 .pv .adm-sup-ctl { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; padding: 14px; border-radius: 16px; background: var(--bg); }
 .pv .adm-sup-ctl select { min-width: 140px; }
-.pv .adm-sup-thread { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
-.pv .adm-sup-msg { padding: 12px 14px; border-radius: 14px; background: #fff; border: 1.5px solid var(--line); animation: adm-modal-fade .2s ease both; }
-.pv .adm-sup-msg[data-kind="staff"] { background: #f4f4f4; border-color: transparent; }
-.pv .adm-sup-msg[data-kind="note"] { background: #fff8e6; border-color: #f3dfa6; }
-.pv .adm-sup-msg header { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 13px; }
-.pv .adm-sup-who { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--adm-text-muted); }
-.pv .adm-sup-msg time { margin-left: auto; font-size: 12px; color: var(--adm-text-muted); }
-.pv .adm-sup-msg p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.55; }
-.pv .adm-sup-composer { display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1.5px solid var(--line); }
-.pv .adm-sup-seg { display: inline-flex; align-self: flex-start; padding: 3px; border-radius: 12px; background: var(--bg); }
-.pv .adm-sup-seg button { height: 32px; padding: 0 14px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--adm-text-muted); }
-.pv .adm-sup-seg button[aria-checked="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(5,5,5,.12); }
-.pv .adm-sup-seg button:disabled { opacity: .45; cursor: default; }
-.pv .adm-sup-composer textarea { width: 100%; min-height: 110px; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 14px; font: inherit; font-size: 14px; line-height: 1.5; color: var(--ink); resize: vertical; }
-.pv .adm-sup-composer textarea:focus-visible { outline: none; border-color: var(--ink); }
-.pv .adm-sup-hint { margin: 0; font-size: 12.5px; color: var(--adm-text-muted); }
-.pv .adm-sup-hint a { color: var(--ink); font-weight: 600; }
-.pv .adm-sup-err { color: var(--danger); font-size: 12.5px; font-weight: 600; }
-.pv .adm-sup-send { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 @media (prefers-reduced-motion: reduce) { .pv .adm-sup-msg { animation: none; } }
+
+/* ===== Detalhe do pedido, refinado: cartão do solicitante, controles em grade, balões e resposta fixa embaixo ===== */
+.pv .adm-sup-detail { gap: 16px; }
+.pv .adm-sup-req { display: flex; align-items: flex-start; gap: 14px; padding: 16px; border-radius: 20px; background: var(--bg); }
+.pv .adm-sup-req-id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pv .adm-sup-req-id b { font-size: 16px; font-weight: 700; letter-spacing: -.02em; }
+.pv .adm-sup-req-id > span { font-size: 13px; color: var(--adm-text-muted); overflow-wrap: anywhere; }
+.pv .adm-sup-req-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 12.5px; color: var(--adm-text-muted); }
+.pv .adm-sup-req-meta > span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.pv .adm-sup-req-meta .ico { width: 14px; height: 14px; }
+.pv .adm-sup-req-dates { margin: 0; display: flex; flex-direction: column; gap: 6px; text-align: right; flex: none; }
+.pv .adm-sup-req-dates dt { font-size: 11px; color: var(--adm-text-muted); font-weight: 600; }
+.pv .adm-sup-req-dates dd { margin: 0; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* controles: uma grade compacta de 4 campos + "Assumir" */
+.pv .adm-sup-ctl { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); align-items: end; gap: 10px 12px; padding: 14px; border-radius: 20px; background: var(--bg); }
+.pv .adm-sup-ctl select { width: 100%; min-width: 0; height: 38px; }
+.pv .adm-sup-ctl .btn { height: 38px; justify-self: start; }
+/* conversa */
+/* equipe: à direita, preto */
+/* nota interna: faixa tracejada, só da equipe */
+/* resposta: fixa no pé do painel */
+@media (max-width: 640px) { .pv .adm-sup-req { flex-wrap: wrap; } .pv .adm-sup-req-dates { text-align: left; flex-direction: row; gap: 16px; } .pv .adm-sup-send { flex-wrap: wrap; } }
+/* a última mensagem não fica escondida atrás da resposta fixa */
+
+/* ===== Cabeçalho (foto, contato, sistema) e detalhes do chamado (ticket, data, status) ===== */
+.pv .adm-sup-req { align-items: center; padding: 16px 18px; }
+.pv .adm-sup-req-id { gap: 3px; }
+.pv .adm-sup-req-contact { display: flex; flex-wrap: wrap; gap: 2px 14px; }
+.pv .adm-sup-req-sys { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-top: 6px; font-size: 12.5px; color: var(--adm-text-muted); }
+.pv .adm-sup-req-sys .ico { width: 14px; height: 14px; }
+.pv .adm-sup-req-sys code { padding: 2px 8px; border-radius: 8px; background: var(--adm-surface); font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); }
+.pv .adm-sup-req-ws { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12.5px; color: var(--adm-text-muted); }
+.pv .adm-sup-req-ws .ico { width: 14px; height: 14px; }
+.pv .adm-sup-info { display: flex; flex-direction: column; gap: 14px; padding: 16px 18px; border-radius: 20px; background: var(--bg); }
+.pv .adm-sup-info-top { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.pv .adm-sup-info-cell { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pv .adm-sup-info-cell > span, .pv .adm-sup-info-cell label > span { font-size: 11.5px; font-weight: 600; color: var(--adm-text-muted); }
+.pv .adm-sup-info-cell > b { font-size: 14px; font-weight: 650; letter-spacing: -.01em; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.pv .adm-sup-info-cell small { font-size: 12px; color: var(--adm-text-muted); }
+.pv .adm-sup-info-cell label { display: flex; flex-direction: column; gap: 4px; }
+.pv .adm-sup-info-cell select { width: 100%; height: 38px; }
+.pv .adm-sup-info .adm-sup-ctl { padding: 0; background: none; border-top: 1.5px solid var(--line); padding-top: 14px; }
+@media (max-width: 640px) { .pv .adm-sup-info-top { grid-template-columns: 1fr 1fr; } .pv .adm-sup-info-ticket { grid-column: 1 / -1; } }
+
+/* Propriedades do pedido em chips (mesmo visual das tarefas da plataforma) */
+.pv .adm-sup-props { gap: 8px; }
+.pv .adm-sup-chip .ico { width: 14px; height: 14px; color: var(--adm-text-muted); }
+.pv .adm-sup-chip .iav { flex: none; }
+.pv .adm-sup-dot { width: 8px; height: 8px; border-radius: 99px; background: var(--adm-text-muted); flex: none; }
+.pv .adm-sup-dot[data-s="open"] { background: var(--adm-warn); }
+.pv .adm-sup-dot[data-s="in_progress"] { background: var(--brand); }
+.pv .adm-sup-dot[data-s="resolved"] { background: var(--adm-ok); }
+.pv .adm-sup-dot[data-s="closed"] { background: var(--adm-text-muted); opacity: .5; }
+.pv .adm-sup-assume { border-style: dashed; cursor: pointer; color: var(--ink); }
+.pv .adm-sup-assume:hover { background: var(--bg); }
+.pv .adm-sup-assume .ico { width: 14px; height: 14px; }
+.pv .adm-sup-info .apj-pop2 { z-index: 20; }
+
+/* balões: cantos que "colam" na sequência do mesmo autor */
+/* campo de resposta: uma caixa só (texto em cima, barra de ações embaixo) */
+
+
+/* ===== Conversa do pedido: o mesmo chat da plataforma, numa caixa de altura fixa ===== */
+.pv .adm-sup-chat h4 { display: flex; align-items: baseline; justify-content: space-between; margin: 4px 2px 10px; }
+.pv .adm-sup-chat h4 span { font-size: 12px; font-weight: 500; color: var(--adm-text-muted); }
+.pv .adm-sup-chat-box { position: relative; display: flex; flex-direction: column; max-height: min(600px, 66vh); border: 1.5px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--adm-surface); }
+.pv .adm-sup-chat-box .cx-tb { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+.pv .adm-sup-chat-box .tc-f { flex: none; }
+.pv .adm-sup-hint { margin: 0; padding: 8px 16px; font-size: 12.5px; color: var(--adm-text-muted); background: var(--bg); }
+.pv .adm-sup-hint a { color: var(--ink); font-weight: 600; }
