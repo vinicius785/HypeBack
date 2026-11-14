@@ -1,4 +1,5 @@
 import sentinelaImage from "@/assets/images/sentinela.png";
+import escudoImage from "@/assets/images/sentinela-escudo.png";
 
 import "@/styles/admin-security.css";
 
@@ -17,7 +18,19 @@ import "@/styles/admin-security.css";
  * É decorativa (`aria-hidden`, não recebe clique): o estado em palavras está no número da ilha. Sem movimento com
  * `prefers-reduced-motion`; em tela estreita ela não aparece.
  */
-export function Sentinel({ alert = false }: { alert?: boolean }) {
+export function Sentinel({ alert = false, shield = false }: { alert?: boolean; /** Operação Escudo ligada: no lugar dos binóculos, a agente da Rota de braços cruzados. */ shield?: boolean }) {
+  if (shield) {
+    return (
+      <span className="adm-sentinel adm-sentinel-shield" data-state="shield" aria-hidden="true">
+        <span className="adm-sentinel-flip">
+          <span className="adm-sentinel-spot" />
+          <span className="adm-sentinel-body">
+            <img className="adm-sentinel-base" src={escudoImage} alt="" draggable={false} />
+          </span>
+        </span>
+      </span>
+    );
+  }
   return (
     <span className="adm-sentinel" data-state={alert ? "alert" : "calm"} aria-hidden="true">
       {/* espelhada: à direita da ilha ela olha para o conteúdo, à esquerda */}

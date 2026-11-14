@@ -17,6 +17,15 @@
 import { getApiUrl, getAuthToken } from "@/lib/utils/api";
 import { generateIdempotencyKey } from "@/shared/utils/idempotency-key";
 import {
+  SHIELD_CODE_HEADER,
+  SHIELD_ERROR_TEXT,
+  askShieldCode,
+  hasShieldCodeProvider,
+  isShieldActive,
+  isShieldExempt,
+  isShieldWrite,
+} from "@/lib/admin/shield";
+import {
   ADMIN_ERROR_CODES,
   type AdminCursorMeta,
   type AdminErrorCode,
@@ -269,12 +278,14 @@ export function toAdminApiError(status: number, body: unknown): AdminApiError {
   const useServerText =
     fallbackMessages.length > 0 &&
     (KNOWN_ADMIN_CODES.includes(code) || (code !== "ENDPOINT_UNAVAILABLE" && SERVER_TEXT_STATUSES.has(status)));
-  const message = useServerText ? fallbackMessages.join(" · ") : (DEFAULT_MESSAGE[code] ?? DEFAULT_MESSAGE.UNKNOWN);
+  // Operação Escudo: o texto é fixo (o servidor não diz o que fazer com o código do Authenticator).
+  const shieldText = SHIELD_ERROR_TEXT[code];
+  const message = shieldText ?? (useServerText ? fallbackMessages.join(" · ") : (DEFAULT_MESSAGE[code] ?? DEFAULT_MESSAGE.UNKNOWN));
   return new AdminApiError({
     status,
     code,
     message,
-    messages: useServerText ? fallbackMessages : [message],
+    messages: useServerText && !shieldText ? fallbackMessages : [message],
     details: raw.details,
   });
 }
@@ -288,12 +299,17 @@ function isAbortError(error: unknown): boolean {
 // ---------------------------------------------------------------------------
 
 interface RequestInitInternal {
-  method: "GET" | "POST" | "PATCH" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
   query?: AdminQuery;
   body?: unknown;
   idempotencyKey?: string;
   signal?: AbortSignal;
+}
+
+/** Quando a pessoa fecha o pedido de código, a ação não segue: o mesmo erro que o servidor daria sem o cabeçalho. */
+function shieldCancelled(): AdminApiError {
+  return new AdminApiError({ status: 403, code: "SHIELD_CODE_REQUIRED", message: SHIELD_ERROR_TEXT.SHIELD_CODE_REQUIRED });
 }
 
 async function readJson(res: Response): Promise<unknown | undefined> {
@@ -305,7 +321,7 @@ async function readJson(res: Response): Promise<unknown | undefined> {
   }
 }
 
-async function request({ method, path, query, body, idempotencyKey, signal }: RequestInitInternal): Promise<unknown | undefined> {
+async function attempt({ method, path, query, body, idempotencyKey, signal }: RequestInitInternal, shieldCode?: string): Promise<unknown | undefined> {
   const token = getAuthToken();
   if (!token) {
     // Nada de "Bearer null": sem token a chamada nem sai.
@@ -321,6 +337,8 @@ async function request({ method, path, query, body, idempotencyKey, signal }: Re
     // NÃO incluir "Workspace-Id": o Admin opera em escopo de plataforma.
   };
   if (body !== undefined) headers["Content-Type"] = "application/json";
+  // Operação Escudo: o código vale para esta chamada e some (não é guardado em lugar nenhum).
+  if (shieldCode !== undefined) headers[SHIELD_CODE_HEADER] = shieldCode;
   if (idempotencyKey !== undefined) {
     if (!UUID_V4.test(idempotencyKey)) {
       throw new Error("Idempotency-Key inválida: gere com newIdempotencyKey() ou useIdempotencyKey().");
@@ -349,6 +367,35 @@ async function request({ method, path, query, body, idempotencyKey, signal }: Re
     throw error;
   }
   return json;
+}
+
+/**
+ * Toda requisição do Admin passa por aqui. Alterações (POST/PUT/PATCH/DELETE) fora das rotas isentas (as do Escudo, marcar
+ * alerta como visto e o Suporte) podem exigir o código do Authenticator quando a Operação Escudo está ligada: se o Escudo
+ * já é sabido ativo, o código é pedido ANTES; se o servidor responde `SHIELD_CODE_REQUIRED` ou `SHIELD_CODE_INVALID`, pede
+ * (ou pede de novo) e REPETE a mesma chamada com `X-Shield-Code`. `SHIELD_CODE_LOCKED` não repete. Cancelar não envia nada.
+ */
+async function request(init: RequestInitInternal): Promise<unknown | undefined> {
+  if (!isShieldWrite(init.method) || isShieldExempt(init.path)) return attempt(init);
+
+  let code: string | undefined;
+  if (isShieldActive() && hasShieldCodeProvider()) {
+    const typed = await askShieldCode("proactive");
+    if (typed === null) throw shieldCancelled();
+    code = typed;
+  }
+  for (;;) {
+    try {
+      return await attempt(init, code);
+    } catch (error) {
+      const retryable =
+        error instanceof AdminApiError && (error.code === "SHIELD_CODE_REQUIRED" || error.code === "SHIELD_CODE_INVALID") && hasShieldCodeProvider();
+      if (!retryable) throw error;
+      const typed = await askShieldCode(error.code === "SHIELD_CODE_INVALID" ? "invalid" : "required");
+      if (typed === null) throw error;
+      code = typed;
+    }
+  }
 }
 
 function toNetworkError(): AdminApiError {

@@ -327,3 +327,132 @@
 .pv .adm-sec-routes li { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; }
 .pv .adm-sec-routes code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 11.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
 .pv .adm-sec-routes span { flex: none; font-size: 11.5px; font-weight: 700; color: var(--adm-text-muted); font-variant-numeric: tabular-nums; }
+
+/* Operação Escudo ligada: a agente da Rota (braços cruzados) no lugar da sentinela de binóculos */
+.pv .adm-sentinel-shield { --s-h: 196px; width: calc(var(--s-h) * 1199 / 1312); }
+.pv .adm-sentinel-shield .adm-sentinel-spot { background: radial-gradient(closest-side, rgba(251, 191, 36, 0.42), rgba(251, 191, 36, 0)); animation-duration: 3.2s; }
+.pv .adm-sentinel-shield .adm-sentinel-body { transform-origin: 50% 100%; animation: adm-sentinel-enter 1s cubic-bezier(0.2, 1.2, 0.35, 1) 0.35s both, adm-sentinel-breathe 4.2s ease-in-out 1.35s infinite; }
+.pv .adm-sentinel-shield .adm-sentinel-base { filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.5)); }
+
+/* ===== Operação Escudo ===== */
+.pv.adm-shield-banner { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 4px; padding: 10px 18px; border-radius: 0 0 var(--adm-r-md) var(--adm-r-md); background: var(--ink); color: #fff; font-size: 13.5px; }
+.pv.adm-shield-banner .ico { color: #fbbf24; flex: none; }
+.pv.adm-shield-banner b { font-weight: 700; }
+.pv.adm-shield-banner a { margin-left: auto; color: #fff; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.pv .adm-shield-card { display: flex; flex-direction: column; gap: 12px; padding: 4px 24px 22px; }
+.pv .adm-shield-card[data-state="on"] { box-shadow: inset 4px 0 0 var(--ink); }
+.pv .adm-shield-off { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--adm-text-muted); }
+.pv .adm-shield-off p { margin: 0; max-width: 62ch; }
+.pv .adm-shield-off .btn { display: inline-flex; align-items: center; gap: 8px; height: 42px; flex: none; }
+.pv .adm-shield-off[data-disabled] { display: flex; align-items: center; gap: 8px; justify-content: flex-start; opacity: .8; }
+.pv .adm-shield-on { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.pv .adm-shield-facts { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px 24px; flex: 1; min-width: 0; }
+.pv .adm-shield-facts dt { font-size: 11.5px; font-weight: 600; color: var(--adm-text-muted); }
+.pv .adm-shield-facts dd { margin: 2px 0 0; font-size: 14.5px; font-weight: 650; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.pv .adm-shield-facts dd small { font-weight: 500; color: var(--adm-text-muted); }
+.pv .adm-shield-why { grid-column: 1 / -1; }
+.pv .adm-shield-why dd { font-weight: 500; line-height: 1.5; }
+.pv .adm-shield-effects { margin-bottom: 14px; padding: 14px 16px; border-radius: var(--adm-r-md); background: var(--bg); font-size: 13px; }
+.pv .adm-shield-effects b { display: block; margin-bottom: 6px; font-size: 13px; }
+.pv .adm-shield-effects ul, .pv ul.adm-shield-effects { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; line-height: 1.45; }
+.pv ul.adm-shield-release { padding: 14px 16px 14px 32px; }
+.pv .adm-shield-held { display: flex; flex-direction: column; gap: 14px; padding: 4px 24px 22px; }
+.pv .adm-shield-counts { display: flex; gap: 12px; flex-wrap: wrap; }
+.pv .adm-shield-count { display: inline-flex; align-items: baseline; gap: 8px; padding: 12px 18px; border-radius: var(--adm-r-md); background: var(--bg); font-size: 13.5px; text-align: left; }
+.pv .adm-shield-count b { font-size: 24px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.pv button.adm-shield-count { cursor: pointer; transition: box-shadow .2s; }
+.pv button.adm-shield-count:hover:not(:disabled) { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.pv button.adm-shield-count:disabled { cursor: default; opacity: .6; }
+.pv button.adm-shield-count .ico { align-self: center; width: 14px; height: 14px; color: var(--adm-text-muted); }
+.pv .adm-shield-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.pv .adm-shield-table th { padding: 8px 10px; text-align: left; font-size: 11.5px; font-weight: 600; color: var(--adm-text-muted); border-bottom: 1.5px solid var(--line); }
+.pv .adm-shield-table td { padding: 10px; border-bottom: 1px solid var(--line); }
+.pv .adm-shield-table tr[data-picked] td { background: var(--bg); }
+.pv .adm-shield-table .adm-shield-num { text-align: right; font-variant-numeric: tabular-nums; }
+.pv .adm-shield-table input[type="checkbox"], .pv .adm-shield-check { width: 18px; height: 18px; accent-color: var(--ink); cursor: pointer; }
+.pv .adm-shield-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.pv .adm-shield-actions .btn { height: 40px; }
+.pv .adm-shield-pickbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; padding: 10px 14px; border-radius: var(--adm-r-md); background: var(--bg); font-size: 13px; }
+.pv .adm-shield-pickbar > span { margin-right: auto; }
+
+/* ===== Aba "Escudo": o estado (cartão claro) e o retido; a explicação mora na folha da ilha ===== */
+.pv .adm-shield-tab { display: flex; flex-direction: column; gap: 16px; }
+.pv .adm-shield-note { display: flex; align-items: center; gap: 10px; margin: 0; padding: 4px 24px 22px; font-size: 13.5px; color: var(--adm-text-muted); }
+.pv .adm-shield-note .ico { flex: none; }
+.pv .adm-shield-status { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; align-items: center; padding: 4px 24px 24px; }
+@media (max-width: 860px) { .pv .adm-shield-status { grid-template-columns: 1fr; } }
+.pv .adm-shield-status-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.pv .adm-shield-clock { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-variant-numeric: tabular-nums; }
+.pv .adm-shield-clock b { font-size: 56px; font-weight: 700; letter-spacing: -.05em; line-height: 1; }
+.pv .adm-shield-clock span { margin-right: 10px; font-size: 17px; font-weight: 600; color: var(--adm-text-muted); }
+.pv .adm-shield-clock em { flex-basis: 100%; margin-top: 4px; font-size: 13px; font-style: normal; color: var(--adm-text-muted); }
+.pv .adm-shield-bar { width: 100%; max-width: 440px; height: 6px; border-radius: 99px; background: var(--bg); overflow: hidden; }
+.pv .adm-shield-bar i { display: block; height: 100%; border-radius: inherit; background: var(--ink); transition: width .6s ease; }
+.pv .adm-shield-facts { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
+.pv .adm-shield-facts dt { font-size: 11.5px; font-weight: 600; color: var(--adm-text-muted); }
+.pv .adm-shield-facts dd { margin: 2px 0 0; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.pv .adm-shield-why { grid-column: 1 / -1; }
+.pv .adm-shield-why dd { font-weight: 500; line-height: 1.5; }
+@media (prefers-reduced-motion: reduce) { .pv .adm-shield-bar i { transition: none; } }
+/* chip "Operação Escudo ligada" sob o título da ilha e o selo "ligado" na aba */
+.pv .adm-sec-shield-chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; height: 26px; padding: 0 12px 0 10px; border-radius: 99px; background: rgba(251, 191, 36, .18); color: #fbbf24; font-size: 12px; font-weight: 700; transition: background-color .2s; }
+.pv .adm-sec-shield-chip:hover { background: rgba(251, 191, 36, .3); }
+.pv .adm-sec-shield-chip .ico { width: 14px; height: 14px; }
+.pv .isl-segs.adm-sec-segs .isl-seg small[data-shield="on"] { background: #fbbf24; color: #0a0a0b; }
+.pv .adm-sec-privacy + .adm-sec-privacy { margin-top: -10px; }
+
+/* Escudo: o botão de ativar ou encerrar, ao lado da personagem (canto direito da ilha) */
+.pv .adm-sec-shield-cta { display: flex; align-items: flex-end; gap: 16px; align-self: stretch; }
+.pv .adm-sec-shield-btn { align-self: center; display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 22px; border-radius: 99px; background: #fff; color: #0a0a0b; font-size: 14px; font-weight: 700; white-space: nowrap; transition: transform .2s, box-shadow .25s; }
+.pv .adm-sec-shield-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 12px 22px -12px rgba(0, 0, 0, .7); }
+.pv .adm-sec-shield-btn:active:not(:disabled) { transform: scale(.97); }
+.pv .adm-sec-shield-btn:disabled { opacity: .5; }
+.pv .adm-sec-shield-btn:focus-visible { outline: 2px solid #fbbf24; outline-offset: 3px; }
+@media (max-width: 720px) { .pv .adm-sec-shield-cta .adm-sec-shield-btn { height: 40px; padding: 0 16px; } }
+
+/* Arrastar para confirmar (Escudo): trilho com o círculo que a pessoa leva para a direita */
+.pv .adm-slide { position: relative; align-self: center; width: 268px; height: 52px; border-radius: 99px; background: rgba(255, 255, 255, .14); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .22); overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.pv .adm-slide-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; background: linear-gradient(90deg, rgba(251, 191, 36, .1), rgba(251, 191, 36, .55)); pointer-events: none; transition: width .35s cubic-bezier(.2, 1, .3, 1); }
+.pv .adm-slide[data-dragging] .adm-slide-fill, .pv .adm-slide[data-dragging] .adm-slide-thumb { transition: none; }
+.pv .adm-slide-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 4px; padding-left: 44px; font-size: 13.5px; font-weight: 650; color: #fff; pointer-events: none; transition: opacity .2s;
+  background: linear-gradient(100deg, rgba(255, 255, 255, .55) 30%, #fff 50%, rgba(255, 255, 255, .55) 70%) 0 0 / 200% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: adm-slide-shimmer 2.4s linear infinite; }
+.pv .adm-slide-label .ico { -webkit-text-fill-color: initial; color: rgba(255, 255, 255, .8); animation: adm-slide-nudge 1.4s ease-in-out infinite; }
+@keyframes adm-slide-shimmer { to { background-position: -200% 0; } }
+@keyframes adm-slide-nudge { 50% { transform: translateX(4px); } }
+.pv .adm-slide-thumb { position: absolute; left: 4px; top: 4px; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: #0a0a0b; display: grid; place-items: center; cursor: grab; box-shadow: 0 6px 14px -6px rgba(0, 0, 0, .6); transition: transform .45s cubic-bezier(.34, 1.4, .64, 1); touch-action: none; }
+.pv .adm-slide[data-dragging] .adm-slide-thumb { cursor: grabbing; }
+.pv .adm-slide-thumb .ico { width: 20px; height: 20px; }
+.pv .adm-slide-thumb:focus-visible { outline: 2px solid #fbbf24; outline-offset: 2px; }
+.pv .adm-slide[data-done] { background: rgba(251, 191, 36, .3); }
+.pv .adm-slide[data-disabled] { opacity: .5; }
+@media (max-width: 720px) { .pv .adm-slide { width: 224px; height: 48px; } .pv .adm-slide-thumb { width: 40px; height: 40px; } }
+@media (prefers-reduced-motion: reduce) { .pv .adm-slide-label, .pv .adm-slide-label .ico { animation: none; } .pv .adm-slide-thumb, .pv .adm-slide-fill { transition: none; } }
+
+/* "O que muda" na aba Escudo: passos lado a lado, ligados por um fio fino (ícone em cima, rótulo curto embaixo) */
+.pv .adm-shield-changes { width: 100%; box-sizing: border-box; padding: 22px 28px 28px; border-radius: var(--adm-radius); background: var(--adm-surface); }
+.pv .adm-shield-changes h3 { margin: 0 0 20px; font-size: 13px; font-weight: 650; letter-spacing: -.01em; color: var(--ink); }
+.pv .adm-shield-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.pv .adm-shield-steps li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; cursor: default; }
+.pv .adm-shield-steps li:not(:last-child)::before { content: ""; position: absolute; top: 19px; left: calc(50% + 24px); right: calc(-50% + 24px); height: 1.5px; background: var(--line); }
+.pv .adm-shield-step-ic { position: relative; z-index: 1; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--adm-surface); box-shadow: inset 0 0 0 1.5px var(--line); color: var(--ink); transition: box-shadow .2s, background-color .2s, color .2s; }
+.pv .adm-shield-steps li:hover .adm-shield-step-ic { background: var(--ink); color: #fff; box-shadow: none; }
+.pv .adm-shield-step-ic .ico { width: 16px; height: 16px; }
+.pv .adm-shield-steps b { font-size: 12.5px; font-weight: 600; line-height: 1.35; letter-spacing: -.005em; max-width: 110px; }
+@media (max-width: 960px) { .pv .adm-shield-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 20px; } .pv .adm-shield-steps li:nth-child(4)::before { display: none; } }
+@media (max-width: 560px) { .pv .adm-shield-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pv .adm-shield-steps li::before { display: none; } }
+
+/* Janela "Ativar Operação Escudo": mesmos campos e botões de prazo do "Vigiar e-mail"; só o campo do código é próprio */
+.pv .adm-sec-durs-g[data-count="5"] { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 480px) { .pv .adm-sec-durs-g[data-count="5"] { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.pv .adm-shield-code input { width: 100%; max-width: 220px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 20px; font-weight: 700; letter-spacing: .3em; text-align: center; }
+/* Os botões de prazo (vigiar e Escudo) têm o texto centralizado, na horizontal e na vertical */
+.pv .adm-sec-dur { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 52px; }
+.pv .adm-sec-dur b, .pv .adm-sec-dur small { display: block; width: 100%; text-align: center; }
+
+/* ===== Escudo LIGADO: sóbrio e firme. Vermelho liso, sem brilho nem animação ===== */
+.pv.adm-shield-banner { background: #b3141b; box-shadow: none; }
+.pv.adm-shield-banner .ico { color: #fff; }
+.pv .adm-sec-isl-shielded .isl-t h2 span { letter-spacing: -.01em; }
+.pv .adm-sentinel-shield .adm-sentinel-spot { background: radial-gradient(closest-side, rgba(255, 59, 67, .35), rgba(255, 59, 67, 0)); animation: none; }
+.pv .isl-segs.adm-sec-segs .isl-seg small[data-shield="on"] { background: #e5262b; color: #fff; }
+.pv .adm-shield-status[data-on] .adm-shield-bar i { background: var(--adm-bad); }

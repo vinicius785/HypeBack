@@ -105,7 +105,7 @@ describe("ficha e vocabulário", () => {
     expect(situationOf({ status: "active" })).toBe("active");
     expect(situationOf({ status: "active", account_status: "under_review" })).toBe("under_review");
     const values = ADMIN_ACCOUNT_SITUATION_FILTER_OPTIONS.map((o) => o.value);
-    expect(values).toEqual(["", "active", "suspended"]);
+    expect(values).toEqual(["", "active", "under_review", "suspended"]);
     expect(SUPPORT_CATEGORIES).toContain("contestation");
     expect(SUPPORT_CATEGORY_LABEL.contestation).toBe("Contestação");
   });

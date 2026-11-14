@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const client = vi.hoisted(() => ({ adminList: vi.fn(), adminGet: vi.fn() }));
 
 // A ilha de Pessoas tem os testes dela (e faz consultas próprias de 1 item): aqui só interessa a lista.
+vi.mock("@/contexts/auth-context", () => ({ useAuth: () => ({ user: { id: 1, platform_role: "admin", is_platform_admin: true }, setUser: vi.fn() }) }));
 vi.mock("@/components/admin/people/people-island", () => ({ PeopleIsland: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
 vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/admin/admin-client")>();
