@@ -9,7 +9,7 @@ import type { SecurityAlertStatus } from "@/shared/admin-platform.types";
 
 import { Sentinel } from "./sentinel";
 import { SecurityAlertsTab } from "./security-alerts-tab";
-import { ALERT_FILTERS, DEFAULT_WATCH_FILTER, KIND_FILTERS, SECURITY_PRIVACY_NOTE, SECURITY_STATUSES, SECURITY_TABS, WATCH_FILTERS, type KindFilter, type SecurityTab, type WatchFilter } from "./security-labels";
+import { ALERT_FILTERS, DEFAULT_WATCH_FILTER, KIND_FILTERS, SECURITY_EMAIL_NOTE, SECURITY_PRIVACY_NOTE, SECURITY_STATUSES, SECURITY_TABS, WATCH_FILTERS, type KindFilter, type SecurityTab, type WatchFilter } from "./security-labels";
 import { SecurityWatchlistTab } from "./security-watchlist-tab";
 
 import "@/styles/admin-security.css";
@@ -177,6 +177,7 @@ export function SecurityPage() {
       )}
       </div>
       <p className="adm-sec-privacy">{SECURITY_PRIVACY_NOTE}</p>
+      <p className="adm-sec-privacy">{SECURITY_EMAIL_NOTE}</p>
     </AdminPage>
   );
 }

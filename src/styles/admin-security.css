@@ -303,3 +303,27 @@
   .pv .adm-sentinel-spark { display: none; }
   .pv .adm-sentinel[data-state="alert"] .adm-sentinel-bang { opacity: 1; }
 }
+
+/* Prazo da vigilância: seletor no formulário e a linha "Vigiado até" no cartão */
+.pv .adm-sec-durs { border: 0; margin: 0; padding: 0; min-width: 0; }
+.pv .adm-sec-durs legend { padding: 0; margin-bottom: 8px; font-size: 13px; font-weight: 600; }
+.pv .adm-sec-durs-g { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.pv .adm-sec-dur { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 10px 6px; border-radius: var(--adm-r-md); background: var(--adm-surface); box-shadow: inset 0 0 0 1.5px var(--line); font-size: 13px; transition: box-shadow .2s, background-color .2s; }
+.pv .adm-sec-dur small { font-size: 11px; color: var(--adm-text-muted); }
+.pv .adm-sec-dur:hover { box-shadow: inset 0 0 0 1.5px var(--adm-text-muted); }
+.pv .adm-sec-dur[data-on] { box-shadow: inset 0 0 0 2px var(--ink); background: var(--bg); }
+.pv .adm-sec-dur:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pv .adm-sec-durs-note { display: block; margin-top: 8px; font-size: 12.5px; color: var(--adm-text-muted); }
+.pv .adm-sec-expiry { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0; font-size: 12.5px; color: var(--adm-text-muted); }
+.pv .adm-sec-expiry .ico { width: 14px; height: 14px; flex: none; }
+.pv .adm-sec-expiry b { padding: 1px 8px; border-radius: 99px; font-weight: 700; }
+.pv .adm-sec-expiry[data-state="soon"] { color: var(--adm-warn); font-weight: 600; }
+.pv .adm-sec-expiry[data-state="soon"] b { background: var(--adm-warn-bg); }
+.pv .adm-sec-expiry[data-state="ended"] { color: var(--adm-text-muted); }
+@media (max-width: 480px) { .pv .adm-sec-durs-g { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Alerta de comportamento: as rotas mais chamadas, em fonte pequena (no máximo 5 linhas) */
+.pv .adm-sec-routes { list-style: none; margin: 0; padding: 8px 10px; display: flex; flex-direction: column; gap: 3px; border-radius: var(--adm-r-sm); background: var(--bg); }
+.pv .adm-sec-routes li { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; }
+.pv .adm-sec-routes code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 11.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.pv .adm-sec-routes span { flex: none; font-size: 11.5px; font-weight: 700; color: var(--adm-text-muted); font-variant-numeric: tabular-nums; }

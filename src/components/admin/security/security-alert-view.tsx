@@ -12,12 +12,13 @@ import {
   isSignupDomainClusterAlert,
   isSignupWaveAlert,
   isStaffResetAttemptAlert,
+  isWatchedBehaviorAlert,
   isWatchedActiveAlert,
   isWatchedLoginAlert,
   type SecurityAlert,
 } from "@/shared/admin-platform.types";
 
-import { actorRoleLabel, ipDeniedSummary, plural, probingSummary, signupWaveSummary, targetTypeLabel } from "./security-labels";
+import { actorRoleLabel, behaviorCountText, behaviorSignalLabel, ipDeniedSummary, plural, probingSummary, signupWaveSummary, targetTypeLabel } from "./security-labels";
 
 /** Uma linha do detalhe expandido. `mono`: IP, rota, domínio, e-mail mascarado; `wide`: ocupa a linha inteira. */
 export interface AlertDetailRow {
@@ -53,6 +54,8 @@ export interface AlertView {
   details?: AlertDetailRow[];
   /** Sempre em vermelho enquanto não visto (conta da equipe visada). */
   critical?: boolean;
+  /** Rotas mais chamadas (alerta de comportamento): rota e quantidade, no máximo 5 linhas, em fonte pequena, direto no cartão. */
+  routes?: Array<{ route: string; hits: number }>;
   /** Atalho do cartão (cadastros do domínio). */
   action?: { label: string; to: string; search: Record<string, string> };
 }
@@ -118,6 +121,26 @@ export function describeAlert(alert: SecurityAlert): AlertView | null {
       ) : undefined,
       chips: d?.new_ip === true ? [{ text: "IP novo", tone: "bad" }] : [],
       details: details.length > 0 ? details : undefined,
+    };
+  }
+
+  if (isWatchedBehaviorAlert(alert)) {
+    const d = alert.details;
+    const label = d ? behaviorSignalLabel(d.signal) : null;
+    // Sinal que esta versão não conhece: só o título, sem resumo nem rotas.
+    if (!d || !label) return { tagIcon: "eye", person: { label: "Conta vigiada:", fallback: "não identificada" } };
+    const count = behaviorCountText(d.signal, d.count, d.window_minutes);
+    const routes = (d.top_routes ?? []).filter((r) => typeof r?.route === "string").slice(0, 5);
+    return {
+      tagIcon: "eye",
+      person: { label: "Conta vigiada:", fallback: "não identificada" },
+      summary: count ? `${label} · ${count}` : label,
+      routes: routes.length > 0 ? routes : undefined,
+      details: [
+        { label: "O que fez", value: label },
+        ...(count ? [{ label: "Quantas vezes", value: count }] : []),
+        { label: "Janela", value: `${d.window_minutes} min` },
+      ],
     };
   }
 
