@@ -162,7 +162,12 @@ export function useMarkAllAlertsSeen() {
 /** `POST watchlist` — 409 `WATCH_ALREADY_ACTIVE` quando o e-mail já é vigiado. */
 export function useWatchEmail() {
   return useSecurityMutation<SecurityWatchCreated, SecurityWatchBody>((body) =>
-    adminPostPlain<SecurityWatchCreated>(`${BASE}/watchlist`, { email: body.email.trim().toLowerCase(), reason: body.reason.trim() }),
+    adminPostPlain<SecurityWatchCreated>(`${BASE}/watchlist`, {
+      email: body.email.trim().toLowerCase(),
+      reason: body.reason.trim(),
+      // Sem prazo = não envia `days`.
+      ...(body.days ? { days: body.days } : {}),
+    }),
   );
 }
 

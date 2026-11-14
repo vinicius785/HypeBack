@@ -1327,6 +1327,8 @@ interface SecurityAlertBase {
   seen_at: string | null;
   note: string | null;
   user: SecurityAlertUser | null;
+  /** Id do vigiado que gerou o alerta (atalho para a atividade); ausente em alertas que não vêm da lista de vigiados. */
+  watchlist_id?: number | null;
 }
 
 /** Conta vigiada abriu sessão. */
@@ -1483,6 +1485,22 @@ export interface SignupDomainClusterAlert extends SecurityAlertBase {
   };
 }
 
+/** O que a conta vigiada FEZ: o `title` já vem em português; `signal` diz o que foi e `top_routes` as rotas mais chamadas. */
+export type WatchedBehaviorSignal = 'many_joins' | 'social_churn' | 'withdrawal' | 'multi_ip';
+
+export interface WatchedBehaviorAlert extends SecurityAlertBase {
+  kind: 'watched_behavior';
+  details: {
+    /** Valor fora dos conhecidos: mostra só o título. */
+    signal: WatchedBehaviorSignal | (string & {});
+    count: number;
+    /** Janela da contagem (60 min). */
+    window_minutes: number;
+    /** Texto vindo do cliente: nunca renderizar como HTML. */
+    top_routes?: Array<{ route: string; hits: number }>;
+  };
+}
+
 /** Tipo que esta versão do painel ainda não conhece: mostra só o título e a pessoa, sem detalhes. */
 export interface UnknownSecurityAlert extends SecurityAlertBase {
   kind: string & {};
@@ -1501,6 +1519,7 @@ export type SecurityAlert =
   | AttackVolumeAlert
   | AttackEnumerationAlert
   | AttackAnonymizerWaveAlert
+  | WatchedBehaviorAlert
   | StaffResetAttemptAlert
   | SignupDomainClusterAlert
   | UnknownSecurityAlert;
@@ -1545,6 +1564,10 @@ export function isAttackAnonymizerWaveAlert(alert: SecurityAlert): alert is Atta
   return alert.kind === 'attack_anonymizer_wave';
 }
 
+export function isWatchedBehaviorAlert(alert: SecurityAlert): alert is WatchedBehaviorAlert {
+  return alert.kind === 'watched_behavior';
+}
+
 export function isStaffResetAttemptAlert(alert: SecurityAlert): alert is StaffResetAttemptAlert {
   return alert.kind === 'staff_reset_attempt';
 }
@@ -1585,17 +1608,23 @@ export interface SecurityWatch {
   registered_user: { id: number; name: string | null; email?: string | null; photo?: string | null } | null;
   /** ISO UTC da última atividade registrada; `null`: nenhuma ainda. */
   last_activity_at?: string | null;
+  /** ISO UTC em que a vigilância acaba sozinha; `null` (ou ausente): sem prazo. Vencida, a API a desativa. */
+  expires_at?: string | null;
 }
 
 /** Corpo de `POST /admin/security/watchlist`. `reason`: 5 a 500 caracteres. */
 export interface SecurityWatchBody {
   email: string;
   reason: string;
+  /** Dias de vigilância (inteiro de 1 a 365). Ausente = sem prazo. */
+  days?: number;
 }
 
 export interface SecurityWatchCreated {
   id: number;
   reactivated: boolean;
+  /** ISO UTC ou `null` (sem prazo). */
+  expires_at?: string | null;
 }
 
 /** Uma linha da atividade de um vigiado (`GET watchlist/:watchId/activity`): as chamadas do mesmo minuto vêm juntas (`hits`). */

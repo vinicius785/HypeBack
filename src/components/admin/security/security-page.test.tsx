@@ -12,7 +12,7 @@
  *   - mandar Idempotency-Key (estas rotas não usam);
  *   - escrever o e-mail em console.
  */
-import { screen, waitFor, within } from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -898,7 +898,7 @@ describe("Segurança: vigiados", () => {
     expect(mocks.adminPostPlain).not.toHaveBeenCalled();
     await user.type(within(dialog).getByLabelText("Motivo"), "de");
     await user.click(within(dialog).getByRole("button", { name: "Vigiar" }));
-    await waitFor(() => expect(mocks.adminPostPlain).toHaveBeenCalledWith("/admin/security/watchlist", { email: "fulano@marca.com", reason: "abcde" }));
+    await waitFor(() => expect(mocks.adminPostPlain).toHaveBeenCalledWith("/admin/security/watchlist", { email: "fulano@marca.com", reason: "abcde", days: 7 }));
     expect(mocks.toastSuccess).toHaveBeenCalled();
   });
 
@@ -937,5 +937,147 @@ describe("Segurança: vigiados", () => {
     expect(mocks.adminDelete).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Parar de vigiar" }));
     await waitFor(() => expect(mocks.adminDelete).toHaveBeenCalledWith("/admin/security/watchlist/3"));
+  });
+});
+
+describe("Segurança: prazo da vigilância", () => {
+  const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
+
+  async function openDialog() {
+    const { user } = await renderPage("/admin/security?tab=watchlist");
+    await user.click(await screen.findByRole("button", { name: "Vigiar e-mail" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("E-mail"), "fulano@marca.com");
+    await user.type(within(dialog).getByLabelText("Motivo"), "Suspeita de fraude");
+    return { user, dialog };
+  }
+
+  it("oferece 7 dias (sugerido), 30, 90 e sem prazo; 7 dias já vem escolhido", async () => {
+    const { dialog } = await openDialog();
+    const group = within(dialog).getByRole("radiogroup", { name: "Prazo da vigilância" });
+    expect(within(group).getAllByRole("radio").map((r) => r.textContent)).toEqual(["7 diasSugerido", "30 dias", "90 dias", "Sem prazo"]);
+    expect(within(group).getByRole("radio", { name: /7 dias/ })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("30 dias envia days: 30; 'Sem prazo' não envia days", async () => {
+    mocks.adminPostPlain.mockResolvedValue({ id: 10, reactivated: false, expires_at: null });
+    const first = await openDialog();
+    await first.user.click(within(first.dialog).getByRole("radio", { name: "30 dias" }));
+    await first.user.click(within(first.dialog).getByRole("button", { name: "Vigiar" }));
+    await waitFor(() => expect(mocks.adminPostPlain).toHaveBeenLastCalledWith("/admin/security/watchlist", { email: "fulano@marca.com", reason: "Suspeita de fraude", days: 30 }));
+    cleanup();
+
+    const second = await openDialog();
+    await second.user.click(within(second.dialog).getByRole("radio", { name: "Sem prazo" }));
+    await second.user.click(within(second.dialog).getByRole("button", { name: "Vigiar" }));
+    await waitFor(() => expect(mocks.adminPostPlain).toHaveBeenCalledTimes(2));
+    expect(mocks.adminPostPlain).toHaveBeenLastCalledWith("/admin/security/watchlist", { email: "fulano@marca.com", reason: "Suspeita de fraude" });
+  });
+
+  it("a lista mostra 'Vigiado até', 'Sem prazo', o destaque âmbar de 2 dias ou menos e 'Prazo encerrado'", async () => {
+    const watches: SecurityWatch[] = [
+      { ...WATCHES[1], id: 21, email: "longe@marca.com", expires_at: inDays(20) },
+      { ...WATCHES[1], id: 22, email: "perto@marca.com", expires_at: inDays(1.5) },
+      { ...WATCHES[2], id: 23, email: "livre@marca.com", expires_at: null },
+      { ...WATCHES[0], id: 24, email: "vencido@marca.com", expires_at: inDays(-3) },
+    ];
+    serve({ watches });
+    const { user } = await renderPage("/admin/security?tab=watchlist");
+    await chooseFilter(user, "Estado", "all");
+    const card = (email: string) => screen.getByText(email).closest("li") as HTMLElement;
+    expect(within(card("longe@marca.com")).getByText(/Vigiado até/)).toBeInTheDocument();
+    expect(within(card("longe@marca.com")).queryByText(/vence em/)).not.toBeInTheDocument();
+    const soon = within(card("perto@marca.com"));
+    expect(soon.getByText(/vence em 2 dias/)).toBeInTheDocument();
+    expect(card("perto@marca.com").querySelector('[data-state="soon"]')).not.toBeNull();
+    expect(within(card("livre@marca.com")).getByText("Sem prazo")).toBeInTheDocument();
+    expect(within(card("vencido@marca.com")).getByText(/Prazo encerrado/)).toBeInTheDocument();
+  });
+
+  it("reativar um inativo abre o mesmo formulário com e-mail e motivo e deixa escolher o prazo", async () => {
+    mocks.adminPostPlain.mockResolvedValue({ id: 1, reactivated: true, expires_at: inDays(90) });
+    const { user } = await renderPage("/admin/security?tab=watchlist");
+    await chooseFilter(user, "Estado", "inactive");
+    const card = screen.getByText("antigo@marca.com").closest("li") as HTMLElement;
+    await user.click(within(card).getByRole("button", { name: /Ações de antigo@marca.com/ }));
+    await user.click(await screen.findByRole("menuitem", { name: "Reativar vigilância" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("E-mail")).toHaveValue("antigo@marca.com");
+    await user.click(within(dialog).getByRole("radio", { name: "90 dias" }));
+    await user.click(within(dialog).getByRole("button", { name: "Reativar" }));
+    await waitFor(() => expect(mocks.adminPostPlain).toHaveBeenCalledWith("/admin/security/watchlist", { email: "antigo@marca.com", reason: "Caso encerrado", days: 90 }));
+  });
+});
+
+describe("Segurança: alerta de comportamento e aviso por e-mail", () => {
+  const behavior = (signal: string, count: number, extra: Partial<SecurityAlert> = {}): SecurityAlert =>
+    ({
+      id: 70,
+      kind: "watched_behavior",
+      severity: signal === "withdrawal" ? "high" : "medium",
+      title: "Conta vigiada fez algo",
+      details: {
+        signal,
+        count,
+        window_minutes: 60,
+        top_routes: [
+          { route: "/app/campaigns/1/join", hits: 9 },
+          { route: "/app/campaigns/2/join", hits: 4 },
+          { route: "/a", hits: 3 },
+          { route: "/b", hits: 2 },
+          { route: "/c", hits: 2 },
+          { route: "/d-cortada", hits: 1 },
+        ],
+      },
+      created_at: "2026-11-10T01:30:00Z",
+      seen_at: null,
+      note: null,
+      user: { id: 42, name: "Bia Santos", email: "bia@marca.com" },
+      ...extra,
+    }) as SecurityAlert;
+
+  it.each([
+    ["many_joins", 12, "Muitas inscrições · 12 na última hora"],
+    ["social_churn", 3, "Mexeu nas redes sociais · 3 vezes na última hora"],
+    ["multi_ip", 4, "Acessou de vários IPs · 4 IPs diferentes na última hora"],
+    ["withdrawal", 1, "Pediu saque"],
+  ])("sinal %s mostra o resumo em português", async (signal, count, text) => {
+    serve({ alerts: [behavior(signal, count)] });
+    await renderPage();
+    expect(await screen.findByText(text)).toBeInTheDocument();
+  });
+
+  it("lista as rotas mais chamadas com a quantidade, no máximo 5 linhas, como texto", async () => {
+    serve({ alerts: [behavior("many_joins", 12)] });
+    await renderPage();
+    const routes = await screen.findByRole("list", { name: "Rotas mais chamadas" });
+    const rows = within(routes).getAllByRole("listitem");
+    expect(rows).toHaveLength(5);
+    expect(rows[0]).toHaveTextContent("/app/campaigns/1/join9×");
+    expect(within(routes).queryByText("/d-cortada")).not.toBeInTheDocument();
+  });
+
+  it("saque tem severidade alta; sinal desconhecido mostra só o título", async () => {
+    serve({ alerts: [behavior("withdrawal", 1), behavior("sinal_novo", 5, { id: 71, title: "Algo que o painel ainda não conhece" })] });
+    await renderPage();
+    const list = within(await screen.findByRole("list", { name: "Alertas de segurança" }));
+    const byTitle = (title: string) => list.getByText(title).closest("li") as HTMLElement;
+    expect(byTitle("Conta vigiada fez algo")).toHaveAttribute("data-severity", "high");
+    const unknown = byTitle("Algo que o painel ainda não conhece");
+    expect(within(unknown).queryByRole("list", { name: "Rotas mais chamadas" })).not.toBeInTheDocument();
+    expect(unknown).toHaveAttribute("data-kind", "watched_behavior");
+  });
+
+  it("o atalho para a atividade aparece quando o alerta traz watchlist_id", async () => {
+    serve({ alerts: [behavior("many_joins", 12, { watchlist_id: 2 })] });
+    const { user } = await renderPage();
+    await user.click(await screen.findByRole("button", { name: /Ações do alerta 70/ }));
+    await user.click(await screen.findByRole("menuitem", { name: "Ver atividade" }));
+    await waitFor(() => expect(mocks.adminGetEnvelope).toHaveBeenCalledWith("/admin/security/watchlist/2/activity", { limit: 100, offset: 0 }, expect.anything()));
+  });
+
+  it("a página avisa que alertas de severidade alta também saem por e-mail", async () => {
+    await renderPage();
+    expect(screen.getByText("Alertas de severidade alta também são enviados por e-mail à equipe.")).toBeInTheDocument();
   });
 });

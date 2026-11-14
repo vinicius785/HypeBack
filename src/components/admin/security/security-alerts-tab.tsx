@@ -17,9 +17,10 @@ import { I } from "@/components/prototype/ui";
 import { useMarkAlertSeen, useMarkAllAlertsSeen, useSecurityAlerts } from "@/hooks/admin/use-admin-security";
 import { describeAdminError } from "@/lib/admin/admin-errors";
 import { civilDateInSaoPaulo, formatDate, formatDateTime, formatInt, formatRelativeTime, parseInstant } from "@/lib/admin/format";
-import { isWatchedLoginAlert, type SecurityAlert, type SecurityAlertStatus } from "@/shared/admin-platform.types";
+import { isWatchedLoginAlert, type SecurityAlert, type SecurityAlertStatus, type SecurityWatch } from "@/shared/admin-platform.types";
 
 import { AlertIcon, describeAlert, type AlertDetailRow } from "./security-alert-view";
+import { WatchActivityDrawer } from "./security-watch-activity";
 import { channelLabel, kindLabel, matchesKind, NOTE_MAX, SEVERITY_LABEL, type KindFilter } from "./security-labels";
 
 import "@/styles/admin-security.css";
@@ -135,6 +136,7 @@ const SEVERITY_DOT: Record<string, string> = { high: "#ff5a5f", medium: "#fbbf24
 function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (alert: SecurityAlert) => void }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [activity, setActivity] = useState<{ id: number; email: string } | null>(null);
   const detailsId = useId();
   const seen = alert.seen_at !== null;
   const view = describeAlert(alert);
@@ -151,6 +153,14 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
   const items: AdminActionMenuItem[] = [];
   if (view?.details && view.details.length > 0) {
     items.push({ id: "details", label: open ? "Ocultar detalhes" : "Ver detalhes", icon: "eye", onSelect: () => setOpen((value) => !value) });
+  }
+  if (alert.watchlist_id) {
+    items.push({
+      id: "activity",
+      label: "Ver atividade",
+      icon: "clock",
+      onSelect: () => setActivity({ id: alert.watchlist_id as number, email: user?.email ?? "Conta vigiada" }),
+    });
   }
   if (user) {
     items.push({
@@ -219,6 +229,16 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
 
       <p className="adm-sec-reason adm-sec-alert-title">{alert.title}</p>
       {view?.summary ? <p className="adm-sec-summary">{view.summary}</p> : null}
+      {view?.routes ? (
+        <ul className="adm-sec-routes" aria-label="Rotas mais chamadas">
+          {view.routes.map((r, index) => (
+            <li key={`${index}-${r.route}`}>
+              <code>{r.route}</code>
+              <span>{formatInt(r.hits)}×</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {view?.chips && view.chips.length > 0 ? (
         <p className="adm-sec-chips">
           {view.chips.map((chip) => (
@@ -239,6 +259,7 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
       </p>
       {alert.note ? <p className="adm-sec-note">“{alert.note}”</p> : null}
       {open && view?.details ? <AlertDetails rows={view.details} id={detailsId} /> : null}
+      {activity ? <WatchActivityDrawer watch={{ id: activity.id, email: activity.email } as SecurityWatch} onClose={() => setActivity(null)} /> : null}
 
       {!seen || view?.action ? (
         <footer className="adm-sec-alert-foot">

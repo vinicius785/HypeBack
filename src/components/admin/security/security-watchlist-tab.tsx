@@ -20,7 +20,17 @@ import { describeAdminError } from "@/lib/admin/admin-errors";
 import { formatDate, formatDateTime, formatRelativeTime } from "@/lib/admin/format";
 import type { SecurityWatch } from "@/shared/admin-platform.types";
 
-import { DEFAULT_WATCH_FILTER, filterWatchlist, REASON_MAX, REASON_MIN, type WatchFilter } from "./security-labels";
+import {
+  DEFAULT_WATCH_DAYS,
+  DEFAULT_WATCH_FILTER,
+  expiryDaysText,
+  filterWatchlist,
+  REASON_MAX,
+  REASON_MIN,
+  WATCH_DURATIONS,
+  watchExpiry,
+  type WatchFilter,
+} from "./security-labels";
 import { WatchActivityDrawer } from "./security-watch-activity";
 
 import "@/styles/admin-security.css";
@@ -33,9 +43,12 @@ export function sortWatchlist(list: readonly SecurityWatch[]): SecurityWatch[] {
 }
 
 /** Diálogo "Vigiar e-mail": e-mail e motivo (5 a 500). 409 vira o texto fixo; 400 mostra as mensagens da API. */
-function WatchDialog({ onClose }: { onClose: () => void }) {
-  const [email, setEmail] = useState("");
-  const [reason, setReason] = useState("");
+function WatchDialog({ onClose, initial }: { onClose: () => void; initial?: { email: string; reason: string } }) {
+  const reactivating = Boolean(initial);
+  const [email, setEmail] = useState(initial?.email ?? "");
+  const [reason, setReason] = useState(initial?.reason ?? "");
+  // Prazo: 7 dias é o sugerido; "Sem prazo" não envia `days`. Reativar um inativo escolhe de novo.
+  const [days, setDays] = useState<number | null>(DEFAULT_WATCH_DAYS);
   const [touched, setTouched] = useState({ email: false, reason: false });
   const [error, setError] = useState<string | null>(null);
   const mutation = useWatchEmail();
@@ -50,7 +63,7 @@ function WatchDialog({ onClose }: { onClose: () => void }) {
     if (!valid || mutation.isPending) return;
     setError(null);
     try {
-      const result = await mutation.mutateAsync({ email, reason });
+      const result = await mutation.mutateAsync({ email, reason, ...(days ? { days } : {}) });
       adminToast.success(result.reactivated ? "Vigilância reativada." : "E-mail adicionado aos vigiados.");
       onClose();
     } catch (failure) {
@@ -62,10 +75,10 @@ function WatchDialog({ onClose }: { onClose: () => void }) {
   return (
     <AdminDialog
       open
-      title="Vigiar e-mail"
+      title={reactivating ? "Reativar vigilância" : "Vigiar e-mail"}
       description="Quando uma conta com este e-mail abrir sessão, a sentinela cria um alerta. Nada é bloqueado."
       busy={mutation.isPending}
-      dirty={email.trim() !== "" || reason.trim() !== ""}
+      dirty={!reactivating && (email.trim() !== "" || reason.trim() !== "")}
       onClose={onClose}
       footer={
         <>
@@ -73,7 +86,7 @@ function WatchDialog({ onClose }: { onClose: () => void }) {
             Cancelar
           </button>
           <button type="button" className="btn" disabled={mutation.isPending} onClick={() => void submit()}>
-            {mutation.isPending ? "Salvando…" : "Vigiar"}
+            {mutation.isPending ? "Salvando…" : reactivating ? "Reativar" : "Vigiar"}
           </button>
         </>
       }
@@ -85,7 +98,7 @@ function WatchDialog({ onClose }: { onClose: () => void }) {
           type="email"
           className="adm-input"
           value={email}
-          readOnly={mutation.isPending}
+          readOnly={mutation.isPending || reactivating}
           autoComplete="off"
           spellCheck={false}
           placeholder="nome@empresa.com.br"
@@ -118,6 +131,26 @@ function WatchDialog({ onClose }: { onClose: () => void }) {
           </span>
         </div>
       </div>
+      <fieldset className="adm-field adm-sec-durs" disabled={mutation.isPending}>
+        <legend>Por quanto tempo vigiar?</legend>
+        <div className="adm-sec-durs-g" role="radiogroup" aria-label="Prazo da vigilância">
+          {WATCH_DURATIONS.map((option) => (
+            <button
+              key={option.label}
+              type="button"
+              role="radio"
+              aria-checked={days === option.days}
+              className="adm-sec-dur"
+              data-on={days === option.days ? "true" : undefined}
+              onClick={() => setDays(option.days)}
+            >
+              <b>{option.label}</b>
+              {option.hint ? <small>{option.hint}</small> : null}
+            </button>
+          ))}
+        </div>
+        <small className="adm-sec-durs-note">{days ? "Depois do prazo, a vigilância termina sozinha." : "A vigilância fica ativa até alguém parar."}</small>
+      </fieldset>
       {error ? (
         <div className="adm-dialog-error" role="alert">
           {error}
@@ -128,7 +161,19 @@ function WatchDialog({ onClose }: { onClose: () => void }) {
 }
 
 /** O cartão de quem é vigiado: foto, e-mail e nome; abaixo o estado e se já tem conta; abaixo o motivo; e o menu "⋯" (Ver conta, Parar de vigiar). */
-function WatchCard({ watch, index, onStop, onActivity }: { watch: SecurityWatch; index: number; onStop: (watch: SecurityWatch) => void; onActivity: (watch: SecurityWatch) => void }) {
+function WatchCard({
+  watch,
+  index,
+  onStop,
+  onActivity,
+  onReactivate,
+}: {
+  watch: SecurityWatch;
+  index: number;
+  onStop: (watch: SecurityWatch) => void;
+  onActivity: (watch: SecurityWatch) => void;
+  onReactivate: (watch: SecurityWatch) => void;
+}) {
   const navigate = useNavigate();
   const account = watch.registered_user;
   const accountName = account ? account.name?.trim() || `Conta #${account.id}` : null;
@@ -150,6 +195,8 @@ function WatchCard({ watch, index, onStop, onActivity }: { watch: SecurityWatch;
     });
   }
   if (watch.active) items.push({ id: "stop", label: "Parar de vigiar", icon: "eye", tone: "danger", onSelect: () => onStop(watch) });
+  else items.push({ id: "reactivate", label: "Reativar vigilância", icon: "refresh", onSelect: () => onReactivate(watch) });
+  const expiry = watchExpiry(watch);
 
   return (
     <li className="adm-sec-card" data-active={watch.active ? "true" : "false"} style={{ ["--i" as string]: Math.min(index, 8) }}>
@@ -184,6 +231,20 @@ function WatchCard({ watch, index, onStop, onActivity }: { watch: SecurityWatch;
       </div>
 
       <p className="adm-sec-reason">{watch.reason}</p>
+
+      <p className="adm-sec-expiry" data-state={expiry.state}>
+        <I n="clock" cls="sm" />
+        {expiry.state === "none" ? (
+          watch.active ? "Sem prazo" : "Vigilância encerrada"
+        ) : expiry.state === "ended" ? (
+          <>Prazo encerrado em {formatDate(expiry.iso)}</>
+        ) : (
+          <>
+            Vigiado até {formatDate(expiry.iso)}
+            {expiry.state === "soon" ? <b>{expiryDaysText(expiry.daysLeft)}</b> : null}
+          </>
+        )}
+      </p>
 
       <div className="adm-sec-lastact">
         <span className="adm-sec-lastact-text">
@@ -231,6 +292,7 @@ export function SecurityWatchlistTab({
   const [target, setTarget] = useState<SecurityWatch | null>(null);
   const [stopError, setStopError] = useState<string | null>(null);
   const [activityFor, setActivityFor] = useState<SecurityWatch | null>(null);
+  const [reactivating, setReactivating] = useState<SecurityWatch | null>(null);
 
   const all = useMemo(() => (query.data ? sortWatchlist(query.data) : []), [query.data]);
   const list = useMemo(() => filterWatchlist(all, filter, term), [all, filter, term]);
@@ -289,7 +351,7 @@ export function SecurityWatchlistTab({
     body = (
       <ul className="adm-sec-cards" aria-label="E-mails vigiados">
         {list.map((watch, index) => (
-          <WatchCard key={watch.id} watch={watch} index={index} onStop={setTarget} onActivity={setActivityFor} />
+          <WatchCard key={watch.id} watch={watch} index={index} onStop={setTarget} onActivity={setActivityFor} onReactivate={setReactivating} />
         ))}
       </ul>
     );
@@ -301,6 +363,7 @@ export function SecurityWatchlistTab({
         {body}
       </AdminSection>
       {adding ? <WatchDialog onClose={() => onAddingChange(false)} /> : null}
+      {reactivating ? <WatchDialog initial={{ email: reactivating.email, reason: reactivating.reason }} onClose={() => setReactivating(null)} /> : null}
       {activityFor ? <WatchActivityDrawer watch={activityFor} onClose={() => setActivityFor(null)} /> : null}
       <AdminConfirmDialog
         open={target !== null}
