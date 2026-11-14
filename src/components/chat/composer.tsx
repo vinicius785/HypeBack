@@ -24,8 +24,10 @@ interface DraftAttachment {
 export interface ChatComposerProps {
   /** Muda ao trocar de conversa: devolve o foco ao campo. */
   conversationId: string;
-  /** Sobe um arquivo escolhido; o resultado entra na mensagem. */
-  upload: (file: File) => Promise<TeamChatAttachment>;
+  /** Sobe um arquivo escolhido; o resultado entra na mensagem. Ausente = conversa sem anexos (some o clipe). */
+  upload?: (file: File) => Promise<TeamChatAttachment>;
+  /** Texto do campo vazio (padrão: "Escreva uma mensagem"). */
+  placeholder?: string;
   maxBody: number;
   /** Há um envio em andamento (mostra o estado no botão). */
   sending?: boolean;
@@ -39,7 +41,11 @@ export interface ChatComposerProps {
 let draftCounter = 0;
 
 function makePreview(file: File): string | undefined {
-  if (!isImageMime(file.type) || typeof URL === "undefined" || typeof URL.createObjectURL !== "function")
+  if (
+    !isImageMime(file.type) ||
+    typeof URL === "undefined" ||
+    typeof URL.createObjectURL !== "function"
+  )
     return undefined;
   try {
     return URL.createObjectURL(file);
@@ -49,7 +55,8 @@ function makePreview(file: File): string | undefined {
 }
 
 function revoke(url?: string) {
-  if (url && typeof URL.revokeObjectURL === "function") URL.revokeObjectURL(url);
+  if (url && typeof URL.revokeObjectURL === "function")
+    URL.revokeObjectURL(url);
 }
 
 /** Campo de texto (Enter envia, Shift+Enter quebra linha) com anexos que sobem assim que são escolhidos. */
@@ -57,6 +64,7 @@ export function ChatComposer({
   conversationId,
   upload,
   maxBody,
+  placeholder,
   sending = false,
   error = null,
   blockedReason,
@@ -93,11 +101,18 @@ export function ChatComposer({
 
   const uploading = drafts.some((d) => d.status === "uploading");
   const ready = drafts.filter((d) => d.status === "done" && d.attachment);
-  const canSend = !disabled && !uploading && !sending && (text.trim() !== "" || ready.length > 0);
+  const canSend =
+    !disabled &&
+    !uploading &&
+    !sending &&
+    (text.trim() !== "" || ready.length > 0);
 
   const submit = () => {
     if (!canSend) return;
-    onSend({ body: text.trim(), attachments: ready.map((d) => d.attachment as TeamChatAttachment) });
+    onSend({
+      body: text.trim(),
+      attachments: ready.map((d) => d.attachment as TeamChatAttachment),
+    });
     for (const d of drafts) revoke(d.previewUrl);
     setDrafts([]);
     setText("");
@@ -114,27 +129,48 @@ export function ChatComposer({
   };
 
   const addFiles = (files: FileList | null) => {
-    if (!files || disabled) return;
+    if (!files || disabled || !upload) return;
     const room = TEAM_CHAT_MAX_ATTACHMENTS - draftsRef.current.length;
     const picked = Array.from(files);
-    if (picked.length > room) toast.error(`Você pode anexar até ${TEAM_CHAT_MAX_ATTACHMENTS} arquivos por mensagem.`);
+    if (picked.length > room)
+      toast.error(
+        `Você pode anexar até ${TEAM_CHAT_MAX_ATTACHMENTS} arquivos por mensagem.`,
+      );
     for (const file of picked.slice(0, Math.max(0, room))) {
       if (file.size > TEAM_CHAT_MAX_FILE_BYTES) {
-        toast.error(`${file.name} passa de ${formatFileSize(TEAM_CHAT_MAX_FILE_BYTES)}.`);
+        toast.error(
+          `${file.name} passa de ${formatFileSize(TEAM_CHAT_MAX_FILE_BYTES)}.`,
+        );
         continue;
       }
       const id = `d${++draftCounter}`;
       setDrafts((cur) => [
         ...cur,
-        { id, name: file.name, size: file.size, status: "uploading", previewUrl: makePreview(file) },
+        {
+          id,
+          name: file.name,
+          size: file.size,
+          status: "uploading",
+          previewUrl: makePreview(file),
+        },
       ]);
       upload(file)
         .then((attachment) =>
-          setDrafts((cur) => cur.map((d) => (d.id === id ? { ...d, status: "done", attachment } : d))),
+          setDrafts((cur) =>
+            cur.map((d) =>
+              d.id === id ? { ...d, status: "done", attachment } : d,
+            ),
+          ),
         )
         .catch((error: unknown) => {
-          setDrafts((cur) => cur.map((d) => (d.id === id ? { ...d, status: "error" } : d)));
-          toast.error(error instanceof Error && error.message ? error.message : "Não foi possível enviar o anexo.");
+          setDrafts((cur) =>
+            cur.map((d) => (d.id === id ? { ...d, status: "error" } : d)),
+          );
+          toast.error(
+            error instanceof Error && error.message
+              ? error.message
+              : "Não foi possível enviar o anexo.",
+          );
         });
     }
     if (fileRef.current) fileRef.current.value = "";
@@ -166,14 +202,26 @@ export function ChatComposer({
         <ul className="tc-drafts" role="list" aria-label="Anexos da mensagem">
           {drafts.map((d) => (
             <li key={d.id} className={`tc-draft ${d.status}`}>
-              {d.previewUrl ? <img src={d.previewUrl} alt="" /> : <I n="file" cls="sm" />}
+              {d.previewUrl ? (
+                <img src={d.previewUrl} alt="" />
+              ) : (
+                <I n="file" cls="sm" />
+              )}
               <span>
                 <b>{d.name}</b>
                 <small>
-                  {d.status === "uploading" ? "Enviando..." : d.status === "error" ? "Falhou" : formatFileSize(d.size)}
+                  {d.status === "uploading"
+                    ? "Enviando..."
+                    : d.status === "error"
+                      ? "Falhou"
+                      : formatFileSize(d.size)}
                 </small>
               </span>
-              <button type="button" onClick={() => removeDraft(d.id)} aria-label={`Remover ${d.name}`}>
+              <button
+                type="button"
+                onClick={() => removeDraft(d.id)}
+                aria-label={`Remover ${d.name}`}
+              >
                 <I n="x" cls="sm" />
               </button>
             </li>
@@ -181,30 +229,38 @@ export function ChatComposer({
         </ul>
       )}
       <div className="tc-in">
-        <input
-          ref={fileRef}
-          type="file"
-          multiple
-          hidden
-          accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,video/mp4,video/quicktime,video/x-msvideo,application/pdf,.doc,.docx"
-          onChange={(e) => addFiles(e.target.files)}
-          data-testid="team-chat-file"
-        />
-        <button
-          type="button"
-          className="round tc-clip"
-          onClick={() => fileRef.current?.click()}
-          disabled={disabled || drafts.length >= TEAM_CHAT_MAX_ATTACHMENTS}
-          aria-label="Anexar arquivo"
-        >
-          <I n="paperclip" cls="sm" />
-        </button>
+        {upload ? (
+          <>
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              hidden
+              accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,video/mp4,video/quicktime,video/x-msvideo,application/pdf,.doc,.docx"
+              onChange={(e) => addFiles(e.target.files)}
+              data-testid="team-chat-file"
+            />
+            <button
+              type="button"
+              className="round tc-clip"
+              onClick={() => fileRef.current?.click()}
+              disabled={disabled || drafts.length >= TEAM_CHAT_MAX_ATTACHMENTS}
+              aria-label="Anexar arquivo"
+            >
+              <I n="paperclip" cls="sm" />
+            </button>
+          </>
+        ) : null}
         <textarea
           ref={inputRef}
           rows={1}
           value={text}
           maxLength={maxBody}
-          placeholder={disabled ? "Envio indisponível" : "Escreva uma mensagem"}
+          placeholder={
+            disabled
+              ? "Envio indisponível"
+              : (placeholder ?? "Escreva uma mensagem")
+          }
           aria-label="Mensagem"
           aria-describedby="chat-composer-hint"
           disabled={disabled}
@@ -222,7 +278,10 @@ export function ChatComposer({
           aria-busy={sending}
           disabled={!canSend}
         >
-          <I n={sending ? "refresh" : "send"} cls={sending ? "sm spin" : "sm"} />
+          <I
+            n={sending ? "refresh" : "send"}
+            cls={sending ? "sm spin" : "sm"}
+          />
         </button>
       </div>
       <small id="chat-composer-hint" className="cx-hint">

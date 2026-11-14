@@ -5,7 +5,7 @@
 import type { AdminFilterOption } from "@/components/admin/platform";
 import type { AdminListStateConfig } from "@/lib/admin/list-query";
 
-export const ADMIN_USERS_FILTER_KEYS = ["status", "workspace_id", "created_from", "created_to"] as const;
+export const ADMIN_USERS_FILTER_KEYS = ["status", "account_status", "workspace_id", "created_from", "created_to"] as const;
 export type AdminUsersFilterKey = (typeof ADMIN_USERS_FILTER_KEYS)[number];
 
 /**
@@ -37,6 +37,13 @@ export const ADMIN_USERS_STATUS_OPTIONS: readonly AdminFilterOption[] = [
   { value: "all", label: "Todos" },
 ];
 
+
+/** Situação da conta de criador no app (filtro `account_status` da API, CSV). Vazio = sem filtro. */
+export const ADMIN_ACCOUNT_SITUATION_FILTER_OPTIONS: readonly AdminFilterOption[] = [
+  { value: "", label: "Todas as situações" },
+  { value: "active", label: "Ativa" },
+  { value: "suspended", label: "Suspensa" },
+];
 
 /** Parâmetros da consulta: os da URL e o `status` sempre explícito (o padrão da API agora inclui `pending`). */
 export function usersApiParams<T extends Record<string, unknown>>(params: T, status: string | undefined): T & { status: string } {

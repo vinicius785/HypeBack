@@ -74,6 +74,7 @@ const MAP: Record<string, keyof typeof icons> = {
   instagram: "Instagram",
   youtube: "Youtube",
   tiktok: "Music2",
+  phone: "Smartphone",
   back: "ArrowLeft",
   tag: "Tag",
   pointer: "MousePointerClick",

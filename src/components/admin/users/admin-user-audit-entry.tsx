@@ -5,6 +5,7 @@ import { EMPTY_TEXT, formatDateTime, formatInt, formatRelativeTime } from "@/lib
 import { USER_STATUS_LABEL, WORKSPACE_STATUS_LABEL } from "@/lib/admin/labels";
 import type { AdminAuditLogEntry } from "@/shared/admin-platform.types";
 
+import { ACCOUNT_SITUATION_LABEL } from "./account-situation";
 import { formatTimeOfDay, workspaceRoleText } from "./admin-users-format";
 import { userDetailLink, workspaceDetailLink } from "./admin-users-links";
 
@@ -23,6 +24,8 @@ const STATE_KEY_LABEL: Record<string, string> = {
   email: "E-mail",
   has_custom_permissions: "Permissões personalizadas",
   reason: "Motivo",
+  suspension_reason: "Motivo mostrado ao criador",
+  suspended_at: "Desde",
 };
 
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
@@ -37,7 +40,8 @@ export function formatStateValue(key: string, value: unknown): string {
   if (typeof value === "boolean") return value ? "Sim" : "Não";
   if (typeof value === "number") return formatInt(value);
   if (typeof value === "string") {
-    if (key === "status") return (USER_STATUS_LABEL as Record<string, string>)[value] ?? (WORKSPACE_STATUS_LABEL as Record<string, string>)[value] ?? value;
+    // `under_review` e `rejected` (situação da conta do criador) vêm no mesmo campo `status` da trilha.
+    if (key === "status") return (USER_STATUS_LABEL as Record<string, string>)[value] ?? (WORKSPACE_STATUS_LABEL as Record<string, string>)[value] ?? (ACCOUNT_SITUATION_LABEL as Record<string, string>)[value] ?? value;
     if (key === "role") return workspaceRoleText(value);
     if (ISO_INSTANT.test(value)) return formatDateTime(value);
     return value || EMPTY_TEXT;

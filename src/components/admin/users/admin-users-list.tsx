@@ -28,6 +28,7 @@ import type { AdminUserListItem, AdminUserWorkspaceLink, AdminWorkspaceRef } fro
 import {
   ADMIN_USERS_DEFAULT_STATUS,
   ADMIN_USERS_LIST_CONFIG,
+  ADMIN_ACCOUNT_SITUATION_FILTER_OPTIONS,
   ADMIN_USERS_STATUS_OPTIONS,
   usersApiParams,
 } from "./admin-users-config";
@@ -37,6 +38,7 @@ import { UserPlatforms } from "./admin-user-platforms";
 import { PeopleIsland } from "@/components/admin/people/people-island";
 import { NewAccountButton } from "@/components/admin/workspaces/new-account-button";
 import { TrustBadge } from "./admin-user-trust";
+import { AccountSituationBadge } from "./account-situation";
 import { AdminWorkspacePicker, useAdminWorkspaceSelection } from "./admin-workspace-picker";
 
 import "@/styles/admin-users.css";
@@ -194,7 +196,12 @@ export function AdminUsersList({ kind }: { kind?: "creator" } = {}) {
       key: "status",
       header: "Status",
       width: "112px",
-      cell: (user) => <AdminStatusBadge kind="user" value={user.status} title={user.pending_step?.label} />,
+      cell: (user) =>
+        user.kind === "creator" && user.account_status && user.account_status !== "active" ? (
+          <AccountSituationBadge value={user.account_status} />
+        ) : (
+          <AdminStatusBadge kind="user" value={user.status} title={user.pending_step?.label} />
+        ),
     },
     {
       key: "created",
@@ -226,6 +233,10 @@ export function AdminUsersList({ kind }: { kind?: "creator" } = {}) {
   const filters: AdminFilterDef[] = [
     // O estado da conta (Ativos e suspensos, Ativos, Suspensos, Em cadastro, Excluídos, Todos) mora no painel de filtros.
     { kind: "select", key: "status", label: "Status da conta", options: ADMIN_USERS_STATUS_OPTIONS, defaultValue: ADMIN_USERS_DEFAULT_STATUS },
+    // Situação da conta no app (só criadores têm: em análise e reprovada não existem para marcas).
+    ...(fixedKind === "creator"
+      ? [{ kind: "select", key: "account_status", label: "Situação da conta", options: ADMIN_ACCOUNT_SITUATION_FILTER_OPTIONS, defaultValue: "" } as AdminFilterDef]
+      : []),
     // Criadores não têm workspace de marca para filtrar: o seletor só existe em Usuários.
     ...(fixedKind ? [] : ([
     {

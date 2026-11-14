@@ -22,7 +22,8 @@ import type { AdminUserDetail } from "@/shared/admin-platform.types";
 
 import { AdminUserActionNotice, AdminUserActions } from "./admin-user-actions";
 import { AdminUserActivityTab } from "./admin-user-activity-tab";
-import { AdminUserData, AdminUserSuspension } from "./admin-user-info";
+import { AdminUserData, AdminUserSituation, AdminUserSuspension } from "./admin-user-info";
+import { AccountSituationBadge } from "./account-situation";
 import { AdminUserNetworks } from "./admin-user-networks";
 import { AdminUserTrustSection } from "./admin-user-trust";
 import { AdminUserLinksTab } from "./admin-user-links-tab";
@@ -107,7 +108,11 @@ function AdminUserDetailView({ user }: { user: AdminUserDetail }) {
           <span className="adm-users-id">
             <span className="adm-users-id-email">{user.email}</span>
             <span className="adm-users-id-badges">
-              <AdminStatusBadge kind="user" value={user.status} title={user.pending_step?.label} />
+              {user.kind === "creator" && user.account_status ? (
+                <AccountSituationBadge value={user.account_status} />
+              ) : (
+                <AdminStatusBadge kind="user" value={user.status} title={user.pending_step?.label} />
+              )}
               {/* conta em cadastro: o texto que a API já manda sobre a etapa em que ela parou fica à vista, ao lado */}
               {user.status === "pending" && user.pending_step?.label ? <span className="adm-muted">{user.pending_step.label}</span> : null}
               <AdminBadge>{userKindText(user.kind)}</AdminBadge>
@@ -123,6 +128,7 @@ function AdminUserDetailView({ user }: { user: AdminUserDetail }) {
       />
 
       <AdminUserActionNotice user={user} selfId={me?.id} />
+      <AdminUserSituation user={user} />
       <AdminUserSuspension user={user} />
 
       <AdminTabs tabs={tabs} value={tab} onChange={setTab} ariaLabel="Seções do usuário" idPrefix="admin-user" />

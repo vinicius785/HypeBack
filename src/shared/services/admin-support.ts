@@ -6,7 +6,7 @@ export const SUPPORT_STATUSES = ["open", "in_progress", "waiting", "resolved", "
 export type SupportStatus = (typeof SUPPORT_STATUSES)[number];
 export const SUPPORT_PRIORITIES = ["low", "normal", "high", "urgent"] as const;
 export type SupportPriority = (typeof SUPPORT_PRIORITIES)[number];
-export const SUPPORT_CATEGORIES = ["account", "billing", "campaign", "creator", "bug", "feature", "other"] as const;
+export const SUPPORT_CATEGORIES = ["account", "billing", "campaign", "creator", "bug", "feature", "other", "contestation"] as const;
 export type SupportCategory = (typeof SUPPORT_CATEGORIES)[number];
 export type SupportAuthorType = "requester" | "staff" | "note";
 
@@ -27,6 +27,7 @@ export const SUPPORT_CATEGORY_LABEL: Record<SupportCategory, string> = {
   bug: "Erro",
   feature: "Sugestão",
   other: "Outro",
+  contestation: "Contestação",
 };
 
 export interface SupportTicket {
