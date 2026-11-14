@@ -42,6 +42,7 @@ export const ADMIN_USERS_STATUS_OPTIONS: readonly AdminFilterOption[] = [
 export const ADMIN_ACCOUNT_SITUATION_FILTER_OPTIONS: readonly AdminFilterOption[] = [
   { value: "", label: "Todas as situações" },
   { value: "active", label: "Ativa" },
+  { value: "under_review", label: "Em análise" },
   { value: "suspended", label: "Suspensa" },
 ];
 

@@ -10,6 +10,9 @@ import {
   isAttackUserProbingAlert,
   isAttackVolumeAlert,
   isSignupDomainClusterAlert,
+  isShieldActivatedAlert,
+  isShieldEndedAlert,
+  isShieldReleasedAlert,
   isSignupWaveAlert,
   isStaffResetAttemptAlert,
   isWatchedBehaviorAlert,
@@ -121,6 +124,38 @@ export function describeAlert(alert: SecurityAlert): AlertView | null {
       ) : undefined,
       chips: d?.new_ip === true ? [{ text: "IP novo", tone: "bad" }] : [],
       details: details.length > 0 ? details : undefined,
+    };
+  }
+
+  if (isShieldActivatedAlert(alert)) {
+    return {
+      tagIcon: "shield",
+      icon: "shield",
+      head: { primary: "Operação Escudo ativada", secondary: "Segurança reforçada ligada" },
+    };
+  }
+
+  if (isShieldEndedAlert(alert)) {
+    const kind = alert.details?.end_kind;
+    return {
+      tagIcon: "shield",
+      icon: "shield",
+      head: { primary: "Operação Escudo encerrada", secondary: kind === "expired" ? "Terminou no prazo" : kind === "manual" ? "Encerrada à mão" : "As regras voltaram ao normal" },
+    };
+  }
+
+  if (isShieldReleasedAlert(alert)) {
+    const accounts = alert.details?.accounts ?? 0;
+    const withdrawals = alert.details?.withdrawals ?? 0;
+    return {
+      tagIcon: "shield",
+      icon: "shield",
+      head: { primary: "Retenções liberadas", secondary: "Contas e saques saíram da espera" },
+      summary: `${accounts} ${plural(accounts, "conta liberada", "contas liberadas")} e ${withdrawals} ${plural(withdrawals, "saque liberado", "saques liberados")}`,
+      details: [
+        { label: "Contas liberadas", value: accounts },
+        { label: "Saques liberados", value: withdrawals },
+      ],
     };
   }
 

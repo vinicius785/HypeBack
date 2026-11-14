@@ -38,6 +38,8 @@ vi.mock("@/components/mobile-nav", () => ({
   },
 }));
 vi.mock("@/components/admin/security/security-bell", () => ({ SecurityBell: () => <button data-testid="security-bell" /> }));
+vi.mock("@/components/admin/security/shield/shield-banner", () => ({ ShieldBanner: () => <div data-testid="shield-banner" /> }));
+vi.mock("@/components/admin/security/shield/shield-code-prompt", () => ({ ShieldCodePrompt: () => null }));
 vi.mock("@/components/header", () => ({ Header: () => <div data-testid="header" /> }));
 
 import { Route } from "@/screens/(private)/(admin)/_layout";
@@ -88,10 +90,22 @@ describe("(admin)/_layout", () => {
     const { container } = render(createElement(Layout));
     const main = container.querySelector("main") as HTMLElement;
     expect(main.className).not.toMatch(/(^|\s)pt-/);
-    // O respiro (o mesmo `pt-4` de antes) vem do div de dentro, que leva a página.
-    const inner = main.firstElementChild as HTMLElement;
+    // O respiro (o mesmo `pt-4` de antes) vem do div de dentro, que leva a página (a faixa do Escudo, quando existe, fica antes dele).
+    const inner = main.querySelector(":scope > .pt-4") as HTMLElement;
     expect(inner.className).toContain("pt-4");
     expect(inner).toContainElement(screen.getByTestId("outlet"));
+  });
+
+  it("a faixa da Operação Escudo fica no topo da área que rola, antes da página (só para o administrador da plataforma)", () => {
+    const { container } = render(createElement(Layout));
+    const main = container.querySelector("main") as HTMLElement;
+    const banner = screen.queryByTestId("shield-banner");
+    if (ctx.user && (ctx.user as { is_platform_admin?: boolean }).is_platform_admin) {
+      expect(banner).toBeInTheDocument();
+      expect(main.firstElementChild).toBe(banner);
+    } else {
+      expect(banner).not.toBeInTheDocument();
+    }
   });
 
   it("liga o tratamento de sessão vencida", () => {

@@ -18,7 +18,9 @@ import {
   type AdminTableColumn,
 } from "@/components/admin/platform";
 import { useAdminListQueryState, useAdminPageClamp } from "@/hooks/admin/use-admin-list-query-state";
+import { useCanUseSecurity } from "@/hooks/admin/use-admin-security";
 import { useAdminUsers } from "@/hooks/admin/use-admin-users";
+import { ReleaseDialog } from "@/components/admin/security/shield/shield-held";
 import { rememberListSearch } from "@/lib/admin/list-memory";
 import { stateToSearch } from "@/lib/admin/list-query";
 import { EMPTY_TEXT, formatDate, formatDateTime } from "@/lib/admin/format";
@@ -128,6 +130,18 @@ export function AdminUsersList({ kind }: { kind?: "creator" } = {}) {
         { ...usersApiParams(state.params, state.filters.status), kind: fixedKind, workspace_id: undefined }
       : usersApiParams(state.params, state.filters.status),
   );
+  // Contas em análise (a retenção da Operação Escudo): o administrador da plataforma pode marcar algumas e liberá-las com o código.
+  const canShield = useCanUseSecurity();
+  const selecting = fixedKind === "creator" && canShield && state.filters.account_status === "under_review";
+  const [shieldPicked, setShieldPicked] = useState<Set<number>>(new Set());
+  const [releasing, setReleasing] = useState(false);
+  const togglePicked = (id: number) =>
+    setShieldPicked((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const meta = users.data?.meta;
   useAdminPageClamp(state.page, meta?.total_pages, state.setPage);
 
@@ -263,6 +277,22 @@ export function AdminUsersList({ kind }: { kind?: "creator" } = {}) {
     { kind: "date-range", label: "Cadastrado em", fromKey: "created_from", toKey: "created_to" },
   ];
 
+  const pickColumn: AdminTableColumn<AdminUserListItem> = {
+    key: "shield-pick",
+    header: "Marcar",
+    width: "64px",
+    mobileLabel: "Marcar",
+    cell: (user) => (
+      <input
+        type="checkbox"
+        className="adm-shield-check"
+        aria-label={`Marcar ${user.name} para liberar do Escudo`}
+        checked={shieldPicked.has(user.id)}
+        onChange={() => togglePicked(user.id)}
+      />
+    ),
+  };
+
   // `hasActiveFilters` já conta estado, tipo, workspace e período fora do padrão (não conta a busca).
   const filtering = state.hasActiveFilters || !!state.search;
 
@@ -312,9 +342,33 @@ export function AdminUsersList({ kind }: { kind?: "creator" } = {}) {
         </p>
       ) : null}
 
+      {selecting ? (
+        <div className="adm-shield-pickbar" role="group" aria-label="Liberar contas retidas pelo Escudo">
+          <span>
+            {shieldPicked.size === 0
+              ? "Marque as contas para liberar do Escudo."
+              : `${shieldPicked.size} ${shieldPicked.size === 1 ? "conta marcada" : "contas marcadas"}`}
+          </span>
+          <button
+            type="button"
+            className="btn out adm-btn-sm"
+            disabled={!rows || rows.length === 0}
+            onClick={() => setShieldPicked(rows && rows.every((u) => shieldPicked.has(u.id)) ? new Set() : new Set((rows ?? []).map((u) => u.id)))}
+          >
+            {rows && rows.length > 0 && rows.every((u) => shieldPicked.has(u.id)) ? "Desmarcar desta página" : "Marcar desta página"}
+          </button>
+          <button type="button" className="btn adm-btn-sm" disabled={shieldPicked.size === 0} onClick={() => setReleasing(true)}>
+            Liberar do Escudo
+          </button>
+        </div>
+      ) : null}
+      {releasing ? (
+        <ReleaseDialog what="accounts" userIds={[...shieldPicked]} onClose={() => setReleasing(false)} onReleased={() => setShieldPicked(new Set())} />
+      ) : null}
+
       <AdminTable
         caption="Usuários"
-        columns={columns}
+        columns={selecting ? [pickColumn, ...columns] : columns}
         rows={rows}
         rowKey={(user) => user.id}
         rowLink={(user) => userDetailLink(user.id)}

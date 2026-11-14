@@ -12,7 +12,7 @@
  *   - mandar Idempotency-Key (estas rotas não usam);
  *   - escrever o e-mail em console.
  */
-import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -83,7 +83,18 @@ function alertsPage(data: SecurityAlert[], unseen = data.filter((a) => !a.seen_a
   return { data, meta: { total: data.length, unseen, limit: 50, offset: 0 } };
 }
 
-function serve(options: { alerts?: SecurityAlert[]; watches?: SecurityWatch[]; activity?: SecurityWatchActivityRow[] | "forbidden" } = {}) {
+const SHIELD_OFF = { configured: true, active: false, id: null, activated_at: null, expires_at: null, reason: null, activated_by: null };
+const HELD_NONE = { accounts: 0, withdrawals: 0, withdrawals_list: [] };
+
+function serve(
+  options: {
+    alerts?: SecurityAlert[];
+    watches?: SecurityWatch[];
+    activity?: SecurityWatchActivityRow[] | "forbidden";
+    shield?: Record<string, unknown>;
+    held?: Record<string, unknown>;
+  } = {},
+) {
   mocks.adminGetEnvelope.mockImplementation(async (path: string) => {
     if (path.includes("/activity")) {
       if (options.activity === "forbidden") throw toAdminApiError(403, { message: "Forbidden resource" });
@@ -95,6 +106,8 @@ function serve(options: { alerts?: SecurityAlert[]; watches?: SecurityWatch[]; a
   mocks.adminGet.mockImplementation(async (path: string) => {
     if (path === "/admin/security/alerts/summary") return { unseen: (options.alerts ?? [ALERT]).filter((a) => !a.seen_at).length };
     if (path === "/admin/security/watchlist") return options.watches ?? WATCHES;
+    if (path === "/admin/security/shield") return options.shield ?? SHIELD_OFF;
+    if (path === "/admin/security/shield/held") return options.held ?? HELD_NONE;
     throw toAdminApiError(404, { message: "x" });
   });
 }
@@ -1079,5 +1092,252 @@ describe("Segurança: alerta de comportamento e aviso por e-mail", () => {
   it("a página avisa que alertas de severidade alta também saem por e-mail", async () => {
     await renderPage();
     expect(screen.getByText("Alertas de severidade alta também são enviados por e-mail à equipe.")).toBeInTheDocument();
+  });
+});
+
+/** O jsdom não tem PointerEvent: um MouseEvent com o nome do evento de ponteiro leva o clientX até o React. */
+const pointer = (el: Element, type: "pointerdown" | "pointermove" | "pointerup", clientX: number) =>
+  fireEvent(el, new MouseEvent(type, { bubbles: true, cancelable: true, clientX }));
+
+describe("Segurança: Operação Escudo", () => {
+  const inHours = (h: number) => new Date(Date.now() + h * 3_600_000).toISOString();
+  const ON = { configured: true, active: true, id: 3, activated_at: new Date().toISOString(), expires_at: inHours(5), reason: "Onda de cadastros falsos", activated_by: { user_id: 1, name: "Marina" } };
+
+  /** O botão é "arrastar para confirmar": no teste, a forma de teclado (Enter) faz o mesmo gesto. */
+  async function slide(user: ReturnType<typeof userEvent.setup>, name: string) {
+    const thumb = await screen.findByRole("button", { name });
+    thumb.focus();
+    await user.keyboard("{Enter}");
+  }
+
+  async function shieldCard() {
+    const ctx = await renderPage("/admin/security?tab=shield");
+    // As ações (Ativar/Encerrar) ficam na ilha e os dados no cartão: o escopo é a página inteira.
+    return { ...ctx, card: within(document.body) };
+  }
+
+  it("sem `configured`: cartão desabilitado com 'Configuração pendente no servidor'", async () => {
+    serve({ shield: { ...SHIELD_OFF, configured: false } });
+    const { card } = await shieldCard();
+    expect((await card.findAllByText("Configuração pendente no servidor.")).length).toBeGreaterThan(0);
+    expect(card.queryByRole("button", { name: "Ativar Operação Escudo" })).not.toBeInTheDocument();
+  });
+
+  it("desligado: janela com motivo, duração (24 h marcada), lista do que muda e código; envia reason, hours e code", async () => {
+    mocks.adminPostPlain.mockResolvedValue({ ...ON });
+    const { user } = await shieldCard();
+    await slide(user, "Ativar Operação Escudo");
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(dialog.getByRole("radio", { name: /24 horas/ })).toHaveAttribute("aria-checked", "true");
+    expect(dialog.getAllByRole("radio").map((r) => r.getAttribute("aria-label"))).toEqual(["6 horas", "12 horas", "24 horas", "48 horas", "72 horas"]);
+    // as regras já estão na tela (O que muda): a janela não repete a lista, e não mostra erro antes de tentar enviar
+    expect(dialog.queryByText(/limites da sentinela caem pela metade/)).not.toBeInTheDocument();
+    expect(dialog.queryByRole("alert")).not.toBeInTheDocument();
+    // sem motivo e código, não envia
+    await user.click(dialog.getByRole("button", { name: "Ativar Escudo" }));
+    expect(mocks.adminPostPlain).not.toHaveBeenCalled();
+    await user.type(dialog.getByLabelText("Motivo"), "Onda de cadastros falsos");
+    await user.click(dialog.getByRole("radio", { name: /48 horas/ }));
+    await user.type(dialog.getByLabelText("Código do Authenticator"), "12a34b56");
+    await user.click(dialog.getByRole("button", { name: "Ativar Escudo" }));
+    await waitFor(() => expect(mocks.adminPostPlain).toHaveBeenCalledWith("/admin/security/shield/activate", { reason: "Onda de cadastros falsos", hours: 48, code: "123456" }));
+    expect(mocks.toastSuccess).toHaveBeenCalled();
+  });
+
+  it("código errado: mostra a mensagem em português, mantém a janela aberta e limpa o campo", async () => {
+    mocks.adminPostPlain.mockRejectedValueOnce(toAdminApiError(403, { message: "x", error: "SHIELD_CODE_INVALID" }));
+    const { user } = await shieldCard();
+    await slide(user, "Ativar Operação Escudo");
+    const dialog = within(await screen.findByRole("dialog"));
+    await user.type(dialog.getByLabelText("Motivo"), "Teste de motivo");
+    await user.type(dialog.getByLabelText("Código do Authenticator"), "000000");
+    await user.click(dialog.getByRole("button", { name: "Ativar Escudo" }));
+    expect(await dialog.findByText(/Código inválido ou já usado/)).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(dialog.getByLabelText("Código do Authenticator")).toHaveValue("");
+  });
+
+  it("5 erros travam: mostra 'Aguarde 15 minutos' e desabilita o envio", async () => {
+    mocks.adminPostPlain.mockRejectedValueOnce(toAdminApiError(403, { message: "x", error: "SHIELD_CODE_LOCKED" }));
+    const { user } = await shieldCard();
+    await slide(user, "Ativar Operação Escudo");
+    const dialog = within(await screen.findByRole("dialog"));
+    await user.type(dialog.getByLabelText("Motivo"), "Teste de motivo");
+    await user.type(dialog.getByLabelText("Código do Authenticator"), "000000");
+    await user.click(dialog.getByRole("button", { name: "Ativar Escudo" }));
+    expect(await dialog.findByText("Muitas tentativas. Aguarde 15 minutos.")).toBeInTheDocument();
+    expect(dialog.getByRole("button", { name: "Ativar Escudo" })).toBeDisabled();
+  });
+
+  it("ligado: mostra motivo, quem ativou e 'Encerrar' (pede o código)", async () => {
+    serve({ shield: ON });
+    mocks.adminPostPlain.mockResolvedValue({ ...ON, active: false });
+    const { user, card } = await shieldCard();
+    expect(await card.findByText("Onda de cadastros falsos")).toBeInTheDocument();
+    expect(card.getByText("Marina")).toBeInTheDocument();
+    expect(card.queryByRole("button", { name: "Ativar Operação Escudo" })).not.toBeInTheDocument();
+    await slide(user, "Encerrar Escudo");
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(dialog.getByRole("button", { name: "Encerrar Escudo" })).toBeDisabled();
+    await user.type(dialog.getByLabelText("Código do Authenticator"), "654321");
+    await user.click(dialog.getByRole("button", { name: "Encerrar Escudo" }));
+    await waitFor(() => expect(mocks.adminPostPlain).toHaveBeenCalledWith("/admin/security/shield/deactivate", { code: "654321" }));
+  });
+
+  const HELD = {
+    accounts: 3,
+    withdrawals: 2,
+    withdrawals_list: [
+      { withdrawal_id: 11, user_id: 7, amount_cents: 15000, status: "pending", held_at: new Date(Date.now() - 3_600_000).toISOString() },
+      { withdrawal_id: 12, user_id: 8, amount_cents: 2550, status: "pending", held_at: new Date(Date.now() - 7_200_000).toISOString() },
+    ],
+  };
+
+  it("'Retido pelo Escudo' não existe sem retenções e aparece com elas, mesmo com o Escudo desligado", async () => {
+    await renderPage("/admin/security?tab=shield");
+    await screen.findByRole("button", { name: "Ativar Operação Escudo" });
+    expect(screen.queryByText("Retido pelo Escudo")).not.toBeInTheDocument();
+    cleanup();
+    serve({ held: HELD });
+    await renderPage("/admin/security?tab=shield");
+    expect(await screen.findByText("Retido pelo Escudo")).toBeInTheDocument();
+    expect(screen.getByText("contas em análise")).toBeInTheDocument();
+    expect(screen.getByText("saques em espera")).toBeInTheDocument();
+    expect(screen.getByText("#11")).toBeInTheDocument();
+    expect(screen.getByText(/R\$\s?150,00/)).toBeInTheDocument();
+  });
+
+  it("'Liberar tudo' avisa do PIX, pede o código e mostra X contas e Y saques liberados", async () => {
+    serve({ held: HELD });
+    mocks.adminPostPlain.mockResolvedValue({ accounts_released: 3, withdrawals_released: 2 });
+    await renderPage("/admin/security?tab=shield");
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Liberar tudo" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(dialog.getByText("Liberar um saque dispara o PIX na hora. Não dá para desfazer.")).toBeInTheDocument();
+    expect(dialog.getByRole("button", { name: "Liberar tudo" })).toBeDisabled();
+    await user.type(dialog.getByLabelText("Código do Authenticator"), "123456");
+    await user.click(dialog.getByRole("button", { name: "Liberar tudo" }));
+    await waitFor(() => expect(mocks.adminPostPlain).toHaveBeenCalledWith("/admin/security/shield/release", { what: "all", code: "123456" }));
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("3 contas e 2 saques liberados.", expect.anything());
+  });
+
+  it("liberar só os saques marcados manda withdrawal_ids; contas não levam aviso de PIX", async () => {
+    serve({ held: HELD });
+    mocks.adminPostPlain.mockResolvedValue({ accounts_released: 0, withdrawals_released: 1 });
+    await renderPage("/admin/security?tab=shield");
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("checkbox", { name: "Marcar o saque 12" }));
+    await user.click(screen.getByRole("button", { name: "Liberar 1 saque marcado" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    await user.type(dialog.getByLabelText("Código do Authenticator"), "123456");
+    await user.click(dialog.getByRole("button", { name: "Liberar saques" }));
+    await waitFor(() => expect(mocks.adminPostPlain).toHaveBeenCalledWith("/admin/security/shield/release", { what: "withdrawals", withdrawal_ids: [12], code: "123456" }));
+    cleanup();
+    await renderPage("/admin/security?tab=shield");
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Liberar contas" }));
+    const accountsDialog = within(await screen.findByRole("dialog"));
+    expect(accountsDialog.queryByText(/dispara o PIX/)).not.toBeInTheDocument();
+  });
+
+  it("os alertas do Escudo mostram o título e o que mudou", async () => {
+    const shieldAlert = (kind: string, severity: "high" | "medium", title: string, details?: object): SecurityAlert =>
+      ({ id: Math.floor(Math.random() * 1e6), kind, severity, title, details, created_at: "2026-11-10T01:30:00Z", seen_at: null, note: null, user: null }) as unknown as SecurityAlert;
+    serve({
+      alerts: [
+        shieldAlert("shield_activated", "high", "Operação Escudo ativada"),
+        shieldAlert("shield_ended", "high", "Operação Escudo encerrada", { end_kind: "expired" }),
+        shieldAlert("shield_released", "medium", "Retenções liberadas", { accounts: 2, withdrawals: 1 }),
+      ],
+    });
+    await renderPage();
+    const list = within(await screen.findByRole("list", { name: "Alertas de segurança" }));
+    expect(list.getByText("Terminou no prazo")).toBeInTheDocument();
+    expect(list.getByText("2 contas liberadas e 1 saque liberado")).toBeInTheDocument();
+    const items = list.getAllByRole("listitem");
+    expect(items.map((i) => i.getAttribute("data-severity"))).toEqual(["high", "high", "medium"]);
+  });
+
+  it("o Escudo é uma aba própria; ligado, aparece o chip nas outras abas e o selo 'ligado' na aba", async () => {
+    serve({ shield: ON });
+    const { user } = await renderPage();
+    const tabs = within(screen.getByRole("group", { name: "Seções de Segurança" }));
+    expect(tabs.getAllByRole("button").map((b) => b.textContent?.replace(/ligado|\d+/, "").trim())).toEqual(["Alertas", "Vigiados", "Escudo"]);
+    expect(await tabs.findByText("ligado")).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar", { name: /Tempo do Escudo/ })).not.toBeInTheDocument();
+    await user.click(tabs.getByRole("button", { name: /Escudo/ }));
+    expect(await screen.findByRole("progressbar", { name: /Tempo do Escudo/ })).toBeInTheDocument();
+  });
+
+  it("abaixo da ilha, o que muda vem lado a lado (um passo por ícone, sem cartões)", async () => {
+    await renderPage("/admin/security?tab=shield");
+    const changes = await screen.findByRole("region", { name: "O que muda com a Operação Escudo" });
+    const items = within(changes).getAllByRole("listitem");
+    expect(items).toHaveLength(7);
+    expect(within(changes).getByText("Código a cada alteração")).toBeInTheDocument();
+    expect(within(changes).getByText("Saques em espera")).toBeInTheDocument();
+    // a frase inteira fica na dica de cada passo
+    expect(within(changes).getByText("Código a cada alteração").closest("li")).toHaveAttribute("title", "Toda alteração no Admin pede o código do Authenticator.");
+    expect(within(changes).getByRole("heading", { name: "O que muda" })).toBeInTheDocument();
+    // sem os cartões de antes
+    expect(document.querySelector(".adm-shield-tiles")).toBeNull();
+  });
+
+  it("com o Escudo ligado o título vira 'O que está valendo'", async () => {
+    serve({ shield: ON });
+    await renderPage("/admin/security?tab=shield");
+    expect(await screen.findByRole("heading", { name: "O que está valendo" })).toBeInTheDocument();
+  });
+
+  it("o botão de ativar fica na ilha, ao lado da personagem", async () => {
+    const { user } = await renderPage("/admin/security?tab=shield");
+    const island = within(screen.getByRole("region", { name: "Segurança" }));
+    const button = await island.findByRole("button", { name: "Ativar Operação Escudo" });
+    // o botão divide o canto direito com a sentinela
+    expect(button.closest(".adm-sec-shield-cta")?.querySelector(".adm-sentinel")).not.toBeNull();
+    // só clicar não ativa nada: é preciso arrastar (ou usar o teclado)
+    await user.click(button);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    button.focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("dialog", { name: "Ativar Operação Escudo" })).toBeInTheDocument();
+  });
+
+  it("arrastar o círculo até o fim abre a janela; soltar antes do fim volta ao início", async () => {
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get: () => 268 });
+    try {
+      await renderPage("/admin/security?tab=shield");
+      const thumb = await screen.findByRole("button", { name: "Ativar Operação Escudo" });
+      // solta no meio do trilho: nada acontece e o círculo volta
+      pointer(thumb, "pointerdown", 0);
+      pointer(thumb, "pointermove", 80);
+      pointer(thumb, "pointerup", 80);
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(thumb.style.transform).toBe("translateX(0px)");
+      // leva até o fim: abre a janela do Escudo
+      pointer(thumb, "pointerdown", 0);
+      pointer(thumb, "pointermove", 300);
+      pointer(thumb, "pointerup", 300);
+      expect(await screen.findByRole("dialog", { name: "Ativar Operação Escudo" })).toBeInTheDocument();
+    } finally {
+      delete (HTMLElement.prototype as { clientWidth?: unknown }).clientWidth;
+    }
+  });
+
+  it("com o Escudo ligado, o título da ilha é o do Escudo em qualquer aba (no lugar de 'Tudo tranquilo')", async () => {
+    serve({ shield: ON });
+    const { user } = await renderPage("/admin/security?tab=alerts");
+    const island = within(screen.getByRole("region", { name: "Segurança" }));
+    expect(await island.findByText("Operação Escudo")).toBeInTheDocument();
+    expect(island.queryByText("Tudo tranquilo")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Vigiados" }));
+    expect(await island.findByText("Operação Escudo")).toBeInTheDocument();
+    expect(island.queryByText("Tudo tranquilo")).not.toBeInTheDocument();
+  });
+
+  it("desligado, volta a 'Tudo tranquilo' nas abas de alertas e vigiados", async () => {
+    serve({ alerts: [] });
+    await renderPage();
+    expect(await screen.findByText("Tudo tranquilo")).toBeInTheDocument();
   });
 });

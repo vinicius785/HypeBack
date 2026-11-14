@@ -150,6 +150,14 @@ export const ADMIN_ERROR_CODES = [
   'APPROVAL_CODE_REQUIRED', // 400: faltou o código do Google Authenticator de quem aprova
   'APPROVAL_CODE_INVALID', // 403: código do Authenticator errado ou já usado
   'APPROVAL_CODE_LOCKED', // 429: tentativas demais com o código do Authenticator
+  // Operação Escudo
+  'SHIELD_CODE_REQUIRED', // 403: com o Escudo ligado, a alteração veio sem o cabeçalho X-Shield-Code
+  'SHIELD_CODE_INVALID', // 403: código do Authenticator errado ou já usado
+  'SHIELD_CODE_LOCKED', // 403: 5 erros travam por 15 min
+  'SHIELD_ALREADY_ACTIVE', // 409
+  'SHIELD_NOT_ACTIVE', // 409
+  'SHIELD_NOT_CONFIGURED', // 503
+  'SHIELD_PAYOUT_UNAVAILABLE', // 503: liberar saque dispara o PIX e o pagamento está fora
 ] as const;
 export type AdminErrorCode = (typeof ADMIN_ERROR_CODES)[number];
 
@@ -1501,6 +1509,24 @@ export interface WatchedBehaviorAlert extends SecurityAlertBase {
   };
 }
 
+/** Operação Escudo ativada (alta). */
+export interface ShieldActivatedAlert extends SecurityAlertBase {
+  kind: 'shield_activated';
+  details?: Record<string, unknown> | null;
+}
+
+/** Operação Escudo encerrada à mão ou no prazo (alta). */
+export interface ShieldEndedAlert extends SecurityAlertBase {
+  kind: 'shield_ended';
+  details?: { end_kind?: 'manual' | 'expired' | (string & {}) } | null;
+}
+
+/** Retenções do Escudo liberadas (média). */
+export interface ShieldReleasedAlert extends SecurityAlertBase {
+  kind: 'shield_released';
+  details?: { accounts?: number; withdrawals?: number } | null;
+}
+
 /** Tipo que esta versão do painel ainda não conhece: mostra só o título e a pessoa, sem detalhes. */
 export interface UnknownSecurityAlert extends SecurityAlertBase {
   kind: string & {};
@@ -1520,6 +1546,9 @@ export type SecurityAlert =
   | AttackEnumerationAlert
   | AttackAnonymizerWaveAlert
   | WatchedBehaviorAlert
+  | ShieldActivatedAlert
+  | ShieldEndedAlert
+  | ShieldReleasedAlert
   | StaffResetAttemptAlert
   | SignupDomainClusterAlert
   | UnknownSecurityAlert;
@@ -1566,6 +1595,18 @@ export function isAttackAnonymizerWaveAlert(alert: SecurityAlert): alert is Atta
 
 export function isWatchedBehaviorAlert(alert: SecurityAlert): alert is WatchedBehaviorAlert {
   return alert.kind === 'watched_behavior';
+}
+
+export function isShieldActivatedAlert(alert: SecurityAlert): alert is ShieldActivatedAlert {
+  return alert.kind === 'shield_activated';
+}
+
+export function isShieldEndedAlert(alert: SecurityAlert): alert is ShieldEndedAlert {
+  return alert.kind === 'shield_ended';
+}
+
+export function isShieldReleasedAlert(alert: SecurityAlert): alert is ShieldReleasedAlert {
+  return alert.kind === 'shield_released';
 }
 
 export function isStaffResetAttemptAlert(alert: SecurityAlert): alert is StaffResetAttemptAlert {
@@ -1646,4 +1687,60 @@ export interface SecurityWatchActivityMeta {
   total: number;
   limit: number;
   offset: number;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Operação Escudo (`/admin/security/shield`)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** `GET /admin/security/shield`. Sem `configured`, o servidor ainda não tem o segredo do Authenticator. */
+export interface ShieldStatus {
+  configured: boolean;
+  active: boolean;
+  id: number | null;
+  /** ISO UTC. */
+  activated_at: string | null;
+  /** ISO UTC; quando passa, o servidor encerra sozinho. */
+  expires_at: string | null;
+  reason: string | null;
+  activated_by: { user_id: number; name: string | null } | null;
+}
+
+/** `POST activate`: motivo de 5 a 500, `hours` de 1 a 72 (padrão 24) e o código de 6 dígitos do Authenticator. */
+export interface ShieldActivateBody {
+  reason: string;
+  hours?: number;
+  code: string;
+}
+
+export interface ShieldHeldWithdrawal {
+  withdrawal_id: number;
+  user_id: number;
+  amount_cents: number;
+  status: string;
+  /** ISO UTC. */
+  held_at: string;
+}
+
+/** `GET /admin/security/shield/held`: o que o Escudo reteve (contas em análise e saques em espera). */
+export interface ShieldHeld {
+  accounts: number;
+  withdrawals: number;
+  withdrawals_list: ShieldHeldWithdrawal[];
+}
+
+export type ShieldReleaseWhat = 'accounts' | 'withdrawals' | 'all';
+
+/** `POST release`: `user_ids` / `withdrawal_ids` restringem o que sai; sem eles, libera tudo o que está retido. */
+export interface ShieldReleaseBody {
+  what: ShieldReleaseWhat;
+  user_ids?: number[];
+  withdrawal_ids?: number[];
+  code: string;
+}
+
+export interface ShieldReleased {
+  accounts_released: number;
+  withdrawals_released: number;
 }

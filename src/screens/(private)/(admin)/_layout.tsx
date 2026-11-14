@@ -5,6 +5,8 @@ import { WorkspaceProvider } from "@/contexts/workspace-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useAdminSessionGuard } from "@/hooks/admin/use-admin-session-guard";
 import { SecurityBell } from "@/components/admin/security/security-bell";
+import { ShieldBanner } from "@/components/admin/security/shield/shield-banner";
+import { ShieldCodePrompt } from "@/components/admin/security/shield/shield-code-prompt";
 import { isPlatformAdmin, isPlatformStaff } from "@/lib/utils/platform-admin";
 import { Sidebar } from "@/components/sidebar";
 import { MobileNav } from "@/components/mobile-nav";
@@ -78,6 +80,8 @@ function AdminLayout() {
             ref={mainRef}
             className="w-full flex-1 overflow-y-auto px-2 pb-10 max-[900px]:px-5 max-[900px]:pb-32"
           >
+            {/* Operação Escudo ligada: a faixa fica no topo de TODAS as telas do Admin (só o administrador da plataforma a vê) */}
+            {isPlatformAdmin(user) ? <ShieldBanner /> : null}
             <div className="pt-4">
               {isPlatformAdmin(user) ? (
                 <div className="pv adm-sec-topbar">
@@ -90,6 +94,8 @@ function AdminLayout() {
         </div>
       </div>
       <MobileNav scope="platform" />
+      {/* Pede o código do Authenticator quando uma alteração do Admin o exige (Operação Escudo) */}
+      <ShieldCodePrompt />
     </WorkspaceProvider>
   );
 }

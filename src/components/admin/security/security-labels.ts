@@ -26,8 +26,8 @@ export const REASON_MIN = 5;
 export const REASON_MAX = 500;
 export const WATCH_ALREADY_TEXT = "Esse e-mail já está na lista de vigiados.";
 
-export type SecurityTab = "alerts" | "watchlist";
-export const SECURITY_TABS: readonly SecurityTab[] = ["alerts", "watchlist"];
+export type SecurityTab = "alerts" | "watchlist" | "shield";
+export const SECURITY_TABS: readonly SecurityTab[] = ["alerts", "watchlist", "shield"];
 export const SECURITY_STATUSES = ["unseen", "all"] as const;
 
 export type WatchFilter = "all" | "active" | "inactive";
@@ -64,6 +64,9 @@ export function kindLabel(kind: string): string | null {
   if (kind === "watched_login") return "Conta vigiada";
   if (kind === "watched_active") return "Vigiado ativo";
   if (kind === "watched_behavior") return "Comportamento vigiado";
+  if (kind === "shield_activated") return "Escudo ativado";
+  if (kind === "shield_ended") return "Escudo encerrado";
+  if (kind === "shield_released") return "Retenções liberadas";
   if (kind === "attack_ip_denied") return "IP suspeito";
   if (kind === "attack_user_probing") return "Conta suspeita";
   if (kind === "signup_wave") return "Onda de cadastros";
@@ -92,7 +95,7 @@ export function actorRoleLabel(role: string): string {
 }
 
 /** Os filtros por tipo agrupam os tipos de alerta: ataques à API, equipe visada e cadastros reúnem vários. */
-export type KindFilter = "all" | "watched_login" | "admin_action" | "attacks" | "staff" | "signups";
+export type KindFilter = "all" | "watched_login" | "admin_action" | "attacks" | "staff" | "signups" | "shield";
 export const KIND_FILTERS: ReadonlyArray<{ id: KindFilter; label: string }> = [
   { id: "all", label: "Todos os tipos" },
   { id: "watched_login", label: "Contas vigiadas" },
@@ -100,6 +103,7 @@ export const KIND_FILTERS: ReadonlyArray<{ id: KindFilter; label: string }> = [
   { id: "attacks", label: "Ataques" },
   { id: "staff", label: "Equipe visada" },
   { id: "signups", label: "Cadastros" },
+  { id: "shield", label: "Operação Escudo" },
 ];
 
 const KIND_GROUPS: Record<Exclude<KindFilter, "all">, readonly string[]> = {
@@ -108,6 +112,7 @@ const KIND_GROUPS: Record<Exclude<KindFilter, "all">, readonly string[]> = {
   attacks: ["attack_ip_denied", "attack_user_probing", "attack_code_guessing", "attack_volume", "attack_enumeration", "attack_anonymizer_wave"],
   staff: ["staff_reset_attempt"],
   signups: ["signup_wave", "signup_domain_cluster"],
+  shield: ["shield_activated", "shield_ended", "shield_released"],
 };
 
 /** Filtro por tipo, só no cliente, sobre o que já foi carregado. Tipo desconhecido só aparece em "Todos os tipos". */
