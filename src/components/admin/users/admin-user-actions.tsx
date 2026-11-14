@@ -16,10 +16,12 @@ import { ADMIN_USERS_RESOURCE } from "@/hooks/admin/use-admin-users";
 import { useAdminUserAction, type AdminUserActionName } from "@/hooks/admin/use-admin-users-actions";
 import { getDeleteBlockers } from "@/lib/admin/admin-errors";
 import { formatInt } from "@/lib/admin/format";
-import type { AdminDeleteBlocker, AdminUserDetail } from "@/shared/admin-platform.types";
+import type { AdminAccountSituation, AdminDeleteBlocker, AdminUserDetail } from "@/shared/admin-platform.types";
 
 import { describeUserActionError, userActionErrorOutdatesScreen } from "./admin-user-errors";
 import { sessionClientText } from "./admin-users-format";
+import { ACCOUNT_SITUATIONS, ACCOUNT_SITUATION_LABEL, situationOf } from "./account-situation";
+import { AccountSituationDialog } from "./account-situation-dialog";
 
 import "@/styles/admin-users.css";
 
@@ -29,6 +31,8 @@ export type UserActionBlockedReason = "self" | "platform_admin" | "deleted" | "r
 export interface UserActionAvailability {
   suspend: boolean;
   reactivate: boolean;
+  /** Criador: muda a situação da conta (Ativa, Em análise, Reprovada, Suspensa). Substitui Suspender e Reativar. */
+  changeSituation: boolean;
   revokeSessions: boolean;
   /** Excluir (anonimizar) a conta: sem volta, só para administrador. */
   delete: boolean;
@@ -54,15 +58,18 @@ export function userActionAvailability(
   selfId: number | undefined,
   permissions: UserActionPermissions = ALL_PERMISSIONS,
 ): UserActionAvailability {
-  const none = { suspend: false, reactivate: false, revokeSessions: false, delete: false };
+  const none = { suspend: false, reactivate: false, changeSituation: false, revokeSessions: false, delete: false };
   if (selfId !== undefined && selfId === user.id) return { ...none, blockedReason: "self" };
   if (user.is_platform_admin) return { ...none, blockedReason: "platform_admin" };
   if (user.status === "deleted") return { ...none, blockedReason: "deleted" };
   // Papel só de leitura: nenhum botão, e a tela explica por quê (em vez de esconder sem dizer nada).
   if (!permissions.moderate && !permissions.delete) return { ...none, blockedReason: "read_only" };
+  // Conta de criador: uma ação só, "Situação da conta". Para as demais (marca, agência) seguem Suspender e Reativar.
+  const creator = user.kind === "creator";
   return {
-    suspend: permissions.moderate && user.status === "active",
-    reactivate: permissions.moderate && user.status === "suspended",
+    suspend: !creator && permissions.moderate && user.status === "active",
+    reactivate: !creator && permissions.moderate && user.status === "suspended",
+    changeSituation: creator && permissions.moderate && user.status !== "pending",
     revokeSessions: permissions.moderate && user.sessions.active_count > 0,
     delete: permissions.delete,
     blockedReason: null,
@@ -263,7 +270,15 @@ function useUserActionAvailability(user: AdminUserDetail, selfId: number | undef
  */
 export function AdminUserActions({ user, selfId }: { user: AdminUserDetail; selfId: number | undefined }) {
   const [dialog, setDialog] = useState<AdminUserActionName | null>(null);
+  const [situation, setSituation] = useState<AdminAccountSituation | null>(null);
   const { availability } = useUserActionAvailability(user, selfId);
+  const current = situationOf(user);
+  const situationItems: AdminActionMenuItem[] = ACCOUNT_SITUATIONS.filter((value) => value !== current).map((value) => ({
+    id: `situation-${value}`,
+    label: ACCOUNT_SITUATION_LABEL[value],
+    tone: value === "active" ? undefined : "danger",
+    onSelect: () => setSituation(value),
+  }));
 
   const moreItems: AdminActionMenuItem[] = availability.delete
     ? [{ id: "delete", label: "Excluir conta", icon: "trash", tone: "danger", onSelect: () => setDialog("delete") }]
@@ -286,7 +301,9 @@ export function AdminUserActions({ user, selfId }: { user: AdminUserDetail; self
           Reativar
         </button>
       ) : null}
+      {availability.changeSituation ? <AdminActionMenu items={situationItems} label="Situação da conta" /> : null}
       <AdminActionMenu items={moreItems} label="Mais" />
+      {situation ? <AccountSituationDialog user={user} target={situation} onClose={() => setSituation(null)} /> : null}
       {dialog ? <AdminUserActionDialog user={user} action={dialog} onClose={() => setDialog(null)} /> : null}
     </>
   );

@@ -9,6 +9,7 @@ import type { AdminUserDetail } from "@/shared/admin-platform.types";
 
 import { platformsText } from "./admin-user-platforms";
 import { formatPhone } from "./admin-users-format";
+import { ACCOUNT_SITUATION_LABEL, AccountSituationBadge } from "./account-situation";
 import { userDetailLink } from "./admin-users-links";
 
 import "@/styles/admin-users.css";
@@ -43,9 +44,45 @@ export function AdminUserData({ user }: { user: AdminUserDetail }) {
   );
 }
 
+/**
+ * Situação da conta do criador (Em análise, Reprovada, Suspensa): o motivo que o CRIADOR lê no app, quem mudou e quando.
+ * Conta ativa não mostra bloco. Quando a API ainda não manda `account_status`, a suspensão antiga cobre o caso (bloco abaixo).
+ */
+export function AdminUserSituation({ user }: { user: AdminUserDetail }) {
+  const situation = user.account_status;
+  if (user.kind !== "creator" || !situation || situation === "active") return null;
+  const by = user.account_status_changed_by;
+  return (
+    <AdminSection
+      title={`Conta ${ACCOUNT_SITUATION_LABEL[situation].toLowerCase()}`}
+      description="O criador não usa o app enquanto a conta não for ativada e pode contestar pelo suporte."
+    >
+      <AdminKeyValueList
+        items={[
+          { label: "Situação", value: <AccountSituationBadge value={situation} /> },
+          { label: "Motivo mostrado ao criador", value: user.account_status_reason?.trim() ? user.account_status_reason : "Não informado" },
+          { label: "Desde", value: user.account_status_changed_at ? formatDateTime(user.account_status_changed_at) : null },
+          {
+            label: "Alterada por",
+            value: by ? (
+              <AdminLink to={userDetailLink(by.user_id)} textLink>
+                {by.name}
+              </AdminLink>
+            ) : (
+              "Não informado"
+            ),
+          },
+        ]}
+      />
+    </AdminSection>
+  );
+}
+
 /** Bloco da suspensão: desde quando, o motivo e quem suspendeu. Só aparece para conta suspensa. */
 export function AdminUserSuspension({ user }: { user: AdminUserDetail }) {
   if (user.status !== "suspended" && !user.suspension) return null;
+  // Conta de criador com situação informada pela API: o bloco "Conta suspensa/em análise" já mostra o motivo.
+  if (user.kind === "creator" && user.account_status) return null;
   const suspension = user.suspension;
   const by = suspension?.suspended_by;
   return (

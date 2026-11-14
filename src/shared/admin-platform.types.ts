@@ -209,6 +209,14 @@ export type AdminUserPlatform = 'ios' | 'android';
 
 export type AdminUserAccountStatus = AdminUserStatus | 'pending';
 
+/**
+ * Situação da conta de criador no app (`account_status` de `GET /app/me`): só `active` libera o app. Em análise, reprovada e
+ * suspensa aparecem igual para o criador (tela "Sua conta está em análise"); muda o motivo que a equipe escreveu.
+ */
+export type AdminAccountSituation = 'active' | 'under_review' | 'rejected' | 'suspended';
+
+
+
 /** Etapa em que uma conta `pending` parou (texto pronto, em português). */
 export interface AdminUserPendingStep {
   code: 'email_unconfirmed' | (string & {});
@@ -598,6 +606,8 @@ export interface AdminWorkspaceImpact {
 export interface AdminUserListQuery extends AdminListQuery {
   /** CSV de AdminUserStatus ou 'all'. Padrão: 'active,suspended'. */
   status?: string;
+  /** CSV de AdminAccountSituation (ex.: 'under_review,rejected'); soma-se ao `status`. */
+  account_status?: string;
   /** Padrão: 'brand' (types 20, 30, 100). */
   kind?: 'brand' | 'creator' | 'all';
   workspace_id?: string; // public_id
@@ -659,6 +669,8 @@ export interface AdminUserListItem {
   workspaces: AdminUserWorkspaceLink[];
   /** Nível de confiança da conta; `null` (ou ausente) quando não há cálculo. */
   trust?: AdminUserTrust | null;
+  /** Situação da conta no app; ausente = a API ainda não informa (vale `status`). */
+  account_status?: AdminAccountSituation;
 }
 
 export type AdminUserListResponse = AdminListResponse<AdminUserListItem>;
@@ -696,6 +708,19 @@ export interface AdminUserDetail {
   };
   /** Nível de confiança da conta; `null` (ou ausente) quando não há cálculo. */
   trust?: AdminUserTrust | null;
+  /** Situação da conta no app; ausente = a API ainda não informa (vale `status`). */
+  account_status?: AdminAccountSituation;
+  /** Motivo que a equipe escreveu e que o CRIADOR lê no app. */
+  account_status_reason?: string | null;
+  /** Última mudança de situação: quando e quem. */
+  account_status_changed_at?: string | null;
+  account_status_changed_by?: AdminUserRef | null;
+}
+
+/** POST /admin/users/:userId/account-status — `reason` obrigatório (5 a 500) exceto para `active` (opcional: sem ele, "Conta liberada pela equipe."). */
+export interface AdminAccountStatusBody {
+  status: AdminAccountSituation;
+  reason?: string;
 }
 
 /** POST /admin/users/:userId/suspend | /reactivate | /revoke-sessions */

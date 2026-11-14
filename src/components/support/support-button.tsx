@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bug, Check, CircleHelp, Headset, Lightbulb, Megaphone, Users, UserRound, Wallet, type LucideIcon } from "lucide-react";
+import { Bug, Check, CircleHelp, Headset, Lightbulb, Megaphone, ShieldQuestion, Users, UserRound, Wallet, type LucideIcon } from "lucide-react";
 
 import { AdminDialog } from "@/components/admin/platform/admin-dialog";
 import { SUPPORT_CATEGORIES, SUPPORT_CATEGORY_LABEL, type SupportCategory } from "@/shared/services/admin-support";
@@ -21,7 +21,11 @@ const CATEGORY_ICON: Record<SupportCategory, LucideIcon> = {
   bug: Bug,
   feature: Lightbulb,
   other: CircleHelp,
+  contestation: ShieldQuestion,
 };
+
+/** "Contestação" nasce no app do criador (conta em análise): quem usa a plataforma não a escolhe neste formulário. */
+const FORM_CATEGORIES = SUPPORT_CATEGORIES.filter((c) => c !== "contestation");
 
 /** Botão redondo "Falar com o suporte" do topo: abre o formulário que cria o pedido na fila do Suporte do Admin. */
 export function SupportButton() {
@@ -111,7 +115,7 @@ function SupportDialog({ onClose }: { onClose: () => void }) {
           <fieldset className="sup-cat">
             <legend>Sobre o que é?</legend>
             <div className="sup-chips">
-              {SUPPORT_CATEGORIES.map((c) => {
+              {FORM_CATEGORIES.map((c) => {
                 const Icon = CATEGORY_ICON[c];
                 return (
                   <label key={c} className={`sup-chip${category === c ? " on" : ""}`}>
