@@ -2,8 +2,10 @@ import { useState } from "react";
 
 import { AdminDialog, adminErrorMessage, adminToast } from "@/components/admin/platform";
 import { useInspirationMutations } from "@/hooks/admin/use-admin-community-content";
+import type { CommunityPostModeration } from "@/shared/services/community-posts";
 import { LESSON_TITLE_MAX, type CommunityInspiration } from "@/shared/community-content.types";
 
+import { CommunityPostPicker, inspirationFromPost } from "./community-post-picker";
 import { MediaUploadField } from "./media-upload-field";
 
 /** Nova inspiração ou edição: foto (ou poster, quando há vídeo) e, se quiser, um reel vertical 9:16 de 1080x1920. */
@@ -17,9 +19,21 @@ export function InspirationDialog({ inspiration, onClose }: { inspiration?: Comm
   const [source, setSource] = useState(inspiration?.source ?? "");
   const [uploading, setUploading] = useState(false);
   const [touched, setTouched] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [posterNote, setPosterNote] = useState(false);
 
   const titleBad = title.trim().length < 1 || title.length > LESSON_TITLE_MAX;
   const valid = !titleBad && !!imageUrl;
+
+  const pickPost = (post: CommunityPostModeration) => {
+    const from = inspirationFromPost(post);
+    setImageUrl(from.imageUrl);
+    setVideoUrl(from.videoUrl);
+    setAuthor(from.authorId);
+    if (!title.trim()) setTitle(from.title);
+    setPosterNote(from.needsPoster);
+    setPicking(false);
+  };
 
   const submit = async () => {
     setTouched(true);
@@ -45,22 +59,40 @@ export function InspirationDialog({ inspiration, onClose }: { inspiration?: Comm
     <AdminDialog
       open
       size="lg"
-      title={inspiration ? "Editar inspiração" : "Nova inspiração"}
-      description="Aparece na aba Conteúdos do app, em formato vertical (9:16)."
+      title={picking ? "Escolher da comunidade" : inspiration ? "Editar inspiração" : "Nova inspiração"}
+      description={picking ? "Publicações da comunidade com foto ou vídeo. A escolhida preenche foto, vídeo e autor." : "Aparece na aba Conteúdos do app, em formato vertical (9:16)."}
       busy={pending}
       dirty={inspiration ? true : title.trim() !== "" || !!imageUrl}
       onClose={onClose}
       footer={
-        <>
-          <button type="button" className="btn out" disabled={pending} onClick={onClose}>
-            Cancelar
+        picking ? (
+          <button type="button" className="btn out" onClick={() => setPicking(false)}>
+            Voltar
           </button>
-          <button type="button" className="btn" disabled={pending || uploading} onClick={() => void submit()}>
-            {pending ? "Salvando…" : "Salvar"}
-          </button>
-        </>
+        ) : (
+          <>
+            <button type="button" className="btn out" disabled={pending} onClick={onClose}>
+              Cancelar
+            </button>
+            <button type="button" className="btn" disabled={pending || uploading} onClick={() => void submit()}>
+              {pending ? "Salvando…" : "Salvar"}
+            </button>
+          </>
+        )
       }
     >
+      {picking ? (
+        <CommunityPostPicker onPick={pickPost} />
+      ) : (
+      <>
+      <button type="button" className="btn out adm-btn-sm adm-picker-open" disabled={pending} onClick={() => setPicking(true)}>
+        Escolher da comunidade
+      </button>
+      {posterNote ? (
+        <small className="adm-media-err" role="status">
+          Esse vídeo não tem poster: envie uma foto vertical para continuar.
+        </small>
+      ) : null}
       <div className="adm-field">
         <label htmlFor="insp-title">Título</label>
         <input id="insp-title" className="adm-input" value={title} maxLength={LESSON_TITLE_MAX} aria-invalid={touched && titleBad ? true : undefined} data-adm-autofocus onChange={(event) => setTitle(event.target.value)} />
@@ -88,6 +120,8 @@ export function InspirationDialog({ inspiration, onClose }: { inspiration?: Comm
           <small>Nome da marca quando não há autor.</small>
         </div>
       </div>
+      </>
+      )}
     </AdminDialog>
   );
 }
