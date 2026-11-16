@@ -5,34 +5,69 @@ import type { CampaignGroupParticipant } from "@/shared/services/campaign-groups
 
 import { GroupEntryOptions, isCampaignApproved, type GroupEntryValue } from "./group-entry-options";
 
-/** "Editar grupo": as opções de entrada. O Salvar manda sempre os dois campos juntos (a API sobrescreve o que faltar). */
+export interface GroupEditValue extends GroupEntryValue {
+  name: string;
+  description: string;
+}
+
+/**
+ * "Editar grupo": nome, descrição e as opções de entrada. O Salvar manda sempre os três campos de entrada juntos (a API
+ * sobrescreve o que faltar com o padrão).
+ */
 export function GroupEditDialog({
-  groupName,
   initial,
   saving,
   onSave,
   onClose,
 }: {
-  groupName: string;
-  initial: GroupEntryValue;
+  initial: GroupEditValue;
   saving: boolean;
-  onSave: (value: GroupEntryValue) => void;
+  onSave: (value: GroupEditValue) => void;
   onClose: () => void;
 }) {
   const [value, setValue] = useState(initial);
-  const unchanged = value.autoJoin === initial.autoJoin && value.autoJoinOnApplication === initial.autoJoinOnApplication && value.removeOnExit === initial.removeOnExit;
+  const name = value.name.trim();
+  const description = value.description.trim();
+  const valid = name.length >= 2 && name.length <= 80 && description.length >= 2 && description.length <= 2000;
+  const unchanged =
+    name === initial.name &&
+    description === initial.description &&
+    value.autoJoin === initial.autoJoin &&
+    value.autoJoinOnApplication === initial.autoJoinOnApplication &&
+    value.removeOnExit === initial.removeOnExit;
   return (
     <Modal title="Editar grupo" onClose={onClose} panelClassName="max-w-xl">
-      <p className="gdlg-sub">{groupName}</p>
-      <GroupEntryOptions {...value} onChange={setValue} disabled={saving} />
-      <div className="gdlg-act">
-        <button type="button" className="btn out" onClick={onClose} disabled={saving}>
-          Cancelar
-        </button>
-        <button type="button" className="btn" onClick={() => onSave(value)} disabled={saving || unchanged}>
-          {saving ? "Salvando…" : "Salvar"}
-        </button>
-      </div>
+      <form
+        className="gdlg-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (valid && !unchanged && !saving) onSave({ ...value, name, description });
+        }}
+      >
+        <label className="gdlg-f">
+          <span>Nome</span>
+          <input maxLength={80} value={value.name} disabled={saving} autoComplete="off" onChange={(event) => setValue({ ...value, name: event.target.value })} />
+        </label>
+        <label className="gdlg-f">
+          <span>Descrição</span>
+          <textarea maxLength={2000} value={value.description} disabled={saving} onChange={(event) => setValue({ ...value, description: event.target.value })} />
+        </label>
+        <GroupEntryOptions
+          autoJoin={value.autoJoin}
+          autoJoinOnApplication={value.autoJoinOnApplication}
+          removeOnExit={value.removeOnExit}
+          onChange={(entry) => setValue({ ...value, ...entry })}
+          disabled={saving}
+        />
+        <div className="gdlg-act">
+          <button type="button" className="btn out" onClick={onClose} disabled={saving}>
+            Cancelar
+          </button>
+          <button type="submit" className="btn" disabled={saving || unchanged || !valid}>
+            {saving ? "Salvando…" : "Salvar"}
+          </button>
+        </div>
+      </form>
     </Modal>
   );
 }

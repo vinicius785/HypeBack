@@ -955,7 +955,7 @@
 .pv .gdesc { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
 /* Participação: número grande que sobe, barra que enche e dois blocos de fato. */
-.pv .gsum { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+.pv .gsum { margin-top: 6px; padding-top: 16px; border-top: 1.5px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
 .pv .gsum-n { display: flex; align-items: baseline; gap: 8px; }
 .pv .gsum-n b { font-size: 44px; font-weight: 600; letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; }
 .pv .gsum-n span { flex: 1; min-width: 0; color: var(--muted); font-size: 13px; }
@@ -971,7 +971,7 @@
 .pv .gtile b.on i { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.18); }
 
 /* Ações: ver participantes é o principal; adicionar leva direto aos que faltam. */
-.pv .gcard-act { display: flex; gap: 8px; }
+.pv .gcard-act { display: flex; gap: 8px; margin-top: auto; }
 .pv .gview { flex: 1; min-width: 0; height: 48px; display: inline-flex; align-items: center; gap: 10px; padding: 0 16px; border-radius: 99px; background: var(--ink); color: #fff; font-size: 14px; font-weight: 600; transition: background .25s, transform .2s var(--ease); }
 .pv .gview span { flex: 1; text-align: left; white-space: nowrap; }
 .pv .gview > .ico:last-child { transition: transform .3s var(--ease); }
@@ -1292,7 +1292,13 @@
 /* dentro do formulário de criar, `.gnew-f label` força coluna e fonte pequena: o seletor volta ao próprio layout */
 .pv .gnew-f .gent-seg label { flex-direction: row; gap: 6px; }
 .pv .gnew-f .gent-seg label span { font-size: inherit; font-weight: inherit; color: inherit; }
-.pv .gdlg-sub { margin: -12px 0 20px; color: var(--muted); font-size: 13.5px; }
+.pv .gdlg-form { display: flex; flex-direction: column; gap: 18px; }
+.pv .gdlg-f { display: flex; flex-direction: column; gap: 6px; }
+.pv .gdlg-f span { font-size: 12px; font-weight: 600; color: #52525b; }
+.pv .gdlg-f input, .pv .gdlg-f textarea { font: inherit; font-size: 14px; border: 1px solid transparent; background: var(--bg); border-radius: 16px; padding: 12px 16px; outline: none; resize: vertical; transition: border-color .2s, background .2s, box-shadow .2s; }
+.pv .gdlg-f textarea { min-height: 96px; }
+.pv .gdlg-f input:focus, .pv .gdlg-f textarea:focus { background: #fff; border-color: #0a0a0a; box-shadow: 0 0 0 4px rgba(10, 10, 10, .06); }
+.pv .gdlg-form .gdlg-act { margin-top: 2px; }
 .pv .gdlg-txt { margin: 0 0 4px; font-size: 14.5px; line-height: 1.55; }
 .pv .gdlg-act { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 .pv .gdlg-sum { display: flex; flex-wrap: wrap; gap: 8px 24px; list-style: none; margin: 0 0 14px; padding: 0; font-size: 13.5px; color: var(--muted); }
@@ -1302,6 +1308,14 @@
 .pv .gdlg-fail li { padding: 10px 0; border-top: 1.5px solid var(--line); }
 .pv .gdlg-fail b { display: block; font-size: 13.5px; }
 .pv .gdlg-fail small { color: var(--muted); font-size: 12.5px; }
-.pv .gsp[data-approved="false"] { background: var(--bg); color: var(--muted); box-shadow: inset 0 0 0 1.5px var(--line); }
+.pv .gpr-st { font-weight: 600; }
+.pv .gpr-st[data-approved="false"] { color: #9a3412; }
 .pv .gnote { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 16px; padding: 14px 20px; border-radius: 20px; background: #fff; font-size: 13.5px; }
 .pv .gnote > span { flex: 1; min-width: 220px; }
+.pv .gdlg-act .btn:disabled { opacity: .4; cursor: not-allowed; }
+/* "Criar novo grupo" (mais de um grupo): agora tem as opções de entrada, então o formulário é uma coluna, não uma linha só */
+.pv .gnew.more { align-items: start; }
+.pv .gnew.more .gnew-f { display: flex; flex-direction: column; align-items: stretch; gap: 14px; }
+.pv .gnew.more .gnew-f input { height: auto; min-height: 0; }
+.pv .gnew.more .gnew-f textarea { height: auto; min-height: 84px; resize: vertical; }
+.pv .gnew.more .gnew-f .btn { height: 46px; align-self: flex-start; }

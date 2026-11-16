@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 import { Av, I } from "@/components/prototype/ui";
 import { getUploadUrl } from "@/lib/utils/api";
+import { updateGroup } from "@/shared/services/groups";
 import {
   bulkAddCampaignGroupMembers,
   createCampaignGroupPost,
@@ -31,6 +32,7 @@ import {
   GroupAddSummary,
   GroupEditDialog,
   type GroupAddResult,
+  type GroupEditValue,
 } from "./group-dialogs";
 import {
   campaignStatusLabel,
@@ -336,13 +338,24 @@ function CampaignGroupPanel({
   });
 
   const configMutation = useMutation({
-    // Sempre os dois campos juntos: se um faltar, a API assume o padrão e sobrescreve o valor atual.
-    mutationFn: (v: GroupEntryValue) =>
-      updateCampaignGroupLink(campaignId, group.id, {
-        auto_join_on_approval: v.autoJoin,
-        auto_join_on_application: v.autoJoinOnApplication,
-        remove_on_campaign_exit: v.removeOnExit,
-      }),
+    mutationFn: async (v: GroupEditValue) => {
+      // Nome e descrição são do grupo da comunidade (mesmo id público); a entrada é do vínculo com a campanha.
+      if (v.name !== group.name || v.description !== group.description) {
+        await updateGroup(group.id, { name: v.name, description: v.description });
+      }
+      // Sempre os três campos juntos: se um faltar, a API assume o padrão e sobrescreve o valor atual.
+      if (
+        v.autoJoin !== group.auto_join_on_approval ||
+        v.autoJoinOnApplication !== autoJoinOnApplication ||
+        v.removeOnExit !== group.remove_on_campaign_exit
+      ) {
+        await updateCampaignGroupLink(campaignId, group.id, {
+          auto_join_on_approval: v.autoJoin,
+          auto_join_on_application: v.autoJoinOnApplication,
+          remove_on_campaign_exit: v.removeOnExit,
+        });
+      }
+    },
     onSuccess: async () => {
       setEditing(false);
       await queryClient.invalidateQueries({ queryKey: GROUPS_KEY(campaignId) });
@@ -737,14 +750,20 @@ function CampaignGroupPanel({
                         <div className="gpr-m">
                           <b title={row.name}>{row.name}</b>
                           <small title={row.sync_error ?? row.email}>
-                            {st === "failed" && attempts > 0 ? `${attempts} tentativa${attempts > 1 ? "s" : ""} sem sucesso` : row.email}
+                            {st === "failed" && attempts > 0 ? (
+                              `${attempts} tentativa${attempts > 1 ? "s" : ""} sem sucesso`
+                            ) : (
+                              <>
+                                <span className="gpr-st" data-approved={isCampaignApproved(row.campaign_status)}>
+                                  {campaignStatusLabel(row.campaign_status)}
+                                </span>
+                                {" · "}
+                                {row.email}
+                              </>
+                            )}
                           </small>
                         </div>
-                        {!row.is_member ? (
-                          <span className="gsp" data-approved={isCampaignApproved(row.campaign_status)}>
-                            {campaignStatusLabel(row.campaign_status)}
-                          </span>
-                        ) : null}
+
                         {st === "joined" ? (
                           <span className="gsp joined">
                             <i />
@@ -973,8 +992,7 @@ function CampaignGroupPanel({
       </div>
       {editing ? (
         <GroupEditDialog
-          groupName={group.name}
-          initial={{ autoJoin: group.auto_join_on_approval, autoJoinOnApplication, removeOnExit: group.remove_on_campaign_exit }}
+          initial={{ name: group.name, description: group.description, autoJoin: group.auto_join_on_approval, autoJoinOnApplication, removeOnExit: group.remove_on_campaign_exit }}
           saving={configMutation.isPending}
           onSave={(value) => configMutation.mutate(value)}
           onClose={() => setEditing(false)}

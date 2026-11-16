@@ -4,10 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as service from "@/shared/services/campaign-groups";
+import * as groupsService from "@/shared/services/groups";
 
 import { GroupsTab } from "./groups-tab";
 
 vi.mock("@/shared/services/campaign-groups");
+vi.mock("@/shared/services/groups");
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const group: service.CampaignCommunityGroup = {
@@ -91,6 +93,21 @@ describe("grupos da campanha", () => {
     expect(within(dialog).getByText(/Vale só para inscrições novas/)).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(service.updateCampaignGroupLink).toHaveBeenCalledWith("7", "g1", { auto_join_on_approval: false, auto_join_on_application: true, remove_on_campaign_exit: false }));
+  });
+
+  it("Editar grupo também edita nome e descrição, sem reenviar a entrada se ela não mudou", async () => {
+    vi.mocked(groupsService.updateGroup).mockResolvedValue({} as never);
+    const user = userEvent.setup();
+    renderTab();
+    await user.click(await screen.findByRole("button", { name: /Configurar o grupo Creators/ }));
+    await user.click(screen.getByRole("menuitem", { name: /Editar grupo/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Editar grupo" });
+    const nameField = within(dialog).getByLabelText("Nome");
+    await user.clear(nameField);
+    await user.type(nameField, "Creators VIP");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(groupsService.updateGroup).toHaveBeenCalledWith("g1", { name: "Creators VIP", description: "Grupo da campanha" }));
+    expect(service.updateCampaignGroupLink).not.toHaveBeenCalled();
   });
 
   it("avisa quantos dos adicionados não foram aprovados antes de enviar", async () => {
