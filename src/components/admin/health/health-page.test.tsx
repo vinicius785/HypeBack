@@ -139,17 +139,15 @@ describe("Saúde: alertas", () => {
     expect(order.indexOf("Alertas: Atenção")).toBeLessThan(order.indexOf("Alertas: Informativo"));
   });
 
-  it("a gravidade é dita uma vez: o cartão não tem selo de gravidade nem de tipo (o grupo e a seção já dizem)", async () => {
+  it("como no Dashboard, a linha diz a gravidade em texto pequeno; não há selo nem tipo", async () => {
     renderHealth();
     const card = await screen.findByRole("article", { name: "Comprometido diverge das reservas" });
-    expect(within(card).queryByText("Crítico")).not.toBeInTheDocument();
+    expect(within(card).getByText("Crítico")).toHaveAttribute("data-severity", "critical");
     expect(within(card).queryByText("Alerta")).not.toBeInTheDocument();
     expect(card.querySelector(".adm-badge")).toBeNull();
-    // o título do grupo é a única menção
-    expect(within(screen.getByRole("region", { name: "Alertas: Crítico" })).getAllByText(/Crítico/)).toHaveLength(1);
   });
 
-  it("regra e origem ficam recolhidas em 'Como é calculado' (o texto continua lá); os exemplos ficam à vista", async () => {
+  it("descrição, exemplos, regra e origem ficam recolhidos em 'Como é calculado'; à vista, título, contagem e a seta que leva à lista", async () => {
     renderHealth();
     const card = await screen.findByRole("article", { name: "Comprometido diverge das reservas" });
     const details = card.querySelector("details")!;
@@ -159,20 +157,19 @@ describe("Saúde: alertas", () => {
     expect(within(details).getByText("workspace_balances.committed_cents diferente da soma das reservas do ledger")).toBeInTheDocument();
     expect(within(details).getByText("Origem")).toBeInTheDocument();
     expect(within(details).getByText("workspace_balances, balance_entries")).toBeInTheDocument();
-    // em primeiro plano (fora do detalhe): título, contagem, exemplos e "Ver todos"
-    expect(within(card).getByRole("heading", { level: 4, name: "Comprometido diverge das reservas" })).toBeInTheDocument();
-    expect(within(card).getByRole("link", { name: "Ver todos" }).closest("details")).toBeNull();
+    expect(within(details).getByText(/Exemplos/)).toBeInTheDocument();
+    // em primeiro plano (fora do detalhe): título, contagem e a linha que leva à lista
+    expect(within(card).getByRole("heading", { level: 4, name: "Comprometido diverge das reservas" }).closest("details")).toBeNull();
+    expect(within(card).getByRole("link", { name: /Ver todos/ }).closest("details")).toBeNull();
     expect(within(card).getByText("7").closest("details")).toBeNull();
-    expect(within(card).getByText(/Exemplos \(2 de 7\)/).closest("details")).toBeNull();
 
     await userEvent.click(within(details).getByText("Como é calculado"));
     expect(details).toHaveAttribute("open");
   });
 
-  it("mostra os exemplos (só rótulos): os que têm tela viram link, e 'Ver todos' leva à lista", async () => {
+  it("mostra os exemplos (só rótulos): os que têm tela viram link, e a linha leva à lista", async () => {
     renderHealth();
     const card = await screen.findByRole("article", { name: "Comprometido diverge das reservas" });
-    // sem abrir nada: quem é afetado é o que a pessoa age em cima
     const sample = within(card).getByRole("link", { name: /Café Serra Verde/ });
     expect(sample).toHaveAttribute("href", "/admin/workspaces/7a1e0000-0000-4000-8000-000000000002");
     expect(within(card).getByText("R$ 250,00 de diferença")).toBeInTheDocument();
@@ -180,7 +177,7 @@ describe("Saúde: alertas", () => {
     expect(within(card).getByText("Cobrança pay_8a7b").closest("a")).toBeNull();
     expect(within(card).getByText(/Exemplos \(2 de 7\)/)).toBeInTheDocument();
 
-    const all = within(card).getByRole("link", { name: "Ver todos" });
+    const all = within(card).getByRole("link", { name: /Ver todos/ });
     expect(all.getAttribute("href")).toContain("/admin/workspaces");
     expect(all.getAttribute("href")).toContain("status=active");
   });
@@ -188,7 +185,7 @@ describe("Saúde: alertas", () => {
   it("alerta sem link não mostra 'Ver todos'", async () => {
     renderHealth();
     const card = await screen.findByRole("article", { name: "Cobranças pendentes há muito tempo" });
-    expect(within(card).queryByRole("link", { name: "Ver todos" })).not.toBeInTheDocument();
+    expect(within(card).queryByRole("link", { name: /Ver todos/ })).not.toBeInTheDocument();
   });
 
   it("todos os alertas ok: diz que não há alerta ativo", async () => {
@@ -209,10 +206,9 @@ describe("Saúde: sugestões", () => {
     expect(within(details).getByText("Limite e regra")).toBeInTheDocument();
     expect(within(details).getByText(/Sem campanha nem aporte há 30 dias ou mais/)).toBeInTheDocument();
     expect(within(details).getByText("Origem")).toBeInTheDocument();
-    expect(within(details).getByText("Gravidade")).toBeInTheDocument();
-    expect(within(details).getByText("Informativo")).toBeInTheDocument();
+    expect(within(row).getByText("Informativo")).toHaveAttribute("data-severity", "info");
     expect(within(row).getByText("12").closest("details")).toBeNull();
-    expect(within(row).getByRole("link", { name: "Ver todos" }).getAttribute("href")).toContain("inactive=");
+    expect(within(row).getByRole("link", { name: /Ver todos/ }).getAttribute("href")).toContain("inactive=");
   });
 
   it("alerta e sugestão não se misturam: a sugestão não aparece entre os alertas e vice-versa", async () => {
@@ -224,7 +220,7 @@ describe("Saúde: sugestões", () => {
     expect(screen.queryByRole("listitem", { name: "Comprometido diverge das reservas" })).not.toBeInTheDocument();
   });
 
-  it("os exemplos da sugestão ficam à vista, fora do detalhe recolhido", async () => {
+  it("os exemplos da sugestão ficam no 'Como é calculado'", async () => {
     respond([
       makeAlert({
         id: "sug-2",
@@ -239,7 +235,7 @@ describe("Saúde: sugestões", () => {
     renderHealth();
     const row = await screen.findByRole("listitem", { name: "Workspaces sem atividade" });
     const sample = within(row).getByRole("link", { name: /Café Serra Verde/ });
-    expect(sample.closest("details")).toBeNull();
+    expect(sample.closest("details")).not.toBeNull();
   });
 
   it("nenhuma sugestão: diz isso", async () => {
