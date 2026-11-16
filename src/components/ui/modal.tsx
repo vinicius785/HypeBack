@@ -28,6 +28,9 @@ export function Modal({ title, onClose, children, panelClassName }: ModalProps) 
       onClick={handleBackdropClick}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         className={clsx(
           "w-full bg-white p-8 rounded-[32px] max-h-[90vh] overflow-y-auto shadow-xl",
           panelClassName ?? "max-w-4xl"

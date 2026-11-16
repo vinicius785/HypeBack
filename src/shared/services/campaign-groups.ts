@@ -1,3 +1,4 @@
+import { shieldFetch } from "@/lib/admin/shield";
 import {
   getApiUrl,
   getAuthToken,
@@ -11,6 +12,8 @@ export interface CampaignCommunityGroup {
   cover_url?: string | null;
   members_count: number;
   auto_join_on_approval: boolean;
+  /** Entra no instante em que se inscreve pelo app, sem esperar aprovação. Ausente em respostas antigas = desligada. */
+  auto_join_on_application?: boolean;
   remove_on_campaign_exit: boolean;
   share_url: string;
 }
@@ -21,6 +24,7 @@ export interface CampaignGroupParticipant {
   name: string;
   email: string;
   campaign_status: string;
+  group_member_id?: number | null;
   is_member: boolean;
   sync_status?: "joined" | "failed" | "removed" | null;
   sync_attempts?: number | null;
@@ -88,10 +92,11 @@ export async function createCampaignGroup(
     name: string;
     description: string;
     auto_join_on_approval: boolean;
+    auto_join_on_application: boolean;
     remove_on_campaign_exit: boolean;
   },
 ): Promise<CampaignCommunityGroup> {
-  const response = await fetch(getApiUrl(base(campaignId)), {
+  const response = await shieldFetch(getApiUrl(base(campaignId)), {
     method: "POST",
     headers: headers(true),
     body: JSON.stringify(payload),
@@ -106,12 +111,14 @@ export async function createCampaignGroup(
 export async function updateCampaignGroupLink(
   campaignId: string,
   groupId: string,
+  // Os TRÊS campos sempre juntos: o que faltar a API assume no padrão e sobrescreve o valor atual.
   payload: {
     auto_join_on_approval: boolean;
+    auto_join_on_application: boolean;
     remove_on_campaign_exit: boolean;
   },
-): Promise<void> {
-  const response = await fetch(
+): Promise<CampaignCommunityGroup> {
+  const response = await shieldFetch(
     getApiUrl(`${base(campaignId)}/${encodeURIComponent(groupId)}`),
     {
       method: "PUT",
@@ -119,7 +126,11 @@ export async function updateCampaignGroupLink(
       body: JSON.stringify(payload),
     },
   );
-  await parse(response, "Falha ao salvar configuração do grupo");
+  const body = await parse<{ data: CampaignCommunityGroup }>(
+    response,
+    "Falha ao salvar configuração do grupo",
+  );
+  return body.data;
 }
 
 /**
@@ -137,7 +148,7 @@ export async function uploadCampaignGroupCover(
   const form = new FormData();
   form.append("file", file);
 
-  const response = await fetch(
+  const response = await shieldFetch(
     getApiUrl(`${base(campaignId)}/${encodeURIComponent(groupId)}/cover`),
     {
       method: "POST",
@@ -182,24 +193,31 @@ export async function listCampaignGroupParticipants(
   );
 }
 
-export async function bulkAddCampaignGroupMembers(
-  campaignId: string,
-  groupId: string,
-  campaignUserIds: number[],
-): Promise<{
-  data: Array<{
-    campaign_user_id: number;
-    status: "joined" | "already_member" | "failed";
-    error?: string;
-  }>;
+/** Resultado por pessoa; o motivo da falha pode vir em `error`, `message` ou `sync_error`. */
+export interface BulkAddItem {
+  campaign_user_id: number;
+  status: "joined" | "already_member" | "failed";
+  error?: string | null;
+  message?: string | null;
+  sync_error?: string | null;
+}
+
+export interface BulkAddResult {
+  data: BulkAddItem[];
   meta: {
     requested: number;
     joined: number;
     already_member: number;
     failed: number;
   };
-}> {
-  const response = await fetch(
+}
+
+export async function bulkAddCampaignGroupMembers(
+  campaignId: string,
+  groupId: string,
+  campaignUserIds: number[],
+): Promise<BulkAddResult> {
+  const response = await shieldFetch(
     getApiUrl(`${base(campaignId)}/${encodeURIComponent(groupId)}/members/bulk`),
     {
       method: "POST",
@@ -276,7 +294,7 @@ export async function uploadCampaignGroupAttachment(
   const form = new FormData();
   form.append("file", file);
 
-  const response = await fetch(
+  const response = await shieldFetch(
     getApiUrl(`${base(campaignId)}/${encodeURIComponent(groupId)}/posts/attachments`),
     {
       method: "POST",
@@ -310,7 +328,7 @@ export async function createCampaignGroupPost(
           const value = token === "x" ? random : (random & 0x3) | 0x8;
           return value.toString(16);
         });
-  const response = await fetch(
+  const response = await shieldFetch(
     getApiUrl(`${base(campaignId)}/${encodeURIComponent(groupId)}/posts`),
     {
       method: "POST",

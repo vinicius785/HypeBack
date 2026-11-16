@@ -20,9 +20,32 @@ import {
   listCampaignGroups,
   updateCampaignGroupLink,
   uploadCampaignGroupCover,
+  type BulkAddResult,
   type CampaignCommunityGroup,
+  type CampaignGroupParticipant,
 } from "@/shared/services/campaign-groups";
 import { CountUp } from "@/components/home/count-up";
+
+import {
+  GroupAddConfirm,
+  GroupAddSummary,
+  GroupEditDialog,
+  type GroupAddResult,
+} from "./group-dialogs";
+import {
+  campaignStatusLabel,
+  entryModeLabel,
+  GroupEntryOptions,
+  isCampaignApproved,
+  type GroupEntryValue,
+} from "./group-entry-options";
+
+const GROUPS_KEY = (campaignId: string) => ["campaign-community-groups", campaignId] as const;
+
+/** 404: o grupo foi excluído ou desvinculado; some da lista, então basta recarregá-la. */
+function isGroupGone(error: Error): boolean {
+  return (error as Error & { status?: number }).status === 404;
+}
 
 interface GroupsTabProps {
   campaignId: string;
@@ -33,6 +56,10 @@ export function GroupsTab({ campaignId, canWrite }: GroupsTabProps) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [entry, setEntry] = useState<GroupEntryValue>({ autoJoin: true, autoJoinOnApplication: false, removeOnExit: false });
+  // Grupo recém-criado: oferece "Adicionar participantes agora" e, ao aceitar, abre a lista no cartão dele.
+  const [created, setCreated] = useState<CampaignCommunityGroup | null>(null);
+  const [addTarget, setAddTarget] = useState<{ groupId: string; nonce: number } | null>(null);
 
   const groupsQuery = useQuery({
     queryKey: ["campaign-community-groups", campaignId],
@@ -43,15 +70,15 @@ export function GroupsTab({ campaignId, canWrite }: GroupsTabProps) {
       createCampaignGroup(campaignId, {
         name: name.trim(),
         description: description.trim(),
-        auto_join_on_approval: true,
-        remove_on_campaign_exit: false,
+        auto_join_on_approval: entry.autoJoin,
+        auto_join_on_application: entry.autoJoinOnApplication,
+        remove_on_campaign_exit: entry.removeOnExit,
       }),
-    onSuccess: async () => {
+    onSuccess: async (group) => {
       setName("");
       setDescription("");
-      await queryClient.invalidateQueries({
-        queryKey: ["campaign-community-groups", campaignId],
-      });
+      setCreated(group);
+      await queryClient.invalidateQueries({ queryKey: GROUPS_KEY(campaignId) });
       toast.success("Grupo privado criado e vinculado à campanha.");
     },
     onError: (error: Error) => toast.error(error.message),
@@ -123,6 +150,7 @@ export function GroupsTab({ campaignId, canWrite }: GroupsTabProps) {
           placeholder="Objetivo e regras essenciais do grupo"
         />
       </label>
+      <GroupEntryOptions {...entry} onChange={setEntry} disabled={createMutation.isPending} />
       <button
         type="submit"
         className="btn"
@@ -150,12 +178,37 @@ export function GroupsTab({ campaignId, canWrite }: GroupsTabProps) {
         </div>
       ) : (
         <>
+          {created ? (
+            <div className="pv">
+              <div className="gnote" role="status">
+                <span>
+                  <b>{created.name}</b> foi criado. Quem já foi aprovado antes não entra sozinho.
+                </span>
+                {canWrite ? (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => {
+                      setAddTarget({ groupId: created.id, nonce: Date.now() });
+                      setCreated(null);
+                    }}
+                  >
+                    Adicionar participantes agora
+                  </button>
+                ) : null}
+                <button type="button" className="lnk" onClick={() => setCreated(null)}>
+                  Dispensar
+                </button>
+              </div>
+            </div>
+          ) : null}
           {groups.map((group) => (
             <CampaignGroupPanel
               key={group.id}
               campaignId={campaignId}
               group={group}
               canWrite={canWrite}
+              addNonce={addTarget?.groupId === group.id ? addTarget.nonce : 0}
             />
           ))}
           {canWrite && (
@@ -179,21 +232,27 @@ function CampaignGroupPanel({
   campaignId,
   group,
   canWrite,
+  addNonce,
 }: {
   campaignId: string;
   group: CampaignCommunityGroup;
   canWrite: boolean;
+  /** Muda quando a pessoa pede "Adicionar participantes agora" (abre a lista de quem ainda não entrou). */
+  addNonce: number;
 }) {
   const queryClient = useQueryClient();
-  const [autoJoin, setAutoJoin] = useState(group.auto_join_on_approval);
-  const [removeOnExit, setRemoveOnExit] = useState(
-    group.remove_on_campaign_exit,
-  );
+  const autoJoin = group.auto_join_on_approval;
+  const autoJoinOnApplication = group.auto_join_on_application ?? false;
+  const entryLabel = entryModeLabel(autoJoin, autoJoinOnApplication);
+  const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState<CampaignGroupParticipant[] | null>(null);
+  const [summary, setSummary] = useState<GroupAddResult | null>(null);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search.trim());
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  // Guarda a linha inteira (e não só o id): o aviso de "não aprovados" precisa da situação de quem foi marcado.
+  const [selected, setSelected] = useState<Map<number, CampaignGroupParticipant>>(new Map());
   const [postDraft, setPostDraft] = useState("");
   // Participantes abrem por um botão dentro do cartão; o menu "⋯" guarda a configuração do convite.
   const [view, setView] = useState<"sum" | "part">("sum");
@@ -225,12 +284,8 @@ function CampaignGroupPanel({
   }, [menuOpen]);
 
   useEffect(() => {
-    setAutoJoin(group.auto_join_on_approval);
-    setRemoveOnExit(group.remove_on_campaign_exit);
-  }, [group.auto_join_on_approval, group.remove_on_campaign_exit]);
-  useEffect(() => {
     setPage(1);
-    setSelected(new Set());
+    setSelected(new Map());
   }, [deferredSearch, status]);
 
   const participantKey = [
@@ -281,24 +336,32 @@ function CampaignGroupPanel({
   });
 
   const configMutation = useMutation({
-    mutationFn: (v: { auto: boolean; remove: boolean }) =>
+    // Sempre os dois campos juntos: se um faltar, a API assume o padrão e sobrescreve o valor atual.
+    mutationFn: (v: GroupEntryValue) =>
       updateCampaignGroupLink(campaignId, group.id, {
-        auto_join_on_approval: v.auto,
-        remove_on_campaign_exit: v.remove,
+        auto_join_on_approval: v.autoJoin,
+        auto_join_on_application: v.autoJoinOnApplication,
+        remove_on_campaign_exit: v.removeOnExit,
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["campaign-community-groups", campaignId],
-      });
+      setEditing(false);
+      await queryClient.invalidateQueries({ queryKey: GROUPS_KEY(campaignId) });
       toast.success("Configuração do grupo salva.");
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: async (error: Error) => {
+      toast.error(error.message);
+      if (isGroupGone(error)) {
+        setEditing(false);
+        await queryClient.invalidateQueries({ queryKey: GROUPS_KEY(campaignId) });
+      }
+    },
   });
   const bulkMutation = useMutation({
-    mutationFn: (ids: number[]) =>
-      bulkAddCampaignGroupMembers(campaignId, group.id, ids),
-    onSuccess: async (result) => {
-      setSelected(new Set());
+    mutationFn: (people: CampaignGroupParticipant[]) =>
+      bulkAddCampaignGroupMembers(campaignId, group.id, people.map((person) => person.campaign_user_id)),
+    onSuccess: async (result, people) => {
+      setSelected(new Map());
+      setConfirming(null);
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["campaign-community-group-participants", campaignId, group.id],
@@ -307,14 +370,14 @@ function CampaignGroupPanel({
           queryKey: ["campaign-community-groups", campaignId],
         }),
       ]);
-      const summary = `${result.meta.joined} incluído(s), ${result.meta.already_member} já estava(m) no grupo`;
-      if (result.meta.failed > 0) {
-        toast.error(`${summary} e ${result.meta.failed} falha(s).`);
-      } else {
-        toast.success(summary);
-      }
+      if (result.meta.failed > 0) setSummary(summarize(result, people));
+      else toast.success(`${result.meta.joined} incluído(s), ${result.meta.already_member} já estava(m) no grupo`);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: async (error: Error) => {
+      toast.error(error.message);
+      setConfirming(null);
+      if (isGroupGone(error)) await queryClient.invalidateQueries({ queryKey: GROUPS_KEY(campaignId) });
+    },
   });
   const postMutation = useMutation({
     mutationFn: async () => {
@@ -369,13 +432,13 @@ function CampaignGroupPanel({
     selectableIds.every((id) => selected.has(id));
 
   const toggleAll = (checked: boolean) => {
-    setSelected(checked ? new Set(selectableIds) : new Set());
+    setSelected(checked ? new Map(rows.filter((row) => !row.is_member).map((row) => [row.campaign_user_id, row])) : new Map());
   };
-  const toggleOne = (id: number, checked: boolean) => {
+  const toggleOne = (row: CampaignGroupParticipant, checked: boolean) => {
     setSelected((current) => {
-      const next = new Set(current);
-      if (checked) next.add(id);
-      else next.delete(id);
+      const next = new Map(current);
+      if (checked) next.set(row.campaign_user_id, row);
+      else next.delete(row.campaign_user_id);
       return next;
     });
   };
@@ -386,17 +449,6 @@ function CampaignGroupPanel({
     } catch {
       toast.error("Não foi possível copiar o link.");
     }
-  };
-
-  const toggleConfig = (
-    next: { auto_join_on_approval?: boolean; remove_on_campaign_exit?: boolean },
-  ) => {
-    if (!canWrite || configMutation.isPending) return;
-    const a = next.auto_join_on_approval ?? autoJoin;
-    const r = next.remove_on_campaign_exit ?? removeOnExit;
-    setAutoJoin(a);
-    setRemoveOnExit(r);
-    configMutation.mutate({ auto: a, remove: r });
   };
 
   const canSend = (postDraft.trim().length > 0 || files.length > 0) && !postMutation.isPending;
@@ -469,6 +521,12 @@ function CampaignGroupPanel({
     setStatus("pending");
     setView("part");
   };
+  useEffect(() => {
+    if (addNonce > 0) {
+      setStatus("pending");
+      setView("part");
+    }
+  }, [addNonce]);
   const pctIn = allTotal ? Math.min(100, Math.round((joinedCount / allTotal) * 100)) : 0;
   const missing = allTotal !== undefined ? Math.max(0, allTotal - joinedCount) : undefined;
 
@@ -499,39 +557,21 @@ function CampaignGroupPanel({
                 </button>
                 {menuOpen ? (
                   <div className="cfm right gm" role="menu">
-                    <p className="gm-h">Convite e entrada</p>
-                    <button
-                      type="button"
-                      role="menuitemcheckbox"
-                      aria-checked={autoJoin}
-                      className="gm-row"
-                      disabled={!canWrite}
-                      onClick={() => toggleConfig({ auto_join_on_approval: !autoJoin })}
-                    >
-                      <span>
-                        <b>Entrada automática</b>
-                        <small>Quem for aprovado entra sozinho. A aprovação não falha se o grupo estiver indisponível.</small>
-                      </span>
-                      <i className={`tgl${autoJoin ? " on" : ""}`} aria-hidden="true">
-                        <i />
-                      </i>
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitemcheckbox"
-                      aria-checked={removeOnExit}
-                      className="gm-row"
-                      disabled={!canWrite}
-                      onClick={() => toggleConfig({ remove_on_campaign_exit: !removeOnExit })}
-                    >
-                      <span>
-                        <b>Remover ao sair da campanha</b>
-                        <small>Desligado, mantém o participante no grupo.</small>
-                      </span>
-                      <i className={`tgl${removeOnExit ? " on" : ""}`} aria-hidden="true">
-                        <i />
-                      </i>
-                    </button>
+                    <p className="gm-h">Entrada: {entryLabel.toLowerCase()}</p>
+                    {canWrite ? (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="gm-it"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setEditing(true);
+                        }}
+                      >
+                        <I n="gear" cls="sm" />
+                        Editar grupo
+                      </button>
+                    ) : null}
                     <hr />
                     <button
                       type="button"
@@ -582,13 +622,13 @@ function CampaignGroupPanel({
                 <b>
                   <CountUp value={joinedCount} />
                 </b>
-                <span>{allTotal !== undefined ? `de ${allTotal} aprovados no grupo` : "no grupo"}</span>
+                <span>{allTotal !== undefined ? `de ${allTotal} participantes no grupo` : "no grupo"}</span>
                 {allTotal ? <em>{pctIn}%</em> : null}
               </div>
               <div
                 className="gsum-bar"
                 role="progressbar"
-                aria-label="Aprovados que já entraram no grupo"
+                aria-label="Participantes que já entraram no grupo"
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={pctIn}
@@ -603,10 +643,10 @@ function CampaignGroupPanel({
                 <b>{missing === undefined ? "—" : <CountUp value={missing} />}</b>
               </div>
               <div className="gtile">
-                <small>Entrada automática</small>
-                <b className={autoJoin ? "on" : ""}>
+                <small>Entrada</small>
+                <b className={autoJoin || autoJoinOnApplication ? "on" : ""}>
                   <i aria-hidden="true" />
-                  {autoJoin ? "Ligada" : "Desligada"}
+                  {entryLabel}
                 </b>
               </div>
             </div>
@@ -634,7 +674,7 @@ function CampaignGroupPanel({
               <div>
                 <b>Participantes</b>
                 <small>
-                  {joinedCount} no grupo{allTotal !== undefined ? ` · ${allTotal} aprovados` : ""}
+                  {joinedCount} no grupo{allTotal !== undefined ? ` · ${allTotal} participantes` : ""}
                 </small>
               </div>
             </header>
@@ -689,7 +729,7 @@ function CampaignGroupPanel({
                               type="checkbox"
                               aria-label={`Selecionar ${row.name}`}
                               checked={selected.has(row.campaign_user_id)}
-                              onChange={(event) => toggleOne(row.campaign_user_id, event.target.checked)}
+                              onChange={(event) => toggleOne(row, event.target.checked)}
                             />
                           ) : null}
                         </span>
@@ -700,6 +740,11 @@ function CampaignGroupPanel({
                             {st === "failed" && attempts > 0 ? `${attempts} tentativa${attempts > 1 ? "s" : ""} sem sucesso` : row.email}
                           </small>
                         </div>
+                        {!row.is_member ? (
+                          <span className="gsp" data-approved={isCampaignApproved(row.campaign_status)}>
+                            {campaignStatusLabel(row.campaign_status)}
+                          </span>
+                        ) : null}
                         {st === "joined" ? (
                           <span className="gsp joined">
                             <i />
@@ -711,7 +756,7 @@ function CampaignGroupPanel({
                             className="gpr-a"
                             disabled={bulkMutation.isPending}
                             aria-label={`${st === "failed" ? "Tentar de novo" : "Incluir"} ${row.name}`}
-                            onClick={() => bulkMutation.mutate([row.campaign_user_id])}
+                            onClick={() => setConfirming([row])}
                           >
                             <I n={st === "failed" ? "refresh" : "plus"} cls="sm" />
                             {st === "failed" ? "Tentar" : "Incluir"}
@@ -746,7 +791,7 @@ function CampaignGroupPanel({
               <span className="gbc">{selected.size}</span>
               <b>selecionado{selected.size > 1 ? "s" : ""}</b>
               <span style={{ flex: 1 }} />
-              <button type="button" className="lnk" tabIndex={selected.size ? 0 : -1} onClick={() => setSelected(new Set())}>
+              <button type="button" className="lnk" tabIndex={selected.size ? 0 : -1} onClick={() => setSelected(new Map())}>
                 Limpar
               </button>
               <button
@@ -754,10 +799,10 @@ function CampaignGroupPanel({
                 className="gbtn"
                 tabIndex={selected.size ? 0 : -1}
                 disabled={bulkMutation.isPending}
-                onClick={() => bulkMutation.mutate([...selected])}
+                onClick={() => setConfirming([...selected.values()])}
               >
                 <I n="plus" cls="sm" />
-                {bulkMutation.isPending ? "Adicionando…" : "Incluir no grupo"}
+                Adicionar selecionados ({selected.size})
               </button>
             </div>
           </div>
@@ -926,8 +971,41 @@ function CampaignGroupPanel({
           ) : null}
         </section>
       </div>
+      {editing ? (
+        <GroupEditDialog
+          groupName={group.name}
+          initial={{ autoJoin: group.auto_join_on_approval, autoJoinOnApplication, removeOnExit: group.remove_on_campaign_exit }}
+          saving={configMutation.isPending}
+          onSave={(value) => configMutation.mutate(value)}
+          onClose={() => setEditing(false)}
+        />
+      ) : null}
+      {confirming ? (
+        <GroupAddConfirm
+          people={confirming}
+          adding={bulkMutation.isPending}
+          onConfirm={() => bulkMutation.mutate(confirming)}
+          onClose={() => setConfirming(null)}
+        />
+      ) : null}
+      {summary ? <GroupAddSummary result={summary} onClose={() => setSummary(null)} /> : null}
     </div>
   );
+}
+
+/** Junta o resultado por pessoa com o nome de quem foi enviado, para mostrar o motivo de cada falha. */
+function summarize(result: BulkAddResult, people: CampaignGroupParticipant[]): GroupAddResult {
+  const byId = new Map(people.map((person) => [person.campaign_user_id, person.name]));
+  return {
+    joined: result.meta.joined,
+    alreadyMember: result.meta.already_member,
+    failures: result.data
+      .filter((item) => item.status === "failed")
+      .map((item) => ({
+        name: byId.get(item.campaign_user_id) ?? `Participante ${item.campaign_user_id}`,
+        reason: item.error ?? item.message ?? item.sync_error ?? "Sem detalhe do motivo.",
+      })),
+  };
 }
 
 interface PendingFile {
