@@ -25,6 +25,8 @@ vi.mock("@/lib/admin/admin-client", async (importOriginal) => ({
   adminPatchPlain: mocks.adminPatchPlain,
   adminDelete: mocks.adminDelete,
 }));
+const posts = vi.hoisted(() => ({ list: vi.fn() }));
+vi.mock("@/shared/services/community-posts", () => ({ listCommunityPosts: posts.list, deleteCommunityPost: vi.fn() }));
 vi.mock("@/shared/services/groups", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/shared/services/groups")>()),
   uploadCommunityVideo: mocks.uploadVideo,
@@ -61,6 +63,7 @@ function inspirations() {
 }
 
 beforeEach(() => {
+  posts.list.mockReset();
   Object.values(mocks).forEach((m) => m.mockReset());
   mocks.adminGet.mockImplementation(async (path: string) => (path.includes("inspirations") ? [INSPIRATION] : [LESSON]));
 });
@@ -157,6 +160,36 @@ describe("Aulas", () => {
     expect(path).toBe("/admin/community/lessons/l1");
     expect(body).toMatchObject({ points_cost: 0, video_url: "https://cdn.test/aula.mp4" });
     expect(mocks.adminPatchPlain.mock.calls[0]).toHaveLength(2);
+  });
+});
+
+describe("Inspirações: escolher da comunidade", () => {
+  it("a publicação escolhida preenche foto, vídeo e autor; só entram as que têm mídia", async () => {
+    const user = userEvent.setup();
+    posts.list.mockResolvedValue({
+      items: [
+        { id: "p1", content: "Só texto", image_url: null, video_url: null, video_thumbnail_url: null, author: { id: "u1", name: "Sem Mídia", avatar_url: null }, likes_count: 0, comments_count: 0, created_at: "2026-11-01T10:00:00Z", group: null },
+        { id: "p2", content: "Meu look   do dia", image_url: null, video_url: "https://cdn.test/v.mp4", video_thumbnail_url: "https://cdn.test/poster.jpg", author: { id: "u7", name: "Marina", avatar_url: null }, likes_count: 3, comments_count: 1, created_at: "2026-11-02T10:00:00Z", group: null },
+      ],
+      meta: { next_cursor: null, has_more: false },
+    });
+    mocks.adminPostPlain.mockResolvedValue(INSPIRATION);
+    await inspirations();
+    await user.click(await screen.findByRole("button", { name: "Nova inspiração" }));
+    const dialog = await screen.findByRole("dialog", { name: "Nova inspiração" });
+    await user.click(within(dialog).getByRole("button", { name: "Escolher da comunidade" }));
+
+    const picker = await screen.findByRole("dialog", { name: "Escolher da comunidade" });
+    expect(await within(picker).findByRole("button", { name: "Escolher a publicação de Marina" })).toBeInTheDocument();
+    expect(within(picker).queryByText("Sem Mídia")).not.toBeInTheDocument();
+    await user.click(within(picker).getByRole("button", { name: "Escolher a publicação de Marina" }));
+
+    const form = await screen.findByRole("dialog", { name: "Nova inspiração" });
+    expect(within(form).getByLabelText("Título")).toHaveValue("Meu look do dia");
+    expect(within(form).getByLabelText(/Autor/)).toHaveValue("u7");
+    await user.click(within(form).getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(mocks.adminPostPlain).toHaveBeenCalledTimes(1));
+    expect(mocks.adminPostPlain.mock.calls[0][1]).toMatchObject({ title: "Meu look do dia", image_url: "https://cdn.test/poster.jpg", video_url: "https://cdn.test/v.mp4", author_id: "u7" });
   });
 });
 
