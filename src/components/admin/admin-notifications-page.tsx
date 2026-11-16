@@ -1,3 +1,4 @@
+import { draftFromTarget } from "@/lib/admin/notification-target";
 import { useMemo, useState } from "react";
 
 import { AdminNotificationForm, type AdminNotificationInitial } from "@/components/admin/admin-notification-form";
@@ -68,7 +69,7 @@ export function AdminNotificationsPage() {
       initial: {
         title: n.title,
         body: n.body,
-        ctaUrl: n.cta_url ?? "",
+        target: draftFromTarget(n.target),
         channels: n.channels,
         audience: n.audience,
       },

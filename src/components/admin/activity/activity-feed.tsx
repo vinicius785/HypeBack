@@ -137,7 +137,7 @@ export function ActivityFeed({ filters, period, filtered, onClearFilters }: Acti
   const failedToLoadMore = query.isFetchNextPageError;
 
   return (
-    <div className="adm-act-stack">
+    <div className="adm-act-stack adm-act-feed">
       <AdminSection
         title="Linha do tempo"
         description={

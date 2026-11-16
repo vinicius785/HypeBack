@@ -10,6 +10,7 @@ import {
   isAttackUserProbingAlert,
   isAttackVolumeAlert,
   isSignupDomainClusterAlert,
+  isSignupPatternHoldAlert,
   isShieldActivatedAlert,
   isShieldEndedAlert,
   isShieldReleasedAlert,
@@ -349,6 +350,14 @@ export function describeAlert(alert: SecurityAlert): AlertView | null {
         { label: "Janela", value: d ? `${d.window_minutes} min` : "—" },
       ],
       action: d?.domain ? { label: "Ver cadastros deste domínio", to: "/admin/users", search: { search: `@${d.domain}` } } : undefined,
+    };
+  }
+
+  if (isSignupPatternHoldAlert(alert)) {
+    return {
+      tagIcon: "users",
+      person: { label: "Conta retida:", fallback: "não identificada" },
+      summary: "Cadastro com o formato de e-mail das contas falsas: ficou em análise até a equipe liberar. Reativar a conta libera de vez.",
     };
   }
 

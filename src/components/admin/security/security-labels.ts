@@ -76,6 +76,7 @@ export function kindLabel(kind: string): string | null {
   if (kind === "attack_anonymizer_wave") return "Rede anônima";
   if (kind === "staff_reset_attempt") return "Conta da equipe visada";
   if (kind === "signup_domain_cluster") return "Domínio repetido";
+  if (kind === "signup_pattern_hold") return "Cadastro retido";
   return null;
 }
 
@@ -111,7 +112,7 @@ const KIND_GROUPS: Record<Exclude<KindFilter, "all">, readonly string[]> = {
   admin_action: ["admin_action"],
   attacks: ["attack_ip_denied", "attack_user_probing", "attack_code_guessing", "attack_volume", "attack_enumeration", "attack_anonymizer_wave"],
   staff: ["staff_reset_attempt"],
-  signups: ["signup_wave", "signup_domain_cluster"],
+  signups: ["signup_wave", "signup_domain_cluster", "signup_pattern_hold"],
   shield: ["shield_activated", "shield_ended", "shield_released"],
 };
 

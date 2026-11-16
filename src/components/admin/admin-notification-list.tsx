@@ -1,3 +1,4 @@
+import { describeTarget } from "@/lib/admin/notification-target";
 import { useState, type ReactNode } from "react";
 
 import {
@@ -206,7 +207,7 @@ export function AdminNotificationList({
         columns={2}
         items={[
           { label: "Mensagem", value: <span className="adm-ntf-full">{n.body}</span> },
-          { label: "Link ao tocar", value: n.cta_url },
+          { label: "Ao tocar, abre", value: n.target ? describeTarget(n.target) : n.cta_url || "Lista de notificações" },
           { label: "Público", value: describeAudience(n.audience, nicheName) },
           { label: "Canais", value: channelsOf(n) },
           { label: "Entrega", value: delivery, hint: inAppSummary(stats) || undefined },

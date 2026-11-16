@@ -1493,6 +1493,12 @@ export interface SignupDomainClusterAlert extends SecurityAlertBase {
   };
 }
 
+/** Cadastro com o formato de e-mail das contas falsas (nome.12345@gmail.com): ficou retido, "em análise". Média; alta com 5 ou mais em 24 h. */
+export interface SignupPatternHoldAlert extends SecurityAlertBase {
+  kind: 'signup_pattern_hold';
+  details?: Record<string, unknown> | null;
+}
+
 /** O que a conta vigiada FEZ: o `title` já vem em português; `signal` diz o que foi e `top_routes` as rotas mais chamadas. */
 export type WatchedBehaviorSignal = 'many_joins' | 'social_churn' | 'withdrawal' | 'multi_ip';
 
@@ -1551,6 +1557,7 @@ export type SecurityAlert =
   | ShieldReleasedAlert
   | StaffResetAttemptAlert
   | SignupDomainClusterAlert
+  | SignupPatternHoldAlert
   | UnknownSecurityAlert;
 
 export function isAdminActionAlert(alert: SecurityAlert): alert is AdminActionAlert {
@@ -1615,6 +1622,10 @@ export function isStaffResetAttemptAlert(alert: SecurityAlert): alert is StaffRe
 
 export function isSignupDomainClusterAlert(alert: SecurityAlert): alert is SignupDomainClusterAlert {
   return alert.kind === 'signup_domain_cluster';
+}
+
+export function isSignupPatternHoldAlert(alert: SecurityAlert): alert is SignupPatternHoldAlert {
+  return alert.kind === 'signup_pattern_hold';
 }
 
 export type SecurityAlertStatus = 'unseen' | 'all';

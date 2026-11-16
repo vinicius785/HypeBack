@@ -51,7 +51,7 @@ const CONFIRM_TEXT = /Um envio imediato não pode ser desfeito/;
 type User = ReturnType<typeof userEvent.setup>;
 
 /** Escreve a mensagem e avança até o último passo ("Envio"). */
-async function goToSendStep(user: User) {
+async function goToSendStep(user: User, beforeContinue?: () => Promise<void>) {
   await user.type(
     screen.getByPlaceholderText(/Nova campanha aberta/),
     "Nova campanha aberta",
@@ -60,6 +60,7 @@ async function goToSendStep(user: User) {
     screen.getByPlaceholderText(/Escreva o que os criadores vão ler/),
     "Entre no app e confira.",
   );
+  await beforeContinue?.();
   // O alcance é calculado sozinho (com debounce); só com ele dá para avançar.
   await screen.findByText("1.200 criadores");
   await user.click(screen.getByRole("button", { name: /Continuar/ }));
@@ -136,7 +137,7 @@ describe("AdminNotificationForm — envio", () => {
       payload: {
         title: "Nova campanha aberta",
         body: "Entre no app e confira.",
-        cta_url: null,
+        target: null,
         channels: ["push"],
         audience: { type: "all" },
         scheduled_at: null,
@@ -293,12 +294,38 @@ describe("AdminNotificationForm — diálogo", () => {
     expect(document.body.style.overflow).toBe("hidden");
   });
 
+  it("envia a tela escolhida em \"Ao tocar, abrir\"", async () => {
+    const user = userEvent.setup();
+    render(<AdminNotificationForm onClose={onClose} />);
+    await goToSendStep(user, () => user.selectOptions(screen.getByLabelText(/Ao tocar, abrir/), "wallet"));
+    await user.click(footerButton("Enviar agora"));
+    await user.click(screen.getByRole("button", { name: "Confirmar envio" }));
+    await waitFor(() => expect(createMutate).toHaveBeenCalledTimes(1));
+    expect(createMutate.mock.calls[0][0].payload.target).toEqual({ version: 1, screen: "wallet" });
+  });
+
+  it("link de fora da Hype ou sem https trava o avanço, com o motivo", async () => {
+    const user = userEvent.setup();
+    render(<AdminNotificationForm onClose={onClose} />);
+    await user.type(screen.getByPlaceholderText(/Nova campanha aberta/), "Aviso");
+    await user.type(screen.getByPlaceholderText(/Escreva o que os criadores vão ler/), "Texto");
+    await user.selectOptions(screen.getByLabelText(/Ao tocar, abrir/), "external_url");
+
+    await user.type(screen.getByLabelText("Link"), "https://outro-site.com/x");
+    await user.click(screen.getByRole("button", { name: /Continuar/ }));
+    expect(await screen.findByText(/Só links de hypeapp\.com\.br/)).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText("Link"));
+    await user.type(screen.getByLabelText("Link"), "http://www.hypeapp.com.br/promo");
+    expect(await screen.findByText("Só links https são aceitos.")).toBeInTheDocument();
+  });
+
   it("os campos têm rótulo de verdade e o erro do campo vira a descrição dele", async () => {
     const user = userEvent.setup();
     render(<AdminNotificationForm onClose={onClose} />);
 
     expect(screen.getByLabelText("Mensagem")).toBeInTheDocument();
-    expect(screen.getByLabelText(/Link ao tocar/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Ao tocar, abrir/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Continuar/ }));
 
     const title = screen.getByLabelText("Título");
@@ -354,7 +381,7 @@ describe("AdminNotificationForm — diálogo", () => {
     render(
       <AdminNotificationForm
         onClose={onClose}
-        initial={{ title: "Aviso", body: "Texto", ctaUrl: "", channels: ["push"], audience: { type: "all" } }}
+        initial={{ title: "Aviso", body: "Texto", channels: ["push"], audience: { type: "all" } }}
       />,
     );
     await user.click(document.querySelector(".ovb") as HTMLElement);

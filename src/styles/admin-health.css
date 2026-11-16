@@ -15,60 +15,54 @@
 .pv .adm-health-group h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
 .pv .adm-health-group h3 span { color: var(--adm-text-muted); font-weight: 500; font-variant-numeric: tabular-nums; }
 .pv .adm-health-list { display: flex; flex-direction: column; }
+.pv .adm-health-sugs { list-style: none; margin: 0; padding: 0; }
 
-.pv .adm-health-alert { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 24px; row-gap: 6px; padding: 18px 0; border-top: 1.5px solid var(--line); }
-.pv .adm-health-list > .adm-health-alert:first-child { border-top: 0; padding-top: 12px; }
-.pv .adm-health-main { min-width: 0; }
-.pv .adm-health-alert h4,
-.pv .adm-health-sug h4 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; line-height: 1.35; }
-.pv .adm-health-desc { margin: 4px 0 0; color: var(--adm-text-muted); font-size: 13.5px; line-height: 1.5; }
+/* a linha do "Precisa de atenção" do Dashboard, no claro: ícone da gravidade, título, número e seta */
+.pv .adm-health-alert,
+.pv .adm-health-sug { position: relative; }
+.pv .adm-health-alert + .adm-health-alert::before,
+.pv .adm-health-sug + .adm-health-sug::before { content: ""; position: absolute; top: 0; left: 56px; right: 0; height: 1.5px; background: var(--line); }
+.pv .adm-health-row { display: flex; align-items: center; gap: 14px; margin: 0 -12px; padding: 12px; border-radius: var(--adm-r-md); color: var(--ink); text-decoration: none; transition: background-color .2s; }
+.pv div.adm-health-row { padding-right: 34px; }
+.pv a.adm-health-row:hover { background: var(--bg); }
+.pv a.adm-health-row:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+.pv .adm-health-ic { --sev: var(--adm-text-muted); flex: none; width: 42px; height: 42px; border-radius: var(--adm-r-sm); display: grid; place-items: center; background: color-mix(in srgb, var(--sev) 12%, transparent); color: var(--sev); }
+.pv .adm-health-ic[data-severity="critical"] { --sev: var(--adm-bad); }
+.pv .adm-health-ic[data-severity="warning"] { --sev: var(--adm-warn); }
+.pv .adm-health-ic .ico { width: 18px; height: 18px; }
+.pv .adm-health-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pv .adm-health-tx h4 { margin: 0; font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; line-height: 1.35; }
+.pv .adm-health-tx small { font-size: 12.5px; color: var(--adm-text-muted); }
+.pv .adm-health-tx small[data-severity="critical"] { color: var(--adm-bad); font-weight: 600; }
+.pv .adm-health-tx small[data-severity="warning"] { color: var(--adm-warn); font-weight: 600; }
+.pv .adm-health-c { flex: none; display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; line-height: 1; }
+.pv .adm-health-c b { font-size: 22px; font-weight: 600; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.pv .adm-health-c small { color: var(--adm-text-muted); font-size: 11.5px; }
+.pv .adm-health-ch { flex: none; color: var(--adm-text-muted); transition: transform .25s var(--ease); }
+.pv a.adm-health-row:hover .adm-health-ch { transform: translateX(3px); }
 
-/* contagem e "Ver todos" em primeiro plano, à direita */
-.pv .adm-health-side { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
-.pv .adm-health-count { text-align: right; }
-.pv .adm-health-count b { display: block; font-size: 28px; font-weight: 600; letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; }
-.pv .adm-health-count small { display: block; margin-top: 4px; color: var(--adm-text-muted); font-size: 12px; }
-
-/* regra e origem: recolhidas em "Como é calculado" (o detalhe ocupa a linha de baixo, de ponta a ponta); os exemplos ficam à vista */
-.pv .adm-health-more { grid-column: 1 / -1; }
+/* "Como é calculado": descrição, exemplos, regra e origem, recolhidos sob a linha, alinhados ao título */
+.pv .adm-health-more { padding: 0 0 12px 56px; }
 .pv .adm-health-more > .adm-summary { position: relative; }
 .pv .adm-health-more > .adm-summary::after { content: ""; position: absolute; left: -6px; right: -6px; top: calc((100% - var(--adm-hit)) / 2); bottom: calc((100% - var(--adm-hit)) / 2); }
+.pv .adm-health-desc { margin: 8px 0 0; color: var(--adm-text-muted); font-size: 13.5px; line-height: 1.5; }
 .pv .adm-health-rule { margin: 10px 0 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; padding: 12px 14px; border-radius: var(--adm-r-md); background: var(--bg); font-size: 12.5px; line-height: 1.5; }
 .pv .adm-health-rule dt { color: var(--adm-text-muted); font-weight: 600; }
 .pv .adm-health-rule dd { margin: 0; overflow-wrap: anywhere; }
 
-.pv .adm-health-samples { grid-column: 1 / -1; margin-top: 4px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; font-size: 13px; }
+.pv .adm-health-samples { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; font-size: 13px; }
 .pv .adm-health-samples > span:first-child { color: var(--adm-text-muted); }
 .pv .adm-health-sample { display: inline-flex; align-items: baseline; gap: 6px; color: var(--ink); text-decoration: none; font-weight: 500; overflow-wrap: anywhere; }
 .pv .adm-health-sample small { color: var(--adm-text-muted); font-size: 12px; font-weight: 400; }
 .pv a.adm-health-sample:hover { text-decoration: underline; text-underline-offset: 3px; }
-.pv .adm-health-sample:focus-visible,
-.pv .adm-health-sug-link:focus-visible { outline: none; box-shadow: var(--adm-ring); border-radius: 6px; }
-
-/* ───────────────────────── sugestões (mais discretas) ───────────────────────── */
-
-.pv .adm-health-sugs { list-style: none; margin: 0; padding: 0; }
-.pv .adm-health-sug { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 24px; row-gap: 4px; padding: 14px 0; border-top: 1.5px solid var(--line); }
-.pv .adm-health-sugs > .adm-health-sug:first-child { border-top: 0; padding-top: 4px; }
-.pv .adm-health-sug-main { min-width: 0; }
-.pv .adm-health-sug h4 { font-size: 14px; font-weight: 600; }
-.pv .adm-health-sug .adm-health-desc { font-size: 13px; }
-.pv .adm-health-sug-side { display: flex; flex-direction: column; align-items: flex-end; text-align: right; color: var(--adm-text-muted); font-size: 12.5px; white-space: nowrap; }
-.pv .adm-health-sug-count b { color: var(--ink); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.pv .adm-health-sug-link { display: inline-flex; align-items: center; min-height: var(--adm-hit); color: var(--ink); font-size: 12.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--adm-rule); }
-.pv .adm-health-sug-link:hover { text-decoration-color: var(--ink); }
+.pv .adm-health-sample:focus-visible { outline: none; box-shadow: var(--adm-ring); border-radius: 6px; }
 
 /* ───────────────────────── celular ───────────────────────── */
 
 @media (max-width: 560px) {
-  .pv .adm-health-alert,
-  .pv .adm-health-sug { grid-template-columns: minmax(0, 1fr); }
-  .pv .adm-health-side { flex-direction: row; align-items: center; justify-content: space-between; }
-  .pv .adm-health-count { text-align: left; display: flex; align-items: baseline; gap: 8px; }
-  .pv .adm-health-count small { margin-top: 0; }
+  .pv .adm-health-more { padding-left: 0; }
   .pv .adm-health-rule { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .pv .adm-health-rule dd { margin-bottom: 6px; }
-  .pv .adm-health-sug-side { flex-direction: row; align-items: baseline; justify-content: space-between; text-align: left; }
 }
 
 /* ───────────────────────── ilha do Monitoramento (padrão `.isl` do Gerenciamento) ───────────────────────── */

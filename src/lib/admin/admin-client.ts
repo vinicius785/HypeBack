@@ -506,6 +506,12 @@ export async function adminPatch<T = void>(path: string, body: unknown, options:
   return (json === undefined ? undefined : asEnvelope(json).data) as T;
 }
 
+/** PATCH sem `Idempotency-Key` (rotas que a API não trata como idempotentes). Devolve o `data`. */
+export async function adminPatchPlain<T = void>(path: string, body: unknown, options: AdminRequestOptions = {}): Promise<T> {
+  const json = await request({ method: "PATCH", path, body: body ?? {}, signal: options.signal });
+  return (json === undefined ? undefined : asEnvelope(json).data) as T;
+}
+
 /**
  * POST sem `Idempotency-Key` (rotas que a API não trata como idempotentes, como as da sentinela de segurança). O
  * corpo é opcional: sem ele nem o `Content-Type` vai.
