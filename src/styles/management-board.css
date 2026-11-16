@@ -1267,3 +1267,41 @@
 
 /* UGC é tipo de conteúdo, não rede: etiqueta discreta no rodapé do cartão */
 .pv .mg.mgv .kc-tag.ugc { background: #0a0a0b; color: #fff; }
+
+/* Grupos da campanha: "Como as pessoas entram" (editar e criar), avisos e diálogos */
+.pv .gent { display: flex; flex-direction: column; gap: 16px; }
+.pv .gent-set { margin: 0; padding: 0; border: 0; min-width: 0; }
+.pv .gent-set legend { padding: 0; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: #52525b; }
+.pv .gent-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 20px; background: var(--bg); }
+.pv .gent-seg label { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 12px; border-radius: 16px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; transition: background .2s, color .2s, box-shadow .2s; }
+.pv .gent-seg label:hover:not([data-on="true"]):not([data-off="true"]) { color: var(--ink); }
+.pv .gent-seg label[data-on="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(5, 5, 5, .14); }
+.pv .gent-seg label[data-off="true"] { cursor: not-allowed; opacity: .55; }
+.pv .gent-seg label:has(input:focus-visible) { box-shadow: 0 0 0 3px rgba(10, 10, 10, .2); }
+.pv .gent-seg input { position: absolute; opacity: 0; pointer-events: none; }
+.pv .gent-seg em { font-style: normal; font-size: 10.5px; font-weight: 600; padding: 1px 6px; border-radius: 99px; background: #fff; }
+.pv .gent-hint { margin: 10px 4px 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.pv .gent-tgl { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-top: 16px; border-top: 1.5px solid var(--line); }
+.pv .gent-tgl b { display: block; font-size: 13.5px; font-weight: 600; letter-spacing: -.01em; }
+.pv .gent-tgl small { display: block; margin-top: 2px; color: var(--muted); font-size: 12.5px; line-height: 1.45; font-weight: 400; }
+.pv .gent-tgl button { flex: none; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 99px; }
+.pv .gent-tgl button:disabled { opacity: .5; cursor: default; }
+.pv .gent-tgl button:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(10, 10, 10, .12); }
+.pv .gent-tgl .tgl { display: block; }
+.pv .gent-warn { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+/* dentro do formulário de criar, `.gnew-f label` força coluna e fonte pequena: o seletor volta ao próprio layout */
+.pv .gnew-f .gent-seg label { flex-direction: row; gap: 6px; }
+.pv .gnew-f .gent-seg label span { font-size: inherit; font-weight: inherit; color: inherit; }
+.pv .gdlg-sub { margin: -12px 0 20px; color: var(--muted); font-size: 13.5px; }
+.pv .gdlg-txt { margin: 0 0 4px; font-size: 14.5px; line-height: 1.55; }
+.pv .gdlg-act { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.pv .gdlg-sum { display: flex; flex-wrap: wrap; gap: 8px 24px; list-style: none; margin: 0 0 14px; padding: 0; font-size: 13.5px; color: var(--muted); }
+.pv .gdlg-sum b { color: var(--ink); font-size: 22px; font-weight: 600; letter-spacing: -.03em; margin-right: 6px; }
+.pv .gdlg-sum li[data-bad="true"] b { color: #b91c1c; }
+.pv .gdlg-fail { display: flex; flex-direction: column; list-style: none; margin: 0; padding: 0; max-height: 240px; overflow-y: auto; }
+.pv .gdlg-fail li { padding: 10px 0; border-top: 1.5px solid var(--line); }
+.pv .gdlg-fail b { display: block; font-size: 13.5px; }
+.pv .gdlg-fail small { color: var(--muted); font-size: 12.5px; }
+.pv .gsp[data-approved="false"] { background: var(--bg); color: var(--muted); box-shadow: inset 0 0 0 1.5px var(--line); }
+.pv .gnote { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 16px; padding: 14px 20px; border-radius: 20px; background: #fff; font-size: 13.5px; }
+.pv .gnote > span { flex: 1; min-width: 220px; }
