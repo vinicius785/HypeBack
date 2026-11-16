@@ -71,3 +71,45 @@ export const SHIELD_ERROR_TEXT: Record<string, string> = {
   SHIELD_NOT_CONFIGURED: "Configuração pendente no servidor.",
   SHIELD_PAYOUT_UNAVAILABLE: "O pagamento (PIX) está indisponível agora. Nada foi liberado. Tente de novo em instantes.",
 };
+
+/**
+ * `fetch` para as alterações do Admin que NÃO passam pelo cliente `admin-client.ts` (serviços antigos que montam o próprio
+ * `fetch`). Faz o mesmo que ele com o Escudo: com o Escudo ligado pede o código ANTES da alteração; se o servidor responde 403
+ * `SHIELD_CODE_REQUIRED`/`SHIELD_CODE_INVALID`, pede (de novo) e repete a MESMA chamada com `X-Shield-Code`. `SHIELD_CODE_LOCKED`
+ * e o cancelamento devolvem a resposta como veio, para o serviço dar o erro dele. Leituras e rotas isentas passam direto.
+ * `proactive: false` só reage ao 403 (rotas que parecem alteração mas só leem, como a estimativa de público).
+ */
+export async function shieldFetch(url: string, init: RequestInit & { method?: string }, options: { proactive?: boolean } = {}): Promise<Response> {
+  const method = (init.method ?? "GET").toUpperCase();
+  const path = url.match(/\/admin\/[^?#]*/)?.[0] ?? "";
+  if (!isShieldWrite(method) || isShieldExempt(path)) return fetch(url, init);
+
+  const withCode = (code: string | undefined): RequestInit => {
+    if (code === undefined) return init;
+    const headers = new Headers(init.headers);
+    headers.set(SHIELD_CODE_HEADER, code);
+    return { ...init, headers };
+  };
+
+  let code: string | undefined;
+  if (options.proactive !== false && isShieldActive() && hasShieldCodeProvider()) {
+    const typed = await askShieldCode("proactive");
+    if (typed === null) return new Response(JSON.stringify({ statusCode: 403, error: "SHIELD_CODE_REQUIRED", message: SHIELD_ERROR_TEXT.SHIELD_CODE_REQUIRED }), { status: 403, headers: { "Content-Type": "application/json" } });
+    code = typed;
+  }
+  for (;;) {
+    const res = await fetch(url, withCode(code));
+    if (res.status !== 403 || !hasShieldCodeProvider()) return res;
+    let body: unknown;
+    try {
+      body = await res.clone().json();
+    } catch {
+      return res;
+    }
+    const error = typeof body === "object" && body !== null ? (body as { error?: unknown }).error : undefined;
+    if (error !== "SHIELD_CODE_REQUIRED" && error !== "SHIELD_CODE_INVALID") return res;
+    const typed = await askShieldCode(error === "SHIELD_CODE_INVALID" ? "invalid" : "required");
+    if (typed === null) return res;
+    code = typed;
+  }
+}

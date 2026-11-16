@@ -1,3 +1,4 @@
+import { shieldFetch } from "@/lib/admin/shield";
 import { getApiUrl, getAuthToken } from "@/lib/utils/api";
 import { generateIdempotencyKey } from "@/shared/utils/idempotency-key";
 import type {
@@ -91,13 +92,15 @@ export async function fetchAdminNotificationDetail(
 export async function estimateAdminAudience(
   audience: AdminAudienceFilter,
 ): Promise<AdminAudienceEstimate> {
-  const res = await fetch(
+  const res = await shieldFetch(
     getApiUrl(`/admin/notifications/estimate-audience`),
     {
       method: "POST",
       headers: buildHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ audience }),
     },
+    // Só calcula o alcance: não pede o código do Escudo antes (reage só se o servidor exigir).
+    { proactive: false },
   );
   return handleResponse<AdminAudienceEstimate>(
     res,
@@ -113,7 +116,7 @@ export async function createAdminNotification(
   payload: AdminNotificationCreatePayload,
   idempotencyKey: string = generateIdempotencyKey(),
 ): Promise<AdminNotificationDetail> {
-  const res = await fetch(getApiUrl(`/admin/notifications`), {
+  const res = await shieldFetch(getApiUrl(`/admin/notifications`), {
     method: "POST",
     headers: buildHeaders({
       "Content-Type": "application/json",
@@ -157,7 +160,7 @@ export async function fetchAdminCampaignLookup(
 export async function cancelAdminNotification(
   id: string,
 ): Promise<AdminNotificationDetail> {
-  const res = await fetch(
+  const res = await shieldFetch(
     getApiUrl(`/admin/notifications/${id}/cancel`),
     {
       method: "POST",

@@ -68,7 +68,7 @@ describe("CommunityPage: abre na comunidade padrão", () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Comunidade", level: 1 })).toBeInTheDocument();
-    expect(within(screen.getByRole("group", { name: "Seções da Comunidade" })).getAllByRole("button").map((t) => t.textContent)).toEqual(["Feed", "Grupos", "Equipe"]);
+    expect(within(screen.getByRole("group", { name: "Seções da Comunidade" })).getAllByRole("button").map((t) => t.textContent)).toEqual(["Feed", "Grupos", "Aulas", "Inspirações", "Equipe"]);
     expect(tab("Feed")).toHaveAttribute("aria-pressed", "true");
     expect(tab("Grupos")).toHaveAttribute("aria-pressed", "false");
     expect(await screen.findByText("Gravei um vídeo novo hoje!")).toBeInTheDocument();

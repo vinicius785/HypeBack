@@ -2,6 +2,7 @@
  * Equipe da comunidade — escopo **global (super-admin)**, como `community-posts.ts`: sem header `Workspace-Id`,
  * protegido por `PlatformAdminGuard`. Moderador e selo roxo são só identificação visual, nunca dão acesso ao Admin.
  */
+import { shieldFetch } from "@/lib/admin/shield";
 import { getApiUrl, getAuthToken } from "@/lib/utils/api";
 
 const BASE = "/admin/community/members";
@@ -81,7 +82,7 @@ export async function listCommunityMembers(params: ListCommunityMembersParams = 
 }
 
 export async function updateCommunityMember(userId: string, input: UpdateCommunityMemberInput): Promise<CommunityMember> {
-  const res = await fetch(getApiUrl(`${BASE}/${encodeURIComponent(userId)}`), {
+  const res = await shieldFetch(getApiUrl(`${BASE}/${encodeURIComponent(userId)}`), {
     method: "PATCH",
     headers: headers(true),
     body: JSON.stringify(input),

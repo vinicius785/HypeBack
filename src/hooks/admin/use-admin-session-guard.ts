@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
+import { adminToast } from "@/components/admin/platform/admin-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { setAdminUnauthorizedHandler } from "@/lib/admin/admin-client";
 import { clearClientSession } from "@/lib/utils/session";
@@ -29,6 +30,8 @@ export function useAdminSessionGuard(): void {
       // Várias consultas falham juntas quando o token cai: só a primeira age.
       if (handled) return;
       handled = true;
+      // Com a Operação Escudo as sessões da equipe são encerradas: diz por quê em vez de só voltar ao login.
+      adminToast.error("Sessão encerrada por segurança.");
       clearClientSession(queryClient);
       setUser(null);
       navigate({ to: "/sign-in", replace: true });

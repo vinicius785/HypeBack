@@ -3,7 +3,8 @@ import type { AdminNotificationChannel } from "@/shared/types";
 interface AdminNotificationPreviewProps {
   title: string;
   body: string;
-  ctaUrl?: string;
+  /** Para onde o app abre ao tocar (texto pronto); ausente = lista de notificações. */
+  target?: string;
   channels: AdminNotificationChannel[];
   /** Texto do alcance (ex.: "1.200 criadores") ou null. */
   reach: string | null;
@@ -21,7 +22,7 @@ export const CHANNEL_LABEL: Record<AdminNotificationChannel, string> = {
 export function AdminNotificationPreview({
   title,
   body,
-  ctaUrl,
+  target,
   channels,
   reach,
   when,
@@ -64,10 +65,10 @@ export function AdminNotificationPreview({
           <span>Alcance</span>
           <b>{reach ?? "—"}</b>
         </li>
-        {ctaUrl ? (
+        {target ? (
           <li>
-            <span>Link</span>
-            <b style={{ wordBreak: "break-all" }}>{ctaUrl}</b>
+            <span>Ao tocar</span>
+            <b style={{ wordBreak: "break-all" }}>{target}</b>
           </li>
         ) : null}
         <li>

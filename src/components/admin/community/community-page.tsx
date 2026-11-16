@@ -8,6 +8,8 @@ import { useAdminSearchParam } from "@/hooks/admin/use-admin-search-param";
 
 import { CommunityFeed } from "./community-feed";
 import { CommunityGroups } from "./community-groups";
+import { CommunityLessons } from "./content/lessons-tab";
+import { CommunityInspirations } from "./content/inspirations-tab";
 import { CommunityTeam } from "./community-team";
 import { COMMUNITY_TAB_IDS, DEFAULT_COMMUNITY_TAB, resolveCommunityTab, type CommunityTabId } from "./community-search";
 
@@ -16,6 +18,8 @@ import "@/styles/admin-community.css";
 const TABS: readonly AdminTabItem<CommunityTabId>[] = [
   { id: "feed", label: "Feed" },
   { id: "groups", label: "Grupos" },
+  { id: "lessons", label: "Aulas" },
+  { id: "inspirations", label: "Inspirações" },
   { id: "team", label: "Equipe" },
 ];
 
@@ -67,6 +71,8 @@ export function CommunityPage() {
 
       {tab === "feed" ? <CommunityFeed tools={tools} /> : null}
       {tab === "groups" ? <CommunityGroups tools={tools} /> : null}
+      {tab === "lessons" ? <CommunityLessons /> : null}
+      {tab === "inspirations" ? <CommunityInspirations /> : null}
       {tab === "team" ? <CommunityTeam tools={tools} /> : null}
 
       {/* Rotas filhas (/admin/groups/new, /admin/groups/$groupId): diálogo sobre a lista de grupos. */}

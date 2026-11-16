@@ -11,7 +11,9 @@ import {
   AdminNotificationPreview,
   CHANNEL_LABEL,
 } from "@/components/admin/admin-notification-preview";
+import { AdminNotificationTargetField } from "@/components/admin/admin-notification-target-field";
 import { adminErrorMessage, adminToast } from "@/components/admin/platform";
+import { buildTarget, describeTarget, EMPTY_TARGET_DRAFT, targetDraftError, type TargetDraft } from "@/lib/admin/notification-target";
 import { useModalBehavior } from "@/hooks/admin/use-modal-behavior";
 import {
   useCreateAdminNotification,
@@ -52,15 +54,12 @@ const WD = [
 const pad = (n: number) => String(n).padStart(2, "0");
 const isoOf = (d: Date) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-function validateUrl(url: string): boolean {
-  if (!url) return true;
-  return /^https?:\/\/.+/i.test(url) || /^[a-z][a-z0-9+\-.]*:\/\/.+/i.test(url);
-}
 
 export interface AdminNotificationInitial {
   title: string;
   body: string;
-  ctaUrl: string;
+  /** Destino do envio copiado (Duplicar); vazio = lista de notificações. */
+  target?: TargetDraft;
   channels: AdminNotificationChannel[];
   audience: AdminAudienceFilter;
 }
@@ -84,10 +83,9 @@ export function AdminNotificationForm({
   const titleDomId = useId();
   const titleFieldId = useId();
   const bodyFieldId = useId();
-  const linkFieldId = useId();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [body, setBody] = useState(initial?.body ?? "");
-  const [ctaUrl, setCtaUrl] = useState(initial?.ctaUrl ?? "");
+  const [target, setTarget] = useState<TargetDraft>(initial?.target ?? EMPTY_TARGET_DRAFT);
   const [channels, setChannels] = useState<AdminNotificationChannel[]>(
     initial?.channels ?? ["push"],
   );
@@ -112,14 +110,14 @@ export function AdminNotificationForm({
   const baseline = useRef({
     title,
     body,
-    ctaUrl,
+    target: JSON.stringify(target),
     channels: JSON.stringify(channels),
     audience: JSON.stringify(audience),
   });
   const dirty =
     title !== baseline.current.title ||
     body !== baseline.current.body ||
-    ctaUrl !== baseline.current.ctaUrl ||
+    JSON.stringify(target) !== baseline.current.target ||
     JSON.stringify(channels) !== baseline.current.channels ||
     JSON.stringify(audience) !== baseline.current.audience ||
     when !== "now";
@@ -191,7 +189,7 @@ export function AdminNotificationForm({
   const confirmText = `Enviar agora para ${fmt(reach)} ${
     reach === 1 ? "criador" : "criadores"
   } (${channelsLabel})? Um envio imediato não pode ser desfeito.`;
-  const urlBad = !validateUrl(ctaUrl.trim());
+  const urlBad = targetDraftError(target) !== null;
 
   // Limites do push (título 31 sem os `**`, descrição 106). O campo corta o que passa; uma mensagem copiada de um envio
   // antigo pode vir maior e então trava o avanço até ser encurtada.
@@ -245,7 +243,7 @@ export function AdminNotificationForm({
     const payload: AdminNotificationCreatePayload = {
       title: title.trim(),
       body: body.trim(),
-      cta_url: ctaUrl.trim() || null,
+      target: buildTarget(target),
       channels,
       audience,
       scheduled_at: scheduledAt ? scheduledAt.toISOString() : null,
@@ -374,26 +372,7 @@ export function AdminNotificationForm({
               </small>
             ) : null}
           </div>
-          <div className={`n4c ${tried && urlBad ? "bad" : ""}`}>
-            <label className="n4l" htmlFor={linkFieldId}>
-              Link ao tocar <em>opcional</em>
-            </label>
-            <input
-              id={linkFieldId}
-              className="cm-in"
-              placeholder="https://… ou hypeapp://campanha/123"
-              value={ctaUrl}
-              aria-invalid={tried && urlBad ? true : undefined}
-              aria-describedby={tried && urlBad ? `${linkFieldId}-err` : undefined}
-              onChange={(e) => setCtaUrl(e.target.value)}
-              autoComplete="off"
-            />
-            {tried && urlBad ? (
-              <small className="nfe" id={`${linkFieldId}-err`}>
-                URL inválida — use http(s):// ou esquema com ://
-              </small>
-            ) : null}
-          </div>
+          <AdminNotificationTargetField value={target} onChange={setTarget} showError={tried} />
         </>
       );
     }
@@ -569,7 +548,7 @@ export function AdminNotificationForm({
                 <AdminNotificationPreview
                   title={title}
                   body={body}
-                  ctaUrl={ctaUrl.trim() || undefined}
+                  target={target.screen ? describeTarget(buildTarget(target)) : undefined}
                   channels={channels}
                   reach={reachLabel}
                   when={whenLabel}

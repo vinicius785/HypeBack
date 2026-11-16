@@ -141,6 +141,18 @@ describe("AdminNotificationList · tabela", () => {
     expect(screen.getByText("1.200 criadores · Push, E-mail")).toBeInTheDocument();
   });
 
+  it("o detalhe mostra para onde o app abre ao tocar (target)", async () => {
+    render(
+      <AdminNotificationList
+        {...baseProps}
+        items={[withStatus("a", "sent", { title: "Carteira liberada", target: { version: 1, screen: "wallet" } })]}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Detalhes de “Carteira liberada”" }));
+    expect(screen.getByText("Ao tocar, abre")).toBeInTheDocument();
+    expect(screen.getByText("Carteira")).toBeInTheDocument();
+  });
+
   it("a linha abre os detalhes que ela corta: mensagem inteira, link, canais e criador", async () => {
     render(
       <AdminNotificationList

@@ -11,6 +11,7 @@
  *
  * Contrato: backend-community-groups-spec.md (§4).
  */
+import { shieldFetch } from "@/lib/admin/shield";
 import { getApiUrl, getAuthToken } from "@/lib/utils/api";
 import type {
   CommunityGroup,
@@ -80,7 +81,7 @@ async function writeJson<T>(
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const res = await fetch(getApiUrl(path), {
+  const res = await shieldFetch(getApiUrl(path), {
     method,
     headers: authHeaders(
       body !== undefined ? { "Content-Type": "application/json" } : undefined,
@@ -168,7 +169,7 @@ export async function uploadCommunityImage(file: File): Promise<{ url: string }>
   const formData = new FormData();
   formData.append("image", file);
 
-  const res = await fetch(getApiUrl(`${BASE}/uploads`), {
+  const res = await shieldFetch(getApiUrl(`${BASE}/uploads`), {
     method: "POST",
     // Sem Content-Type — o browser injeta o boundary do multipart.
     headers: authHeaders(),
@@ -308,7 +309,7 @@ export async function uploadCommunityVideo(file: File): Promise<{ url: string }>
   const formData = new FormData();
   formData.append("video", file);
 
-  const res = await fetch(getApiUrl(`${BASE}/uploads/video`), {
+  const res = await shieldFetch(getApiUrl(`${BASE}/uploads/video`), {
     method: "POST",
     // Sem Content-Type — o browser injeta o boundary do multipart.
     headers: authHeaders(),

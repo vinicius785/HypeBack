@@ -172,11 +172,17 @@ export type AdminAudienceFilter =
 
 export type AdminAudienceFilterType = AdminAudienceFilter["type"];
 
+/** Para onde o app vai ao tocar na push ou no sino (`version` sempre 1). Os nomes de `screen` são contrato com o app. */
+export type AdminNotificationTarget =
+  | { version: 1; screen: string; campaign_id?: string; group_id?: string; post_id?: string; comment_id?: string; url?: string };
+
 /** Payload de criação enviado para o backend. */
 export interface AdminNotificationCreatePayload {
   title: string;
   body: string;
   cta_url?: string | null;
+  /** Tela que o app abre ao tocar; ausente = lista de notificações. */
+  target?: AdminNotificationTarget | null;
   channels: AdminNotificationChannel[];
   audience: AdminAudienceFilter;
   /**
@@ -199,6 +205,7 @@ export interface AdminNotificationListItem {
   title: string;
   body: string;
   cta_url: string | null;
+  target?: AdminNotificationTarget | null;
   channels: AdminNotificationChannel[];
   audience: AdminAudienceFilter;
   status: AdminNotificationStatus;

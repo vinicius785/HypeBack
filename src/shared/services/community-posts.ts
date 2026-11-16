@@ -7,6 +7,7 @@
  * Complementa a moderação por grupo: aqui entram também os posts do feed geral
  * (sem grupo), que a rota de grupos não enxerga.
  */
+import { shieldFetch } from "@/lib/admin/shield";
 import { getApiUrl, getAuthToken } from "@/lib/utils/api";
 import type { CursorMeta, GroupPost } from "@/shared/types";
 
@@ -82,7 +83,7 @@ export async function listCommunityPosts(
 
 /** Soft-delete de qualquer post da comunidade (com ou sem grupo). 204. */
 export async function deleteCommunityPost(postId: string): Promise<void> {
-  const res = await fetch(getApiUrl(`${BASE}/${postId}`), {
+  const res = await shieldFetch(getApiUrl(`${BASE}/${postId}`), {
     method: "DELETE",
     headers: authHeaders(),
   });
