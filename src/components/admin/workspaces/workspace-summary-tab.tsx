@@ -1,13 +1,18 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import {
+  AdminBadge,
+  AdminConfirmDialog,
   AdminEntityCell,
   AdminFigureCard,
   AdminKeyValueList,
   AdminLink,
   AdminSection,
+  adminErrorMessage,
+  adminToast,
   type AdminKeyValueItem,
 } from "@/components/admin/platform";
+import { useAgencyVerificationMutation } from "@/hooks/admin/use-admin-workspaces-mutations";
 import { formatDateTime, formatInt, formatRelativeTime } from "@/lib/admin/format";
 import type { AdminFigure, AdminWorkspaceDetail } from "@/shared/admin-platform.types";
 
@@ -66,6 +71,70 @@ function Lines({ lines }: { lines: readonly string[] }): ReactNode {
   );
 }
 
+/** Só `https://…` vira link (o app ignora o resto); qualquer outro valor guardado aparece como texto. */
+function Site({ url }: { url: string }) {
+  return /^https:\/\/[^\s]+$/i.test(url) ? (
+    <a className="adm-textbtn" href={url} target="_blank" rel="noopener noreferrer">
+      {url}
+    </a>
+  ) : (
+    <span className="adm-workspaces-text">{url}</span>
+  );
+}
+
+/**
+ * Selo "verificada" da agência: aparece no convite que o criador vê. Só o administrador da plataforma muda; tirar o
+ * selo pede confirmação, e marcar também (quem vê o convite passa a confiar nele).
+ */
+function AgencyVerification({ workspace }: { workspace: AdminWorkspaceDetail }) {
+  const mutation = useAgencyVerificationMutation(workspace.id);
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | undefined>();
+  const verified = workspace.agency_verified === true;
+
+  const confirm = async () => {
+    setError(undefined);
+    try {
+      await mutation.mutateAsync(!verified);
+      adminToast.success(verified ? "Selo removido." : "Agência verificada.");
+      setConfirming(false);
+    } catch (failure) {
+      setError(adminErrorMessage(failure, "Não foi possível alterar o selo."));
+    }
+  };
+
+  return (
+    <AdminSection title="Selo de verificação">
+      <div className="adm-workspaces-seal">
+        <span>
+          <AdminBadge tone={verified ? "ok" : "muted"}>{verified ? "Verificada" : "Não verificada"}</AdminBadge>
+          <small>{verified ? "O selo aparece no convite que o criador vê." : "Sem selo no convite que o criador vê."}</small>
+        </span>
+        {workspace.can.update ? (
+          <button type="button" className={verified ? "btn out adm-btn-sm" : "btn adm-btn-sm"} onClick={() => (setError(undefined), setConfirming(true))}>
+            {verified ? "Tirar selo" : "Verificar agência"}
+          </button>
+        ) : null}
+      </div>
+      <AdminConfirmDialog
+        open={confirming}
+        tone={verified ? "danger" : "neutral"}
+        eyebrow={`Agência · ${workspace.name}`}
+        title={verified ? "Tirar o selo de verificada?" : "Verificar esta agência?"}
+        description={verified ? "O selo some do convite que os criadores veem." : "O convite passa a mostrar o selo de verificada para os criadores."}
+        reason={false}
+        cancelLabel="Voltar"
+        confirmLabel={verified ? "Tirar selo" : "Verificar agência"}
+        pending={mutation.isPending}
+        pendingLabel="Salvando…"
+        error={error}
+        onConfirm={() => void confirm()}
+        onClose={() => setConfirming(false)}
+      />
+    </AdminSection>
+  );
+}
+
 interface WorkspaceSummaryTabProps {
   workspace: AdminWorkspaceDetail;
   /** Abre outra aba (o aviso de "sem responsável" leva a Usuários). */
@@ -89,6 +158,7 @@ export function WorkspaceSummaryTab({ workspace, onOpenTab }: WorkspaceSummaryTa
     { label: "Razão social", value: workspace.legal_name },
     { label: "CNPJ", value: workspace.tax_id ? formatCnpj(workspace.tax_id) : null },
     { label: "Descrição", value: workspace.description ? <span className="adm-workspaces-text">{workspace.description}</span> : null },
+    { label: "Site", value: workspace.website ? <Site url={workspace.website} /> : null },
     { label: "Endereço", value: address.length > 0 ? <Lines lines={address} /> : null },
     { label: "Nicho", value: workspace.niche?.name },
     { label: "Identificador público", value: <code className="adm-workspaces-code">{workspace.id}</code> },
@@ -150,6 +220,8 @@ export function WorkspaceSummaryTab({ workspace, onOpenTab }: WorkspaceSummaryTa
               <AdminKeyValueList items={lifecycleRows} />
             </AdminSection>
           ) : null}
+
+          {workspace.account_type === "agency" ? <AgencyVerification workspace={workspace} /> : null}
 
           <AdminSection title="Responsáveis">
             {noOwner ? (

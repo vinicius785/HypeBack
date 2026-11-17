@@ -1,8 +1,11 @@
-import { render, screen, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tanstack/react-router", async () => (await import("./test-support")).routerModuleMock());
+const patch = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/admin/admin-client", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/admin/admin-client")>()), adminPatchPlain: patch }));
 
 import { makeDetail, NOW_ISO } from "./test-support";
 import { WorkspaceSummaryTab, workspaceMoneyFigures } from "./workspace-summary-tab";
@@ -171,5 +174,45 @@ describe("WorkspaceSummaryTab · responsáveis", () => {
     renderSummary(makeDetail("deleted", { owners: [] }));
     expect(screen.getByText("Sem responsável")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ir para Usuários" })).not.toBeInTheDocument();
+  });
+});
+
+describe("WorkspaceSummaryTab · agência", () => {
+  const agency = (patchDetail = {}) => ({ ...makeDetail(), account_type: "agency" as const, website: "https://agencia.com.br", agency_verified: false, ...patchDetail });
+  const renderAgency = (workspace = agency()) => {
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <WorkspaceSummaryTab workspace={workspace} onOpenTab={vi.fn()} />
+      </QueryClientProvider>,
+    );
+  };
+
+  it("mostra o site (link https) e o selo de verificação; marcar pede confirmação e manda verified=true", async () => {
+    patch.mockResolvedValue({ id: "w", verified: true });
+    const user = userEvent.setup();
+    renderAgency();
+    expect(screen.getByRole("link", { name: "https://agencia.com.br" })).toHaveAttribute("href", "https://agencia.com.br");
+    const seal = section("Selo de verificação");
+    expect(within(seal).getByText("Não verificada")).toBeInTheDocument();
+    await user.click(within(seal).getByRole("button", { name: "Verificar agência" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Verificar agência" }));
+    await waitFor(() => expect(patch).toHaveBeenCalledWith(expect.stringMatching(/\/admin\/agencies\/.+\/verification$/), { verified: true }));
+  });
+
+  it("agência verificada oferece tirar o selo (verified=false)", async () => {
+    patch.mockResolvedValue({ id: "w", verified: false });
+    const user = userEvent.setup();
+    renderAgency(agency({ agency_verified: true }));
+    const seal = section("Selo de verificação");
+    expect(within(seal).getByText("Verificada")).toBeInTheDocument();
+    await user.click(within(seal).getByRole("button", { name: "Tirar selo" }));
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Tirar selo" }));
+    await waitFor(() => expect(patch).toHaveBeenCalledWith(expect.any(String), { verified: false }));
+  });
+
+  it("workspace de marca não tem selo", () => {
+    renderSummary();
+    expect(screen.queryByRole("heading", { name: "Selo de verificação" })).not.toBeInTheDocument();
   });
 });

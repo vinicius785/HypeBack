@@ -11,9 +11,9 @@
  *    consulta de novo; o resto marca como velho. A invalidação não é aguardada: o diálogo fecha na hora.
  */
 import { useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { adminPatch, adminPath, adminPost, isAdminApiError } from "@/lib/admin/admin-client";
+import { adminPatch, adminPatchPlain, adminPath, adminPost, isAdminApiError } from "@/lib/admin/admin-client";
 import type {
   AdminWorkspaceDangerBody,
   AdminWorkspaceCreateBody,
@@ -136,5 +136,17 @@ export function useWorkspaceCreateMutation() {
   return useAdminMutation<AdminWorkspaceCreateResult, AdminWorkspaceCreateBody>({
     mutationFn: (body, idempotencyKey) => adminPost<AdminWorkspaceCreateResult>("/admin/workspaces", body, { idempotencyKey }),
     invalidate: [adminKeys.all],
+  });
+}
+
+/**
+ * Selo "verificada" da agência (`PATCH /admin/agencies/:workspaceId/verification`, corpo `{ verified }`). Só agência ativa
+ * (a API responde 400 nos demais). Depois do sucesso, o Admin inteiro marca como velho: o selo aparece no detalhe e nas listas.
+ */
+export function useAgencyVerificationMutation(workspaceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<{ id: string; verified: boolean }, unknown, boolean>({
+    mutationFn: (verified) => adminPatchPlain<{ id: string; verified: boolean }>(`/admin/agencies/${encodeURIComponent(workspaceId)}/verification`, { verified }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: adminKeys.all }),
   });
 }
