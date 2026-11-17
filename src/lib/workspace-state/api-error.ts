@@ -8,6 +8,8 @@ import { isRecord, normalizeApiMessage } from "./lifecycle-errors";
 export type ApiError = Error & {
   status: number;
   code?: string;
+  /** O campo `code` do corpo (minúsculo, ex.: `invalid_commission`), que algumas rotas usam além do `error`. */
+  bodyCode?: string;
   details?: unknown;
 };
 
@@ -21,6 +23,7 @@ export function buildApiError(status: number, body: unknown, fallbackMessage: st
   const error = new Error(normalizeApiMessage(record.message) ?? code ?? fallbackMessage) as ApiError;
   error.status = status;
   if (code !== undefined) error.code = code;
+  if (typeof record.code === "string" && record.code !== "") error.bodyCode = record.code;
   if (record.details !== undefined) error.details = record.details;
   return error;
 }

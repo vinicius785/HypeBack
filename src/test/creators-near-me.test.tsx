@@ -24,6 +24,7 @@ vi.mock("@/hooks/use-agency-roster", () => ({
   useAgencyRoster: () => ({ data: [...agency.roster].map(([id, status]) => ({ id: String(id), status })), isLoading: false }),
   useInviteToRoster: () => ({ mutate: agency.invite, isPending: false }),
   rosterErrorMessage: (_e: unknown, fallback: string) => fallback,
+  isInvalidCommission: () => false,
 }));
 vi.mock("@/styles/agency-roster.css", () => ({}));
 vi.mock("@/hooks/use-niches", () => ({ useNiches: () => ({ data: [] }) }));
@@ -194,7 +195,14 @@ describe("Criadores · elenco da agência", () => {
     expect(screen.queryByRole("button", { name: "Convidar Criador 1 para o elenco" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Convidar Criador 2 para o elenco" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Convidar Criador 3 para o elenco" }));
-    expect(agency.invite).toHaveBeenCalledWith(3, expect.any(Object));
+    // O convite pede a comissão da agência (obrigatória) antes de sair.
+    const dialog = within(screen.getByRole("dialog", { name: "Convidar para o elenco" }));
+    fireEvent.click(dialog.getByRole("button", { name: "Enviar convite" }));
+    expect(dialog.getByText("Informe a comissão.")).toBeInTheDocument();
+    expect(agency.invite).not.toHaveBeenCalled();
+    fireEvent.change(dialog.getByLabelText("Comissão da agência"), { target: { value: "12,5" } });
+    fireEvent.click(dialog.getByRole("button", { name: "Enviar convite" }));
+    expect(agency.invite).toHaveBeenCalledWith({ userId: 3, commissionPercent: 12.5 }, expect.any(Object));
   });
 
   it("agência: as abas são Todos, Favoritos e Meu elenco (com a contagem do elenco)", () => {
@@ -224,6 +232,8 @@ describe("Criadores · elenco da agência", () => {
     agency.invite.mockImplementation((_id: number, opts: { onSuccess: () => void }) => opts.onSuccess());
     render(<Page />);
     fireEvent.click(screen.getByRole("button", { name: "Convidar Criador 1 para o elenco" }));
+    fireEvent.change(screen.getByLabelText("Comissão da agência"), { target: { value: "15" } });
+    fireEvent.click(screen.getByRole("button", { name: "Enviar convite" }));
     expect(agency.toast.success).toHaveBeenCalledWith(expect.stringContaining("entra no elenco quando aceitar"));
   });
 
