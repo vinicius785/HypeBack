@@ -123,6 +123,7 @@ export const PLATFORM_NAV: readonly NavSection[] = [
     items: [
       { id: "support", label: "Atendimento", icon: "flag", href: "/admin/support" },
       { id: "notifications", label: "Notificações", icon: "bell", href: "/admin/notifications" },
+      { id: "popups", label: "Pop-ups", icon: "phone", href: "/admin/popups" },
       { id: "monitoring", label: "Monitoramento", icon: "clock", href: "/admin/activity" },
     ],
   },

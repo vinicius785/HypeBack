@@ -1,0 +1,90 @@
+/*
+ * Pop-ups do Admin (`src/components/admin/popups`): lista com métricas e o formulário com prévia ao lado.
+ * Mesmas regras do kit: prefixo `adm-pop-`, tudo sob `.pv`, só tokens `--adm-*`. O diálogo segue o das notificações
+ * (`n4c`, `cm-in`, `lvf-*`); o envio de imagem traz os estilos de `admin-community.css`.
+ */
+
+.pv .adm-pop-cell { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pv .adm-pop-cell > span:last-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pv .adm-pop-cell b { font-size: 14px; font-weight: 600; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.pv .adm-pop-cell small { color: var(--adm-text-muted); font-size: 12.5px; }
+.pv .adm-pop-when { display: flex; flex-direction: column; gap: 1px; font-variant-numeric: tabular-nums; }
+.pv .adm-pop-when small { color: var(--adm-text-muted); font-size: 12.5px; }
+
+.pv .adm-pop-thumb { flex: none; display: grid; place-items: center; width: 40px; height: 40px; overflow: hidden; border-radius: var(--adm-r-sm); background: var(--bg); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--adm-rule); }
+.pv .adm-pop-thumb[data-theme="dark"] { background: var(--ink); color: var(--adm-surface); box-shadow: none; }
+.pv .adm-pop-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.pv .adm-pop-themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pv .adm-pop-theme { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 0; border-radius: var(--adm-r-md); background: var(--adm-surface); color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--adm-rule); transition: box-shadow .2s; }
+.pv .adm-pop-theme i { width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 1.5px var(--adm-rule); }
+.pv .adm-pop-theme[data-theme="dark"] i { background: #0a0a0a; box-shadow: none; }
+.pv .adm-pop-theme[aria-checked="true"] { box-shadow: inset 0 0 0 2px var(--ink); }
+.pv .adm-pop-theme:focus-visible, .pv .adm-pop-icon:focus-visible { outline: none; box-shadow: var(--adm-ring); }
+
+.pv .adm-pop-icons { display: flex; flex-wrap: wrap; gap: 8px; }
+.pv .adm-pop-icon { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--adm-r-sm); background: var(--adm-surface); color: var(--ink); cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--adm-rule); transition: box-shadow .2s, background .2s; }
+.pv .adm-pop-icon[data-none="true"] { width: auto; padding: 0 14px; font: inherit; font-size: 13px; font-weight: 600; }
+.pv .adm-pop-icon:hover { background: var(--bg); }
+.pv .adm-pop-icon[aria-checked="true"] { box-shadow: inset 0 0 0 2px var(--ink); }
+
+/* prévia: o app escurecido por trás e o cartão no centro */
+.pv .adm-pop-pv { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.pv .adm-pop-pv figcaption { color: var(--adm-text-muted); font-size: 12.5px; text-align: center; }
+.pv .adm-pop-stage { position: relative; display: grid; place-items: center; aspect-ratio: 9 / 14; overflow: hidden; padding: 20px; border-radius: var(--adm-r-md); background: #27272a; }
+.pv .adm-pop-ghost { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px; padding: 16px; pointer-events: none; }
+.pv .adm-pop-ghost i { display: block; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, .06); }
+.pv .adm-pop-ghost i:first-child { height: 22px; width: 55%; }
+.pv .adm-pop-ghost i:nth-child(3) { height: 96px; }
+.pv .adm-pop-card { --pc-bg: #fff; --pc-ink: #0a0a0a; --pc-mut: #52525b; position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; padding: 26px 20px 16px; border-radius: 22px; background: var(--pc-bg); color: var(--pc-ink); text-align: center; box-shadow: 0 18px 40px rgba(0, 0, 0, .35); overflow: hidden; }
+.pv .adm-pop-card[data-theme="dark"] { --pc-bg: #0a0a0a; --pc-ink: #fff; --pc-mut: #a1a1aa; box-shadow: 0 18px 40px rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(255, 255, 255, .08); }
+.pv .adm-pop-card b { font-size: 18px; font-weight: 700; letter-spacing: -.025em; line-height: 1.25; overflow-wrap: anywhere; }
+.pv .adm-pop-card p { margin: 0; color: var(--pc-mut); font-size: 13.5px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
+.pv .adm-pop-ic { display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 4px; border-radius: 50%; background: color-mix(in srgb, var(--pc-ink) 9%, transparent); }
+.pv .adm-pop-img { width: calc(100% + 40px); margin: -26px -20px 6px; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
+.pv .adm-pop-btn { align-self: stretch; margin-top: 8px; padding: 13px 16px; border-radius: 99px; background: var(--pc-ink); color: var(--pc-bg); font-size: 14px; font-weight: 600; }
+.pv .adm-pop-x { margin-top: 2px; color: var(--pc-mut); font-size: 12.5px; font-weight: 500; }
+
+/* passos do diálogo (padrão das notificações: `n4c`, `cm-in`, `lvf-*`) */
+.pv .adm-pop-load { margin: 0; padding: 32px 0; text-align: center; color: var(--adm-text-muted); font-size: 14px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.pv .adm-pop-load p { margin: 0; }
+
+/* passo "Destino": três blocos (botão, público, prioridade) */
+.pv .adm-pop-sec { display: flex; flex-direction: column; gap: 16px; padding: 20px; border-radius: var(--adm-r-md); box-shadow: inset 0 0 0 1.5px var(--adm-rule); }
+.pv .adm-pop-sec-h { display: flex; flex-direction: column; gap: 3px; padding-bottom: 2px; }
+.pv .adm-pop-sec-h b { font-size: 16px; font-weight: 700; letter-spacing: -.02em; }
+.pv .adm-pop-sec-h small { color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.45; }
+.pv .adm-pop-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; align-items: start; }
+.pv .adm-pop-wide { grid-column: 1 / -1; }
+.pv .adm-pop-sec .n4c { margin: 0; }
+
+/* rótulo com o contador à direita, na mesma linha */
+.pv .n4l.adm-pop-l { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.pv .adm-pop-l small { color: var(--adm-text-muted); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.pv .adm-pop-l small[data-over="true"] { color: var(--adm-bad); }
+/* o campo de imagem traz o próprio rótulo (estilo do kit): aqui ele alinha com os rótulos `n4l` */
+.pv .adm-pop-img-f .adm-field { gap: 8px; }
+.pv .adm-pop-img-f .adm-field > label { font-size: 13px; font-weight: 600; letter-spacing: -.01em; color: var(--ink); }
+.pv .adm-pop-img-f .adm-field > label span { margin-left: 6px; color: var(--adm-text-muted); font-size: 12px; font-weight: 500; }
+.pv .adm-pop-img-f .adm-media-act { gap: 10px; padding-top: 2px; }
+.pv .adm-pop-img-f .adm-media-act small { line-height: 1.5; }
+.pv .adm-pop-img-f .adm-media-act .btn { padding: 8px 16px; border: 0; background: var(--adm-surface); color: var(--ink); font-size: 13px; font-weight: 600; box-shadow: inset 0 0 0 1.5px var(--adm-rule); }
+.pv .adm-pop-img-f .adm-media-act .btn:hover:not(:disabled) { background: var(--bg); }
+/* o rolar do passo termina com respiro, para o último bloco não encostar no rodapé */
+.pv .lvf-bd:has(.adm-pop-sec) { padding-bottom: 32px; }
+
+/* passo "Início": de quando a quando */
+.pv .adm-pop-span { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; margin: 0; }
+.pv .adm-pop-span dt { color: var(--adm-text-muted); font-size: 12px; font-weight: 600; }
+.pv .adm-pop-span dd { margin: 2px 0 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.pv .adm-pop-span > div:last-child { text-align: right; }
+.pv .adm-pop-span-m { display: flex; align-items: center; gap: 8px; color: var(--adm-text-muted); }
+.pv .adm-pop-span-m i { width: 20px; height: 1.5px; background: var(--adm-rule); }
+.pv .adm-pop-span-m b { padding: 3px 10px; border-radius: 99px; background: var(--bg); color: var(--ink); font-size: 12px; font-weight: 600; }
+@media (max-width: 560px) { .pv .adm-pop-span { grid-template-columns: minmax(0, 1fr); } .pv .adm-pop-span > div:last-child { text-align: left; } .pv .adm-pop-span-m { display: none; } }
+
+/* o conteúdo é mais alto que o das notificações: a linha da grade tem a altura do diálogo e cada coluna rola sozinha, sem passar por baixo do rodapé */
+.pv .ovd.adm-pop-dlg .ntw-m { grid-template-rows: minmax(0, 1fr); }
+.pv .ovd.adm-pop-dlg .ntw-pv { overflow-y: auto; scrollbar-width: thin; }
+.pv .adm-pop-img-f .adm-media-act small.adm-media-err { color: var(--adm-bad); font-weight: 500; }
+.pv .adm-pop-prio-h { color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.5; }
