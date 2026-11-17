@@ -21,6 +21,8 @@ vi.mock("@/hooks/use-agency-roster", async (importOriginal) => ({
   useSetRosterExclusive: () => ({ mutate: h.setExclusive, isPending: false }),
 }));
 vi.mock("@/styles/agency-roster.css", () => ({}));
+vi.mock("./roster-chat-dialog", () => ({ RosterChatDialog: ({ member }: { member: { creator: { name: string } } }) => <div role="dialog" aria-label={`Conversa com ${member.creator.name}`} /> }));
+vi.mock("./roster-counter-box", () => ({ RosterCounterBox: ({ member }: { member: { counter_offer: { commission_percent: number } } }) => <div role="group" aria-label="Proposta">{member.counter_offer.commission_percent}</div> }));
 
 import { RosterPanel } from "./roster-panel";
 
@@ -30,6 +32,10 @@ const member = (id: string, name: string, status: "active" | "invited", over: Re
   id,
   status,
   exclusive: true,
+  commission_percent: null,
+  counter_offer: null,
+  leave_requested_at: null,
+  leaves_at: null,
   invited_at: "2026-11-03T00:00:00Z",
   responded_at: null,
   creator: {
@@ -150,5 +156,36 @@ describe("Meu elenco (aceitos e convites pendentes numa lista só)", () => {
     expect(screen.getByText("Seu elenco começa aqui")).toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: /Encontrar criadores/ })[0]);
     expect(h.navigate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Meu elenco · comissão, proposta, saída e conversa", () => {
+  it("mostra a comissão de cada criador; convite antigo sem comissão não mostra nada", () => {
+    h.members = [member("m1", "Bia Alves", "active", { commission_percent: 12.5 }), member("m2", "Caio Lima", "active")];
+    render(<Panel />);
+    expect(screen.getByText("Comissão 12,5%")).toBeInTheDocument();
+    expect(screen.getAllByText(/^Comissão /)).toHaveLength(1);
+  });
+
+  it("convite com proposta do criador mostra a caixa de resposta; sem proposta, não", () => {
+    h.members = [member("m1", "Bia Alves", "invited", { commission_percent: 15, counter_offer: { commission_percent: 10, message: "Posso por 10?", created_at: "2026-11-04T00:00:00Z" } }), member("m2", "Caio Lima", "invited")];
+    render(<Panel />);
+    expect(screen.getAllByRole("group", { name: "Proposta" })).toHaveLength(1);
+  });
+
+  it("pedido de saída mostra quando o criador sai", () => {
+    h.members = [member("m1", "Bia Alves", "active", { leave_requested_at: "2026-11-10T12:00:00Z", leaves_at: "2026-12-10T12:00:00Z" })];
+    render(<Panel />);
+    expect(screen.getByText(/Pediu para sair · sai em/)).toBeInTheDocument();
+    expect(screen.queryByText("Só a sua agência vê e convida.")).not.toBeInTheDocument();
+  });
+
+  it("só quem está no elenco tem conversa; o botão abre a conversa daquele criador", async () => {
+    const user = userEvent.setup();
+    h.members = [member("m1", "Bia Alves", "active"), member("m2", "Caio Lima", "invited")];
+    render(<Panel />);
+    expect(screen.queryByRole("button", { name: "Conversar com Caio Lima" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Conversar com Bia Alves" }));
+    expect(screen.getByRole("dialog", { name: "Conversa com Bia Alves" })).toBeInTheDocument();
   });
 });
