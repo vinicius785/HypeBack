@@ -136,4 +136,27 @@ describe("Marca · salvamento", () => {
     expect((screen.getByLabelText("Nome da marca") as HTMLInputElement).disabled).toBe(true);
     expect(screen.getByText(/Somente administradores/)).toBeTruthy();
   });
+
+  it("marca: não há campo de site e a descrição vai até 200 caracteres", () => {
+    render(<BrandTab {...brand} />);
+    expect(screen.queryByLabelText(/Site/)).toBeNull();
+    expect((screen.getByLabelText(/Descrição/) as HTMLTextAreaElement).maxLength).toBe(200);
+  });
+
+  it("agência: descrição de até 400 e site https; site fora de https bloqueia o salvar", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(<BrandTab {...brand} isAgency website="https://agencia.com.br" onSave={onSave} />);
+    expect((screen.getByLabelText(/Descrição/) as HTMLTextAreaElement).maxLength).toBe(400);
+    const site = screen.getByLabelText(/Site/) as HTMLInputElement;
+    expect(site.value).toBe("https://agencia.com.br");
+    await user.clear(site);
+    await user.type(site, "http://agencia.com.br");
+    expect(screen.getByText("O site deve começar com https://")).toBeTruthy();
+    expect((screen.getByRole("button", { name: /Salvar alterações/ }) as HTMLButtonElement).disabled).toBe(true);
+    await user.clear(site);
+    await user.type(site, "https://nova.com.br");
+    await user.click(screen.getByRole("button", { name: /Salvar alterações/ }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ website: "https://nova.com.br" }), expect.anything());
+  });
 });

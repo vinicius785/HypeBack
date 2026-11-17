@@ -13,11 +13,23 @@ import { NichePicker } from "./niche-picker";
 import { Field, SettingsSection } from "./settings-section";
 
 const DESC_MAX = 200;
+/** A descrição da agência aparece no convite que o criador recebe: texto puro, até 400. */
+export const AGENCY_DESC_MAX = 400;
+export const WEBSITE_MAX = 300;
+
+/** Site da agência: vazio vale (apaga); preenchido, só `https://…` sem espaços. */
+export function websiteError(raw: string | undefined): string | null {
+  const value = (raw ?? "").trim();
+  if (!value) return null;
+  if (value.length > WEBSITE_MAX) return `No máximo ${WEBSITE_MAX} caracteres.`;
+  return /^https:\/\/[^\s]+$/i.test(value) ? null : "O site deve começar com https://";
+}
 
 const schema = z.object({
   name: z.string().trim().min(2, "Informe o nome da marca").max(120),
   description: z.string().max(2000).optional(),
   niche_id: z.string().optional(),
+  website: z.string().optional(),
 });
 
 export type BrandValues = z.infer<typeof schema>;
@@ -26,6 +38,10 @@ interface Props {
   name: string;
   description: string;
   nicheId: string;
+  /** Só agência: site que o criador vê no convite. */
+  website?: string;
+  /** Agência: descrição de até 400 caracteres e o campo do site. Marca: nada disso aparece. */
+  isAgency?: boolean;
   photo?: string | null;
   niches: Niche[];
   canEdit: boolean;
@@ -45,6 +61,8 @@ export function BrandTab({
   name,
   description,
   nicheId,
+  website = "",
+  isAgency = false,
   photo,
   niches,
   canEdit,
@@ -66,12 +84,12 @@ export function BrandTab({
     formState: { errors, isDirty },
   } = useForm<BrandValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name, description, niche_id: nicheId },
+    defaultValues: { name, description, niche_id: nicheId, website },
   });
 
   useEffect(() => {
-    reset({ name, description, niche_id: nicheId });
-  }, [name, description, nicheId, reset]);
+    reset({ name, description, niche_id: nicheId, website });
+  }, [name, description, nicheId, website, reset]);
 
   const live = watch();
   const niche = live.niche_id ?? "";
@@ -83,7 +101,9 @@ export function BrandTab({
   const showPhoto = !!photoUrl && !photoBroken;
   const [previewOpen, setPreviewOpen] = useState(false);
   const pick = () => fileRef.current?.click();
-  const discard = () => reset({ name, description, niche_id: nicheId });
+  const discard = () => reset({ name, description, niche_id: nicheId, website });
+  const descMax = isAgency ? AGENCY_DESC_MAX : DESC_MAX;
+  const siteError = isAgency ? websiteError(live.website) : null;
 
   // Alterações não salvas: o navegador avisa antes de fechar ou recarregar a página.
   useEffect(() => {
@@ -128,12 +148,26 @@ export function BrandTab({
             <Field label="Nome da marca" htmlFor="wkn" error={errors.name?.message}>
               <input className="st-in" id="wkn" placeholder="Ex.: Casa Lume" autoComplete="off" disabled={!canEdit} {...register("name")} />
             </Field>
-            <Field label="Descrição" htmlFor="wkd" optional aside={`${(live.description ?? "").length}/${DESC_MAX}`}>
-              <textarea className="st-in" id="wkd" rows={3} maxLength={DESC_MAX} placeholder="Conte em poucas linhas o que a marca faz" disabled={!canEdit} {...register("description")} />
+            <Field label="Descrição" htmlFor="wkd" optional aside={`${(live.description ?? "").length}/${descMax}`}>
+              <textarea
+                className="st-in"
+                id="wkd"
+                rows={3}
+                maxLength={descMax}
+                placeholder={isAgency ? "Conte em poucas linhas o que a agência faz" : "Conte em poucas linhas o que a marca faz"}
+                disabled={!canEdit}
+                {...register("description")}
+              />
             </Field>
+            {isAgency ? (
+              <Field label="Site" htmlFor="wkw" optional error={siteError ?? undefined}>
+                <input className="st-in" id="wkw" type="url" inputMode="url" placeholder="https://suaagencia.com.br" autoComplete="off" maxLength={WEBSITE_MAX} disabled={!canEdit} aria-invalid={siteError ? true : undefined} {...register("website")} />
+              </Field>
+            ) : null}
           </div>
         </div>
         <p className="st-note">{canPhoto ? "Logo quadrada, JPG ou PNG, de preferência 1000 × 1000 px." : "Apenas administradores podem alterar o logo."}</p>
+        {isAgency ? <p className="st-note">A descrição (texto puro) e o site aparecem para o criador no convite do elenco.</p> : null}
 
         <div className="st-prevwrap">
           <button type="button" className="st-link" aria-expanded={previewOpen} onClick={() => setPreviewOpen((v) => !v)}>
@@ -192,7 +226,7 @@ export function BrandTab({
               Descartar
             </button>
           )}
-          <button type="submit" className="btn" disabled={!isDirty || saving}>
+          <button type="submit" className="btn" disabled={!isDirty || saving || !!siteError}>
             <I n="check" cls="sm" />
             {saving ? "Salvando…" : saveError ? "Tentar de novo" : "Salvar alterações"}
           </button>

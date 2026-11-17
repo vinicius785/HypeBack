@@ -315,6 +315,8 @@ export interface Workspace {
   name: string;
   photo?: string;
   description?: string | null;
+  /** Site da agência (só `https`), que o criador vê no convite. */
+  website?: string | null;
   niche_id?: number | null;
   // Company / legal data
   legal_name?: string | null;
