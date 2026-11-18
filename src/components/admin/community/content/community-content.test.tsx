@@ -112,7 +112,7 @@ describe("Aulas", () => {
     await user.type(within(dialog).getByLabelText("Título"), "Aula nova");
     await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
     expect(mocks.adminPostPlain).not.toHaveBeenCalled();
-    expect(within(dialog).getByText("Envie este arquivo para continuar.")).toBeInTheDocument();
+    expect(within(dialog).getByText("Envie o vídeo da aula para continuar.")).toBeInTheDocument();
 
     const file = new File(["x"], "aula.mp4", { type: "video/mp4" });
     await user.upload(dialog.querySelector<HTMLInputElement>('input[type="file"][accept^="video"]')!, file);
