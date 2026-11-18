@@ -7,12 +7,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspacePermissions } from "@/contexts/workspace-context";
 import { rosterErrorMessage, useAgencyRoster, useRemoveFromRoster, useSetRosterExclusive } from "@/hooks/use-agency-roster";
 import { getNetworkLabel } from "@/shared/constants/network-labels";
-import type { RosterMember } from "@/shared/services/agency-roster";
+import { formatCommission, type RosterMember } from "@/shared/services/agency-roster";
+
+import { RosterChatDialog } from "./roster-chat-dialog";
+import { RosterCounterBox } from "./roster-counter-box";
 
 import "@/styles/agency-roster.css";
 
 /** Filtro de situação dentro do elenco: todos, quem já aceitou e os convites que ainda esperam resposta. */
-export type RosterStatus = "all" | "active" | "invited";
+export type RosterStatus = "all" | "active" | "invited" | "available";
 type Sort = "pending" | "recent" | "followers" | "name";
 
 const SORTS: [Sort, string][] = [
@@ -44,6 +47,7 @@ function MemberRow({
   onAskRemove,
   onCancelRemove,
   onRemove,
+  onChat,
 }: {
   member: RosterMember;
   canWrite: boolean;
@@ -53,6 +57,7 @@ function MemberRow({
   onAskRemove: () => void;
   onCancelRemove: () => void;
   onRemove: () => void;
+  onChat: () => void;
 }) {
   const c = member.creator;
   const active = member.status === "active";
@@ -89,6 +94,11 @@ function MemberRow({
         <b title={c.name}>{c.name}</b>
         <small>{c.username ? `@${c.username}` : "Sem usuário"}</small>
         {dateLabel ? <small className="rst-dm">{dateLabel}</small> : null}
+        {member.commission_percent !== null ? (
+          <small className="rst-cm" title="Comissão da agência sobre as campanhas do criador">
+            Comissão {formatCommission(member.commission_percent)}
+          </small>
+        ) : null}
       </div>
       <div className="rst-nt">
         {c.networks.length > 0 ? (
@@ -128,7 +138,13 @@ function MemberRow({
           <>
             <span>
               <b>{member.exclusive ? "Exclusivo da agência" : "Aberto a outros workspaces"}</b>
-              <small>{member.exclusive ? "Só a sua agência vê e convida." : "Também aparece para outros workspaces."}</small>
+              {member.leave_requested_at ? (
+                <small className="rst-lv" title={`Pediu para sair em ${fmtDate(member.leave_requested_at)}. Até a saída, o vínculo e a comissão continuam valendo.`}>
+                  Pediu para sair{member.leaves_at ? ` · sai em ${fmtDate(member.leaves_at)}` : ""}
+                </small>
+              ) : (
+                <small>{member.exclusive ? "Só a sua agência vê e convida." : "Também aparece para outros workspaces."}</small>
+              )}
             </span>
             {canWrite ? (
               <button
@@ -150,6 +166,11 @@ function MemberRow({
         )}
       </div>
       <div className="rst-ac">
+        {active ? (
+          <button type="button" className="rst-ib chat" aria-label={`Conversar com ${c.name}`} title="Conversar" onClick={onChat}>
+            <I n="msg" cls="sm" />
+          </button>
+        ) : null}
         {canWrite ? (
           <button
             type="button"
@@ -163,6 +184,7 @@ function MemberRow({
           </button>
         ) : null}
       </div>
+      {member.status === "invited" && member.counter_offer ? <RosterCounterBox member={member} canWrite={canWrite} /> : null}
     </li>
   );
 }
@@ -170,7 +192,7 @@ function MemberRow({
 
 interface RosterPanelProps {
   /** Subaba escolhida em "Meu elenco" (as subabas ficam ao lado da aba, no cabeçalho da página). */
-  status: RosterStatus;
+  status: Exclude<RosterStatus, "available">;
   onStatusChange: (s: RosterStatus) => void;
   /** As abas da página (Todos, No elenco, Convites, Favoritos): ficam acima da barra, como em todos os recortes. */
   tabs: ReactNode;
@@ -188,6 +210,7 @@ export function RosterPanel({ status, onStatusChange, tabs, onFindCreators }: Ro
   const remove = useRemoveFromRoster();
   const setExclusive = useSetRosterExclusive();
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [chatId, setChatId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [network, setNetwork] = useState("all");
   const [sort, setSort] = useState<Sort>("pending");
@@ -341,11 +364,15 @@ export function RosterPanel({ status, onStatusChange, tabs, onFindCreators }: Ro
                 onAskRemove={() => setConfirmId(m.id)}
                 onCancelRemove={() => setConfirmId(null)}
                 onRemove={() => onRemove(m)}
+                onChat={() => setChatId(m.id)}
               />
             ))}
           </ul>
         </div>
       )}
+      {chatId && roster.some((m) => m.id === chatId && m.status === "active") ? (
+        <RosterChatDialog member={roster.find((m) => m.id === chatId) as RosterMember} canWrite={canWrite} onClose={() => setChatId(null)} />
+      ) : null}
     </>
   );
 }

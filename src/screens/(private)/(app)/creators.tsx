@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { createFileRoute, useSearch, useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
-import { toast } from "sonner";
 
 import "@/styles/agency-roster.css";
 
@@ -24,8 +23,10 @@ import {
   useAddToInfluencerList,
 } from "@/hooks/use-creators-catalog";
 import { useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
+import { RosterAvailable } from "@/components/creators/roster-available";
 import { RosterPanel, type RosterStatus } from "@/components/creators/roster-panel";
-import { rosterErrorMessage, useAgencyRoster, useInviteToRoster, useRosterStatusMap } from "@/hooks/use-agency-roster";
+import { useAgencyRoster, useRosterStatusMap } from "@/hooks/use-agency-roster";
+import { RosterInviteDialog, type RosterInviteCreator } from "@/components/creators/roster-invite-dialog";
 import { CityPicker } from "@/components/creators/city-picker";
 import { MapCreatorPanel } from "@/components/creators/map-creator-panel";
 import {
@@ -639,7 +640,8 @@ function CatalogTab({ tabs, onTotal }: { tabs: React.ReactNode; onTotal: (n: num
   const isAgency = useIsAgencyWorkspace();
   const permissions = useWorkspacePermissions();
   const rosterMap = useRosterStatusMap();
-  const inviteToRoster = useInviteToRoster();
+  // Convidar para o elenco abre o diálogo da comissão; é ele quem envia o convite.
+  const [rosterTarget, setRosterTarget] = useState<RosterInviteCreator | null>(null);
   const canRoster = isAgency && permissions.influencers_invite;
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -844,14 +846,8 @@ function CatalogTab({ tabs, onTotal }: { tabs: React.ReactNode; onTotal: (n: num
       onInvite: () => setInviteTarget({ userId: group.user.id, name: group.user.name, accounts: group.accounts, photo: groupPhoto(group) }),
       onSave: () => setSelectedForList({ userId: group.user.id, name: group.user.name }),
       rosterStatus: rosterMap.get(group.user.id) ?? null,
-      rosterBusy: inviteToRoster.isPending && inviteToRoster.variables === group.user.id,
-      onRoster: canRoster
-        ? () =>
-            inviteToRoster.mutate(group.user.id, {
-              onSuccess: () => toast.success(`Convite enviado para ${group.user.name}. Ele entra no elenco quando aceitar.`),
-              onError: (e) => toast.error(rosterErrorMessage(e, "Não foi possível convidar para o elenco.")),
-            })
-        : undefined,
+      rosterBusy: rosterTarget?.userId === group.user.id,
+      onRoster: canRoster ? () => setRosterTarget({ userId: group.user.id, name: group.user.name, photo: groupPhoto(group) }) : undefined,
     };
     return view === "list" ? <CreatorRow key={group.key} {...props} /> : <CreatorCard key={group.key} {...props} />;
   };
@@ -963,16 +959,8 @@ function CatalogTab({ tabs, onTotal }: { tabs: React.ReactNode; onTotal: (n: num
                               onOpen={() => openProfile(mapSelectedGroup.user.id)}
                               onSave={() => setSelectedForList({ userId: mapSelectedGroup.user.id, name: mapSelectedGroup.user.name })}
                               rosterStatus={rosterMap.get(mapSelectedGroup.user.id) ?? null}
-                              rosterBusy={inviteToRoster.isPending && inviteToRoster.variables === mapSelectedGroup.user.id}
-                              onRoster={
-                                canRoster
-                                  ? () =>
-                                      inviteToRoster.mutate(mapSelectedGroup.user.id, {
-                                        onSuccess: () => toast.success(`Convite enviado para ${mapSelectedGroup.user.name}. Ele entra no elenco quando aceitar.`),
-                                        onError: (e) => toast.error(rosterErrorMessage(e, "Não foi possível convidar para o elenco.")),
-                                      })
-                                  : undefined
-                              }
+                              rosterBusy={rosterTarget?.userId === mapSelectedGroup.user.id}
+                              onRoster={canRoster ? () => setRosterTarget({ userId: mapSelectedGroup.user.id, name: mapSelectedGroup.user.name, photo: groupPhoto(mapSelectedGroup) }) : undefined}
                             />
                           )
                         }
@@ -1095,6 +1083,7 @@ function CatalogTab({ tabs, onTotal }: { tabs: React.ReactNode; onTotal: (n: num
         />
       )}
       {profileId && <InfluencerProfileDrawer influencerId={profileId} onClose={() => setProfileId(null)} />}
+      {rosterTarget && <RosterInviteDialog creator={rosterTarget} onClose={() => setRosterTarget(null)} />}
       {selectedForList && (
         <ListMembershipModal
           userId={selectedForList.userId}
@@ -1207,6 +1196,7 @@ function RouteComponent() {
                   { id: "all", label: "Todos" },
                   { id: "active", label: "Ativos", count: !rosterLoading ? inRoster : undefined },
                   { id: "invited", label: "Pendentes", count: !rosterLoading ? invited : undefined },
+                  { id: "available", label: "Querendo agência" },
                 ],
               },
             ]
@@ -1229,7 +1219,11 @@ function RouteComponent() {
       )}
       {isAgency && segment === "roster" && (
         <div className="pg-panel">
-          <RosterPanel status={rosterStatus} onStatusChange={setRosterStatus} tabs={tabs} onFindCreators={() => setSegment("all")} />
+          {rosterStatus === "available" ? (
+            <RosterAvailable tabs={tabs} />
+          ) : (
+            <RosterPanel status={rosterStatus} onStatusChange={setRosterStatus} tabs={tabs} onFindCreators={() => setSegment("all")} />
+          )}
         </div>
       )}
     </PageShell>

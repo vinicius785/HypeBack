@@ -351,6 +351,10 @@ export interface AdminWorkspaceDetail {
   kind: AdminWorkspaceKind;
   /** Tipo de conta escolhido pelo Admin. Ausente em API antiga = `brand`. Outro conceito que o `kind` (derivado do dono). */
   account_type?: "brand" | "agency";
+  /** Site da agência (só `https`), que o criador vê no convite. Ausente em API antiga. */
+  website?: string | null;
+  /** Selo "verificada" da agência (`PATCH /admin/agencies/:id/verification`). Ausente em API antiga = não verificada. */
+  agency_verified?: boolean;
   legal_name: string | null;
   tax_id: string | null;
   address: AdminWorkspaceAddress;

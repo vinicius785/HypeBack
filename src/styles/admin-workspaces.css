@@ -156,3 +156,8 @@
   .pv .adm-workspaces-form-field[data-span] { grid-column: 1 / -1; }
   .pv .adm-workspaces-facts { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Selo "verificada" da agência: o estado à esquerda e a ação à direita */
+.pv .adm-workspaces-seal { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.pv .adm-workspaces-seal > span { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.pv .adm-workspaces-seal small { color: var(--adm-text-muted); font-size: 12.5px; }

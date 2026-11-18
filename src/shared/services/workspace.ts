@@ -42,6 +42,7 @@ function normalizeWorkspaceRow(row: unknown): Workspace | null {
     name: String(o.name ?? ""),
     photo: o.photo != null && o.photo !== "" ? String(o.photo) : undefined,
     description: o.description != null ? String(o.description) : undefined,
+    website: str(o.website),
     niche_id:
       o.niche_id != null && !Number.isNaN(Number(o.niche_id))
         ? Number(o.niche_id)
@@ -187,6 +188,8 @@ export async function createWorkspace(data: CreateWorkspaceData): Promise<Worksp
 export interface UpdateWorkspaceInput {
   name: string;
   description?: string | null;
+  /** Só `https://…`; vazio apaga (agência). */
+  website?: string | null;
   niche_id?: number | null;
   legal_name?: string | null;
   tax_id?: string | null;
@@ -205,6 +208,7 @@ export async function updateWorkspace(
 ): Promise<Workspace> {
   const body: Record<string, unknown> = { name: data.name };
   if (data.description !== undefined) body.description = data.description;
+  if (data.website !== undefined) body.website = data.website ?? "";
   if (data.niche_id !== undefined) body.niche_id = data.niche_id;
   if (data.legal_name !== undefined) body.legal_name = data.legal_name;
   if (data.tax_id !== undefined) body.tax_id = data.tax_id;

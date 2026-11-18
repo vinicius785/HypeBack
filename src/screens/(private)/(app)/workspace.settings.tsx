@@ -104,6 +104,8 @@ function WorkspaceSettingsScreen() {
       return updateWorkspace(workspaceId, {
         name: values.name.trim(),
         description: values.description?.trim() === "" ? null : (values.description?.trim() ?? null),
+        // Só a agência tem site (o convite do elenco mostra ao criador); a marca nem manda o campo.
+        ...(isAgencyWs ? { website: values.website?.trim() ?? "" } : {}),
         niche_id: values.niche_id && values.niche_id !== "" ? Number(values.niche_id) : null,
       });
     },
@@ -321,6 +323,8 @@ function WorkspaceSettingsScreen() {
             <BrandTab
               name={ws.name ?? ""}
               description={ws.description ?? ""}
+              website={ws.website ?? ""}
+              isAgency={isAgencyWs}
               nicheId={ws.niche_id != null ? String(ws.niche_id) : ""}
               photo={ws.photo}
               niches={niches}
