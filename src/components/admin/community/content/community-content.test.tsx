@@ -25,6 +25,8 @@ vi.mock("@/lib/admin/admin-client", async (importOriginal) => ({
   adminPatchPlain: mocks.adminPatchPlain,
   adminDelete: mocks.adminDelete,
 }));
+const poster = vi.hoisted(() => ({ make: vi.fn() }));
+vi.mock("@/lib/admin/video-poster", () => ({ videoPosterFile: poster.make }));
 const posts = vi.hoisted(() => ({ list: vi.fn() }));
 vi.mock("@/shared/services/community-posts", () => ({ listCommunityPosts: posts.list, deleteCommunityPost: vi.fn() }));
 vi.mock("@/shared/services/groups", async (importOriginal) => ({
@@ -177,7 +179,7 @@ describe("Inspirações: escolher da comunidade", () => {
     await inspirations();
     await user.click(await screen.findByRole("button", { name: "Nova inspiração" }));
     const dialog = await screen.findByRole("dialog", { name: "Nova inspiração" });
-    await user.click(within(dialog).getByRole("button", { name: "Escolher da comunidade" }));
+    await user.click(within(dialog).getByRole("button", { name: /Escolher da comunidade/ }));
 
     const picker = await screen.findByRole("dialog", { name: "Escolher da comunidade" });
     expect(await within(picker).findByRole("button", { name: "Escolher a publicação de Marina" })).toBeInTheDocument();
@@ -213,5 +215,39 @@ describe("Inspirações", () => {
     await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(mocks.adminPostPlain).toHaveBeenCalledTimes(1));
     expect(mocks.adminPostPlain).toHaveBeenCalledWith("/admin/community/inspirations", { title: "Nova", image_url: "https://cdn.test/foto.jpg", video_url: null, author_id: null, source: null });
+  });
+
+  it("só com o vídeo: a capa sai de um quadro dele e vai junto", async () => {
+    const user = userEvent.setup();
+    const frame = new File(["j"], "capa.jpg", { type: "image/jpeg" });
+    poster.make.mockResolvedValue(frame);
+    mocks.uploadVideo.mockResolvedValue({ url: "https://cdn.test/reel.mp4" });
+    mocks.uploadImage.mockResolvedValue({ url: "https://cdn.test/capa.jpg" });
+    mocks.adminPostPlain.mockResolvedValue(INSPIRATION);
+    await inspirations();
+    await user.click(await screen.findByRole("button", { name: "Nova inspiração" }));
+    const dialog = await screen.findByRole("dialog", { name: "Nova inspiração" });
+    await user.type(within(dialog).getByLabelText("Título"), "Só reel");
+    const video = new File(["v"], "r.mp4", { type: "video/mp4" });
+    await user.upload(dialog.querySelector<HTMLInputElement>('input[type="file"][accept^="video"]')!, video);
+    await waitFor(() => expect(mocks.uploadImage).toHaveBeenCalledWith(frame));
+    expect(poster.make).toHaveBeenCalledWith(video);
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(mocks.adminPostPlain).toHaveBeenCalledTimes(1));
+    expect(mocks.adminPostPlain.mock.calls[0][1]).toMatchObject({ image_url: "https://cdn.test/capa.jpg", video_url: "https://cdn.test/reel.mp4" });
+  });
+
+  it("não deu para tirar a capa: avisa e pede uma foto, sem salvar", async () => {
+    const user = userEvent.setup();
+    poster.make.mockResolvedValue(null);
+    mocks.uploadVideo.mockResolvedValue({ url: "https://cdn.test/reel.mp4" });
+    await inspirations();
+    await user.click(await screen.findByRole("button", { name: "Nova inspiração" }));
+    const dialog = await screen.findByRole("dialog", { name: "Nova inspiração" });
+    await user.type(within(dialog).getByLabelText("Título"), "Só reel");
+    await user.upload(dialog.querySelector<HTMLInputElement>('input[type="file"][accept^="video"]')!, new File(["v"], "r.mov", { type: "video/quicktime" }));
+    expect(await within(dialog).findByText(/Não deu para tirar a capa/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+    expect(mocks.adminPostPlain).not.toHaveBeenCalled();
   });
 });
