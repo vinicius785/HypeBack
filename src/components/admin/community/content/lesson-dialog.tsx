@@ -11,7 +11,7 @@ import {
 } from "@/shared/community-content.types";
 
 import { formatDuration, parseDuration } from "./content-format";
-import { MediaUploadField } from "./media-upload-field";
+import { LessonStage } from "./lesson-stage";
 
 /** Nova aula ou edição (com `lesson`). Mudar o custo não cobra de novo quem já desbloqueou. */
 export function LessonDialog({ lesson, onClose }: { lesson?: CommunityLesson; onClose: () => void }) {
@@ -78,55 +78,58 @@ export function LessonDialog({ lesson, onClose }: { lesson?: CommunityLesson; on
         </>
       }
     >
-      <div className="adm-field">
-        <label htmlFor="lesson-title">Título</label>
-        <input
-          id="lesson-title"
-          className="adm-input"
-          value={title}
-          maxLength={LESSON_TITLE_MAX}
-          aria-invalid={touched && titleBad ? true : undefined}
-          data-adm-autofocus
-          onChange={(event) => setTitle(event.target.value)}
-        />
-        {touched && titleBad ? <small className="adm-media-err">Informe o título.</small> : null}
-      </div>
+      <div className="adm-insp adm-lsn">
+        <LessonStage videoUrl={videoUrl} thumbnailUrl={thumbnailUrl} onVideo={setVideoUrl} onThumbnail={setThumbnailUrl} invalid={touched} disabled={pending} onBusyChange={setUploading} />
 
-      <MediaUploadField label="Vídeo da aula" kind="video" required ratio="16 / 9" value={videoUrl} onChange={setVideoUrl} invalid={touched} disabled={pending} onBusyChange={setUploading} hint="Até 100 MB." />
-      <MediaUploadField label="Capa" kind="image" ratio="16 / 9" value={thumbnailUrl} onChange={setThumbnailUrl} disabled={pending} onBusyChange={setUploading} hint="Imagem 16:9, até 5 MB." />
+        <div className="adm-insp-form">
+          <div className="adm-field">
+            <label htmlFor="lesson-title">Título</label>
+            <input
+              id="lesson-title"
+              className="adm-input"
+              value={title}
+              maxLength={LESSON_TITLE_MAX}
+              aria-invalid={touched && titleBad ? true : undefined}
+              data-adm-autofocus
+              onChange={(event) => setTitle(event.target.value)}
+            />
+            {touched && titleBad ? <small className="adm-media-err">Informe o título.</small> : null}
+          </div>
 
-      <div className="adm-field">
-        <label htmlFor="lesson-description">
-          Descrição <span>opcional</span>
-        </label>
-        <textarea id="lesson-description" className="adm-input" value={description} maxLength={LESSON_DESCRIPTION_MAX} onChange={(event) => setDescription(event.target.value)} />
-      </div>
+          <div className="adm-field">
+            <label htmlFor="lesson-description">
+              Descrição <span>opcional</span>
+            </label>
+            <textarea id="lesson-description" className="adm-input" rows={4} value={description} maxLength={LESSON_DESCRIPTION_MAX} onChange={(event) => setDescription(event.target.value)} />
+          </div>
 
-      <div className="adm-content-grid">
-        <div className="adm-field">
-          <label htmlFor="lesson-points">Custo em pontos</label>
-          <input id="lesson-points" className="adm-input" inputMode="numeric" value={points} aria-invalid={touched && pointsBad ? true : undefined} onChange={(event) => setPoints(event.target.value.replace(/\D/g, ""))} />
-          <small>{pointsBad && touched ? `Use um número de 0 a ${LESSON_POINTS_MAX.toLocaleString("pt-BR")}.` : "0 = aula livre."}</small>
-        </div>
-        <div className="adm-field">
-          <label htmlFor="lesson-duration">
-            Duração <span>opcional</span>
-          </label>
-          <input id="lesson-duration" className="adm-input" placeholder="3:25" value={duration} aria-invalid={touched && durationParsed === undefined ? true : undefined} onChange={(event) => setDuration(event.target.value)} />
-          <small>{touched && durationParsed === undefined ? "Use minutos:segundos, como 3:25." : "Minutos:segundos."}</small>
-        </div>
-        <div className="adm-field">
-          <label htmlFor="lesson-category">
-            Categoria <span>opcional</span>
-          </label>
-          <input id="lesson-category" className="adm-input" value={category} maxLength={LESSON_CATEGORY_MAX} onChange={(event) => setCategory(event.target.value)} />
-        </div>
-        <div className="adm-field">
-          <label htmlFor="lesson-instructor">
-            Instrutor <span>opcional</span>
-          </label>
-          <input id="lesson-instructor" className="adm-input" inputMode="numeric" placeholder="Id do usuário" value={instructor} onChange={(event) => setInstructor(event.target.value.trim())} />
-          <small>Vazio = aula da plataforma.</small>
+          <div className="adm-content-grid">
+            <div className="adm-field">
+              <label htmlFor="lesson-points">Custo em pontos</label>
+              <input id="lesson-points" className="adm-input" inputMode="numeric" value={points} aria-invalid={touched && pointsBad ? true : undefined} onChange={(event) => setPoints(event.target.value.replace(/\D/g, ""))} />
+              <small>{pointsBad && touched ? `Use um número de 0 a ${LESSON_POINTS_MAX.toLocaleString("pt-BR")}.` : "0 = aula livre."}</small>
+            </div>
+            <div className="adm-field">
+              <label htmlFor="lesson-duration">
+                Duração <span>opcional</span>
+              </label>
+              <input id="lesson-duration" className="adm-input" placeholder="3:25" value={duration} aria-invalid={touched && durationParsed === undefined ? true : undefined} onChange={(event) => setDuration(event.target.value)} />
+              <small>{touched && durationParsed === undefined ? "Use minutos:segundos, como 3:25." : "Minutos:segundos."}</small>
+            </div>
+            <div className="adm-field">
+              <label htmlFor="lesson-category">
+                Categoria <span>opcional</span>
+              </label>
+              <input id="lesson-category" className="adm-input" value={category} maxLength={LESSON_CATEGORY_MAX} onChange={(event) => setCategory(event.target.value)} />
+            </div>
+            <div className="adm-field">
+              <label htmlFor="lesson-instructor">
+                Instrutor <span>opcional</span>
+              </label>
+              <input id="lesson-instructor" className="adm-input" inputMode="numeric" placeholder="Id do usuário" value={instructor} onChange={(event) => setInstructor(event.target.value.trim())} />
+              <small>Vazio = aula da plataforma.</small>
+            </div>
+          </div>
         </div>
       </div>
     </AdminDialog>
