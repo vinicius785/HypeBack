@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { AdminEmptyState, AdminErrorState, AdminLoadMore, AdminSearchInput, AdminSkeleton } from "@/components/admin/platform";
+import { I } from "@/components/prototype/ui";
 import { useCommunityPosts } from "@/hooks/use-community-posts";
 import { getUploadUrl } from "@/lib/utils/api";
 import type { CommunityPostModeration } from "@/shared/services/community-posts";
@@ -40,7 +41,7 @@ export function CommunityPostPicker({ onPick }: { onPick: (post: CommunityPostMo
         <div className="adm-picker-grid" role="status" aria-busy="true">
           <span className="adm-sr">Carregando publicações…</span>
           {Array.from({ length: 6 }, (_, i) => (
-            <AdminSkeleton key={i} height={180} radius="var(--adm-r-md)" />
+            <AdminSkeleton key={i} height={200} radius="var(--adm-r-md)" />
           ))}
         </div>
       ) : query.error ? (
@@ -52,15 +53,21 @@ export function CommunityPostPicker({ onPick }: { onPick: (post: CommunityPostMo
           <ul className="adm-picker-grid" aria-label="Publicações da comunidade">
             {posts.map((post) => {
               const src = mediaSrc(post.image_url ?? post.video_thumbnail_url);
+              const video = mediaSrc(post.video_url);
               return (
                 <li key={post.id}>
                   <button type="button" className="adm-picker-card" onClick={() => onPick(post)} aria-label={`Escolher a publicação de ${post.author.name}`}>
-                    <span className="adm-picker-pv">
-                      {src ? <img src={src} alt="" /> : <span className="adm-picker-novid">Vídeo</span>}
-                      {post.video_url ? <em>Vídeo</em> : null}
+                    {src ? <img src={src} alt="" loading="lazy" /> : video ? <video src={`${video}#t=0.5`} muted playsInline preload="metadata" aria-hidden="true" /> : null}
+                    {post.video_url ? (
+                      <em>
+                        <I n="video" />
+                        Vídeo
+                      </em>
+                    ) : null}
+                    <span className="adm-picker-cap">
+                      <b>{post.author.name}</b>
+                      <small>{post.content.trim() || "Sem texto"}</small>
                     </span>
-                    <b>{post.author.name}</b>
-                    <small>{post.content.trim() || "Sem texto"}</small>
                   </button>
                 </li>
               );

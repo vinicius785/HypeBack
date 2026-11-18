@@ -22,10 +22,12 @@ interface Props {
   onBusyChange?: (busy: boolean) => void;
   /** Confere o arquivo antes de enviar (ex.: dimensões da imagem). Devolve o motivo da recusa, ou `null` se serve. */
   validate?: (file: File) => Promise<string | null>;
+  /** Chamado depois do envio, com o arquivo e o endereço guardado (ex.: tirar a capa do vídeo). */
+  onUploaded?: (file: File, url: string) => void | Promise<void>;
 }
 
 /** Envia o arquivo na hora (imagem até 5 MB, vídeo até 100 MB) e guarda só o endereço devolvido, com prévia no formato certo. */
-export function MediaUploadField({ label, kind, value, onChange, ratio, hint, required, invalid, disabled, onBusyChange, validate }: Props) {
+export function MediaUploadField({ label, kind, value, onChange, ratio, hint, required, invalid, disabled, onBusyChange, validate, onUploaded }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +46,7 @@ export function MediaUploadField({ label, kind, value, onChange, ratio, hint, re
       }
       const uploaded = kind === "video" ? await uploadCommunityVideo(file) : await uploadCommunityImage(file);
       onChange(uploaded.url);
+      await onUploaded?.(file, uploaded.url);
     } catch (failure) {
       setError(adminErrorMessage(failure, kind === "video" ? "Não foi possível enviar o vídeo." : "Não foi possível enviar a imagem."));
     } finally {

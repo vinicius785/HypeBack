@@ -1,14 +1,18 @@
 import { useState } from "react";
 
+import { I } from "@/components/prototype/ui";
 import { AdminDialog, adminErrorMessage, adminToast } from "@/components/admin/platform";
 import { useInspirationMutations } from "@/hooks/admin/use-admin-community-content";
+import { videoPosterFile } from "@/lib/admin/video-poster";
+import { getUploadUrl } from "@/lib/utils/api";
+import { uploadCommunityImage } from "@/shared/services/groups";
 import type { CommunityPostModeration } from "@/shared/services/community-posts";
 import { LESSON_TITLE_MAX, type CommunityInspiration } from "@/shared/community-content.types";
 
 import { CommunityPostPicker, inspirationFromPost } from "./community-post-picker";
-import { MediaUploadField } from "./media-upload-field";
+import { InspirationStage } from "./inspiration-stage";
 
-/** Nova inspiração ou edição: foto (ou poster, quando há vídeo) e, se quiser, um reel vertical 9:16 de 1080x1920. */
+/** Nova inspiração ou edição: uma foto, um reel vertical 9:16 de 1080x1920, ou os dois. Só com vídeo, a capa sai de um quadro dele. */
 export function InspirationDialog({ inspiration, onClose }: { inspiration?: CommunityInspiration; onClose: () => void }) {
   const { create, update } = useInspirationMutations();
   const pending = create.isPending || update.isPending;
@@ -23,7 +27,27 @@ export function InspirationDialog({ inspiration, onClose }: { inspiration?: Comm
   const [posterNote, setPosterNote] = useState(false);
 
   const titleBad = title.trim().length < 1 || title.length > LESSON_TITLE_MAX;
-  const valid = !titleBad && !!imageUrl;
+  // Com vídeo, a capa é opcional: se faltar, tiramos um quadro dele.
+  const valid = !titleBad && (!!imageUrl || !!videoUrl);
+
+  /** Tira um quadro do vídeo e envia como capa. `false` se não deu (codec sem suporte, vídeo de outro domínio…). */
+  const makePoster = async (source: File | string): Promise<boolean> => {
+    const file = await videoPosterFile(source);
+    if (!file) return false;
+    try {
+      const uploaded = await uploadCommunityImage(file);
+      setImageUrl(uploaded.url);
+      setPosterNote(false);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const onVideoUploaded = async (file: File) => {
+    if (imageUrl) return;
+    if (!(await makePoster(file))) setPosterNote(true);
+  };
 
   const pickPost = (post: CommunityPostModeration) => {
     const from = inspirationFromPost(post);
@@ -38,9 +62,21 @@ export function InspirationDialog({ inspiration, onClose }: { inspiration?: Comm
   const submit = async () => {
     setTouched(true);
     if (!valid || pending || uploading) return;
+    let image = imageUrl;
+    if (!image) {
+      setUploading(true);
+      const made = await videoPosterFile((videoUrl.startsWith("/") ? getUploadUrl(videoUrl) : videoUrl) ?? videoUrl).then((file) => (file ? uploadCommunityImage(file).catch(() => null) : null));
+      setUploading(false);
+      if (!made) {
+        setPosterNote(true);
+        return;
+      }
+      image = made.url;
+      setImageUrl(image);
+    }
     const body = {
       title: title.trim(),
-      image_url: imageUrl,
+      image_url: image,
       video_url: videoUrl || null,
       author_id: author.trim() || null,
       source: source.trim() || null,
@@ -62,7 +98,7 @@ export function InspirationDialog({ inspiration, onClose }: { inspiration?: Comm
       title={picking ? "Escolher da comunidade" : inspiration ? "Editar inspiração" : "Nova inspiração"}
       description={picking ? "Publicações da comunidade com foto ou vídeo. A escolhida preenche foto, vídeo e autor." : "Aparece na aba Conteúdos do app, em formato vertical (9:16)."}
       busy={pending}
-      dirty={inspiration ? true : title.trim() !== "" || !!imageUrl}
+      dirty={inspiration ? true : title.trim() !== "" || !!imageUrl || !!videoUrl}
       onClose={onClose}
       footer={
         picking ? (
@@ -85,39 +121,36 @@ export function InspirationDialog({ inspiration, onClose }: { inspiration?: Comm
         <CommunityPostPicker onPick={pickPost} />
       ) : (
       <>
-      <button type="button" className="btn out adm-btn-sm adm-picker-open" disabled={pending} onClick={() => setPicking(true)}>
-        Escolher da comunidade
-      </button>
-      {posterNote ? (
-        <small className="adm-media-err" role="status">
-          Esse vídeo não tem poster: envie uma foto vertical para continuar.
-        </small>
-      ) : null}
-      <div className="adm-field">
-        <label htmlFor="insp-title">Título</label>
-        <input id="insp-title" className="adm-input" value={title} maxLength={LESSON_TITLE_MAX} aria-invalid={touched && titleBad ? true : undefined} data-adm-autofocus onChange={(event) => setTitle(event.target.value)} />
-        {touched && titleBad ? <small className="adm-media-err">Informe o título.</small> : null}
-      </div>
+      <div className="adm-insp">
+        <InspirationStage imageUrl={imageUrl} videoUrl={videoUrl} onImage={setImageUrl} onVideo={setVideoUrl} onVideoUploaded={onVideoUploaded} needsCover={posterNote} invalid={touched && !imageUrl && !videoUrl} disabled={pending} onBusyChange={setUploading} />
 
-      <div className="adm-content-grid">
-        <MediaUploadField label="Foto ou poster" kind="image" required ratio="9 / 16" value={imageUrl} onChange={setImageUrl} invalid={touched} disabled={pending} onBusyChange={setUploading} hint="Foto vertical; com vídeo, é o poster. Até 5 MB." />
-        <MediaUploadField label="Vídeo (reel)" kind="video" ratio="9 / 16" value={videoUrl} onChange={setVideoUrl} disabled={pending} onBusyChange={setUploading} hint="Vertical 9:16, 1080x1920. Até 100 MB." />
-      </div>
-
-      <div className="adm-content-grid">
-        <div className="adm-field">
-          <label htmlFor="insp-author">
-            Autor <span>opcional</span>
-          </label>
-          <input id="insp-author" className="adm-input" inputMode="numeric" placeholder="Id do usuário" value={author} onChange={(event) => setAuthor(event.target.value.trim())} />
-          <small>Quem publicou.</small>
-        </div>
-        <div className="adm-field">
-          <label htmlFor="insp-source">
-            Marca <span>opcional</span>
-          </label>
-          <input id="insp-source" className="adm-input" value={source} onChange={(event) => setSource(event.target.value)} />
-          <small>Nome da marca quando não há autor.</small>
+        <div className="adm-insp-form">
+          <div className="adm-field">
+            <label htmlFor="insp-title">Título</label>
+            <input id="insp-title" className="adm-input" value={title} maxLength={LESSON_TITLE_MAX} aria-invalid={touched && titleBad ? true : undefined} data-adm-autofocus onChange={(event) => setTitle(event.target.value)} />
+            {touched && titleBad ? <small className="adm-media-err">Informe o título.</small> : null}
+          </div>
+          <div className="adm-field">
+            <label htmlFor="insp-author">
+              Autor <span>opcional</span>
+            </label>
+            <input id="insp-author" className="adm-input" inputMode="numeric" placeholder="Id do usuário" value={author} onChange={(event) => setAuthor(event.target.value.trim())} />
+            <small>Quem publicou.</small>
+          </div>
+          <div className="adm-field">
+            <label htmlFor="insp-source">
+              Marca <span>opcional</span>
+            </label>
+            <input id="insp-source" className="adm-input" value={source} onChange={(event) => setSource(event.target.value)} />
+            <small>Nome da marca quando não há autor.</small>
+          </div>
+          <button type="button" className="adm-insp-pick" disabled={pending} onClick={() => setPicking(true)}>
+            <span>
+              <b>Escolher da comunidade</b>
+              <small>Usa a mídia e o autor de uma publicação que já existe.</small>
+            </span>
+            <I n="chev" />
+          </button>
         </div>
       </div>
       </>
