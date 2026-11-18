@@ -105,13 +105,13 @@ export function InspirationStage({ imageUrl, videoUrl, onImage, onVideo, onVideo
       </div>
 
       {videoUrl ? (
-        <div className="adm-insp-cover">
+        <div className="adm-insp-cover" data-need={needsCover ? "true" : undefined}>
           <span className="adm-insp-thumb" aria-hidden="true">
             {imageUrl ? <img src={url(imageUrl)} alt="" /> : <I n="image" />}
           </span>
           <span>
             <b>Capa</b>
-            <small>{imageUrl ? "Aparece antes do vídeo tocar." : "Sai de um quadro do vídeo."}</small>
+            <small>{imageUrl ? "Aparece antes do vídeo tocar." : needsCover ? "Não deu para tirar a capa do vídeo. Envie uma foto vertical." : "Sai de um quadro do vídeo."}</small>
           </span>
           <button type="button" disabled={locked} onClick={() => imageInput.current?.click()}>
             {imageUrl ? "Trocar" : "Enviar"}
@@ -119,11 +119,6 @@ export function InspirationStage({ imageUrl, videoUrl, onImage, onVideo, onVideo
         </div>
       ) : null}
 
-      {needsCover ? (
-        <small className="adm-media-err" role="status">
-          Não deu para tirar a capa desse vídeo. Envie uma foto vertical para continuar.
-        </small>
-      ) : null}
       {invalid && !hasMedia ? (
         <small className="adm-media-err" role="alert">
           Envie um vídeo ou uma foto para continuar.

@@ -196,3 +196,6 @@
 .pv .adm-insp-cover b em { margin-left: 6px; color: var(--adm-text-muted); font-style: normal; font-size: 12px; font-weight: 500; }
 .pv .adm-insp-cover-acts { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .pv .adm-lsn textarea.adm-input { resize: vertical; min-height: 96px; }
+
+.pv .adm-insp-cover[data-need="true"] { box-shadow: inset 0 0 0 1.5px var(--adm-bad); }
+.pv .adm-insp-cover[data-need="true"] small { color: var(--adm-bad); }
