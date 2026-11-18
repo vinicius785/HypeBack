@@ -1,8 +1,9 @@
 import { TARGET_SCREENS_PLAIN, TARGET_SCREENS_WITH_ID } from "@/lib/admin/notification-target";
 import type { Popup, PopupBody, PopupOptions, PopupStatus, PopupTarget } from "@/shared/popups.types";
 
-export const POPUP_TITLE_MAX = 80;
-export const POPUP_BODY_MAX = 400;
+/** O painel é mais curto que a API (80 e 400): pop-up é um aviso rápido, e texto longo quebra o cartão no app. */
+export const POPUP_TITLE_MAX = 40;
+export const POPUP_BODY_MAX = 140;
 export const POPUP_BUTTON_MAX = 30;
 export const POPUP_PRIORITY_MAX = 100;
 

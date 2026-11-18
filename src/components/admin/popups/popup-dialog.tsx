@@ -182,14 +182,14 @@ export function PopupDialog({ popup, initial, onClose }: Props) {
               <FieldLabel htmlFor={ids.title} count={{ value: draft.title.length, max: POPUP_TITLE_MAX }}>
                 Título
               </FieldLabel>
-              <input id={ids.title} className="cm-in" placeholder="Ex.: A Black Friday chegou!" value={draft.title} aria-invalid={shown("title") ? true : undefined} data-adm-autofocus autoComplete="off" onChange={(event) => patch({ title: event.target.value })} />
+              <input id={ids.title} className="cm-in" placeholder="Ex.: A Black Friday chegou!" value={draft.title} maxLength={POPUP_TITLE_MAX} aria-invalid={shown("title") ? true : undefined} data-adm-autofocus autoComplete="off" onChange={(event) => patch({ title: event.target.value })} />
               {shown("title") ? <small className="nfe">{shown("title")}</small> : null}
             </div>
             <div className={`n4c ${shown("body") ? "bad" : ""}`}>
               <FieldLabel htmlFor={ids.body} optional count={{ value: draft.body.length, max: POPUP_BODY_MAX }}>
                 Texto secundário
               </FieldLabel>
-              <textarea id={ids.body} className="cm-ta" rows={3} placeholder="Texto puro, que aparece abaixo do título." value={draft.body} aria-invalid={shown("body") ? true : undefined} onChange={(event) => patch({ body: event.target.value })} />
+              <textarea id={ids.body} className="cm-ta" rows={3} placeholder="Texto puro, que aparece abaixo do título." value={draft.body} maxLength={POPUP_BODY_MAX} aria-invalid={shown("body") ? true : undefined} onChange={(event) => patch({ body: event.target.value })} />
               {shown("body") ? <small className="nfe">{shown("body")}</small> : null}
             </div>
           </Section>
