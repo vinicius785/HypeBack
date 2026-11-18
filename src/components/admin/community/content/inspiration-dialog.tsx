@@ -55,8 +55,16 @@ export function InspirationDialog({ inspiration, onClose }: { inspiration?: Comm
     setVideoUrl(from.videoUrl);
     setAuthor(from.authorId);
     if (!title.trim()) setTitle(from.title);
-    setPosterNote(from.needsPoster);
+    setPosterNote(false);
     setPicking(false);
+    // Vídeo sem capa: tenta tirar um quadro (só funciona se o servidor do vídeo liberar a leitura); senão pede uma foto.
+    if (from.needsPoster) {
+      setUploading(true);
+      void makePoster(from.videoUrl).then((ok) => {
+        if (!ok) setPosterNote(true);
+        setUploading(false);
+      });
+    }
   };
 
   const submit = async () => {
