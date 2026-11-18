@@ -16,3 +16,19 @@ describe("comissão da agência", () => {
     expect(formatCommission(null)).toBe("—");
   });
 });
+
+describe("criadores querendo agência", () => {
+  it("monta a busca com página e limite, e a rota ausente (404) vira 'indisponível' sem quebrar", async () => {
+    const { vi } = await import("vitest");
+    const http = await import("@/lib/http-client");
+    const spy = vi.spyOn(http, "apiGet").mockResolvedValueOnce({ data: [], meta: { page: 2, per_page: 20, total: 0, has_more: false } });
+    const { getAvailableCreators } = await import("./agency-roster");
+    await getAvailableCreators({ q: " ana ", page: 2 });
+    expect(spy).toHaveBeenCalledWith("/agency/roster/available?page=2&per_page=20&q=ana");
+    spy.mockRejectedValueOnce(Object.assign(new Error("nf"), { status: 404 }));
+    expect((await getAvailableCreators({})).unavailable).toBe(true);
+    spy.mockRejectedValueOnce(Object.assign(new Error("boom"), { status: 500 }));
+    await expect(getAvailableCreators({})).rejects.toThrow("boom");
+    spy.mockRestore();
+  });
+});

@@ -23,6 +23,7 @@ import {
   useAddToInfluencerList,
 } from "@/hooks/use-creators-catalog";
 import { useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
+import { RosterAvailable } from "@/components/creators/roster-available";
 import { RosterPanel, type RosterStatus } from "@/components/creators/roster-panel";
 import { useAgencyRoster, useRosterStatusMap } from "@/hooks/use-agency-roster";
 import { RosterInviteDialog, type RosterInviteCreator } from "@/components/creators/roster-invite-dialog";
@@ -1195,6 +1196,7 @@ function RouteComponent() {
                   { id: "all", label: "Todos" },
                   { id: "active", label: "Ativos", count: !rosterLoading ? inRoster : undefined },
                   { id: "invited", label: "Pendentes", count: !rosterLoading ? invited : undefined },
+                  { id: "available", label: "Querendo agência" },
                 ],
               },
             ]
@@ -1217,7 +1219,11 @@ function RouteComponent() {
       )}
       {isAgency && segment === "roster" && (
         <div className="pg-panel">
-          <RosterPanel status={rosterStatus} onStatusChange={setRosterStatus} tabs={tabs} onFindCreators={() => setSegment("all")} />
+          {rosterStatus === "available" ? (
+            <RosterAvailable tabs={tabs} />
+          ) : (
+            <RosterPanel status={rosterStatus} onStatusChange={setRosterStatus} tabs={tabs} onFindCreators={() => setSegment("all")} />
+          )}
         </div>
       )}
     </PageShell>

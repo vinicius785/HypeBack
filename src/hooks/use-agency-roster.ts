@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { useIsAgencyWorkspace } from "@/hooks/use-agency-brands";
@@ -7,6 +7,7 @@ import {
   answerRosterCounter,
   deleteRosterChat,
   getAgencyRoster,
+  getAvailableCreators,
   inviteToRoster,
   listRosterChat,
   removeFromRoster,
@@ -53,6 +54,19 @@ export function useRosterStatusMap(): ReadonlyMap<number, "invited" | "active"> 
     }
     return map;
   }, [data]);
+}
+
+/** Criadores querendo agência, de 20 em 20. Fica sob `agency-roster`: convidar invalida o elenco e esta lista juntos. */
+export function useAvailableCreators(query: string, options?: { enabled?: boolean }) {
+  const workspaceId = useWorkspaceQueryKey();
+  const isAgency = useIsAgencyWorkspace();
+  return useInfiniteQuery({
+    queryKey: withWorkspaceKey(["agency-roster", "available", query.trim()], workspaceId),
+    queryFn: ({ pageParam }) => getAvailableCreators({ q: query, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.meta.has_more ? last.meta.page + 1 : undefined),
+    enabled: options?.enabled !== false && isAgency && !!workspaceId,
+  });
 }
 
 function useInvalidateRoster() {

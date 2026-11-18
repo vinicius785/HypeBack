@@ -15,7 +15,7 @@ import { RosterCounterBox } from "./roster-counter-box";
 import "@/styles/agency-roster.css";
 
 /** Filtro de situação dentro do elenco: todos, quem já aceitou e os convites que ainda esperam resposta. */
-export type RosterStatus = "all" | "active" | "invited";
+export type RosterStatus = "all" | "active" | "invited" | "available";
 type Sort = "pending" | "recent" | "followers" | "name";
 
 const SORTS: [Sort, string][] = [
@@ -192,7 +192,7 @@ function MemberRow({
 
 interface RosterPanelProps {
   /** Subaba escolhida em "Meu elenco" (as subabas ficam ao lado da aba, no cabeçalho da página). */
-  status: RosterStatus;
+  status: Exclude<RosterStatus, "available">;
   onStatusChange: (s: RosterStatus) => void;
   /** As abas da página (Todos, No elenco, Convites, Favoritos): ficam acima da barra, como em todos os recortes. */
   tabs: ReactNode;

@@ -39,6 +39,42 @@ export interface RosterMember {
   };
 }
 
+/** Criador que marcou "quero uma agência" (`/agency/roster/available`). Só o que a API manda: sem e-mail, telefone ou documento. */
+export interface AvailableCreator {
+  user_id: number;
+  name: string;
+  username: string | null;
+  photo: string | null;
+  niches: string[];
+  followers_total: number;
+  networks: RosterNetwork[];
+  /** Desde quando está disponível (ISO). */
+  available_since: string | null;
+  /** Não nulo = esta agência já convidou e o convite espera resposta. */
+  invite: { roster_id: string; status: RosterStatus } | null;
+}
+
+export interface AvailableCreatorsPage {
+  data: AvailableCreator[];
+  meta: { page: number; per_page: number; total: number; has_more: boolean };
+  /** A API ainda não tem a rota (404): a tela mostra um aviso em vez de quebrar. */
+  unavailable?: boolean;
+}
+
+export const AVAILABLE_PER_PAGE = 20;
+
+/** Criadores querendo agência, com busca por nome ou @. 404 vira `unavailable` (API sem a rota). */
+export async function getAvailableCreators({ q, page = 1, perPage = AVAILABLE_PER_PAGE }: { q?: string; page?: number; perPage?: number }): Promise<AvailableCreatorsPage> {
+  const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
+  if (q?.trim()) params.set("q", q.trim());
+  try {
+    return await apiGet<AvailableCreatorsPage>(`/agency/roster/available?${params}`);
+  } catch (failure) {
+    if ((failure as { status?: number } | null)?.status === 404) return { data: [], meta: { page, per_page: perPage, total: 0, has_more: false }, unavailable: true };
+    throw failure;
+  }
+}
+
 /** Códigos de erro do elenco (campo `error` da resposta) com o texto para a pessoa. */
 export const ROSTER_ERROR_MESSAGES: Record<string, string> = {
   ROSTER_ALREADY_INVITED: "Este criador já foi convidado.",
