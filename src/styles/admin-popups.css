@@ -99,3 +99,7 @@
 .pv .adm-pop-prio-h { color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.5; }
 /* o seletor de duas opções das notificações (`lvf-wt`) fixa 2 colunas com !important: a prioridade tem 3 */
 .pv .n4tm.lvf-wt.adm-pop-prio { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+
+/* selo do prêmio, logo acima do botão (no app aparece perto dele) */
+.pv .adm-pop-reward { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 5px 12px 5px 9px; border-radius: 99px; background: color-mix(in srgb, var(--pc-ink) 10%, transparent); color: var(--pc-ink); font-size: 12.5px; font-weight: 600; overflow-wrap: anywhere; }
+.pv .adm-pop-reward + .adm-pop-btn { margin-top: 2px; }

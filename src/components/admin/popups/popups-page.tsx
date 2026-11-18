@@ -75,7 +75,10 @@ export function AdminPopupsPage() {
           <Thumb popup={popup} />
           <span>
             <b>{popup.title}</b>
-            <small>{popup.audience === "campaign" ? "Participantes de uma campanha" : "Todos"}</small>
+            <small>
+              {popup.audience === "campaign" ? "Participantes de uma campanha" : "Todos"}
+              {popup.reward_points ? ` · ${popup.reward_points} Hype Points` : ""}
+            </small>
           </span>
         </span>
       ),

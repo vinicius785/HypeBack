@@ -5,6 +5,19 @@ import type { Popup, PopupBody, PopupOptions, PopupStatus, PopupTarget } from "@
 export const POPUP_TITLE_MAX = 40;
 export const POPUP_BODY_MAX = 140;
 export const POPUP_BUTTON_MAX = 30;
+export const POPUP_REWARD_LABEL_MAX = 30;
+/** Só vale se `/options` não trouxer a faixa do prêmio. */
+export const POPUP_REWARD_FALLBACK = { min: 1, max: 100 } as const;
+
+/** A faixa de Hype Points vem da API; nada fica fixo além de um reserva. */
+export function rewardRange(options: PopupOptions | undefined): { min: number; max: number } {
+  return options?.reward_points ?? POPUP_REWARD_FALLBACK;
+}
+
+/** Texto que o app mostra no selo: o escolhido, ou "+N Hype Points". */
+export function rewardBadge(points: number | string, label: string): string {
+  return label.trim() || `+${Number(points)} Hype Points`;
+}
 export const POPUP_PRIORITY_MAX = 100;
 
 /** Prioridade em três níveis na tela; a API guarda um número de 0 a 100 (maior aparece primeiro). */
@@ -104,6 +117,9 @@ export interface PopupDraft {
   audience: "all" | "campaign";
   campaignId: string;
   priority: string;
+  /** Hype Points ao tocar no botão; "" = sem prêmio. */
+  rewardPoints: string;
+  rewardLabel: string;
   /** `YYYY-MM-DDTHH:mm`, horário de Brasília. Vazio = agora. */
   startsAt: string;
 }
@@ -121,6 +137,8 @@ export const EMPTY_POPUP_DRAFT: PopupDraft = {
   audience: "all",
   campaignId: "",
   priority: "50",
+  rewardPoints: "",
+  rewardLabel: "",
   startsAt: "",
 };
 
@@ -159,6 +177,8 @@ export function draftFromPopup(popup: Popup, options: { keepStart: boolean }): P
     audience: popup.audience,
     campaignId: popup.campaign_id ?? "",
     priority: String(popup.priority),
+    rewardPoints: popup.reward_points ? String(popup.reward_points) : "",
+    rewardLabel: popup.reward_points ? (popup.reward_label ?? "") : "",
     startsAt: options.keepStart ? toInputValue(popup.starts_at) : "",
   };
   if (!target) return base;
@@ -179,7 +199,7 @@ export function buildTarget(draft: PopupDraft, options: PopupOptions | undefined
   return idField ? { version: 1, screen: draft.screen, [idField]: draft.targetId.trim() } : { version: 1, screen: draft.screen };
 }
 
-export type PopupField = "title" | "body" | "buttonLabel" | "screen" | "targetId" | "url" | "campaignId" | "priority" | "startsAt";
+export type PopupField = "title" | "body" | "buttonLabel" | "screen" | "targetId" | "url" | "campaignId" | "priority" | "rewardPoints" | "rewardLabel" | "startsAt";
 
 /** O que a API recusaria, dito antes de enviar (a mensagem da API continua valendo para o resto). */
 export function popupDraftErrors(draft: PopupDraft, options: PopupOptions | undefined): Partial<Record<PopupField, string>> {
@@ -212,6 +232,14 @@ export function popupDraftErrors(draft: PopupDraft, options: PopupOptions | unde
   const priority = Number(draft.priority);
   if (!/^\d+$/.test(draft.priority.trim()) || priority > POPUP_PRIORITY_MAX) errors.priority = `Um número de 0 a ${POPUP_PRIORITY_MAX}.`;
 
+  const points = draft.rewardPoints.trim();
+  if (points) {
+    const { min, max } = rewardRange(options);
+    if (!/^\d+$/.test(points) || Number(points) < min || Number(points) > max) errors.rewardPoints = `Um número inteiro de ${min} a ${max}.`;
+    else if (!draft.screen || !label) errors.rewardPoints = "O prêmio só vale com botão e página de destino. Preencha o botão, ou deixe os pontos em branco.";
+  }
+  if (draft.rewardLabel.trim().length > POPUP_REWARD_LABEL_MAX) errors.rewardLabel = `No máximo ${POPUP_REWARD_LABEL_MAX} caracteres.`;
+
   if (draft.startsAt && !fromInputValue(draft.startsAt)) errors.startsAt = "Data inválida.";
   return errors;
 }
@@ -224,6 +252,7 @@ export function buildPopupBody(draft: PopupDraft, options: PopupOptions | undefi
   const edit = mode === "edit";
   const optional = <T,>(value: T | null): T | null | undefined => (value === null ? (edit ? null : undefined) : value);
   const startsAt = fromInputValue(draft.startsAt);
+  const hasReward = !!draft.rewardPoints.trim();
   const body: PopupBody = {
     title: draft.title.trim(),
     body: optional(draft.body.trim() || null),
@@ -235,6 +264,8 @@ export function buildPopupBody(draft: PopupDraft, options: PopupOptions | undefi
     audience: draft.audience,
     campaign_id: draft.audience === "campaign" ? draft.campaignId : edit ? null : undefined,
     priority: Number(draft.priority),
+    reward_points: optional(hasReward ? Number(draft.rewardPoints) : null),
+    reward_label: optional(hasReward ? draft.rewardLabel.trim() || null : null),
     ...(startsAt ? { starts_at: startsAt } : {}),
   };
   return Object.fromEntries(Object.entries(body).filter(([, value]) => value !== undefined)) as PopupBody;

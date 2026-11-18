@@ -17,10 +17,12 @@ import {
   POPUP_BODY_MAX,
   POPUP_BUTTON_MAX,
   POPUP_IMAGE_HINT,
+  POPUP_REWARD_LABEL_MAX,
   POPUP_TITLE_MAX,
   popupDraftErrors,
   PRIORITY_LEVELS,
   priorityLevel,
+  rewardRange,
   screenLabel,
   themeLabel,
   toInputValue,
@@ -46,7 +48,7 @@ const STEPS: [string, string][] = [
 ];
 
 /** Campos que cada passo valida antes de deixar continuar. */
-const STEP_FIELDS: PopupField[][] = [["title", "body"], ["buttonLabel", "screen", "targetId", "url", "campaignId", "priority"], ["startsAt"]];
+const STEP_FIELDS: PopupField[][] = [["title", "body"], ["buttonLabel", "screen", "targetId", "url", "rewardPoints", "rewardLabel", "campaignId", "priority"], ["startsAt"]];
 
 interface Props {
   /** Pop-up em edição; sem ele, é um novo. */
@@ -93,7 +95,7 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 export function PopupDialog({ popup, initial, onClose }: Props) {
   const dialogRef = useRef<HTMLElement>(null);
   const titleDomId = useId();
-  const ids = { title: useId(), body: useId(), button: useId(), audience: useId(), campaign: useId(), priority: useId() };
+  const ids = { title: useId(), body: useId(), button: useId(), audience: useId(), campaign: useId(), priority: useId(), reward: useId(), rewardLabel: useId() };
   const optionsQuery = usePopupOptions();
   const options = optionsQuery.data;
   const { create, update } = usePopupMutations();
@@ -164,6 +166,8 @@ export function PopupDialog({ popup, initial, onClose }: Props) {
   };
 
   const target = buildTarget(draft, options);
+  const hasButton = !!target && !!draft.buttonLabel.trim();
+  const range = rewardRange(options);
   const targetText = !target
     ? "Sem botão"
     : target.screen === EXTERNAL_URL
@@ -243,6 +247,50 @@ export function PopupDialog({ popup, initial, onClose }: Props) {
               </div>
               <PopupTargetField draft={draft} options={options} error={shown("screen") ?? shown("targetId") ?? shown("url")} onChange={patch} />
             </div>
+          </Section>
+
+          <Section title="Prêmio em Hype Points" hint="Opcional. Dá pontos a quem tocar no botão.">
+            <div className="adm-pop-2">
+              <div className={`n4c ${shown("rewardPoints") ? "bad" : ""}`}>
+                <label className="n4l adm-pop-l" htmlFor={ids.reward}>
+                  <span>Hype Points ao tocar no botão</span>
+                  <small>
+                    {range.min} a {range.max}
+                  </small>
+                </label>
+                <input
+                  id={ids.reward}
+                  className="cm-in"
+                  inputMode="numeric"
+                  placeholder="Sem prêmio"
+                  value={draft.rewardPoints}
+                  disabled={!hasButton && !draft.rewardPoints}
+                  aria-invalid={shown("rewardPoints") ? true : undefined}
+                  autoComplete="off"
+                  onChange={(event) => patch({ rewardPoints: event.target.value.replace(/\D/g, "").slice(0, 3) })}
+                />
+                {shown("rewardPoints") ? <small className="nfe">{shown("rewardPoints")}</small> : null}
+              </div>
+              <div className={`n4c ${shown("rewardLabel") ? "bad" : ""}`}>
+                <FieldLabel htmlFor={ids.rewardLabel} optional count={{ value: draft.rewardLabel.length, max: POPUP_REWARD_LABEL_MAX }}>
+                  Texto do selo
+                </FieldLabel>
+                <input
+                  id={ids.rewardLabel}
+                  className="cm-in"
+                  placeholder={draft.rewardPoints ? `+${Number(draft.rewardPoints)} Hype Points` : "+50 Hype Points"}
+                  value={draft.rewardLabel}
+                  maxLength={POPUP_REWARD_LABEL_MAX}
+                  disabled={!draft.rewardPoints}
+                  aria-invalid={shown("rewardLabel") ? true : undefined}
+                  autoComplete="off"
+                  onChange={(event) => patch({ rewardLabel: event.target.value })}
+                />
+                {shown("rewardLabel") ? <small className="nfe">{shown("rewardLabel")}</small> : null}
+              </div>
+            </div>
+            {!hasButton && !draft.rewardPoints ? <small className="adm-pop-prio-h">Preencha o texto do botão e escolha a página de destino acima para liberar o prêmio.</small> : null}
+            <small className="adm-pop-prio-h">O prêmio é dado uma vez por pessoa, a quem tocar no botão. Pontos não viram dinheiro.</small>
           </Section>
 
           <Section title="Quem vê" hint="Todos que abrirem o app, ou só quem participa de uma campanha.">
@@ -385,6 +433,10 @@ export function PopupDialog({ popup, initial, onClose }: Props) {
                   <li>
                     <span>Botão leva a</span>
                     <b style={{ wordBreak: "break-all" }}>{targetText}</b>
+                  </li>
+                  <li>
+                    <span>Prêmio</span>
+                    <b>{draft.rewardPoints ? `${Number(draft.rewardPoints)} Hype Points` : "Sem prêmio"}</b>
                   </li>
                   <li>
                     <span>Prioridade</span>
