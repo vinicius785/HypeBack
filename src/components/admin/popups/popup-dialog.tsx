@@ -17,10 +17,12 @@ import {
   POPUP_BODY_MAX,
   POPUP_BUTTON_MAX,
   POPUP_IMAGE_HINT,
+  POPUP_REWARD_LABEL_MAX,
   POPUP_TITLE_MAX,
   popupDraftErrors,
   PRIORITY_LEVELS,
   priorityLevel,
+  rewardRange,
   screenLabel,
   themeLabel,
   toInputValue,
@@ -46,7 +48,7 @@ const STEPS: [string, string][] = [
 ];
 
 /** Campos que cada passo valida antes de deixar continuar. */
-const STEP_FIELDS: PopupField[][] = [["title", "body"], ["buttonLabel", "screen", "targetId", "url", "campaignId", "priority"], ["startsAt"]];
+const STEP_FIELDS: PopupField[][] = [["title", "body"], ["buttonLabel", "screen", "targetId", "url", "rewardPoints", "rewardLabel", "campaignId", "priority"], ["startsAt"]];
 
 interface Props {
   /** Pop-up em edição; sem ele, é um novo. */
@@ -93,7 +95,7 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 export function PopupDialog({ popup, initial, onClose }: Props) {
   const dialogRef = useRef<HTMLElement>(null);
   const titleDomId = useId();
-  const ids = { title: useId(), body: useId(), button: useId(), audience: useId(), campaign: useId(), priority: useId() };
+  const ids = { title: useId(), body: useId(), button: useId(), audience: useId(), campaign: useId(), priority: useId(), reward: useId(), rewardLabel: useId() };
   const optionsQuery = usePopupOptions();
   const options = optionsQuery.data;
   const { create, update } = usePopupMutations();
@@ -164,6 +166,8 @@ export function PopupDialog({ popup, initial, onClose }: Props) {
   };
 
   const target = buildTarget(draft, options);
+  const hasButton = !!target && !!draft.buttonLabel.trim();
+  const range = rewardRange(options);
   const targetText = !target
     ? "Sem botão"
     : target.screen === EXTERNAL_URL
@@ -177,7 +181,23 @@ export function PopupDialog({ popup, initial, onClose }: Props) {
     if (step === 0) {
       return (
         <>
-          <Section title="Aparência" hint="O fundo do cartão e o que aparece no topo: um ícone ou uma imagem.">
+          <Section title="Mensagem" hint="O que a pessoa lê ao abrir o app.">
+            <div className={`n4c ${shown("title") ? "bad" : ""}`}>
+              <FieldLabel htmlFor={ids.title} count={{ value: draft.title.length, max: POPUP_TITLE_MAX }}>
+                Título
+              </FieldLabel>
+              <input id={ids.title} className="cm-in" placeholder="Ex.: A Black Friday chegou!" value={draft.title} maxLength={POPUP_TITLE_MAX} aria-invalid={shown("title") ? true : undefined} data-adm-autofocus autoComplete="off" onChange={(event) => patch({ title: event.target.value })} />
+              {shown("title") ? <small className="nfe">{shown("title")}</small> : null}
+            </div>
+            <div className={`n4c ${shown("body") ? "bad" : ""}`}>
+              <FieldLabel htmlFor={ids.body} optional count={{ value: draft.body.length, max: POPUP_BODY_MAX }}>
+                Texto secundário
+              </FieldLabel>
+              <textarea id={ids.body} className="cm-ta" rows={3} placeholder="Texto puro, que aparece abaixo do título." value={draft.body} maxLength={POPUP_BODY_MAX} aria-invalid={shown("body") ? true : undefined} onChange={(event) => patch({ body: event.target.value })} />
+              {shown("body") ? <small className="nfe">{shown("body")}</small> : null}
+            </div>
+          </Section>
+          <Section title="Aparência" hint="Cor do cartão e o destaque do topo: um ícone ou uma imagem.">
             <div className="n4c">
               <span className="n4l">Fundo</span>
               <div className="adm-pop-themes" role="radiogroup" aria-label="Fundo">
@@ -210,29 +230,13 @@ export function PopupDialog({ popup, initial, onClose }: Props) {
             </div>
           </Section>
 
-          <Section title="Mensagem" hint="O que está escrito no pop-up.">
-            <div className={`n4c ${shown("title") ? "bad" : ""}`}>
-              <FieldLabel htmlFor={ids.title} count={{ value: draft.title.length, max: POPUP_TITLE_MAX }}>
-                Título
-              </FieldLabel>
-              <input id={ids.title} className="cm-in" placeholder="Ex.: A Black Friday chegou!" value={draft.title} aria-invalid={shown("title") ? true : undefined} data-adm-autofocus autoComplete="off" onChange={(event) => patch({ title: event.target.value })} />
-              {shown("title") ? <small className="nfe">{shown("title")}</small> : null}
-            </div>
-            <div className={`n4c ${shown("body") ? "bad" : ""}`}>
-              <FieldLabel htmlFor={ids.body} optional count={{ value: draft.body.length, max: POPUP_BODY_MAX }}>
-                Texto secundário
-              </FieldLabel>
-              <textarea id={ids.body} className="cm-ta" rows={3} placeholder="Texto puro, que aparece abaixo do título." value={draft.body} aria-invalid={shown("body") ? true : undefined} onChange={(event) => patch({ body: event.target.value })} />
-              {shown("body") ? <small className="nfe">{shown("body")}</small> : null}
-            </div>
-          </Section>
         </>
       );
     }
     if (step === 1) {
       return (
         <>
-          <Section title="Botão" hint="Opcional. O botão só existe com destino: texto e página andam juntos. Sem botão, o pop-up só informa e fecha.">
+          <Section title="Botão" hint="Opcional. Texto e página andam juntos; sem botão, o pop-up só informa e fecha.">
             <div className="adm-pop-2">
               <div className={`n4c ${shown("buttonLabel") ? "bad" : ""}`}>
                 <FieldLabel htmlFor={ids.button} count={{ value: draft.buttonLabel.length, max: POPUP_BUTTON_MAX }}>
@@ -245,7 +249,51 @@ export function PopupDialog({ popup, initial, onClose }: Props) {
             </div>
           </Section>
 
-          <Section title="Quem vê" hint="Todo mundo que abrir o app, ou só quem participa de uma campanha.">
+          <Section title="Prêmio em Hype Points" hint="Opcional. Dá pontos a quem tocar no botão.">
+            <div className="adm-pop-2">
+              <div className={`n4c ${shown("rewardPoints") ? "bad" : ""}`}>
+                <label className="n4l adm-pop-l" htmlFor={ids.reward}>
+                  <span>Hype Points ao tocar no botão</span>
+                  <small>
+                    {range.min} a {range.max}
+                  </small>
+                </label>
+                <input
+                  id={ids.reward}
+                  className="cm-in"
+                  inputMode="numeric"
+                  placeholder="Sem prêmio"
+                  value={draft.rewardPoints}
+                  disabled={!hasButton && !draft.rewardPoints}
+                  aria-invalid={shown("rewardPoints") ? true : undefined}
+                  autoComplete="off"
+                  onChange={(event) => patch({ rewardPoints: event.target.value.replace(/\D/g, "").slice(0, 3) })}
+                />
+                {shown("rewardPoints") ? <small className="nfe">{shown("rewardPoints")}</small> : null}
+              </div>
+              <div className={`n4c ${shown("rewardLabel") ? "bad" : ""}`}>
+                <FieldLabel htmlFor={ids.rewardLabel} optional count={{ value: draft.rewardLabel.length, max: POPUP_REWARD_LABEL_MAX }}>
+                  Texto do selo
+                </FieldLabel>
+                <input
+                  id={ids.rewardLabel}
+                  className="cm-in"
+                  placeholder={draft.rewardPoints ? `+${Number(draft.rewardPoints)} Hype Points` : "+50 Hype Points"}
+                  value={draft.rewardLabel}
+                  maxLength={POPUP_REWARD_LABEL_MAX}
+                  disabled={!draft.rewardPoints}
+                  aria-invalid={shown("rewardLabel") ? true : undefined}
+                  autoComplete="off"
+                  onChange={(event) => patch({ rewardLabel: event.target.value })}
+                />
+                {shown("rewardLabel") ? <small className="nfe">{shown("rewardLabel")}</small> : null}
+              </div>
+            </div>
+            {!hasButton && !draft.rewardPoints ? <small className="adm-pop-prio-h">Preencha o texto do botão e escolha a página de destino acima para liberar o prêmio.</small> : null}
+            <small className="adm-pop-prio-h">O prêmio é dado uma vez por pessoa, a quem tocar no botão. Pontos não viram dinheiro.</small>
+          </Section>
+
+          <Section title="Quem vê" hint="Todos que abrirem o app, ou só quem participa de uma campanha.">
             <div className="n4tm lvf-wt" role="group" aria-label="Quem vê">
               <button type="button" className={draft.audience === "all" ? "on" : ""} aria-pressed={draft.audience === "all"} onClick={() => patch({ audience: "all", campaignId: "" })}>
                 <I n="users" cls="sm" />
@@ -276,7 +324,7 @@ export function PopupDialog({ popup, initial, onClose }: Props) {
               ))}
             </div>
             <small className="adm-pop-prio-h">
-              {priorityLevel(draft.priority).hint} Havendo vários pop-ups válidos no mesmo dia, aparece o de maior prioridade; os outros ficam para os dias seguintes, enquanto estiverem no prazo.
+              {priorityLevel(draft.priority).hint} Com vários pop-ups válidos no dia, aparece o de maior prioridade; os outros ficam para os dias seguintes.
             </small>
           </Section>
         </>
@@ -385,6 +433,10 @@ export function PopupDialog({ popup, initial, onClose }: Props) {
                   <li>
                     <span>Botão leva a</span>
                     <b style={{ wordBreak: "break-all" }}>{targetText}</b>
+                  </li>
+                  <li>
+                    <span>Prêmio</span>
+                    <b>{draft.rewardPoints ? `${Number(draft.rewardPoints)} Hype Points` : "Sem prêmio"}</b>
                   </li>
                   <li>
                     <span>Prioridade</span>

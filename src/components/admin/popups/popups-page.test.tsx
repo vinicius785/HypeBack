@@ -31,6 +31,7 @@ const OPTIONS: PopupOptions = {
   screens_without_id: ["home", "wallet"],
   screens_with_id: [{ screen: "campaign_detail", id_field: "campaign_id" }],
   external_url_hosts: ["hypeapp.com.br"],
+  reward_points: { min: 1, max: 100 },
 };
 
 const LIVE: Popup = {
@@ -53,6 +54,7 @@ const LIVE: Popup = {
   dismissals: 80,
   created_at: "2026-11-16T12:00:00.000Z",
 };
+const PRIZE: Popup = { ...LIVE, id: "p3", title: "Bônus de boas-vindas", status: "expired", views: 0, clicks: 0, dismissals: 0, reward_points: 50, reward_label: "+50 Hype Points" };
 const OLD: Popup = { ...LIVE, id: "p2", title: "Aviso antigo", status: "expired", views: 0, clicks: 0, dismissals: 0 };
 
 function page() {
@@ -60,7 +62,7 @@ function page() {
 }
 
 beforeEach(() => {
-  mocks.adminGet.mockImplementation(async (path: string) => (path.endsWith("/options") ? OPTIONS : [LIVE, OLD]));
+  mocks.adminGet.mockImplementation(async (path: string) => (path.endsWith("/options") ? OPTIONS : [LIVE, OLD, PRIZE]));
   mocks.adminPostPlain.mockResolvedValue(LIVE);
   mocks.adminPatchPlain.mockResolvedValue(LIVE);
   mocks.adminDelete.mockResolvedValue(undefined);
@@ -87,7 +89,7 @@ describe("Pop-ups", () => {
     const island = await screen.findByLabelText("Resumo dos pop-ups");
     await screen.findByText("Black Friday chegou");
     expect(within(island).getByRole("status", { name: /No ar: “Black Friday chegou”, 120 vistos/, hidden: true })).toBeInTheDocument();
-    expect(within(island).getByRole("button", { name: /^Todos\s*2/ })).toBeInTheDocument();
+    expect(within(island).getByRole("button", { name: /^Todos\s*3/ })).toBeInTheDocument();
     expect(within(island).getByRole("button", { name: /^No ar\s*1/ })).toBeInTheDocument();
   });
 
@@ -185,5 +187,62 @@ describe("Pop-ups", () => {
     await user.click(await screen.findByRole("menuitem", { name: "Excluir" }));
     await user.click(await screen.findByRole("button", { name: "Excluir pop-up" }));
     await waitFor(() => expect(mocks.adminDelete).toHaveBeenCalledWith("/admin/popups/p2"));
+  });
+
+  it("Hype Points: o prêmio só libera com botão e destino, aparece na prévia e vai no envio", async () => {
+    const user = userEvent.setup();
+    page();
+    await user.click(await screen.findByRole("button", { name: /Novo pop-up/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Novo pop-up" });
+    await within(dialog).findByRole("radio", { name: "trophy" });
+    await user.type(within(dialog).getByLabelText(/Título/), "Bônus");
+    await user.click(within(dialog).getByRole("button", { name: /Continuar/ }));
+
+    const points = await within(dialog).findByLabelText(/Hype Points ao tocar no botão/);
+    expect(points).toBeDisabled();
+    expect(within(dialog).getByText(/Preencha o texto do botão e escolha a página/)).toBeInTheDocument();
+    expect(within(dialog).getByText("O prêmio é dado uma vez por pessoa, a quem tocar no botão. Pontos não viram dinheiro.")).toBeInTheDocument();
+
+    await user.type(within(dialog).getByLabelText(/Texto do botão/), "Ver carteira");
+    await user.selectOptions(within(dialog).getByLabelText("Para qual página vai"), "wallet");
+    expect(points).toBeEnabled();
+    await user.type(points, "30");
+    const preview = within(dialog).getByRole("figure", { name: "Prévia do pop-up" });
+    expect(within(preview).getByText("+30 Hype Points")).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText(/Texto do selo/), "Ganhe 30");
+    expect(within(preview).getByText("Ganhe 30")).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: /Continuar/ }));
+    await user.click(await within(dialog).findByRole("button", { name: "Criar pop-up" }));
+    await waitFor(() => expect(mocks.adminPostPlain).toHaveBeenCalledTimes(1));
+    expect(mocks.adminPostPlain.mock.calls[0][1]).toMatchObject({ button_label: "Ver carteira", reward_points: 30, reward_label: "Ganhe 30" });
+  });
+
+  it("Hype Points: fora da faixa da API não deixa continuar", async () => {
+    const user = userEvent.setup();
+    page();
+    await user.click(await screen.findByRole("button", { name: /Novo pop-up/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Novo pop-up" });
+    await within(dialog).findByRole("radio", { name: "trophy" });
+    await user.type(within(dialog).getByLabelText(/Título/), "Bônus");
+    await user.click(within(dialog).getByRole("button", { name: /Continuar/ }));
+    await user.type(await within(dialog).findByLabelText(/Texto do botão/), "Ver");
+    await user.selectOptions(within(dialog).getByLabelText("Para qual página vai"), "wallet");
+    await user.type(within(dialog).getByLabelText(/Hype Points ao tocar no botão/), "0");
+    await user.click(within(dialog).getByRole("button", { name: /Continuar/ }));
+    expect(await within(dialog).findByText("Um número inteiro de 1 a 100.")).toBeInTheDocument();
+  });
+
+  it("Hype Points: a lista mostra o prêmio e duplicar copia pontos e selo", async () => {
+    const user = userEvent.setup();
+    page();
+    const row = (await screen.findByText("Bônus de boas-vindas")).closest("[role=row]") as HTMLElement;
+    expect(within(row).getByText(/50 Hype Points/)).toBeInTheDocument();
+    await user.click(within(row).getByRole("button", { name: /Ações de/ }));
+    await user.click(await screen.findByRole("menuitem", { name: "Duplicar" }));
+    const copy = await screen.findByRole("dialog", { name: "Novo pop-up" });
+    await user.click(within(copy).getByRole("button", { name: /Continuar/ }));
+    expect(await within(copy).findByLabelText(/Hype Points ao tocar no botão/)).toHaveValue("50");
+    expect(within(copy).getByLabelText(/Texto do selo/)).toHaveValue("+50 Hype Points");
   });
 });

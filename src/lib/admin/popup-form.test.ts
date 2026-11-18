@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { PopupOptions } from "@/shared/popups.types";
 
-import { buildPopupBody, clickRate, EMPTY_POPUP_DRAFT, fromInputValue, imageDimensionError, popupDraftErrors, priorityLevel, toInputValue, validUntil } from "./popup-form";
+import { buildPopupBody, clickRate, EMPTY_POPUP_DRAFT, fromInputValue, imageDimensionError, popupDraftErrors, priorityLevel, rewardBadge, rewardRange, toInputValue, validUntil } from "./popup-form";
 
 const OPTIONS: PopupOptions = {
   themes: ["light", "dark"],
@@ -10,6 +10,7 @@ const OPTIONS: PopupOptions = {
   screens_without_id: ["home", "wallet"],
   screens_with_id: [{ screen: "campaign_detail", id_field: "campaign_id" }],
   external_url_hosts: ["hypeapp.com.br"],
+  reward_points: { min: 1, max: 100 },
 };
 
 const draft = (patch = {}) => ({ ...EMPTY_POPUP_DRAFT, title: "Bem-vindo", ...patch });
@@ -75,5 +76,34 @@ describe("popup-form", () => {
     expect([34, 50, 66].map((n) => priorityLevel(n).key)).toEqual(["normal", "normal", "normal"]);
     expect([67, 90, 100].map((n) => priorityLevel(n).key)).toEqual(["high", "high", "high"]);
     expect(priorityLevel(EMPTY_POPUP_DRAFT.priority).key).toBe("normal");
+  });
+
+  it("Hype Points: faixa vem da API, só com botão e destino, e erro diz o que fazer", () => {
+    const withButton = { screen: "wallet", buttonLabel: "Ver carteira" };
+    expect(popupDraftErrors(draft({ ...withButton, rewardPoints: "50" }), OPTIONS)).toEqual({});
+    expect(popupDraftErrors(draft({ ...withButton, rewardPoints: "0" }), OPTIONS).rewardPoints).toMatch(/1 a 100/);
+    expect(popupDraftErrors(draft({ ...withButton, rewardPoints: "101" }), OPTIONS).rewardPoints).toMatch(/1 a 100/);
+    expect(popupDraftErrors(draft({ ...withButton, rewardPoints: "5" }), { ...OPTIONS, reward_points: { min: 5, max: 20 } }).rewardPoints).toBeUndefined();
+    expect(popupDraftErrors(draft({ ...withButton, rewardPoints: "30" }), { ...OPTIONS, reward_points: { min: 5, max: 20 } }).rewardPoints).toMatch(/5 a 20/);
+    expect(popupDraftErrors(draft({ rewardPoints: "50" }), OPTIONS).rewardPoints).toMatch(/botão e página de destino/);
+    expect(popupDraftErrors(draft({ ...withButton, rewardPoints: "50", rewardLabel: "x".repeat(31) }), OPTIONS).rewardLabel).toMatch(/30/);
+    expect(rewardRange(undefined)).toEqual({ min: 1, max: 100 });
+  });
+
+  it("selo: o texto escolhido, ou +N Hype Points", () => {
+    expect(rewardBadge("50", "")).toBe("+50 Hype Points");
+    expect(rewardBadge(20, "  Ganhe 20  ")).toBe("Ganhe 20");
+  });
+
+  it("envio: prêmio vai com o selo; sem prêmio, na criação nem vai e na edição vai null", () => {
+    const withButton = { screen: "wallet", buttonLabel: "Ver carteira" };
+    expect(buildPopupBody(draft({ ...withButton, rewardPoints: "50", rewardLabel: "+50 Hype Points" }), OPTIONS, "create")).toMatchObject({ reward_points: 50, reward_label: "+50 Hype Points" });
+    expect(buildPopupBody(draft({ ...withButton, rewardPoints: "50" }), OPTIONS, "create")).not.toHaveProperty("reward_label");
+    const create = buildPopupBody(draft(withButton), OPTIONS, "create");
+    expect(create).not.toHaveProperty("reward_points");
+    expect(create).not.toHaveProperty("reward_label");
+    expect(buildPopupBody(draft(withButton), OPTIONS, "edit")).toMatchObject({ reward_points: null, reward_label: null });
+    // texto do selo sem pontos não vai
+    expect(buildPopupBody(draft({ ...withButton, rewardLabel: "sobrou" }), OPTIONS, "edit")).toMatchObject({ reward_label: null });
   });
 });

@@ -1,5 +1,5 @@
 import { getUploadUrl } from "@/lib/utils/api";
-import { type PopupDraft } from "@/lib/admin/popup-form";
+import { rewardBadge, type PopupDraft } from "@/lib/admin/popup-form";
 
 import { PopupIcon } from "./popup-icon";
 
@@ -7,6 +7,7 @@ import { PopupIcon } from "./popup-icon";
 export function PopupPreview({ draft }: { draft: PopupDraft }) {
   const image = draft.imageUrl ? (draft.imageUrl.startsWith("/") ? getUploadUrl(draft.imageUrl) : draft.imageUrl) : undefined;
   const showButton = !!draft.buttonLabel.trim() && !!draft.screen;
+  const reward = showButton && /^\d+$/.test(draft.rewardPoints.trim()) && Number(draft.rewardPoints) > 0 ? rewardBadge(draft.rewardPoints, draft.rewardLabel) : null;
   return (
     <figure className="adm-pop-pv" aria-label="Prévia do pop-up">
       <div className="adm-pop-stage">
@@ -26,6 +27,12 @@ export function PopupPreview({ draft }: { draft: PopupDraft }) {
           ) : null}
           <b>{draft.title.trim() || "Título do pop-up"}</b>
           {draft.body.trim() ? <p>{draft.body}</p> : null}
+          {reward ? (
+            <span className="adm-pop-reward">
+              <PopupIcon name="star" size={12} />
+              {reward}
+            </span>
+          ) : null}
           {showButton ? <span className="adm-pop-btn">{draft.buttonLabel.trim()}</span> : null}
           <span className="adm-pop-x">Fechar</span>
         </div>
