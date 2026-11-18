@@ -177,7 +177,23 @@ export function PopupDialog({ popup, initial, onClose }: Props) {
     if (step === 0) {
       return (
         <>
-          <Section title="Aparência" hint="O fundo do cartão e o que aparece no topo: um ícone ou uma imagem.">
+          <Section title="Mensagem" hint="O que a pessoa lê ao abrir o app.">
+            <div className={`n4c ${shown("title") ? "bad" : ""}`}>
+              <FieldLabel htmlFor={ids.title} count={{ value: draft.title.length, max: POPUP_TITLE_MAX }}>
+                Título
+              </FieldLabel>
+              <input id={ids.title} className="cm-in" placeholder="Ex.: A Black Friday chegou!" value={draft.title} aria-invalid={shown("title") ? true : undefined} data-adm-autofocus autoComplete="off" onChange={(event) => patch({ title: event.target.value })} />
+              {shown("title") ? <small className="nfe">{shown("title")}</small> : null}
+            </div>
+            <div className={`n4c ${shown("body") ? "bad" : ""}`}>
+              <FieldLabel htmlFor={ids.body} optional count={{ value: draft.body.length, max: POPUP_BODY_MAX }}>
+                Texto secundário
+              </FieldLabel>
+              <textarea id={ids.body} className="cm-ta" rows={3} placeholder="Texto puro, que aparece abaixo do título." value={draft.body} aria-invalid={shown("body") ? true : undefined} onChange={(event) => patch({ body: event.target.value })} />
+              {shown("body") ? <small className="nfe">{shown("body")}</small> : null}
+            </div>
+          </Section>
+          <Section title="Aparência" hint="Cor do cartão e o destaque do topo: um ícone ou uma imagem.">
             <div className="n4c">
               <span className="n4l">Fundo</span>
               <div className="adm-pop-themes" role="radiogroup" aria-label="Fundo">
@@ -210,29 +226,13 @@ export function PopupDialog({ popup, initial, onClose }: Props) {
             </div>
           </Section>
 
-          <Section title="Mensagem" hint="O que está escrito no pop-up.">
-            <div className={`n4c ${shown("title") ? "bad" : ""}`}>
-              <FieldLabel htmlFor={ids.title} count={{ value: draft.title.length, max: POPUP_TITLE_MAX }}>
-                Título
-              </FieldLabel>
-              <input id={ids.title} className="cm-in" placeholder="Ex.: A Black Friday chegou!" value={draft.title} aria-invalid={shown("title") ? true : undefined} data-adm-autofocus autoComplete="off" onChange={(event) => patch({ title: event.target.value })} />
-              {shown("title") ? <small className="nfe">{shown("title")}</small> : null}
-            </div>
-            <div className={`n4c ${shown("body") ? "bad" : ""}`}>
-              <FieldLabel htmlFor={ids.body} optional count={{ value: draft.body.length, max: POPUP_BODY_MAX }}>
-                Texto secundário
-              </FieldLabel>
-              <textarea id={ids.body} className="cm-ta" rows={3} placeholder="Texto puro, que aparece abaixo do título." value={draft.body} aria-invalid={shown("body") ? true : undefined} onChange={(event) => patch({ body: event.target.value })} />
-              {shown("body") ? <small className="nfe">{shown("body")}</small> : null}
-            </div>
-          </Section>
         </>
       );
     }
     if (step === 1) {
       return (
         <>
-          <Section title="Botão" hint="Opcional. O botão só existe com destino: texto e página andam juntos. Sem botão, o pop-up só informa e fecha.">
+          <Section title="Botão" hint="Opcional. Texto e página andam juntos; sem botão, o pop-up só informa e fecha.">
             <div className="adm-pop-2">
               <div className={`n4c ${shown("buttonLabel") ? "bad" : ""}`}>
                 <FieldLabel htmlFor={ids.button} count={{ value: draft.buttonLabel.length, max: POPUP_BUTTON_MAX }}>
@@ -245,7 +245,7 @@ export function PopupDialog({ popup, initial, onClose }: Props) {
             </div>
           </Section>
 
-          <Section title="Quem vê" hint="Todo mundo que abrir o app, ou só quem participa de uma campanha.">
+          <Section title="Quem vê" hint="Todos que abrirem o app, ou só quem participa de uma campanha.">
             <div className="n4tm lvf-wt" role="group" aria-label="Quem vê">
               <button type="button" className={draft.audience === "all" ? "on" : ""} aria-pressed={draft.audience === "all"} onClick={() => patch({ audience: "all", campaignId: "" })}>
                 <I n="users" cls="sm" />
@@ -276,7 +276,7 @@ export function PopupDialog({ popup, initial, onClose }: Props) {
               ))}
             </div>
             <small className="adm-pop-prio-h">
-              {priorityLevel(draft.priority).hint} Havendo vários pop-ups válidos no mesmo dia, aparece o de maior prioridade; os outros ficam para os dias seguintes, enquanto estiverem no prazo.
+              {priorityLevel(draft.priority).hint} Com vários pop-ups válidos no dia, aparece o de maior prioridade; os outros ficam para os dias seguintes.
             </small>
           </Section>
         </>

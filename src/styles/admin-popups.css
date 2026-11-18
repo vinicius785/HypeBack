@@ -15,23 +15,23 @@
 .pv .adm-pop-thumb[data-theme="dark"] { background: var(--ink); color: var(--adm-surface); box-shadow: none; }
 .pv .adm-pop-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-.pv .adm-pop-themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.pv .adm-pop-theme { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 0; border-radius: var(--adm-r-md); background: var(--adm-surface); color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--adm-rule); transition: box-shadow .2s; }
-.pv .adm-pop-theme i { width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 1.5px var(--adm-rule); }
+.pv .adm-pop-themes { display: flex; flex-wrap: wrap; gap: 8px; }
+.pv .adm-pop-theme { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px 8px 10px; border: 0; border-radius: 99px; background: var(--adm-surface); color: var(--ink); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--adm-rule); transition: box-shadow .2s; }
+.pv .adm-pop-theme i { width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 1.5px var(--adm-rule); }
 .pv .adm-pop-theme[data-theme="dark"] i { background: #0a0a0a; box-shadow: none; }
 .pv .adm-pop-theme[aria-checked="true"] { box-shadow: inset 0 0 0 2px var(--ink); }
 .pv .adm-pop-theme:focus-visible, .pv .adm-pop-icon:focus-visible { outline: none; box-shadow: var(--adm-ring); }
 
-.pv .adm-pop-icons { display: flex; flex-wrap: wrap; gap: 8px; }
-.pv .adm-pop-icon { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--adm-r-sm); background: var(--adm-surface); color: var(--ink); cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--adm-rule); transition: box-shadow .2s, background .2s; }
-.pv .adm-pop-icon[data-none="true"] { width: auto; padding: 0 14px; font: inherit; font-size: 13px; font-weight: 600; }
+.pv .adm-pop-icons { display: flex; flex-wrap: wrap; gap: 6px; }
+.pv .adm-pop-icon { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: var(--adm-r-sm); background: var(--adm-surface); color: var(--ink); cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--adm-rule); transition: box-shadow .2s, background .2s; }
+.pv .adm-pop-icon[data-none="true"] { width: auto; padding: 0 14px; border-radius: 99px; font: inherit; font-size: 13px; font-weight: 600; }
 .pv .adm-pop-icon:hover { background: var(--bg); }
 .pv .adm-pop-icon[aria-checked="true"] { box-shadow: inset 0 0 0 2px var(--ink); }
 
 /* prévia: o app escurecido por trás e o cartão no centro */
 .pv .adm-pop-pv { margin: 0; display: flex; flex-direction: column; gap: 10px; }
 .pv .adm-pop-pv figcaption { color: var(--adm-text-muted); font-size: 12.5px; text-align: center; }
-.pv .adm-pop-stage { position: relative; display: grid; place-items: center; aspect-ratio: 9 / 14; overflow: hidden; padding: 20px; border-radius: var(--adm-r-md); background: #27272a; }
+.pv .adm-pop-stage { position: relative; display: grid; place-items: center; aspect-ratio: 9 / 11; overflow: hidden; padding: 20px; border-radius: var(--adm-r-md); background: #27272a; }
 .pv .adm-pop-ghost { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px; padding: 16px; pointer-events: none; }
 .pv .adm-pop-ghost i { display: block; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, .06); }
 .pv .adm-pop-ghost i:first-child { height: 22px; width: 55%; }
@@ -50,7 +50,8 @@
 .pv .adm-pop-load p { margin: 0; }
 
 /* passo "Destino": três blocos (botão, público, prioridade) */
-.pv .adm-pop-sec { display: flex; flex-direction: column; gap: 16px; padding: 20px; border-radius: var(--adm-r-md); box-shadow: inset 0 0 0 1.5px var(--adm-rule); }
+.pv .adm-pop-sec { display: flex; flex-direction: column; gap: 16px; }
+.pv .adm-pop-sec + .adm-pop-sec { margin-top: 8px; padding-top: 24px; border-top: 1.5px solid var(--adm-rule); }
 .pv .adm-pop-sec-h { display: flex; flex-direction: column; gap: 3px; padding-bottom: 2px; }
 .pv .adm-pop-sec-h b { font-size: 16px; font-weight: 700; letter-spacing: -.02em; }
 .pv .adm-pop-sec-h small { color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.45; }
@@ -88,3 +89,5 @@
 .pv .ovd.adm-pop-dlg .ntw-pv { overflow-y: auto; scrollbar-width: thin; }
 .pv .adm-pop-img-f .adm-media-act small.adm-media-err { color: var(--adm-bad); font-weight: 500; }
 .pv .adm-pop-prio-h { color: var(--adm-text-muted); font-size: 12.5px; line-height: 1.5; }
+/* o seletor de duas opções das notificações (`lvf-wt`) fixa 2 colunas com !important: a prioridade tem 3 */
+.pv .n4tm.lvf-wt.adm-pop-prio { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
