@@ -266,6 +266,9 @@ export interface AdminWorkspaceOwner {
   user_id: number;
   name: string;
   email: string;
+  /** Situação da conta do dono (`pending` = ainda não confirmou o e-mail). Opcional: só vem se a API mandar. */
+  status?: AdminUserAccountStatus;
+  pending_step?: AdminUserPendingStep | null;
 }
 
 /**

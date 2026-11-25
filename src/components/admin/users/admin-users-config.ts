@@ -9,10 +9,11 @@ export const ADMIN_USERS_FILTER_KEYS = ["status", "account_status", "workspace_i
 export type AdminUsersFilterKey = (typeof ADMIN_USERS_FILTER_KEYS)[number];
 
 /**
- * Padrão da tela: ativos e suspensos, SEM as contas em cadastro. A API, sem `status`, agora devolve também as
- * `pending`; por isso a consulta manda este valor sempre, explícito (ver `usersApiParams`).
+ * Padrão da tela: ativos, suspensos e as contas em cadastro (`pending`). Quem criou a conta e ainda não confirmou o
+ * e-mail também é um cliente a acompanhar (o workspace dele já aparece em Workspaces); escondê-lo deixava a conta
+ * invisível. A consulta manda este valor sempre, explícito (ver `usersApiParams`).
  */
-export const ADMIN_USERS_DEFAULT_STATUS = "active,suspended";
+export const ADMIN_USERS_DEFAULT_STATUS = "active,suspended,pending";
 
 export const ADMIN_USERS_LIST_CONFIG = {
   filterKeys: ADMIN_USERS_FILTER_KEYS,
@@ -25,11 +26,12 @@ export const ADMIN_USERS_LIST_CONFIG = {
 } as const satisfies AdminListStateConfig<AdminUsersFilterKey>;
 
 /**
- * Estado da conta. O primeiro é o padrão da API ("ativos e suspensos"): sem ele não haveria como dizer, na
+ * Estado da conta. O primeiro é o padrão da tela ("ativos, suspensos e em cadastro"): sem ele não haveria como dizer, na
  * tela, o que a lista mostra quando ninguém mexeu no filtro. `all` inclui os excluídos.
  */
 export const ADMIN_USERS_STATUS_OPTIONS: readonly AdminFilterOption[] = [
-  { value: ADMIN_USERS_DEFAULT_STATUS, label: "Ativos e suspensos" },
+  { value: ADMIN_USERS_DEFAULT_STATUS, label: "Ativos, suspensos e em cadastro" },
+  { value: "active,suspended", label: "Ativos e suspensos" },
   { value: "active", label: "Ativos" },
   { value: "suspended", label: "Suspensos" },
   { value: "pending", label: "Em cadastro" },

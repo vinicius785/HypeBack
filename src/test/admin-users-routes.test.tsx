@@ -60,7 +60,7 @@ describe("URL da lista (validateSearch)", () => {
 
   it("o que não mexe no padrão não aparece na URL", () => {
     expect(validate({})).toEqual({});
-    expect(validate({ status: "active,suspended", sort_by: "created_at", order: "desc", page: 1, per_page: 25 })).toEqual({});
+    expect(validate({ status: "active,suspended,pending", sort_by: "created_at", order: "desc", page: 1, per_page: 25 })).toEqual({});
   });
 
   it("filtros, busca, ordenação e página, com os nomes do contrato (e números como números)", () => {

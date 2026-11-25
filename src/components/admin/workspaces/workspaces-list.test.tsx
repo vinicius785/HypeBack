@@ -55,6 +55,12 @@ const STUDIO = makeListItem({
   funded_cents: 0,
   custody_cents: 0,
 });
+const CADASTRO = makeListItem({
+  id: "7a1e0000-0000-4000-8000-000000000020",
+  name: "Zissou Filmes",
+  owner: { user_id: 99, name: "Amit Zissou", email: "amit@zissou.test", status: "pending", pending_step: { code: "email_unconfirmed", label: "E-mail ainda não confirmado" } },
+  owners_count: 1,
+});
 const CLINICA = makeListItem({
   id: "7a1e0000-0000-4000-8000-000000000012",
   name: "Clínica Vida Plena",
@@ -71,7 +77,7 @@ beforeEach(() => {
   Object.values(api).forEach((mock) => mock.mockReset());
   fakeRouter.set({});
   routeReads(api.adminList, {
-    "/admin/workspaces": (query) => listOf([CAFE, STUDIO, CLINICA], 60, Number(query?.page ?? 1), 25, DEFINITIONS),
+    "/admin/workspaces": (query) => listOf([CAFE, STUDIO, CLINICA, CADASTRO], 60, Number(query?.page ?? 1), 25, DEFINITIONS),
   });
 });
 afterEach(() => vi.useRealTimers());
@@ -145,6 +151,14 @@ describe("WorkspacesListPage · dados", () => {
     // o "+N" é o selo da célula do kit (ao lado do nome), não uma caixa própria de Workspaces
     expect(within(rowOf("Clínica Vida Plena")).getByText("+1").closest(".adm-entity-badge")).not.toBeNull();
     expect(within(rowOf("Café Serra Verde")).queryByText(/^\+\d/)).not.toBeInTheDocument();
+  });
+
+  it("dono com conta em cadastro (e-mail não confirmado) ganha um aviso na linha; os demais não", async () => {
+    renderWithQuery(<WorkspacesListPage />);
+    await screen.findByText("Zissou Filmes");
+    const row = rowOf("Zissou Filmes");
+    expect(within(row).getByText("Dono ainda não confirmou o e-mail", { selector: ".adm-badge" })).toHaveAttribute("data-tone", "warn");
+    expect(within(rowOf("Café Serra Verde")).queryByText(/ainda não confirmou/)).not.toBeInTheDocument();
   });
 
   it("a linha inteira abre o detalhe do workspace", async () => {

@@ -87,7 +87,7 @@ describe("formatPhone", () => {
 describe("configuração da lista", () => {
   it("o padrão da tela é o padrão da API: sem mexer, nada vai para a URL nem para a consulta", () => {
     const state = readAdminListState({}, ADMIN_USERS_LIST_CONFIG);
-    expect(state.filters.status).toBe("active,suspended");
+    expect(state.filters.status).toBe("active,suspended,pending");
     expect(stateToSearch(state, ADMIN_USERS_LIST_CONFIG)).toEqual({});
     expect(stateToApiQuery(state, ADMIN_USERS_LIST_CONFIG)).toEqual({
       page: 1,
@@ -119,8 +119,9 @@ describe("configuração da lista", () => {
     expect(readAdminListState({ sort_by: "name" }, ADMIN_USERS_LIST_CONFIG).sortBy).toBe("name");
   });
 
-  it("segmentado de estado: o primeiro é o padrão da API e 'Todos' inclui os excluídos", () => {
+  it("segmentado de estado: o primeiro é o padrão da tela (inclui as contas em cadastro) e 'Todos' inclui os excluídos", () => {
     expect(ADMIN_USERS_STATUS_OPTIONS.map((o) => [o.value, o.label])).toEqual([
+      ["active,suspended,pending", "Ativos, suspensos e em cadastro"],
       ["active,suspended", "Ativos e suspensos"],
       ["active", "Ativos"],
       ["suspended", "Suspensos"],

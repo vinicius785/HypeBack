@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   adminGet: vi.fn(),
   adminPost: vi.fn(),
   toastSuccess: vi.fn(),
+  toastError: vi.fn(),
   auth: { user: { id: 1, name: "Marina Albuquerque", is_platform_admin: true, platform_role: "admin" } as { id: number; name: string; is_platform_admin?: boolean; platform_role?: string } | null },
 }));
 
@@ -16,7 +17,7 @@ vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
   return { ...actual, adminList: mocks.adminList, adminGet: mocks.adminGet, adminPost: mocks.adminPost };
 });
 vi.mock("@/contexts/auth-context", () => ({ useAuth: () => ({ user: mocks.auth.user, setUser: vi.fn() }) }));
-vi.mock("sonner", () => ({ toast: { success: mocks.toastSuccess, error: vi.fn() } }));
+vi.mock("sonner", () => ({ toast: { success: mocks.toastSuccess, error: mocks.toastError } }));
 
 import { AdminApiError, toAdminApiError } from "@/lib/admin/admin-client";
 import type { AdminAuditLogEntry, AdminCreatorListItem, AdminUserDetail } from "@/shared/admin-platform.types";
@@ -619,6 +620,44 @@ describe("detalhe do usuário: aba Atividade", () => {
     expect(await screen.findByText("Ação 1-1")).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Paginação" })).toHaveTextContent("1–10 de 25");
     expect(mocks.adminList.mock.calls.filter((call) => call[1]?.actor_user_id === 9).every((call) => call[1].page === 1)).toBe(true);
+  });
+});
+
+describe("detalhe do usuário: conta em cadastro", () => {
+  const pending = () => makeUserDetail({ status: "pending", sessions: { active_count: 0, last_used_at: null, clients: [] }, pending_step: { code: "email_unconfirmed", label: "E-mail ainda não confirmado" } });
+
+  it("oferece 'Reenviar confirmação de e-mail' (sem corpo) e avisa o envio", async () => {
+    server.detail = pending();
+    mocks.adminPost.mockResolvedValue({ sent: true, email: "bernardo@example.test", sent_at: "2026-11-25T14:00:00.000Z" });
+    const { user } = await renderDetail();
+    await user.click(screen.getByRole("button", { name: "Reenviar confirmação de e-mail" }));
+    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith("Confirmação reenviada para bernardo@example.test.", expect.anything()));
+    const [path, body, options] = mocks.adminPost.mock.calls[0];
+    expect(path).toBe("/admin/users/9/resend-verification");
+    expect(body).toBeUndefined();
+    expect(options.idempotencyKey).toMatch(UUID_V4);
+  });
+
+  it("no limite de reenvios (429) e sem a rota (404) o erro tem texto claro", async () => {
+    server.detail = pending();
+    mocks.adminPost.mockRejectedValueOnce(toAdminApiError(429, { message: "Too Many Requests" }));
+    const { user } = await renderDetail();
+    await user.click(screen.getByRole("button", { name: "Reenviar confirmação de e-mail" }));
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(expect.stringContaining("Espere 1 minuto"), expect.anything()));
+    mocks.adminPost.mockRejectedValueOnce(toAdminApiError(404, undefined));
+    await user.click(screen.getByRole("button", { name: "Reenviar confirmação de e-mail" }));
+    await waitFor(() => expect(mocks.toastError).toHaveBeenLastCalledWith(expect.stringContaining("ainda não está disponível"), expect.anything()));
+  });
+
+  it("em cadastro por outra etapa (convite pendente), o botão não aparece: não resolveria", async () => {
+    server.detail = makeUserDetail({ status: "pending", sessions: { active_count: 0, last_used_at: null, clients: [] }, pending_step: { code: "invite_pending", label: "Convite ainda não aceito" } });
+    await renderDetail();
+    expect(screen.queryByRole("button", { name: "Reenviar confirmação de e-mail" })).not.toBeInTheDocument();
+  });
+
+  it("conta ativa não mostra o botão", async () => {
+    await renderDetail();
+    expect(screen.queryByRole("button", { name: "Reenviar confirmação de e-mail" })).not.toBeInTheDocument();
   });
 });
 

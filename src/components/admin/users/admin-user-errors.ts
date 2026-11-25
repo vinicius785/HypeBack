@@ -84,3 +84,16 @@ export function userActionErrorOutdatesScreen(error: unknown): boolean {
       error.code === "NOT_FOUND")
   );
 }
+
+/**
+ * Erro do reenvio da confirmação de e-mail. A API recusa com 409 quando o e-mail já foi confirmado ou a conta não é de
+ * auto-cadastro (o texto vem pronto, em português), 429 no limite de reenvios e 503 se o provedor de e-mail falhou.
+ */
+export function describeResendError(error: unknown): string {
+  if (!(error instanceof AdminApiError)) return describeAdminError(error);
+  if (error.code === "ENDPOINT_UNAVAILABLE") return "Esta ação ainda não está disponível no servidor.";
+  if (error.status === 429) return "Já foi enviado há pouco. Espere 1 minuto para reenviar (no máximo 5 por hora).";
+  if (error.status === 503) return "O serviço de e-mail está indisponível agora. Tente de novo em instantes.";
+  if (error.code === "NOT_FOUND") return "Não encontramos esta conta. Ela pode ter sido removida.";
+  return describeAdminError(error);
+}
