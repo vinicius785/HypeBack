@@ -12,6 +12,16 @@ export function campaignBoostState(boost: CampaignBoost, now: number = Date.now(
   return "used";
 }
 
+/** Nas primeiras 24 horas depois de criada, a campanha já fica em destaque: o Boost só libera passado esse tempo. */
+export const BOOST_LOCK_MS = 86_400_000;
+
+/** Quando o Boost libera (criação + 24 h), ou `null` se a data não veio ou já passou. */
+export function boostUnlocksAt(createdAt: string | null | undefined, now: number = Date.now()): string | null {
+  const created = createdAt ? Date.parse(createdAt) : NaN;
+  if (Number.isNaN(created) || created + BOOST_LOCK_MS <= now) return null;
+  return new Date(created + BOOST_LOCK_MS).toISOString();
+}
+
 /** "14:30", no fuso de Brasília. */
 export function formatBoostTime(iso: string): string {
   return new Intl.DateTimeFormat("pt-BR", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));

@@ -716,6 +716,7 @@ function RouteComponent() {
                   published={statusValue === "published"}
                   registrationOpen={registrationOpen}
                   canWrite={canWriteCampaigns}
+                  createdAt={campaign?.created_at}
                 />
               }
             >
