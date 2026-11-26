@@ -444,6 +444,25 @@ export async function adminGet<T>(path: string, query?: AdminQuery, options: Adm
   return asEnvelope(json).data as T;
 }
 
+/**
+ * GET de um envelope `{ data, generated_at, cached }` (o dashboard de crescimento): devolve o `data` e os dois carimbos
+ * que ficam ao lado dele. `generated_at` ausente vira `null`; `cached` é só informativo.
+ */
+export async function adminGetStamped<T>(
+  path: string,
+  query?: AdminQuery,
+  options: AdminRequestOptions = {},
+): Promise<{ data: T; generated_at: string | null; cached: boolean }> {
+  const json = await request({ method: "GET", path, query, signal: options.signal });
+  const { data } = asEnvelope(json);
+  const stamp = isRecord(json) ? json : {};
+  return {
+    data: data as T,
+    generated_at: typeof stamp.generated_at === "string" ? stamp.generated_at : null,
+    cached: stamp.cached === true,
+  };
+}
+
 /** GET que preserva o `meta` do envelope (ex.: `computed_at` de alertas e inconsistências). */
 export async function adminGetEnvelope<T, M = unknown>(
   path: string,

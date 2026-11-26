@@ -11,7 +11,6 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
 }));
 
 import { AdminDashboardPage } from "@/components/admin/dashboard/admin-dashboard-page";
-import { readPeriodSearch } from "@/lib/admin/period";
 import { Route } from "@/screens/(private)/(admin)/admin.dashboard";
 
 const route = Route as unknown as {
@@ -28,8 +27,7 @@ describe("rota /admin/dashboard", () => {
     expect(route.options.component).toBe(AdminDashboardPage);
   });
 
-  it("valida só o período da URL: predefinido válido passa, o padrão e o lixo saem", () => {
-    expect(route.options.validateSearch).toBe(readPeriodSearch);
+  it("valida só o período e a aba da URL: predefinido válido passa, o padrão e o lixo saem", () => {
     expect(route.options.validateSearch({ period: "week" })).toEqual({ period: "week" });
     expect(route.options.validateSearch({ period: "month" })).toEqual({});
     expect(route.options.validateSearch({ period: "custom", from: "2026-10-01", to: "2026-10-15" })).toEqual({
@@ -39,5 +37,13 @@ describe("rota /admin/dashboard", () => {
     });
     expect(route.options.validateSearch({ period: "custom", from: "ontem" })).toEqual({});
     expect(route.options.validateSearch({ page: 3, status: "x" })).toEqual({});
+  });
+
+  it("a aba vai na URL; a Visão geral (padrão) e o lixo ficam de fora, e o período segue junto", () => {
+    expect(route.options.validateSearch({ tab: "growth" })).toEqual({ tab: "growth" });
+    expect(route.options.validateSearch({ tab: "creators", period: "week" })).toEqual({ period: "week", tab: "creators" });
+    expect(route.options.validateSearch({ tab: "overview" })).toEqual({});
+    expect(route.options.validateSearch({ tab: "money" })).toEqual({});
+    expect(route.options.validateSearch({ tab: ["growth"] })).toEqual({});
   });
 });

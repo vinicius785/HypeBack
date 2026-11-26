@@ -1,0 +1,79 @@
+/*
+ * Dashboard de crescimento do Admin (`src/components/admin/dashboard/growth`).
+ *
+ * Regras: prefixo `adm-gr-`, tudo sob `.pv`, só tokens do kit (`--ink`, `--line`, `--bg`, `--brand`, `--adm-*`), cores
+ * chapadas e sem gradiente. Nenhum gráfico depende só da cor: o parcial é tracejado, as linhas diferem no traço e as
+ * partes empilhadas diferem no tom.
+ */
+
+.pv .adm-gr-stack-wrap, .pv .adm-gr-block { min-width: 0; }
+.pv .adm-gr-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.pv .adm-gr-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.pv .adm-gr-sub { margin: 0 0 12px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.pv .adm-gr-note { margin: 12px 0 0; font-size: 13px; color: var(--adm-text-muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pv .adm-gr-tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+/* ───────── barras horizontais e funil ───────── */
+.pv .adm-gr-bars, .pv .adm-gr-funnel { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.pv .adm-gr-bars li { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(56px, auto); align-items: center; gap: 14px; font-size: 14px; }
+.pv .adm-gr-funnel li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) minmax(120px, auto); align-items: center; gap: 14px; font-size: 14px; }
+.pv .adm-gr-bars-label, .pv .adm-gr-funnel-label { min-width: 0; overflow-wrap: anywhere; }
+.pv .adm-gr-bars-track, .pv .adm-gr-funnel-track { height: 10px; border-radius: var(--adm-r-sm); background: var(--bg); overflow: hidden; }
+.pv .adm-gr-funnel-track { height: 16px; }
+.pv .adm-gr-bars-track i, .pv .adm-gr-funnel-track i { display: block; height: 100%; border-radius: var(--adm-r-sm); background: var(--ink); }
+.pv .adm-gr-bars b, .pv .adm-gr-funnel b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pv .adm-gr-bars b small, .pv .adm-gr-funnel b small { display: block; font-weight: 400; font-size: 12px; color: var(--adm-text-muted); }
+
+/* ───────── barra empilhada e legenda ───────── */
+.pv .adm-gr-stack-bar { display: flex; height: 16px; border-radius: var(--adm-r-sm); overflow: hidden; background: var(--bg); gap: 2px; }
+.pv .adm-gr-stack-bar i { display: block; height: 100%; }
+.pv .adm-gr-stack-bar i[data-tone="0"], .pv .adm-gr-legend i[data-tone="0"] { background: var(--ink); }
+.pv .adm-gr-stack-bar i[data-tone="1"], .pv .adm-gr-legend i[data-tone="1"] { background: var(--adm-text-muted); }
+.pv .adm-gr-stack-bar i[data-tone="2"], .pv .adm-gr-legend i[data-tone="2"] { background: var(--adm-rule); }
+.pv .adm-gr-legend { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; }
+.pv .adm-gr-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.pv .adm-gr-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.pv .adm-gr-legend small { color: var(--adm-text-muted); font-size: 13px; }
+
+/* ───────── gráficos SVG ───────── */
+.pv .adm-gr-chart { margin: 0; }
+.pv .adm-gr-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.pv .adm-gr-axis { stroke: var(--adm-rule); stroke-width: 1.5; }
+.pv .adm-gr-col { fill: var(--ink); }
+.pv .adm-gr-col-partial { fill: none; stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.pv .adm-gr-val { font-size: 11px; font-weight: 600; fill: var(--ink); }
+.pv .adm-gr-tick { font-size: 11px; fill: var(--adm-text-muted); }
+.pv .adm-gr-swatch { display: inline-block; width: 16px; height: 10px; border-radius: 3px; }
+.pv .adm-gr-swatch-partial { border: 1.5px dashed var(--ink); }
+.pv .adm-gr-line polyline, .pv .adm-gr-line line { stroke: var(--ink); stroke-width: 2; fill: none; }
+.pv .adm-gr-line circle { fill: var(--adm-surface); stroke: var(--ink); stroke-width: 2; }
+.pv .adm-gr-line[data-series="1"] polyline, .pv .adm-gr-line[data-series="1"] line { stroke: var(--adm-brand-text); stroke-dasharray: 6 4; }
+.pv .adm-gr-line[data-series="1"] circle { stroke: var(--adm-brand-text); }
+.pv .adm-gr-line[data-series="2"] polyline, .pv .adm-gr-line[data-series="2"] line { stroke: var(--adm-text-muted); stroke-dasharray: 2 4; }
+.pv .adm-gr-line[data-series="2"] circle { stroke: var(--adm-text-muted); }
+
+/* ───────── selo de tendência e variações ───────── */
+.pv .adm-gr-trend { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pv .adm-gr-deltas { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.pv .adm-gr-deltas li { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--adm-text-muted); }
+.pv .adm-gr-deltas b { font-size: 20px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* tabela das 4 semanas fechadas */
+.pv .adm-gr-weeks { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 16px; }
+.pv .adm-gr-weeks th, .pv .adm-gr-weeks td { padding: 10px 8px; text-align: right; border-top: 1.5px solid var(--line); font-variant-numeric: tabular-nums; }
+.pv .adm-gr-weeks th:first-child, .pv .adm-gr-weeks td:first-child { text-align: left; }
+.pv .adm-gr-weeks thead th { border-top: 0; font-size: 12px; font-weight: 600; color: var(--adm-text-muted); }
+
+@media (max-width: 900px) {
+  .pv .adm-gr-grid-2, .pv .adm-gr-grid-3 { grid-template-columns: minmax(0, 1fr); }
+  .pv .adm-gr-deltas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .pv .adm-gr-bars li, .pv .adm-gr-funnel li { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; }
+  .pv .adm-gr-bars-track, .pv .adm-gr-funnel-track { grid-column: 1 / -1; grid-row: 2; }
+  .pv .adm-gr-weeks { display: block; overflow-x: auto; }
+}
+
+/* o painel de cada aba do dashboard empilha os cartões como a própria página */
+.pv .adm-dash-panel { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.pv .adm-dash-panel:focus-visible { outline: none; }

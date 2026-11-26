@@ -4,7 +4,10 @@ import {
   AdminPage,
   AdminPageHeader,
   AdminPeriodSelect,
+  AdminTabPanel,
+  AdminTabs,
   type AdminPeriodChange,
+  type AdminTabItem,
   type AdminPeriodPresetOption,
 } from "@/components/admin/platform";
 import {
@@ -12,10 +15,13 @@ import {
   useAdminOverview,
   useAdminRecentActivity,
 } from "@/hooks/admin/use-admin-overview";
+import { useAdminSearchParam } from "@/hooks/admin/use-admin-search-param";
 import { formatDateTime } from "@/lib/admin/format";
 import { formatPeriodRange, MAX_PERIOD_DAYS, PERIOD_LABEL, PERIOD_PRESETS, type AdminPeriodChoice } from "@/lib/admin/period";
 
 import { DashboardActivity } from "./dashboard-activity";
+import { CreatorsTab } from "./growth/creators-tab";
+import { GrowthTab } from "./growth/growth-tab";
 import { DashboardAttention } from "./dashboard-attention";
 import { DashboardNewsIsland } from "./dashboard-news-island";
 import { dashboardPeriodRule } from "./dashboard-model";
@@ -23,6 +29,15 @@ import { DashboardStatAreas } from "./dashboard-stat-areas";
 import { useDashboardPeriod } from "./use-dashboard-period";
 
 import "@/styles/admin-dashboard.css";
+
+export const DASHBOARD_TABS = ["overview", "growth", "creators"] as const;
+export type DashboardTab = (typeof DASHBOARD_TABS)[number];
+
+const TAB_ITEMS: readonly AdminTabItem<DashboardTab>[] = [
+  { id: "overview", label: "Visão geral" },
+  { id: "growth", label: "Crescimento" },
+  { id: "creators", label: "Criadores" },
+];
 
 const PERIOD_PRESET_OPTIONS: readonly AdminPeriodPresetOption[] = PERIOD_PRESETS.map((id) => ({ id, label: PERIOD_LABEL[id] }));
 
@@ -38,6 +53,7 @@ const PERIOD_PRESET_OPTIONS: readonly AdminPeriodPresetOption[] = PERIOD_PRESETS
  * números foram calculados; o "i" dela diz quais números seguem o período e quais são a posição de agora.
  */
 export function AdminDashboardPage() {
+  const [tab, setTab] = useAdminSearchParam<DashboardTab>("tab", "overview", DASHBOARD_TABS);
   const { period, today, selectPreset, setCustomRange } = useDashboardPeriod();
   const overview = useAdminOverview(period);
   const alerts = useAdminDashboardAlerts();
@@ -70,6 +86,7 @@ export function AdminDashboardPage() {
       <DashboardNewsIsland
         activity={activity.data?.data}
         controls={
+          tab !== "overview" ? undefined : (
           <AdminPeriodSelect
             compact
             presets={PERIOD_PRESET_OPTIONS}
@@ -88,15 +105,28 @@ export function AdminDashboardPage() {
               </>
             }
           />
+          )
         }
       />
 
-      <DashboardStatAreas overview={overview} period={period} />
+      <AdminTabs tabs={TAB_ITEMS} value={tab} onChange={setTab} ariaLabel="Seções do dashboard" idPrefix="adm-dash" />
 
-      <div className="adm-dash-split">
-        <DashboardAttention query={alerts} />
-        <DashboardActivity query={activity} />
-      </div>
+      <AdminTabPanel idPrefix="adm-dash" id="overview" active={tab === "overview"} className="adm-dash-panel">
+        <DashboardStatAreas overview={overview} period={period} />
+
+        <div className="adm-dash-split">
+          <DashboardAttention query={alerts} />
+          <DashboardActivity query={activity} />
+        </div>
+      </AdminTabPanel>
+
+      <AdminTabPanel idPrefix="adm-dash" id="growth" active={tab === "growth"} className="adm-dash-panel">
+        <GrowthTab />
+      </AdminTabPanel>
+
+      <AdminTabPanel idPrefix="adm-dash" id="creators" active={tab === "creators"} className="adm-dash-panel">
+        <CreatorsTab />
+      </AdminTabPanel>
     </AdminPage>
   );
 }
