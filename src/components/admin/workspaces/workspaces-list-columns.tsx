@@ -60,8 +60,21 @@ function OwnerCell({ workspace }: { workspace: AdminWorkspaceListItem }) {
   return (
     <AdminEntityCell
       name={owner.name}
-      subtitle={owner.email}
+      subtitle={
+        owner.status === "pending" ? (
+          <>
+            {owner.email}
+            <br />
+            <AdminBadge tone="warn" size="sm" title={owner.pending_step?.label}>
+              Dono ainda não confirmou o e-mail
+            </AdminBadge>
+          </>
+        ) : (
+          owner.email
+        )
+      }
       size={28}
+      subtitleWrap
       badge={
         others > 0 ? (
           <AdminBadge tone="outline" size="sm" title={`${count} proprietários`}>

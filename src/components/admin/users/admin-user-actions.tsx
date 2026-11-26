@@ -13,12 +13,12 @@ import { WorkspaceBlockers } from "@/components/admin/workspaces/workspace-impac
 import { adminKeys } from "@/hooks/admin/admin-query-keys";
 import { useAdminCapabilities } from "@/hooks/admin/use-admin-team";
 import { ADMIN_USERS_RESOURCE } from "@/hooks/admin/use-admin-users";
-import { useAdminUserAction, type AdminUserActionName } from "@/hooks/admin/use-admin-users-actions";
+import { useAdminUserAction, useResendVerification, type AdminUserActionName } from "@/hooks/admin/use-admin-users-actions";
 import { getDeleteBlockers } from "@/lib/admin/admin-errors";
 import { formatInt } from "@/lib/admin/format";
 import type { AdminAccountSituation, AdminDeleteBlocker, AdminUserDetail } from "@/shared/admin-platform.types";
 
-import { describeUserActionError, userActionErrorOutdatesScreen } from "./admin-user-errors";
+import { describeResendError, describeUserActionError, userActionErrorOutdatesScreen } from "./admin-user-errors";
 import { sessionClientText } from "./admin-users-format";
 import { ACCOUNT_SITUATIONS, ACCOUNT_SITUATION_LABEL, situationOf } from "./account-situation";
 import { AccountSituationDialog } from "./account-situation-dialog";
@@ -34,6 +34,8 @@ export interface UserActionAvailability {
   /** Criador: muda a situação da conta (Ativa, Em análise, Reprovada, Suspensa). Substitui Suspender e Reativar. */
   changeSituation: boolean;
   revokeSessions: boolean;
+  /** Conta em cadastro por e-mail não confirmado: reenviar o código (as outras etapas, convite e importada, o botão não resolve). */
+  resendVerification: boolean;
   /** Excluir (anonimizar) a conta: sem volta, só para administrador. */
   delete: boolean;
   blockedReason: UserActionBlockedReason | null;
@@ -58,7 +60,7 @@ export function userActionAvailability(
   selfId: number | undefined,
   permissions: UserActionPermissions = ALL_PERMISSIONS,
 ): UserActionAvailability {
-  const none = { suspend: false, reactivate: false, changeSituation: false, revokeSessions: false, delete: false };
+  const none = { suspend: false, reactivate: false, changeSituation: false, revokeSessions: false, resendVerification: false, delete: false };
   if (selfId !== undefined && selfId === user.id) return { ...none, blockedReason: "self" };
   if (user.is_platform_admin) return { ...none, blockedReason: "platform_admin" };
   if (user.status === "deleted") return { ...none, blockedReason: "deleted" };
@@ -71,6 +73,7 @@ export function userActionAvailability(
     reactivate: !creator && permissions.moderate && user.status === "suspended",
     changeSituation: creator && permissions.moderate && user.status !== "pending",
     revokeSessions: permissions.moderate && user.sessions.active_count > 0,
+    resendVerification: permissions.moderate && user.status === "pending" && user.pending_step?.code === "email_unconfirmed",
     delete: permissions.delete,
     blockedReason: null,
   };
@@ -272,7 +275,14 @@ export function AdminUserActions({ user, selfId }: { user: AdminUserDetail; self
   const [dialog, setDialog] = useState<AdminUserActionName | null>(null);
   const [situation, setSituation] = useState<AdminAccountSituation | null>(null);
   const { availability } = useUserActionAvailability(user, selfId);
+  const resend = useResendVerification(user.id);
   const current = situationOf(user);
+
+  const resendVerification = () =>
+    resend.mutate(undefined, {
+      onSuccess: (result) => adminToast.success(`Confirmação reenviada para ${result?.email ?? user.email}.`),
+      onError: (failure) => adminToast.error(describeResendError(failure)),
+    });
   const situationItems: AdminActionMenuItem[] = ACCOUNT_SITUATIONS.filter((value) => value !== current).map((value) => ({
     id: `situation-${value}`,
     label: ACCOUNT_SITUATION_LABEL[value],
@@ -286,6 +296,11 @@ export function AdminUserActions({ user, selfId }: { user: AdminUserDetail; self
 
   return (
     <>
+      {availability.resendVerification ? (
+        <button type="button" className="btn" disabled={resend.isPending} onClick={resendVerification}>
+          {resend.isPending ? "Reenviando…" : "Reenviar confirmação de e-mail"}
+        </button>
+      ) : null}
       {availability.revokeSessions ? (
         <button type="button" className="btn out" onClick={() => setDialog("revoke-sessions")}>
           Encerrar sessões

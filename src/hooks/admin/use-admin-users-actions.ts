@@ -46,3 +46,22 @@ export function useAdminUserAction(userId: number, action: AdminUserActionName) 
     invalidate: AFTER_USER_ACTION,
   });
 }
+
+/** Resposta do reenvio da confirmação de e-mail (`sent_at`: ISO do envio). */
+export interface AdminResendVerificationResult {
+  sent: boolean;
+  email: string;
+  sent_at?: string;
+}
+
+/**
+ * Reenvia o e-mail de confirmação de uma conta em cadastro (`POST /admin/users/:userId/resend-verification`, sem corpo).
+ * A API limita o reenvio (60 s entre envios e 5 por hora por destinatário): o erro 429 volta para a tela.
+ */
+export function useResendVerification(userId: number) {
+  return useAdminMutation<AdminResendVerificationResult, void>({
+    mutationFn: (_body, idempotencyKey) =>
+      adminPost<AdminResendVerificationResult>(adminPath`/admin/users/${userId}/resend-verification`, undefined, { idempotencyKey }),
+    invalidate: [adminKeys.resource(ADMIN_AUDIT_RESOURCE)],
+  });
+}
