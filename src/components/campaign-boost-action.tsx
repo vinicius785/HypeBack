@@ -8,6 +8,7 @@ import { I } from "@/components/prototype/ui";
 import { useActivateCampaignBoost } from "@/hooks/use-campaigns";
 import {
   boostErrorText,
+  boostUnlocksAt,
   campaignBoostState,
   formatBoostDate,
   formatBoostCountdown,
@@ -27,6 +28,8 @@ export interface CampaignBoostActionProps {
   registrationOpen: boolean | null;
   /** `campaigns_write`. */
   canWrite: boolean;
+  /** Criação da campanha (ISO): nas primeiras 24 horas ela já está em destaque e o Boost ainda não libera. */
+  createdAt?: string | null;
 }
 
 export const BOOST_HINT = "Coloque sua campanha em destaque para os creators por 24 horas. Cada campanha tem direito a 1 Boost.";
@@ -77,10 +80,11 @@ function useNow(enabled: boolean): number {
 }
 
 /** Por que o botão está desabilitado (ou `null` se pode usar). */
-function disabledReason({ published, registrationOpen, canWrite }: Pick<CampaignBoostActionProps, "published" | "registrationOpen" | "canWrite">): string | null {
+function disabledReason({ published, registrationOpen, canWrite, unlocksAt, now }: Pick<CampaignBoostActionProps, "published" | "registrationOpen" | "canWrite"> & { unlocksAt: string | null; now: number }): string | null {
   if (!canWrite) return "Você não tem permissão para impulsionar campanhas.";
   if (!published) return "Só campanhas publicadas podem ser impulsionadas. Publique a campanha para usar o Boost.";
   if (registrationOpen === false) return "Só campanhas com inscrições abertas podem ser impulsionadas.";
+  if (unlocksAt) return `Nas primeiras 24 horas a campanha já fica em destaque. O Boost libera ${formatBoostEnd(unlocksAt, now)}.`;
   return null;
 }
 
@@ -94,8 +98,10 @@ function disabledReason({ published, registrationOpen, canWrite }: Pick<Campaign
  *  - já utilizado: etiqueta "Boost utilizado" com a data de uso.
  * Funciona igual para marca e agência.
  */
-export function CampaignBoostAction({ campaignId, boost, published, registrationOpen, canWrite }: CampaignBoostActionProps) {
-  const now = useNow(boost?.active === true);
+export function CampaignBoostAction({ campaignId, boost, published, registrationOpen, canWrite, createdAt }: CampaignBoostActionProps) {
+  // O relógio anda enquanto o Boost está ativo ou enquanto o botão espera as 24 horas da criação (libera sozinho).
+  const waiting = boostUnlocksAt(createdAt) !== null;
+  const now = useNow(boost?.active === true || waiting);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mutation = useActivateCampaignBoost(campaignId);
@@ -164,7 +170,7 @@ export function CampaignBoostAction({ campaignId, boost, published, registration
     );
   }
 
-  const reason = disabledReason({ published, registrationOpen, canWrite });
+  const reason = disabledReason({ published, registrationOpen, canWrite, unlocksAt: boostUnlocksAt(createdAt, now), now });
   return (
     <>
       <BoostBubble title="Impulsionar (Boost)" content={`${BOOST_HINT} ${BOOST_WHERE}`} note={reason}>

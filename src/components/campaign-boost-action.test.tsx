@@ -29,9 +29,9 @@ const ACTIVE: CampaignBoost = { available: false, active: true, started_at: "202
 const USED: CampaignBoost = { available: false, active: false, started_at: "2026-11-01T13:00:00Z", ends_at: "2026-11-02T13:00:00Z" };
 
 /** A ação alimentada pelo detalhe da campanha em cache, como no cabeçalho: o `boost` devolvido pelo POST aparece sozinho. */
-function Header({ canWrite = true, published = true, registrationOpen = true as boolean | null }) {
+function Header({ canWrite = true, published = true, registrationOpen = true as boolean | null, createdAt = undefined as string | undefined }) {
   const { data } = useCampaign(ID);
-  return <CampaignBoostAction campaignId={ID} boost={data?.boost} published={published} registrationOpen={registrationOpen} canWrite={canWrite} />;
+  return <CampaignBoostAction campaignId={ID} boost={data?.boost} published={published} registrationOpen={registrationOpen} canWrite={canWrite} createdAt={createdAt} />;
 }
 
 function renderHeader(props: Parameters<typeof Header>[0] = {}) {
@@ -128,6 +128,24 @@ describe("CampaignBoostAction · botão desabilitado, com explicação", () => {
     await userEvent.hover(button.parentElement as HTMLElement);
     expect(screen.getByRole("tooltip")).toHaveTextContent(text);
     expect(button).toHaveAccessibleDescription(text);
+  });
+});
+
+describe("CampaignBoostAction · primeiras 24 horas", () => {
+  it("campanha criada há menos de 24 h: botão desabilitado e diz quando libera", async () => {
+    renderHeader({ createdAt: "2026-11-12T03:00:00Z" }); // libera 13/11 às 00:00 em Brasília
+    const button = await screen.findByRole("button", { name: "Impulsionar" });
+    expect(button).toBeDisabled();
+    await userEvent.hover(button.parentElement as HTMLElement);
+    expect(screen.getByRole("tooltip")).toHaveTextContent(/primeiras 24 horas.*libera amanhã às 00:00/);
+  });
+
+  it("criada há mais de 24 h, ou sem a data: o botão libera", async () => {
+    const { unmount } = renderHeader({ createdAt: "2026-11-11T14:00:00Z" });
+    expect(await screen.findByRole("button", { name: "Impulsionar" })).toBeEnabled();
+    unmount();
+    renderHeader({});
+    expect(await screen.findByRole("button", { name: "Impulsionar" })).toBeEnabled();
   });
 });
 
