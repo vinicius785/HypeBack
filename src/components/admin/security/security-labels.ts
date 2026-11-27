@@ -245,3 +245,11 @@ export function routeCount(hit: { count?: number; hits?: number }): number {
 
 /** Como o ataque terminou, em palavras que a equipe entende. */
 export const OUTCOME_LABEL: Record<"blocked" | "passed", string> = { blocked: "Barrado", passed: "CONSEGUIU ENTRAR" };
+
+export type SeverityFilter = "all" | "high" | "medium" | "low";
+export const SEVERITY_FILTERS: ReadonlyArray<{ id: SeverityFilter; label: string }> = [
+  { id: "all", label: "Todas" },
+  { id: "high", label: "Alta" },
+  { id: "medium", label: "Média" },
+  { id: "low", label: "Baixa" },
+];

@@ -35,12 +35,21 @@ interface BlocksProps {
   routes: SecurityRouteHit[];
 }
 
+/** Incidente já tratado (resolvido ou falso positivo): fica recolhido e discreto. */
+export function isClosedIncident(alert: SecurityAlert): boolean {
+  return alert.status === "resolved" || alert.status === "false_positive";
+}
+
 /**
  * Os blocos do incidente: O QUE / QUEM / COMO / O QUE FAZER. Cada bloco some quando não tem nada para dizer (alertas antigos e
  * os tipos que ainda não vêm agrupados chegam sem `explanation`, `who` ou `how`). Tudo é texto: o React escapa.
  */
 export function IncidentBlocks({ alert, routes }: BlocksProps) {
   const navigate = useNavigate();
+  // Alerta antigo (sem os campos do incidente) mostra as rotas direto, como sempre foi. Do incidente, só o urgente abre sozinho (gravidade alta e ainda aberto); o resto mostra "O que é" e deixa a investigação a um clique.
+  const legacy = !alert.explanation && !alert.who && !alert.how;
+  const [expanded, setExpanded] = useState(legacy || (alert.severity === "high" && !isClosedIncident(alert)));
+  const panelId = useId();
   const { explanation, who, how } = alert;
   const statuses = Object.entries(how?.by_status ?? {}).filter(([, count]) => typeof count === "number");
   const rawOutcome = how?.outcome;
@@ -68,14 +77,10 @@ export function IncidentBlocks({ alert, routes }: BlocksProps) {
     }
   };
 
-  return (
-    <div className="adm-sec-incident">
-      {hasWhat ? (
-        <section>
-          <h3>O que é</h3>
-          <p>{explanation?.what}</p>
-        </section>
-      ) : null}
+  const hasMore = hasWho || routes.length > 0 || statuses.length > 0 || hasDo;
+  const intro = hasWhat || outcome !== null;
+  const more = (
+    <>
       {hasWho ? (
         <section>
           <h3>Quem</h3>
@@ -86,13 +91,6 @@ export function IncidentBlocks({ alert, routes }: BlocksProps) {
       {hasHow ? (
         <section>
           <h3>Como (onde bateu)</h3>
-          {outcome ? (
-            <p className="adm-sec-chips">
-              <span className="adm-sec-pillchip" data-tone={outcome === "passed" ? "bad" : "muted"}>
-                {OUTCOME_LABEL[outcome]}
-              </span>
-            </p>
-          ) : null}
           {routes.length > 0 ? (
             <ul className="adm-sec-routes" aria-label="Rotas mais chamadas">
               {routes.map((hit, index) => (
@@ -130,6 +128,37 @@ export function IncidentBlocks({ alert, routes }: BlocksProps) {
           ) : null}
         </section>
       ) : null}
+    </>
+  );
+  return (
+    <div className="adm-sec-incident" data-closed={isClosedIncident(alert) ? "true" : undefined}>
+      {intro ? (
+        <section>
+          {hasWhat ? (
+            <>
+              <h3>O que é</h3>
+              <p>{explanation?.what}</p>
+            </>
+          ) : null}
+          {outcome ? (
+            <p className="adm-sec-chips">
+              <span className="adm-sec-pillchip" data-tone={outcome === "passed" ? "bad" : "muted"}>
+                {OUTCOME_LABEL[outcome]}
+              </span>
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+      {hasMore ? (
+        <button type="button" className="adm-sec-more-toggle" aria-expanded={expanded} aria-controls={panelId} onClick={() => setExpanded((value) => !value)}>
+          {expanded ? "Ocultar investigação" : "Ver investigação"}
+        </button>
+      ) : null}
+      {hasMore && expanded ? (
+        <div id={panelId} className="adm-sec-incident-more">
+          {more}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -144,10 +173,10 @@ const STATUS_HELP: Record<SecurityIncidentStatus, string> = {
 };
 
 /** Diálogo "Mudar status" do incidente, com anotação opcional (até 500). */
-export function StatusDialog({ alert, onClose }: { alert: SecurityAlert; onClose: () => void }) {
+export function StatusDialog({ alert, onClose, initial }: { alert: SecurityAlert; onClose: () => void; initial?: SecurityIncidentStatus }) {
   const current = alert.status ?? "new";
   const choices = STATUS_CHOICES.filter((choice) => choice !== current);
-  const [status, setStatus] = useState<SecurityIncidentStatus>(choices[0] ?? "resolved");
+  const [status, setStatus] = useState<SecurityIncidentStatus>(initial && choices.includes(initial) ? initial : (choices[0] ?? "resolved"));
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const mutation = useSetAlertStatus();
@@ -211,6 +240,84 @@ export function StatusDialog({ alert, onClose }: { alert: SecurityAlert; onClose
           placeholder="Ex.: era o time de QA testando o login."
           onChange={(event) => setNote(event.target.value)}
         />
+        <div className="adm-field-foot">
+          <span data-error={error ? "true" : undefined} role={error ? "alert" : undefined}>
+            {error ?? ""}
+          </span>
+          <span className="adm-field-count">
+            {note.length}/{NOTE_MAX}
+          </span>
+        </div>
+      </div>
+    </AdminDialog>
+  );
+}
+
+const BULK_CHOICES: readonly SecurityIncidentStatus[] = ["investigating", "resolved", "false_positive"];
+
+/** Muda o status de vários incidentes de uma vez (um PATCH por incidente). O que falhar continua selecionado. */
+export function BulkStatusDialog({ ids, onClose, onDone }: { ids: number[]; onClose: () => void; onDone: (failed: number[]) => void }) {
+  const [status, setStatus] = useState<SecurityIncidentStatus>("resolved");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const mutation = useSetAlertStatus();
+  const selectId = useId();
+  const noteId = useId();
+
+  const submit = async () => {
+    if (mutation.isPending) return;
+    setError(null);
+    const results = await Promise.allSettled(ids.map((alertId) => mutation.mutateAsync({ alertId, status, note })));
+    const failed = ids.filter((_, index) => results[index].status === "rejected");
+    const done = ids.length - failed.length;
+    if (done > 0) adminToast.success(done === 1 ? "1 incidente atualizado." : `${formatInt(done)} incidentes atualizados.`);
+    if (failed.length === 0) {
+      onDone([]);
+      onClose();
+      return;
+    }
+    const firstFailure = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+    setError(`${failed.length === 1 ? "1 incidente não foi atualizado" : `${formatInt(failed.length)} incidentes não foram atualizados`}: ${describeAdminError(firstFailure?.reason)}`);
+    onDone(failed);
+  };
+
+  return (
+    <AdminDialog
+      open
+      title="Mudar status dos selecionados"
+      description={ids.length === 1 ? "1 incidente selecionado" : `${formatInt(ids.length)} incidentes selecionados`}
+      busy={mutation.isPending}
+      dirty={note.trim() !== ""}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn out" disabled={mutation.isPending} onClick={onClose}>
+            Cancelar
+          </button>
+          <button type="button" className="btn" disabled={mutation.isPending} onClick={() => void submit()}>
+            {mutation.isPending ? "Salvando…" : "Aplicar a todos"}
+          </button>
+        </>
+      }
+    >
+      <div className="adm-field">
+        <label htmlFor={selectId}>Novo status</label>
+        <select id={selectId} className="adm-input" value={status} disabled={mutation.isPending} onChange={(event) => setStatus(event.target.value as SecurityIncidentStatus)}>
+          {BULK_CHOICES.map((choice) => (
+            <option key={choice} value={choice}>
+              {INCIDENT_STATUS_LABEL[choice]}
+            </option>
+          ))}
+        </select>
+        <div className="adm-field-foot">
+          <span>{STATUS_HELP[status]}</span>
+        </div>
+      </div>
+      <div className="adm-field">
+        <label htmlFor={noteId}>
+          Anotação <span>(opcional, vale para todos)</span>
+        </label>
+        <textarea id={noteId} className="adm-input" value={note} maxLength={NOTE_MAX} readOnly={mutation.isPending} onChange={(event) => setNote(event.target.value)} />
         <div className="adm-field-foot">
           <span data-error={error ? "true" : undefined} role={error ? "alert" : undefined}>
             {error ?? ""}

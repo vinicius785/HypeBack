@@ -37,8 +37,10 @@ import {
   SECURITY_PRIVACY_NOTE,
   SECURITY_STATUSES,
   SECURITY_TABS,
+  SEVERITY_FILTERS,
   WATCH_FILTERS,
   type KindFilter,
+  type SeverityFilter,
   type SecurityTab,
   type WatchFilter,
 } from "./security-labels";
@@ -54,6 +56,16 @@ const ALERT_FILTER_DEFS: readonly AdminFilterDef[] = [
     label: "Mostrar",
     defaultValue: "unseen",
     options: ALERT_FILTERS.map((option) => ({
+      value: option.id,
+      label: option.label,
+    })),
+  },
+  {
+    kind: "select",
+    key: "severity",
+    label: "Gravidade",
+    defaultValue: "all",
+    options: SEVERITY_FILTERS.map((option) => ({
       value: option.id,
       label: option.label,
     })),
@@ -118,6 +130,7 @@ export function SecurityPage() {
   const [adding, setAdding] = useState(false);
   const [confirmAll, setConfirmAll] = useState(false);
   const [kindFilter, setKindFilter] = useState<KindFilter>("all");
+  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   // Operação Escudo: o botão de ativar ou encerrar fica ao lado da personagem, na ilha.
   const [shieldDialog, setShieldDialog] = useState<
     "activate" | "deactivate" | null
@@ -294,16 +307,19 @@ export function SecurityPage() {
                 <AdminFilterBar
                   compact
                   filters={ALERT_FILTER_DEFS}
-                  values={{ status, kind: kindFilter }}
+                  values={{ status, kind: kindFilter, severity: severityFilter }}
                   onChange={(patch) => {
                     if (typeof patch.status === "string" && (SECURITY_STATUSES as readonly string[]).includes(patch.status))
                       setStatus(patch.status as SecurityAlertStatus);
                     if (patch.kind !== undefined)
                       setKindFilter(patch.kind as KindFilter);
+                    if (patch.severity !== undefined)
+                      setSeverityFilter(patch.severity as SeverityFilter);
                   }}
                   onClear={() => {
                     setStatus("unseen");
                     setKindFilter("all");
+                    setSeverityFilter("all");
                   }}
                   trailing={
                     <button
@@ -358,6 +374,11 @@ export function SecurityPage() {
           <SecurityAlertsTab
             status={status}
             kind={kindFilter}
+            severity={severityFilter}
+            onFocusUrgent={() => {
+              setStatus("open");
+              setSeverityFilter("high");
+            }}
             confirmAll={confirmAll}
             onConfirmAllChange={setConfirmAll}
           />
