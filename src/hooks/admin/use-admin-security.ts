@@ -32,6 +32,8 @@ import type {
   SecurityWatchActivityMeta,
   SecurityWatchActivityRow,
   SecurityWatchBody,
+  SecurityWatchIp,
+  SecurityWatchIpBody,
   SecurityWatchCreated,
 } from "@/shared/admin-platform.types";
 
@@ -131,6 +133,40 @@ export function useWatchActivity(watchId: number | null): UseInfiniteQueryResult
   });
 }
 
+/** IPs vigiados (`GET watch-ips`, ativos primeiro). */
+export function useSecurityWatchIps() {
+  return useAdminItem<SecurityWatchIp[]>({
+    resource: ADMIN_SECURITY_RESOURCE,
+    scope: ["watch-ips"],
+    path: `${BASE}/watch-ips`,
+  });
+}
+
+/** Atividade de um IP vigiado (mesma forma da atividade de e-mail; `user` nulo = chamada sem login). */
+export function useWatchIpActivity(watchId: number | null): UseInfiniteQueryResult<InfiniteData<ActivityPage, number>, unknown> {
+  return useInfiniteQuery({
+    queryKey: adminKeys.of(ADMIN_SECURITY_RESOURCE, "ip-activity", watchId ?? 0),
+    queryFn: async ({ pageParam, signal }): Promise<ActivityPage> => {
+      const page = await adminGetEnvelope<SecurityWatchActivityRow[], SecurityWatchActivityMeta>(
+        `${BASE}${adminPath`/watch-ips/${watchId ?? 0}/activity`}`,
+        { limit: SECURITY_ACTIVITY_PAGE_SIZE, offset: pageParam },
+        { signal },
+      );
+      return { data: Array.isArray(page.data) ? page.data : [], meta: page.meta };
+    },
+    enabled: watchId !== null,
+    initialPageParam: 0,
+    getNextPageParam: (last, all) => {
+      const loaded = all.reduce((sum, page) => sum + page.data.length, 0);
+      const total = last.meta?.total ?? 0;
+      return last.data.length > 0 && loaded < total ? loaded : undefined;
+    },
+    retry: adminRetry,
+    refetchOnWindowFocus: false,
+    staleTime: 15_000,
+  });
+}
+
 function useSecurityMutation<TData, TVariables>(mutationFn: (variables: TVariables) => Promise<TData>) {
   const queryClient = useQueryClient();
   return useMutation<TData, unknown, TVariables>({
@@ -189,4 +225,20 @@ export function useWatchEmail() {
 /** `DELETE watchlist/:watchId` — para de vigiar; a linha fica inativa como histórico. */
 export function useStopWatching() {
   return useSecurityMutation<{ id: number }, number>((watchId) => adminDelete<{ id: number }>(securityWatchPath(watchId)));
+}
+
+/** `POST watch-ips` — 409 `WATCH_ALREADY_ACTIVE` quando o IP já é vigiado; um IP inativo é reativado (`reactivated`). */
+export function useWatchIp() {
+  return useSecurityMutation<SecurityWatchCreated, SecurityWatchIpBody>((body) =>
+    adminPostPlain<SecurityWatchCreated>(`${BASE}/watch-ips`, {
+      ip: body.ip.trim(),
+      reason: body.reason.trim(),
+      ...(body.days ? { days: body.days } : {}),
+    }),
+  );
+}
+
+/** `DELETE watch-ips/:id` — para de vigiar; a linha fica inativa como histórico. */
+export function useStopWatchingIp() {
+  return useSecurityMutation<{ id: number }, number>((watchId) => adminDelete<{ id: number }>(`${BASE}${adminPath`/watch-ips/${watchId}`}`));
 }

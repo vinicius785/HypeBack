@@ -318,6 +318,7 @@ export function SecurityAlertsTab({
   kind,
   severity,
   onFocusUrgent,
+  onWatchIp,
   confirmAll,
   onConfirmAllChange,
 }: {
@@ -325,6 +326,8 @@ export function SecurityAlertsTab({
   severity: SeverityFilter;
   /** "Ver agora" na faixa de urgência: o pai troca os filtros para Abertos + Alta. */
   onFocusUrgent: () => void;
+  /** Link "Vigiar este IP" do incidente: o pai abre o formulário já com o IP. */
+  onWatchIp?: (ip: string) => void;
   /** Filtro por tipo, só no cliente, sobre os alertas já carregados. */
   kind: KindFilter;
   confirmAll: boolean;
@@ -407,7 +410,7 @@ export function SecurityAlertsTab({
                   </li>
                 ) : null}
                 {alert.explanation?.what ? (
-                  <IncidentRow alert={alert} onMarkSeen={setTarget} selected={selecting && selectable(alert) ? picked.has(alert.id) : undefined} onToggleSelect={toggle} />
+                  <IncidentRow alert={alert} onWatchIp={onWatchIp} onMarkSeen={setTarget} selected={selecting && selectable(alert) ? picked.has(alert.id) : undefined} onToggleSelect={toggle} />
                 ) : (
                   <AlertRow alert={alert} onMarkSeen={setTarget} selected={selecting && selectable(alert) ? picked.has(alert.id) : undefined} onToggleSelect={toggle} />
                 )}

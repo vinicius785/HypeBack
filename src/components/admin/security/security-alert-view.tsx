@@ -197,6 +197,11 @@ export function describeAlert(alert: SecurityAlert): AlertView | null {
     };
   }
 
+  if (alert.kind === "watched_ip_seen") {
+    const ip = alert.who?.ip || (alert.details as { ip?: string } | null | undefined)?.ip || "IP não informado";
+    return { tagIcon: "eye", icon: "eye", head: { primary: ip, secondary: "IP vigiado", mono: true } };
+  }
+
   if (isAttackIpDeniedAlert(alert)) {
     const d = alert.details;
     return {
