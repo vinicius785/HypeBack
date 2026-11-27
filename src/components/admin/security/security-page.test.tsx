@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   adminGet: vi.fn(),
   adminGetEnvelope: vi.fn(),
   adminPostPlain: vi.fn(),
+  adminPatchPlain: vi.fn(),
   adminDelete: vi.fn(),
   toastSuccess: vi.fn(),
   auth: { user: null as Record<string, unknown> | null },
@@ -32,6 +33,7 @@ vi.mock("@/lib/admin/admin-client", async (importOriginal) => {
     adminGet: mocks.adminGet,
     adminGetEnvelope: mocks.adminGetEnvelope,
     adminPostPlain: mocks.adminPostPlain,
+    adminPatchPlain: mocks.adminPatchPlain,
     adminDelete: mocks.adminDelete,
   };
 });
@@ -93,6 +95,7 @@ function serve(
     activity?: SecurityWatchActivityRow[] | "forbidden";
     shield?: Record<string, unknown>;
     held?: Record<string, unknown>;
+    summary?: Record<string, unknown>;
   } = {},
 ) {
   mocks.adminGetEnvelope.mockImplementation(async (path: string) => {
@@ -104,7 +107,8 @@ function serve(
     return alertsPage(options.alerts ?? [ALERT]);
   });
   mocks.adminGet.mockImplementation(async (path: string) => {
-    if (path === "/admin/security/alerts/summary") return { unseen: (options.alerts ?? [ALERT]).filter((a) => !a.seen_at).length };
+    if (path === "/admin/security/alerts/summary")
+      return { unseen: (options.alerts ?? [ALERT]).filter((a) => !a.seen_at).length, ...(options.summary ?? {}) };
     if (path === "/admin/security/watchlist") return options.watches ?? WATCHES;
     if (path === "/admin/security/shield") return options.shield ?? SHIELD_OFF;
     if (path === "/admin/security/shield/held") return options.held ?? HELD_NONE;
@@ -1339,5 +1343,88 @@ describe("Segurança: Operação Escudo", () => {
     serve({ alerts: [] });
     await renderPage();
     expect(await screen.findByText("Tudo tranquilo")).toBeInTheDocument();
+  });
+});
+
+describe("Segurança: incidente (Sentinela central)", () => {
+  const incident = (extra: Record<string, unknown> = {}): SecurityAlert =>
+    ({
+      id: 90,
+      kind: "attack_ip_denied",
+      severity: "high",
+      title: "IP com muitas tentativas negadas",
+      details: { ip: "203.0.113.7", count: 40, window_minutes: 10, last_status: 401, last_path: "/api/backoffice/auth/login" },
+      created_at: "2026-11-10T01:30:00Z",
+      seen_at: null,
+      note: null,
+      user: null,
+      status: "new",
+      occurrences: 12,
+      first_at: "2026-11-10T01:00:00Z",
+      last_at: "2026-11-10T17:32:00Z",
+      explanation: { what: "Um IP errou o login várias vezes.", assessment: "Parece força bruta.", action: "Confira se o IP continua batendo." },
+      who: { type: "ip", ip: "203.0.113.7", user: null, other_incidents_30d: 2 },
+      how: { top_routes: [{ route: "401 /api/backoffice/auth/login", count: 38 }], by_status: { "401": 38, "429": 2 }, outcome: "blocked" },
+      links: [{ label: "Ver sessões", kind: "sessions", user_id: 42 }],
+      ...extra,
+    }) as unknown as SecurityAlert;
+
+  it("mostra O que é / Quem / Como / O que fazer, rotas com count, chips por status e o selo Barrado", async () => {
+    serve({ alerts: [incident()] });
+    await renderPage();
+    expect(await screen.findByText("Um IP errou o login várias vezes.")).toBeInTheDocument();
+    expect(screen.getByText("O que é")).toBeInTheDocument();
+    expect(screen.getByText("Quem")).toBeInTheDocument();
+    expect(screen.getByText("O que fazer")).toBeInTheDocument();
+    expect(screen.getByText("Parece força bruta.")).toBeInTheDocument();
+    expect(screen.getByText(/2 outros incidentes/)).toBeInTheDocument();
+    expect(screen.getByText("Barrado")).toBeInTheDocument();
+    const routes = screen.getByRole("list", { name: "Rotas mais chamadas" });
+    expect(within(routes).getByText("38×")).toBeInTheDocument();
+    expect(screen.getByText("401 · 38×")).toBeInTheDocument();
+    expect(screen.getByText("429 · 2×")).toBeInTheDocument();
+    expect(screen.getByText(/repetiu 12 vezes, última às/)).toBeInTheDocument();
+    expect(screen.getByText("Tentativas de entrada negadas")).toBeInTheDocument();
+  });
+
+  it("outcome 'passed' aparece em destaque: CONSEGUIU ENTRAR", async () => {
+    serve({ alerts: [incident({ how: { outcome: "passed" } })] });
+    await renderPage();
+    expect(await screen.findByText("CONSEGUIU ENTRAR")).toBeInTheDocument();
+  });
+
+  it("alerta antigo, sem os campos novos, não mostra bloco nem botão de status", async () => {
+    serve({ alerts: [ALERT] });
+    await renderPage();
+    await screen.findByText(ALERT.title);
+    expect(screen.queryByText("O que é")).not.toBeInTheDocument();
+    expect(screen.queryByText("Como (onde bateu)")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mudar status" })).not.toBeInTheDocument();
+  });
+
+  it("'Mudar status' manda o PATCH com status e anotação", async () => {
+    serve({ alerts: [incident()] });
+    mocks.adminPatchPlain.mockResolvedValue({ id: 90 });
+    const { user } = await renderPage();
+    await user.click(await screen.findByRole("button", { name: "Mudar status" }));
+    const dialog = await screen.findByRole("dialog", { name: "Mudar status" });
+    await user.selectOptions(within(dialog).getByRole("combobox", { name: "Novo status" }), "false_positive");
+    await user.type(within(dialog).getByRole("textbox"), "Era o QA");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(mocks.adminPatchPlain).toHaveBeenCalledWith("/admin/security/alerts/90/status", { status: "false_positive", note: "Era o QA" }));
+  });
+
+  it("faixa 'Precisa de ação agora' só aparece com needs_action", async () => {
+    serve({ alerts: [incident()], summary: { needs_action: 3 } });
+    await renderPage();
+    expect(await screen.findByText(/3 incidentes de gravidade alta abertos/)).toBeInTheDocument();
+  });
+
+  it("o filtro Mostrar tem Abertos e Fechados e pede o status à API", async () => {
+    serve({ alerts: [incident()] });
+    const { user } = await renderPage();
+    await screen.findByText("Um IP errou o login várias vezes.");
+    await chooseFilter(user, "Mostrar", "open");
+    await waitFor(() => expect(mocks.adminGetEnvelope).toHaveBeenCalledWith("/admin/security/alerts", expect.objectContaining({ status: "open" }), expect.anything()));
   });
 });

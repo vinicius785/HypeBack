@@ -20,6 +20,7 @@ import {
   isWatchedActiveAlert,
   isWatchedLoginAlert,
   type SecurityAlert,
+  type SecurityRouteHit,
 } from "@/shared/admin-platform.types";
 
 import { actorRoleLabel, behaviorCountText, behaviorSignalLabel, ipDeniedSummary, plural, probingSummary, signupWaveSummary, targetTypeLabel } from "./security-labels";
@@ -59,7 +60,7 @@ export interface AlertView {
   /** Sempre em vermelho enquanto não visto (conta da equipe visada). */
   critical?: boolean;
   /** Rotas mais chamadas (alerta de comportamento): rota e quantidade, no máximo 5 linhas, em fonte pequena, direto no cartão. */
-  routes?: Array<{ route: string; hits: number }>;
+  routes?: SecurityRouteHit[];
   /** Atalho do cartão (cadastros do domínio). */
   action?: { label: string; to: string; search: Record<string, string> };
 }
@@ -201,7 +202,7 @@ export function describeAlert(alert: SecurityAlert): AlertView | null {
     return {
       tagIcon: "ban",
       icon: "ban",
-      head: { primary: d?.ip || "IP não informado", secondary: "Tentativas negadas na API", mono: true },
+      head: { primary: d?.ip || "IP não informado", secondary: "Tentativas de entrada negadas", mono: true },
       summary: (
         <>
           {ipDeniedSummary(d?.count ?? 0, d?.window_minutes ?? 0)} {mono(d?.ip)}

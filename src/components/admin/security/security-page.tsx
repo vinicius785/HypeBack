@@ -296,8 +296,8 @@ export function SecurityPage() {
                   filters={ALERT_FILTER_DEFS}
                   values={{ status, kind: kindFilter }}
                   onChange={(patch) => {
-                    if (patch.status === "unseen" || patch.status === "all")
-                      setStatus(patch.status);
+                    if (typeof patch.status === "string" && (SECURITY_STATUSES as readonly string[]).includes(patch.status))
+                      setStatus(patch.status as SecurityAlertStatus);
                     if (patch.kind !== undefined)
                       setKindFilter(patch.kind as KindFilter);
                   }}

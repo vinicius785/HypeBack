@@ -15,13 +15,16 @@ import {
   adminDelete,
   adminGetEnvelope,
   adminPath,
+  adminPatchPlain,
   adminPostPlain,
   type AdminEnvelope,
 } from "@/lib/admin/admin-client";
 import { isPlatformAdmin } from "@/lib/utils/platform-admin";
 import type {
   SecurityAlert,
+  SecurityAlertSeverity,
   SecurityAlertSeenBody,
+  SecurityAlertStatusBody,
   SecurityAlertsMeta,
   SecurityAlertsSummary,
   SecurityAlertStatus,
@@ -66,14 +69,14 @@ export function useSecuritySummary(options: { enabled?: boolean } = {}) {
 
 type AlertsPage = AdminEnvelope<SecurityAlert[], SecurityAlertsMeta>;
 
-/** Alertas, mais recentes primeiro. `status`: `unseen` (padrão da tela) ou `all`. Paginação por `limit`/`offset`. */
-export function useSecurityAlerts(status: SecurityAlertStatus): UseInfiniteQueryResult<InfiniteData<AlertsPage, number>, unknown> {
+/** Alertas, mais recentes primeiro. `status`: `unseen` (padrão da tela), `open`, `closed` ou `all`; `severity` é opcional. Paginação por `limit`/`offset`. */
+export function useSecurityAlerts(status: SecurityAlertStatus, severity?: SecurityAlertSeverity): UseInfiniteQueryResult<InfiniteData<AlertsPage, number>, unknown> {
   return useInfiniteQuery({
-    queryKey: adminKeys.of(ADMIN_SECURITY_RESOURCE, "alerts", status),
+    queryKey: adminKeys.of(ADMIN_SECURITY_RESOURCE, "alerts", status, severity ?? ""),
     queryFn: async ({ pageParam, signal }): Promise<AlertsPage> => {
       const page = await adminGetEnvelope<SecurityAlert[], SecurityAlertsMeta>(
         `${BASE}/alerts`,
-        { status, limit: SECURITY_ALERTS_PAGE_SIZE, offset: pageParam },
+        { status, ...(severity ? { severity } : {}), limit: SECURITY_ALERTS_PAGE_SIZE, offset: pageParam },
         { signal },
       );
       return { data: Array.isArray(page.data) ? page.data : [], meta: page.meta };
@@ -151,6 +154,18 @@ export function useMarkAlertSeen() {
     const text = note?.trim();
     const body: SecurityAlertSeenBody | undefined = text ? { note: text } : undefined;
     return adminPostPlain<{ id: number }>(securityAlertSeenPath(alertId), body);
+  });
+}
+
+export function securityAlertStatusPath(alertId: number): string {
+  return `${BASE}${adminPath`/alerts/${alertId}/status`}`;
+}
+
+/** `PATCH alerts/:alertId/status` — investigando, resolvido e falso positivo contam como visto; `new` reabre. A nota é opcional (até 500). */
+export function useSetAlertStatus() {
+  return useSecurityMutation<{ id: number }, { alertId: number } & SecurityAlertStatusBody>(({ alertId, status, note }) => {
+    const text = note?.trim();
+    return adminPatchPlain<{ id: number }>(securityAlertStatusPath(alertId), { status, ...(text ? { note: text } : {}) });
   });
 }
 

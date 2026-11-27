@@ -1344,6 +1344,53 @@ interface SecurityAlertBase {
   user: SecurityAlertUser | null;
   /** Id do vigiado que gerou o alerta (atalho para a atividade); ausente em alertas que não vêm da lista de vigiados. */
   watchlist_id?: number | null;
+  /** Incidente (Sentinela central): tudo abaixo é opcional, porque alertas antigos e API sem o deploy não trazem. */
+  status?: SecurityIncidentStatus;
+  /** Quantas vezes o mesmo incidente se repetiu. */
+  occurrences?: number;
+  first_at?: string;
+  last_at?: string;
+  explanation?: SecurityExplanation | null;
+  who?: SecurityIncidentWho | null;
+  how?: SecurityIncidentHow | null;
+  links?: SecurityIncidentLink[];
+}
+
+export type SecurityIncidentStatus = 'new' | 'investigating' | 'resolved' | 'false_positive';
+
+/** Três textos em português simples: o que é, a avaliação e o que fazer. */
+export interface SecurityExplanation {
+  what?: string;
+  assessment?: string;
+  action?: string;
+}
+
+export interface SecurityIncidentWho {
+  type?: 'ip' | 'account' | 'system' | (string & {});
+  ip?: string | null;
+  user?: SecurityAlertUser | null;
+  /** Outros incidentes do mesmo autor nos últimos 30 dias. */
+  other_incidents_30d?: number;
+}
+
+/** Rotas e status mais batidos. `count`; o alerta de conta vigiada antigo usa `hits`. */
+export interface SecurityRouteHit {
+  route: string;
+  count?: number;
+  hits?: number;
+}
+
+export interface SecurityIncidentHow {
+  top_routes?: SecurityRouteHit[];
+  by_status?: Record<string, number>;
+  /** `blocked` = barrado; `passed` = o atacante conseguiu entrar; `unknown` = não se sabe. */
+  outcome?: 'blocked' | 'passed' | 'unknown' | (string & {});
+}
+
+export interface SecurityIncidentLink {
+  label: string;
+  kind: 'user' | 'sessions' | 'shield' | (string & {});
+  user_id?: number | null;
 }
 
 /** Conta vigiada abriu sessão. */
@@ -1635,7 +1682,8 @@ export function isSignupPatternHoldAlert(alert: SecurityAlert): alert is SignupP
   return alert.kind === 'signup_pattern_hold';
 }
 
-export type SecurityAlertStatus = 'unseen' | 'all';
+/** Filtro da lista: `unseen` (padrão, como era), `open` (novos + investigando), `closed` ou `all`. */
+export type SecurityAlertStatus = 'unseen' | 'open' | 'closed' | 'all';
 
 /** Paginação por `limit`/`offset` (não é a `AdminPageMeta` das outras listas). */
 export interface SecurityAlertsMeta {
@@ -1647,6 +1695,17 @@ export interface SecurityAlertsMeta {
 
 export interface SecurityAlertsSummary {
   unseen: number;
+  /** Alertas de gravidade alta ainda abertos. */
+  needs_action?: number;
+  by_status?: Partial<Record<SecurityIncidentStatus, number>>;
+  open_by_severity?: Partial<Record<SecurityAlertSeverity, number>>;
+}
+
+/** Corpo de `PATCH /admin/security/alerts/:alertId/status`. Marcar investigando/resolvido/falso positivo conta como visto; `new` reabre. */
+export interface SecurityAlertStatusBody {
+  status: SecurityIncidentStatus;
+  /** Até 500 caracteres. */
+  note?: string;
 }
 
 /** Corpo opcional de `POST /admin/security/alerts/:alertId/seen`. */
