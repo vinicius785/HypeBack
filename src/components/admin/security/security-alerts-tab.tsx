@@ -14,14 +14,15 @@ import {
   AdminSection,
 } from "@/components/admin/platform";
 import { I } from "@/components/prototype/ui";
-import { useMarkAlertSeen, useMarkAllAlertsSeen, useSecurityAlerts } from "@/hooks/admin/use-admin-security";
+import { useMarkAlertSeen, useMarkAllAlertsSeen, useSecurityAlerts, useSecuritySummary } from "@/hooks/admin/use-admin-security";
 import { describeAdminError } from "@/lib/admin/admin-errors";
 import { civilDateInSaoPaulo, formatDate, formatDateTime, formatInt, formatRelativeTime, parseInstant } from "@/lib/admin/format";
 import { isWatchedLoginAlert, type SecurityAlert, type SecurityAlertStatus, type SecurityWatch } from "@/shared/admin-platform.types";
 
 import { AlertIcon, describeAlert, type AlertDetailRow } from "./security-alert-view";
 import { WatchActivityDrawer } from "./security-watch-activity";
-import { channelLabel, kindLabel, matchesKind, NOTE_MAX, SEVERITY_LABEL, type KindFilter } from "./security-labels";
+import { IncidentBlocks, incidentRoutes, repeatText, StatusDialog } from "./security-incident";
+import { channelLabel, INCIDENT_STATUS_LABEL, kindLabel, matchesKind, NOTE_MAX, SEVERITY_LABEL, type KindFilter } from "./security-labels";
 
 import "@/styles/admin-security.css";
 
@@ -137,6 +138,7 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [activity, setActivity] = useState<{ id: number; email: string } | null>(null);
+  const [changing, setChanging] = useState(false);
   const detailsId = useId();
   const seen = alert.seen_at !== null;
   const view = describeAlert(alert);
@@ -229,16 +231,7 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
 
       <p className="adm-sec-reason adm-sec-alert-title">{alert.title}</p>
       {view?.summary ? <p className="adm-sec-summary">{view.summary}</p> : null}
-      {view?.routes ? (
-        <ul className="adm-sec-routes" aria-label="Rotas mais chamadas">
-          {view.routes.map((r, index) => (
-            <li key={`${index}-${r.route}`}>
-              <code>{r.route}</code>
-              <span>{formatInt(r.hits)}×</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <IncidentBlocks alert={alert} routes={incidentRoutes(alert, view?.routes)} />
       {view?.chips && view.chips.length > 0 ? (
         <p className="adm-sec-chips">
           {view.chips.map((chip) => (
@@ -251,6 +244,8 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
 
       <p className="adm-sec-meta">
         {channel ? <span className="adm-sec-chan">{channel}</span> : null}
+        {alert.status && alert.status !== "new" ? <span className="adm-sec-chan">{INCIDENT_STATUS_LABEL[alert.status]}</span> : null}
+        {repeatText(alert) ? <span>{repeatText(alert)}</span> : null}
         <span className="adm-sec-when" title={formatDateTime(alert.created_at)}>
           <time dateTime={alert.created_at}>{formatDateTime(alert.created_at)}</time>
           <span className="adm-sec-rel">{formatRelativeTime(alert.created_at)}</span>
@@ -261,12 +256,20 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
       {open && view?.details ? <AlertDetails rows={view.details} id={detailsId} /> : null}
       {activity ? <WatchActivityDrawer watch={{ id: activity.id, email: activity.email } as SecurityWatch} onClose={() => setActivity(null)} /> : null}
 
-      {!seen || view?.action ? (
+      {changing ? <StatusDialog alert={alert} onClose={() => setChanging(false)} /> : null}
+
+      {!seen || view?.action || alert.status ? (
         <footer className="adm-sec-alert-foot">
           {!seen ? (
             <button type="button" className="adm-sec-seen" onClick={() => onMarkSeen(alert)}>
               <I n="check" cls="sm" />
               Marcar como visto
+            </button>
+          ) : null}
+          {alert.status ? (
+            <button type="button" className="adm-sec-secondary" onClick={() => setChanging(true)}>
+              <I n="check" cls="sm" />
+              Mudar status
             </button>
           ) : null}
           {view?.action ? (
@@ -302,6 +305,8 @@ export function SecurityAlertsTab({
   onConfirmAllChange: (open: boolean) => void;
 }) {
   const query = useSecurityAlerts(status);
+  const summary = useSecuritySummary();
+  const needsAction = summary.data?.needs_action ?? 0;
   const markAll = useMarkAllAlertsSeen();
   const [target, setTarget] = useState<SecurityAlert | null>(null);
   const [allError, setAllError] = useState<string | null>(null);
@@ -373,6 +378,11 @@ export function SecurityAlertsTab({
 
   return (
     <>
+      {needsAction > 0 ? (
+        <p className="adm-sec-needs" role="status">
+          <b>Precisa de ação agora:</b> {needsAction === 1 ? "1 incidente de gravidade alta aberto" : `${formatInt(needsAction)} incidentes de gravidade alta abertos`}
+        </p>
+      ) : null}
       <AdminSection flush title="Alertas" description="Contas vigiadas que abriram sessão. A sentinela só avisa: não bloqueia nem suspende ninguém.">
         {body}
       </AdminSection>

@@ -28,7 +28,7 @@ export const WATCH_ALREADY_TEXT = "Esse e-mail já está na lista de vigiados.";
 
 export type SecurityTab = "alerts" | "watchlist" | "shield";
 export const SECURITY_TABS: readonly SecurityTab[] = ["alerts", "watchlist", "shield"];
-export const SECURITY_STATUSES = ["unseen", "all"] as const;
+export const SECURITY_STATUSES = ["unseen", "open", "closed", "all"] as const;
 
 export type WatchFilter = "all" | "active" | "inactive";
 /** A lista de vigiados abre mostrando só quem está sendo vigiado agora; os encerrados ficam em "Inativos" ou "Todos". */
@@ -38,10 +38,20 @@ export const WATCH_FILTERS: ReadonlyArray<{ id: WatchFilter; label: string }> = 
   { id: "inactive", label: "Inativos" },
   { id: "all", label: "Todos" },
 ];
-export const ALERT_FILTERS: ReadonlyArray<{ id: "unseen" | "all"; label: string }> = [
+export const ALERT_FILTERS: ReadonlyArray<{ id: "unseen" | "open" | "closed" | "all"; label: string }> = [
   { id: "unseen", label: "Novos" },
+  { id: "open", label: "Abertos" },
+  { id: "closed", label: "Fechados" },
   { id: "all", label: "Todos" },
 ];
+
+/** Estado do incidente, nas palavras da equipe. */
+export const INCIDENT_STATUS_LABEL: Record<"new" | "investigating" | "resolved" | "false_positive", string> = {
+  new: "Novo",
+  investigating: "Investigando",
+  resolved: "Resolvido",
+  false_positive: "Falso positivo",
+};
 
 /** Vigiados que combinam com o filtro (todos, ativos, inativos) e com a busca (e-mail, nome da conta ou motivo). */
 export function filterWatchlist<T extends { active: boolean; email: string; reason: string; registered_user: { name: string | null } | null }>(
@@ -227,3 +237,11 @@ export function behaviorCountText(signal: string, count: number, windowMinutes: 
   if (signal === "multi_ip") return `${count} ${plural(count, "IP diferente", "IPs diferentes")} ${window}`;
   return null;
 }
+
+/** Quantas vezes a rota foi chamada: o contrato novo manda `count`, o alerta de conta vigiada antigo manda `hits`. */
+export function routeCount(hit: { count?: number; hits?: number }): number {
+  return hit.count ?? hit.hits ?? 0;
+}
+
+/** Como o ataque terminou, em palavras que a equipe entende. */
+export const OUTCOME_LABEL: Record<"blocked" | "passed", string> = { blocked: "Barrado", passed: "CONSEGUIU ENTRAR" };
