@@ -1369,27 +1369,35 @@ describe("Segurança: incidente (Sentinela central)", () => {
       ...extra,
     }) as unknown as SecurityAlert;
 
-  it("mostra O que é / Quem / Como / O que fazer, rotas com count, chips por status e o selo Barrado", async () => {
+  it("fechado é só título, frase e urgência; ao abrir mostra O que fazer, Barrado e o técnico (IP, rotas, status)", async () => {
     serve({ alerts: [incident()] });
-    await renderPage();
+    const { user } = await renderPage();
     expect(await screen.findByText("Um IP errou o login várias vezes.")).toBeInTheDocument();
-    expect(screen.getByText("O que é")).toBeInTheDocument();
-    expect(screen.getByText("Quem")).toBeInTheDocument();
+    expect(screen.getByText("Urgente")).toBeInTheDocument();
+    // fechado: nada de botões, selo, "O que fazer" nem técnico
+    expect(screen.queryByRole("button", { name: "Resolver" })).not.toBeInTheDocument();
+    expect(screen.queryByText("O que fazer")).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Rotas mais chamadas" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "IP com muitas tentativas negadas" }));
     expect(screen.getByText("O que fazer")).toBeInTheDocument();
     expect(screen.getByText("Parece força bruta.")).toBeInTheDocument();
-    expect(screen.getByText(/2 outros incidentes/)).toBeInTheDocument();
     expect(screen.getByText("Barrado")).toBeInTheDocument();
+    expect(screen.getByText(/repetiu 12 vezes, última às/)).toBeInTheDocument();
+    expect(screen.getByText("Tentativas de entrada negadas")).toBeInTheDocument();
+    expect(screen.getByText(/2 outros incidentes/)).toBeInTheDocument();
     const routes = screen.getByRole("list", { name: "Rotas mais chamadas" });
     expect(within(routes).getByText("38×")).toBeInTheDocument();
     expect(screen.getByText("401 · 38×")).toBeInTheDocument();
     expect(screen.getByText("429 · 2×")).toBeInTheDocument();
-    expect(screen.getByText(/repetiu 12 vezes, última às/)).toBeInTheDocument();
-    expect(screen.getByText("Tentativas de entrada negadas")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ver sessões" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "IP com muitas tentativas negadas" }));
+    expect(screen.queryByText("O que fazer")).not.toBeInTheDocument();
   });
 
   it("outcome 'passed' aparece em destaque: CONSEGUIU ENTRAR", async () => {
     serve({ alerts: [incident({ how: { outcome: "passed" } })] });
-    await renderPage();
+    const { user } = await renderPage();
+    await user.click(await screen.findByRole("button", { name: "IP com muitas tentativas negadas" }));
     expect(await screen.findByText("CONSEGUIU ENTRAR")).toBeInTheDocument();
   });
 
@@ -1406,6 +1414,7 @@ describe("Segurança: incidente (Sentinela central)", () => {
     serve({ alerts: [incident()] });
     mocks.adminPatchPlain.mockResolvedValue({ id: 90 });
     const { user } = await renderPage();
+    await user.click(await screen.findByRole("button", { name: "IP com muitas tentativas negadas" }));
     await user.click(await screen.findByRole("button", { name: "Mudar status" }));
     const dialog = await screen.findByRole("dialog", { name: "Mudar status" });
     await user.selectOptions(within(dialog).getByRole("combobox", { name: "Novo status" }), "false_positive");
@@ -1426,5 +1435,64 @@ describe("Segurança: incidente (Sentinela central)", () => {
     await screen.findByText("Um IP errou o login várias vezes.");
     await chooseFilter(user, "Mostrar", "open");
     await waitFor(() => expect(mocks.adminGetEnvelope).toHaveBeenCalledWith("/admin/security/alerts", expect.objectContaining({ status: "open" }), expect.anything()));
+  });
+
+  it("'Resolver' abre o diálogo já com Resolvido escolhido e manda o PATCH", async () => {
+    serve({ alerts: [incident({ severity: "medium" })] });
+    mocks.adminPatchPlain.mockReset();
+    mocks.adminPatchPlain.mockResolvedValue({ id: 90 });
+    const { user } = await renderPage();
+    await user.click(await screen.findByRole("button", { name: "IP com muitas tentativas negadas" }));
+    await user.click(await screen.findByRole("button", { name: "Resolver" }));
+    const dialog = await screen.findByRole("dialog", { name: "Mudar status" });
+    expect(within(dialog).getByRole("combobox", { name: "Novo status" })).toHaveValue("resolved");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(mocks.adminPatchPlain).toHaveBeenCalledWith("/admin/security/alerts/90/status", { status: "resolved" }));
+  });
+
+  it("'Ver agora' na faixa de urgência filtra Abertos + gravidade Alta", async () => {
+    serve({ alerts: [incident()], summary: { needs_action: 2 } });
+    const { user } = await renderPage();
+    await user.click(await screen.findByRole("button", { name: "Ver agora" }));
+    await waitFor(() =>
+      expect(mocks.adminGetEnvelope).toHaveBeenCalledWith("/admin/security/alerts", expect.objectContaining({ status: "open", severity: "high" }), expect.anything()),
+    );
+  });
+
+  it("seleção em massa: marca dois incidentes, muda o status de todos e o resolvido não é selecionável", async () => {
+    serve({
+      alerts: [incident({ id: 91 }), incident({ id: 92, title: "Outro incidente" }), incident({ id: 93, title: "Já tratado", status: "resolved" })],
+    });
+    mocks.adminPatchPlain.mockReset();
+    mocks.adminPatchPlain.mockResolvedValue({ id: 1 });
+    const { user } = await renderPage();
+    await user.click(await screen.findByRole("button", { name: "Selecionar" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Selecionar IP com muitas tentativas negadas" }));
+    await user.click(screen.getByRole("checkbox", { name: "Selecionar Outro incidente" }));
+    expect(screen.queryByRole("checkbox", { name: "Selecionar Já tratado" })).not.toBeInTheDocument();
+    const bar = screen.getByRole("region", { name: "Seleção de incidentes" });
+    expect(within(bar).getByText("2 selecionados")).toBeInTheDocument();
+    await user.click(within(bar).getByRole("button", { name: "Mudar status" }));
+    const dialog = await screen.findByRole("dialog", { name: "Mudar status dos selecionados" });
+    await user.click(within(dialog).getByRole("button", { name: "Aplicar a todos" }));
+    await waitFor(() => expect(mocks.adminPatchPlain).toHaveBeenCalledTimes(2));
+    expect(mocks.adminPatchPlain).toHaveBeenCalledWith("/admin/security/alerts/91/status", { status: "resolved" });
+    expect(mocks.adminPatchPlain).toHaveBeenCalledWith("/admin/security/alerts/92/status", { status: "resolved" });
+  });
+
+  it("em massa, se um falha, o erro aparece e só ele continua selecionado", async () => {
+    serve({ alerts: [incident({ id: 91 }), incident({ id: 92, title: "Outro incidente" })] });
+    mocks.adminPatchPlain.mockImplementation(async (path: string) => {
+      if (path.includes("/92/")) throw toAdminApiError(500, { message: "x" });
+      return { id: 91 };
+    });
+    const { user } = await renderPage();
+    await user.click(await screen.findByRole("button", { name: "Selecionar" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Selecionar IP com muitas tentativas negadas" }));
+    await user.click(screen.getByRole("checkbox", { name: "Selecionar Outro incidente" }));
+    await user.click(within(screen.getByRole("region", { name: "Seleção de incidentes" })).getByRole("button", { name: "Mudar status" }));
+    const dialog = await screen.findByRole("dialog", { name: "Mudar status dos selecionados" });
+    await user.click(within(dialog).getByRole("button", { name: "Aplicar a todos" }));
+    expect(await within(dialog).findByText(/1 incidente não foi atualizado/)).toBeInTheDocument();
   });
 });

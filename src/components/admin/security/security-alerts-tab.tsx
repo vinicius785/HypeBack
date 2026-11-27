@@ -21,8 +21,9 @@ import { isWatchedLoginAlert, type SecurityAlert, type SecurityAlertStatus, type
 
 import { AlertIcon, describeAlert, type AlertDetailRow } from "./security-alert-view";
 import { WatchActivityDrawer } from "./security-watch-activity";
-import { IncidentBlocks, incidentRoutes, repeatText, StatusDialog } from "./security-incident";
-import { channelLabel, INCIDENT_STATUS_LABEL, kindLabel, matchesKind, NOTE_MAX, SEVERITY_LABEL, type KindFilter } from "./security-labels";
+import { IncidentRow } from "./security-incident-row";
+import { BulkStatusDialog, IncidentBlocks, incidentRoutes, isClosedIncident, repeatText, StatusDialog } from "./security-incident";
+import { channelLabel, INCIDENT_STATUS_LABEL, kindLabel, matchesKind, NOTE_MAX, SEVERITY_LABEL, type KindFilter, type SeverityFilter } from "./security-labels";
 
 import "@/styles/admin-security.css";
 
@@ -134,7 +135,18 @@ const SEVERITY_DOT: Record<string, string> = { high: "#ff5a5f", medium: "#fbbf24
  * gravidade e o tipo; abaixo o que aconteceu (título e resumo do tipo, com etiquetas); e o menu "⋯" (Ver detalhes, Ver conta).
  * "Marcar como visto" fica à vista no rodapé. O que muda por tipo (rótulo da pessoa, resumo, detalhe) vem de `describeAlert`.
  */
-function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (alert: SecurityAlert) => void }) {
+function AlertRow({
+  alert,
+  onMarkSeen,
+  selected,
+  onToggleSelect,
+}: {
+  alert: SecurityAlert;
+  onMarkSeen: (alert: SecurityAlert) => void;
+  /** `undefined` = o incidente não pode ser selecionado (alerta antigo ou já tratado). */
+  selected?: boolean;
+  onToggleSelect?: (id: number) => void;
+}) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [activity, setActivity] = useState<{ id: number; email: string } | null>(null);
@@ -183,6 +195,15 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
       data-critical={critical ? "true" : undefined}
     >
       <header className="adm-sec-card-top">
+        {selected !== undefined && onToggleSelect ? (
+          <input
+            type="checkbox"
+            className="adm-sec-pick"
+            checked={selected}
+            aria-label={`Selecionar ${alert.title}`}
+            onChange={() => onToggleSelect(alert.id)}
+          />
+        ) : null}
         {view?.icon ? <AlertIcon name={view.icon} /> : <AdminAvatar name={name || user?.email || "?"} size={48} />}
         <div className="adm-sec-card-id">
           {person ? (
@@ -230,7 +251,7 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
       </div>
 
       <p className="adm-sec-reason adm-sec-alert-title">{alert.title}</p>
-      {view?.summary ? <p className="adm-sec-summary">{view.summary}</p> : null}
+      {view?.summary && !alert.explanation?.what ? <p className="adm-sec-summary">{view.summary}</p> : null}
       <IncidentBlocks alert={alert} routes={incidentRoutes(alert, view?.routes)} />
       {view?.chips && view.chips.length > 0 ? (
         <p className="adm-sec-chips">
@@ -295,16 +316,24 @@ function AlertRow({ alert, onMarkSeen }: { alert: SecurityAlert; onMarkSeen: (al
 export function SecurityAlertsTab({
   status,
   kind,
+  severity,
+  onFocusUrgent,
   confirmAll,
   onConfirmAllChange,
 }: {
   status: SecurityAlertStatus;
+  severity: SeverityFilter;
+  /** "Ver agora" na faixa de urgência: o pai troca os filtros para Abertos + Alta. */
+  onFocusUrgent: () => void;
   /** Filtro por tipo, só no cliente, sobre os alertas já carregados. */
   kind: KindFilter;
   confirmAll: boolean;
   onConfirmAllChange: (open: boolean) => void;
 }) {
-  const query = useSecurityAlerts(status);
+  const query = useSecurityAlerts(status, severity === "all" ? undefined : severity);
+  const [picked, setPicked] = useState<Set<number>>(() => new Set());
+  const [bulk, setBulk] = useState(false);
+  const [selecting, setSelecting] = useState(false);
   const summary = useSecuritySummary();
   const needsAction = summary.data?.needs_action ?? 0;
   const markAll = useMarkAllAlertsSeen();
@@ -315,6 +344,17 @@ export function SecurityAlertsTab({
   const pages = query.data?.pages ?? [];
   const loadedAlerts = pages.flatMap((page) => page.data);
   const alerts = loadedAlerts.filter((alert) => matchesKind(alert.kind, kind));
+  // Só incidente aberto (novo ou investigando) pode ser selecionado; o resto não tem o que mudar em massa.
+  const selectable = (alert: SecurityAlert) => alert.status !== undefined && !isClosedIncident(alert);
+  const selectableIds = alerts.filter(selectable).map((alert) => alert.id);
+  const pickedIds = selectableIds.filter((id) => picked.has(id));
+  const toggle = (id: number) =>
+    setPicked((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const unseen = pages[0]?.meta?.unseen ?? 0;
   const total = pages[pages.length - 1]?.meta?.total ?? alerts.length;
 
@@ -366,7 +406,11 @@ export function SecurityAlertsTab({
                     {label}
                   </li>
                 ) : null}
-                <AlertRow alert={alert} onMarkSeen={setTarget} />
+                {alert.explanation?.what ? (
+                  <IncidentRow alert={alert} onMarkSeen={setTarget} selected={selecting && selectable(alert) ? picked.has(alert.id) : undefined} onToggleSelect={toggle} />
+                ) : (
+                  <AlertRow alert={alert} onMarkSeen={setTarget} selected={selecting && selectable(alert) ? picked.has(alert.id) : undefined} onToggleSelect={toggle} />
+                )}
               </Fragment>
             );
           })}
@@ -380,12 +424,56 @@ export function SecurityAlertsTab({
     <>
       {needsAction > 0 ? (
         <p className="adm-sec-needs" role="status">
-          <b>Precisa de ação agora:</b> {needsAction === 1 ? "1 incidente de gravidade alta aberto" : `${formatInt(needsAction)} incidentes de gravidade alta abertos`}
+          <span>
+            <b>Precisa de ação agora:</b> {needsAction === 1 ? "1 incidente de gravidade alta aberto" : `${formatInt(needsAction)} incidentes de gravidade alta abertos`}
+          </span>
+          {status === "open" && severity === "high" ? null : (
+            <button type="button" className="adm-sec-secondary" onClick={onFocusUrgent}>
+              Ver agora
+            </button>
+          )}
         </p>
       ) : null}
-      <AdminSection flush title="Alertas" description="Contas vigiadas que abriram sessão. A sentinela só avisa: não bloqueia nem suspende ninguém.">
+      <AdminSection
+        flush
+        title="Alertas"
+        description="Contas vigiadas que abriram sessão. A sentinela só avisa: não bloqueia nem suspende ninguém."
+        actions={
+          selectableIds.length > 0 || selecting ? (
+            <button
+              type="button"
+              className="adm-sec-secondary"
+              aria-pressed={selecting}
+              onClick={() => {
+                setSelecting((value) => !value);
+                setPicked(new Set());
+              }}
+            >
+              {selecting ? "Cancelar seleção" : "Selecionar"}
+            </button>
+          ) : null
+        }
+      >
         {body}
       </AdminSection>
+      {pickedIds.length > 0 ? (
+        <div className="adm-sec-bulk" role="region" aria-label="Seleção de incidentes">
+          <span>{pickedIds.length === 1 ? "1 selecionado" : `${formatInt(pickedIds.length)} selecionados`}</span>
+          {pickedIds.length < selectableIds.length ? (
+            <button type="button" className="adm-sec-secondary" onClick={() => setPicked(new Set(selectableIds))}>
+              Selecionar os {formatInt(selectableIds.length)} visíveis
+            </button>
+          ) : null}
+          <button type="button" className="adm-sec-secondary" onClick={() => setPicked(new Set())}>
+            Limpar
+          </button>
+          <button type="button" className="adm-sec-seen" onClick={() => setBulk(true)}>
+            <I n="check" cls="sm" />
+            Mudar status
+          </button>
+        </div>
+      ) : null}
+      {bulk ? <BulkStatusDialog ids={pickedIds} onClose={() => setBulk(false)} onDone={(failed) => setPicked(new Set(failed))} /> : null}
       {target ? <SeenDialog alert={target} onClose={() => setTarget(null)} /> : null}
       <AdminConfirmDialog
         open={confirmAll}
