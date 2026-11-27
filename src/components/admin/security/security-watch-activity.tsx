@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 
 import { AdminBadge, AdminDrawer, AdminErrorState, AdminTable, type AdminTableColumn } from "@/components/admin/platform";
-import { useWatchActivity } from "@/hooks/admin/use-admin-security";
+import { useWatchActivity, useWatchIpActivity } from "@/hooks/admin/use-admin-security";
 import { formatDateTime, formatInt } from "@/lib/admin/format";
-import type { SecurityWatch, SecurityWatchActivityRow } from "@/shared/admin-platform.types";
+import type { SecurityWatchActivityRow } from "@/shared/admin-platform.types";
 
 import { deviceFromUserAgent, isErrorStatus, statusTone } from "./security-labels";
 
@@ -52,13 +52,22 @@ const COLUMNS: AdminTableColumn<SecurityWatchActivityRow>[] = [
   { key: "device", header: "Aparelho", width: "minmax(0, 0.8fr)", cell: (row) => <span title={row.user_agent ?? undefined}>{deviceFromUserAgent(row.user_agent)}</span> },
 ];
 
+/** Para IP vigiado a coluna do IP dá lugar à conta (`user` nulo = chamada sem login). */
+const IP_COLUMNS: AdminTableColumn<SecurityWatchActivityRow>[] = [
+  ...COLUMNS.filter((column) => column.key !== "ip"),
+  { key: "account", header: "Conta", width: "minmax(0, 1fr)", cell: (row) => (row.user ? row.user.name?.trim() || row.user.email || `Conta #${row.user.id}` : "sem login") },
+];
+
 /**
  * Atividade de um vigiado: tabela do mais recente para o mais antigo (horário de Brasília, método, rota, status, IP e aparelho),
  * com filtros no cliente por IP e por status (só erros) e "Carregar mais" por `offset`. IP, rota e User-Agent são texto simples
  * em fonte monoespaçada. Só o administrador chega aqui; um 403 da API aparece como "Sem permissão".
  */
-export function WatchActivityDrawer({ watch, onClose }: { watch: SecurityWatch; onClose: () => void }) {
-  const query = useWatchActivity(watch.id);
+export function WatchActivityDrawer({ watch, onClose, kind = "email" }: { watch: { id: number; email: string }; onClose: () => void; kind?: "email" | "ip" }) {
+  // Os dois ganchos existem sempre; o que não é do tipo fica desligado (`null`).
+  const emailQuery = useWatchActivity(kind === "email" ? watch.id : null);
+  const ipQuery = useWatchIpActivity(kind === "ip" ? watch.id : null);
+  const query = kind === "ip" ? ipQuery : emailQuery;
   const [ip, setIp] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
 
@@ -82,6 +91,7 @@ export function WatchActivityDrawer({ watch, onClose }: { watch: SecurityWatch; 
           <>
             {loaded.length > 0 ? (
               <div className="adm-sec-actfilters">
+                {kind === "email" ? (
                 <label>
                   <span>IP</span>
                   <select className="adm-input" value={ip} aria-label="Filtrar por IP" onChange={(event) => setIp(event.target.value)}>
@@ -93,6 +103,7 @@ export function WatchActivityDrawer({ watch, onClose }: { watch: SecurityWatch; 
                     ))}
                   </select>
                 </label>
+                ) : null}
                 <label>
                   <span>Status</span>
                   <select className="adm-input" value={status} aria-label="Filtrar por status" onChange={(event) => setStatus(event.target.value as StatusFilter)}>
@@ -104,7 +115,7 @@ export function WatchActivityDrawer({ watch, onClose }: { watch: SecurityWatch; 
             ) : null}
             <AdminTable
               caption={`Atividade de ${watch.email}`}
-              columns={COLUMNS}
+              columns={kind === "ip" ? IP_COLUMNS : COLUMNS}
               rows={query.isLoading ? undefined : rows}
               rowKey={(row) => row.id}
               loading={query.isLoading}

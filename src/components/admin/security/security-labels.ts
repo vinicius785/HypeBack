@@ -26,8 +26,8 @@ export const REASON_MIN = 5;
 export const REASON_MAX = 500;
 export const WATCH_ALREADY_TEXT = "Esse e-mail já está na lista de vigiados.";
 
-export type SecurityTab = "alerts" | "watchlist" | "shield";
-export const SECURITY_TABS: readonly SecurityTab[] = ["alerts", "watchlist", "shield"];
+export type SecurityTab = "alerts" | "watchlist" | "ips" | "shield";
+export const SECURITY_TABS: readonly SecurityTab[] = ["alerts", "watchlist", "ips", "shield"];
 export const SECURITY_STATUSES = ["unseen", "open", "closed", "all"] as const;
 
 export type WatchFilter = "all" | "active" | "inactive";
@@ -74,6 +74,7 @@ export function kindLabel(kind: string): string | null {
   if (kind === "watched_login") return "Conta vigiada";
   if (kind === "watched_active") return "Vigiado ativo";
   if (kind === "watched_behavior") return "Comportamento vigiado";
+  if (kind === "watched_ip_seen") return "IP vigiado";
   if (kind === "shield_activated") return "Escudo ativado";
   if (kind === "shield_ended") return "Escudo encerrado";
   if (kind === "shield_released") return "Retenções liberadas";
@@ -118,7 +119,7 @@ export const KIND_FILTERS: ReadonlyArray<{ id: KindFilter; label: string }> = [
 ];
 
 const KIND_GROUPS: Record<Exclude<KindFilter, "all">, readonly string[]> = {
-  watched_login: ["watched_login", "watched_active", "watched_behavior"],
+  watched_login: ["watched_login", "watched_active", "watched_behavior", "watched_ip_seen"],
   admin_action: ["admin_action"],
   attacks: ["attack_ip_denied", "attack_user_probing", "attack_code_guessing", "attack_volume", "attack_enumeration", "attack_anonymizer_wave"],
   staff: ["staff_reset_attempt"],
@@ -253,3 +254,25 @@ export const SEVERITY_FILTERS: ReadonlyArray<{ id: SeverityFilter; label: string
   { id: "medium", label: "Média" },
   { id: "low", label: "Baixa" },
 ];
+
+/** Aviso fixo da aba de IPs vigiados. */
+export const WATCH_IP_NOTE = "Vigiar só avisa e registra; não bloqueia. IP compartilhado pode ter gente de bem.";
+
+/**
+ * IP exato para vigiar: IPv4 ou IPv6, sem faixa (CIDR). `::ffff:1.2.3.4` vira `1.2.3.4`. Devolve `null` quando não é um IP válido.
+ */
+export function normalizeIp(input: string): string | null {
+  const text = input.trim();
+  if (text === "" || /[\s/]/.test(text)) return null;
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(text);
+  const candidate = mapped ? mapped[1] : text;
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(candidate);
+  if (v4) return v4.slice(1).every((part) => Number(part) <= 255 && String(Number(part)) === part) ? candidate : null;
+  if (!candidate.includes(":")) return null;
+  try {
+    new URL(`http://[${candidate}]/`);
+    return candidate.toLowerCase();
+  } catch {
+    return null;
+  }
+}

@@ -16,7 +16,7 @@ import {
   useCanUseSecurity,
   useSecuritySummary,
 } from "@/hooks/admin/use-admin-security";
-import type { SecurityAlertStatus } from "@/shared/admin-platform.types";
+import type { SecurityAlertStatus, SecurityWatchIp } from "@/shared/admin-platform.types";
 
 import { useShield, useShieldHeld } from "@/hooks/admin/use-admin-shield";
 import { Sentinel } from "./sentinel";
@@ -45,6 +45,7 @@ import {
   type WatchFilter,
 } from "./security-labels";
 import { SecurityWatchlistTab } from "./security-watchlist-tab";
+import { SecurityWatchIpsTab, WatchIpDialog } from "./security-watch-ips";
 
 import "@/styles/admin-security.css";
 
@@ -99,6 +100,7 @@ const WATCH_FILTER_DEFS: readonly AdminFilterDef[] = [
 const TAB_LABEL: Record<SecurityTab, string> = {
   alerts: "Alertas",
   watchlist: "Vigiados",
+  ips: "IPs vigiados",
   shield: "Escudo",
 };
 
@@ -128,6 +130,10 @@ export function SecurityPage() {
     useState<WatchFilter>(DEFAULT_WATCH_FILTER);
   const [term, setTerm] = useState("");
   const [adding, setAdding] = useState(false);
+  // IPs vigiados: o formulário abre pela ilha ("Vigiar IP") ou pelo link "Vigiar este IP" de um alerta (já com o IP).
+  const [ipFilter, setIpFilter] = useState<WatchFilter>(DEFAULT_WATCH_FILTER);
+  const [ipDialog, setIpDialog] = useState<{ ip?: string } | null>(null);
+  const [ipReactivating, setIpReactivating] = useState<SecurityWatchIp | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
   const [kindFilter, setKindFilter] = useState<KindFilter>("all");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
@@ -333,6 +339,22 @@ export function SecurityPage() {
                     </button>
                   }
                 />
+              ) : tab === "ips" ? (
+                <AdminFilterBar
+                  compact
+                  filters={WATCH_FILTER_DEFS}
+                  values={{ state: ipFilter }}
+                  onChange={(patch) => {
+                    if (patch.state !== undefined) setIpFilter(patch.state as WatchFilter);
+                  }}
+                  onClear={() => setIpFilter(DEFAULT_WATCH_FILTER)}
+                  trailing={
+                    <button type="button" className="adm-sec-tool" data-primary="true" onClick={() => setIpDialog({})}>
+                      <I n="plus" cls="sm" />
+                      Vigiar IP
+                    </button>
+                  }
+                />
               ) : (
                 <AdminFilterBar
                   compact
@@ -374,6 +396,7 @@ export function SecurityPage() {
           <SecurityAlertsTab
             status={status}
             kind={kindFilter}
+            onWatchIp={(ip) => setIpDialog({ ip })}
             severity={severityFilter}
             onFocusUrgent={() => {
               setStatus("open");
@@ -382,6 +405,8 @@ export function SecurityPage() {
             confirmAll={confirmAll}
             onConfirmAllChange={setConfirmAll}
           />
+        ) : tab === "ips" ? (
+          <SecurityWatchIpsTab filter={ipFilter} onShowAll={() => setIpFilter("all")} reactivating={ipReactivating} onReactivatingChange={setIpReactivating} />
         ) : tab === "shield" ? (
           <SecurityShieldTab>
             <ShieldHeldSection />
@@ -400,6 +425,7 @@ export function SecurityPage() {
           />
         )}
       </div>
+      {ipDialog ? <WatchIpDialog initialIp={ipDialog.ip} onClose={() => setIpDialog(null)} /> : null}
       {shieldDialog === "activate" ? (
         <ActivateDialog onClose={() => setShieldDialog(null)} />
       ) : null}

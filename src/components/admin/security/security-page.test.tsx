@@ -96,9 +96,15 @@ function serve(
     shield?: Record<string, unknown>;
     held?: Record<string, unknown>;
     summary?: Record<string, unknown>;
+    ips?: Record<string, unknown>[];
+    ipActivity?: Record<string, unknown>[];
   } = {},
 ) {
   mocks.adminGetEnvelope.mockImplementation(async (path: string) => {
+    if (path.includes("/watch-ips/") && path.includes("/activity")) {
+      const rows = options.ipActivity ?? [];
+      return { data: rows, meta: { total: rows.length, limit: 100, offset: 0 } };
+    }
     if (path.includes("/activity")) {
       if (options.activity === "forbidden") throw toAdminApiError(403, { message: "Forbidden resource" });
       const rows = options.activity ?? [];
@@ -109,6 +115,7 @@ function serve(
   mocks.adminGet.mockImplementation(async (path: string) => {
     if (path === "/admin/security/alerts/summary")
       return { unseen: (options.alerts ?? [ALERT]).filter((a) => !a.seen_at).length, ...(options.summary ?? {}) };
+    if (path === "/admin/security/watch-ips") return options.ips ?? [];
     if (path === "/admin/security/watchlist") return options.watches ?? WATCHES;
     if (path === "/admin/security/shield") return options.shield ?? SHIELD_OFF;
     if (path === "/admin/security/shield/held") return options.held ?? HELD_NONE;
@@ -1266,7 +1273,7 @@ describe("Segurança: Operação Escudo", () => {
     serve({ shield: ON });
     const { user } = await renderPage();
     const tabs = within(screen.getByRole("group", { name: "Seções de Segurança" }));
-    expect(tabs.getAllByRole("button").map((b) => b.textContent?.replace(/ligado|\d+/, "").trim())).toEqual(["Alertas", "Vigiados", "Escudo"]);
+    expect(tabs.getAllByRole("button").map((b) => b.textContent?.replace(/ligado|\d+/, "").trim())).toEqual(["Alertas", "Vigiados", "IPs vigiados", "Escudo"]);
     expect(await tabs.findByText("ligado")).toBeInTheDocument();
     expect(screen.queryByRole("progressbar", { name: /Tempo do Escudo/ })).not.toBeInTheDocument();
     await user.click(tabs.getByRole("button", { name: /Escudo/ }));
@@ -1494,5 +1501,89 @@ describe("Segurança: incidente (Sentinela central)", () => {
     const dialog = await screen.findByRole("dialog", { name: "Mudar status dos selecionados" });
     await user.click(within(dialog).getByRole("button", { name: "Aplicar a todos" }));
     expect(await within(dialog).findByText(/1 incidente não foi atualizado/)).toBeInTheDocument();
+  });
+
+  it("link 'Vigiar este IP' do alerta abre o formulário já com o IP e manda o POST watch-ips", async () => {
+    serve({ alerts: [incident({ links: [{ label: "Vigiar este IP", kind: "watch_ip", user_id: null, ip: "203.0.113.7" }] })] });
+    mocks.adminPostPlain.mockReset();
+    mocks.adminPostPlain.mockResolvedValue({ id: 5, reactivated: false, expires_at: null });
+    const { user } = await renderPage();
+    await user.click(await screen.findByRole("button", { name: "IP com muitas tentativas negadas" }));
+    await user.click(await screen.findByRole("button", { name: "Vigiar este IP" }));
+    const dialog = await screen.findByRole("dialog", { name: "Vigiar IP" });
+    expect(within(dialog).getByRole("textbox", { name: "IP" })).toHaveValue("203.0.113.7");
+    await user.type(within(dialog).getByRole("textbox", { name: "Motivo" }), "Tentando entrar sem parar");
+    await user.click(within(dialog).getByRole("button", { name: "Vigiar" }));
+    await waitFor(() =>
+      expect(mocks.adminPostPlain).toHaveBeenCalledWith("/admin/security/watch-ips", { ip: "203.0.113.7", reason: "Tentando entrar sem parar", days: 7 }),
+    );
+  });
+});
+
+describe("Segurança: IPs vigiados", () => {
+  const IP = { id: 7, ip: "203.0.113.7", reason: "Varredura de login", active: true, created_at: "2026-11-10T01:30:00Z", deactivated_at: null, expires_at: null, last_activity_at: "2026-11-10T02:00:00Z" };
+
+  it("lista os IPs com motivo, prazo e última atividade; sem nenhum, mostra o estado vazio", async () => {
+    serve({ ips: [IP, { ...IP, id: 8, ip: "2001:db8::1", reason: "Outro", active: false, deactivated_at: "2026-11-11T00:00:00Z" }] });
+    await renderPage("/admin/security?tab=ips");
+    expect(await screen.findByText("203.0.113.7")).toBeInTheDocument();
+    expect(screen.getByText("Varredura de login")).toBeInTheDocument();
+    expect(screen.getByText("Sem prazo")).toBeInTheDocument();
+    expect(screen.queryByText("2001:db8::1")).not.toBeInTheDocument(); // inativo fica fora do filtro padrão
+  });
+
+  it("vazio: 'Nenhum IP vigiado'", async () => {
+    serve({ ips: [] });
+    await renderPage("/admin/security?tab=ips");
+    expect(await screen.findByText("Nenhum IP vigiado")).toBeInTheDocument();
+  });
+
+  it("'Vigiar IP' valida o IP (sem faixa) e o motivo, e normaliza ::ffff:1.2.3.4", async () => {
+    serve({ ips: [] });
+    mocks.adminPostPlain.mockReset();
+    mocks.adminPostPlain.mockResolvedValue({ id: 1, reactivated: false, expires_at: null });
+    const { user } = await renderPage("/admin/security?tab=ips");
+    await user.click(await screen.findByRole("button", { name: "Vigiar IP" }));
+    const dialog = await screen.findByRole("dialog", { name: "Vigiar IP" });
+    await user.type(within(dialog).getByRole("textbox", { name: "IP" }), "10.0.0.0/8");
+    await user.type(within(dialog).getByRole("textbox", { name: "Motivo" }), "abc");
+    await user.click(within(dialog).getByRole("button", { name: "Vigiar" }));
+    expect(await within(dialog).findByText(/IP exato/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/pelo menos 5 caracteres/)).toBeInTheDocument();
+    expect(mocks.adminPostPlain).not.toHaveBeenCalled();
+    const ipBox = within(dialog).getByRole("textbox", { name: "IP" });
+    await user.clear(ipBox);
+    await user.type(ipBox, "::ffff:198.51.100.4");
+    await user.type(within(dialog).getByRole("textbox", { name: "Motivo" }), "def ghi");
+    await user.click(within(dialog).getByRole("button", { name: "Vigiar" }));
+    await waitFor(() => expect(mocks.adminPostPlain).toHaveBeenCalledWith("/admin/security/watch-ips", expect.objectContaining({ ip: "198.51.100.4" })));
+  });
+
+  it("'Parar de vigiar' manda o DELETE do IP", async () => {
+    serve({ ips: [IP] });
+    mocks.adminDelete.mockReset();
+    mocks.adminDelete.mockResolvedValue({ id: 7 });
+    const { user } = await renderPage("/admin/security?tab=ips");
+    await user.click(await screen.findByRole("button", { name: "Ações do IP 203.0.113.7" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Parar de vigiar" }));
+    const dialog = await screen.findByRole("dialog", { name: "Parar de vigiar" });
+    await user.click(within(dialog).getByRole("button", { name: "Parar de vigiar" }));
+    await waitFor(() => expect(mocks.adminDelete).toHaveBeenCalledWith("/admin/security/watch-ips/7"));
+  });
+
+  it("atividade do IP: rota, status, conta ou 'sem login' e o contador", async () => {
+    serve({
+      ips: [IP],
+      ipActivity: [
+        { id: 1, created_at: "2026-11-10T02:00:00Z", method: "POST", path: "/api/backoffice/auth/login", status: 401, ip: "203.0.113.7", user_agent: null, hits: 9, user: null },
+        { id: 2, created_at: "2026-11-10T02:01:00Z", method: "GET", path: "/api/backoffice/me", status: 200, ip: "203.0.113.7", user_agent: null, hits: 1, user: { id: 3, name: "Bia Santos", email: "bia@marca.com" } },
+      ],
+    });
+    const { user } = await renderPage("/admin/security?tab=ips");
+    await user.click(await screen.findByRole("button", { name: "Ver atividade" }));
+    expect(await screen.findByText("/api/backoffice/auth/login")).toBeInTheDocument();
+    expect(screen.getByText("×9")).toBeInTheDocument();
+    expect(screen.getByText("sem login")).toBeInTheDocument();
+    expect(screen.getByText("Bia Santos")).toBeInTheDocument();
   });
 });

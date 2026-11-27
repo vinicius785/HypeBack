@@ -1389,8 +1389,10 @@ export interface SecurityIncidentHow {
 
 export interface SecurityIncidentLink {
   label: string;
-  kind: 'user' | 'sessions' | 'shield' | (string & {});
+  kind: 'user' | 'sessions' | 'shield' | 'watch_ip' | (string & {});
   user_id?: number | null;
+  /** Só em `watch_ip` ("Vigiar este IP"): o IP que o formulário já abre preenchido. */
+  ip?: string | null;
 }
 
 /** Conta vigiada abriu sessão. */
@@ -1743,6 +1745,26 @@ export interface SecurityWatchCreated {
   reactivated: boolean;
   /** ISO UTC ou `null` (sem prazo). */
   expires_at?: string | null;
+}
+
+/** IP sob vigilância (`GET watch-ips`): exato (IPv4 ou IPv6), sem faixa. Só avisa e registra; não bloqueia. */
+export interface SecurityWatchIp {
+  id: number;
+  ip: string;
+  reason: string;
+  active: boolean;
+  created_at: string;
+  deactivated_at: string | null;
+  /** ISO UTC em que a vigilância acaba sozinha; `null`: sem prazo. */
+  expires_at?: string | null;
+  last_activity_at?: string | null;
+}
+
+/** Corpo de `POST watch-ips`. `days` de 1 a 365; ausente = sem prazo. */
+export interface SecurityWatchIpBody {
+  ip: string;
+  reason: string;
+  days?: number;
 }
 
 /** Uma linha da atividade de um vigiado (`GET watchlist/:watchId/activity`): as chamadas do mesmo minuto vêm juntas (`hits`). */

@@ -7,7 +7,7 @@ import type { SecurityAlert, SecurityIncidentLink, SecurityRouteHit } from "@/sh
 
 import { describeAlert } from "./security-alert-view";
 import { incidentRoutes, isClosedIncident, repeatText, StatusDialog } from "./security-incident";
-import { INCIDENT_STATUS_LABEL, OUTCOME_LABEL, routeCount } from "./security-labels";
+import { INCIDENT_STATUS_LABEL, kindLabel, OUTCOME_LABEL, routeCount } from "./security-labels";
 
 /** Como a urgência aparece para a equipe: palavra de gente, não código. */
 const URGENCY: Record<string, string> = { high: "Urgente", medium: "Atenção", low: "Baixa prioridade" };
@@ -28,6 +28,7 @@ export function IncidentRow({
   selected,
   onToggleSelect,
   routesFallback,
+  onWatchIp,
 }: {
   alert: SecurityAlert;
   onMarkSeen: (alert: SecurityAlert) => void;
@@ -35,6 +36,8 @@ export function IncidentRow({
   selected?: boolean;
   onToggleSelect?: (id: number) => void;
   routesFallback?: SecurityRouteHit[];
+  /** Abre o formulário "Vigiar IP" já com o IP do link `watch_ip`. */
+  onWatchIp?: (ip: string) => void;
 }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -51,15 +54,17 @@ export function IncidentRow({
   const person = who?.user ? who.user.name?.trim() || who.user.email || `Conta #${who.user.id}` : null;
   const whoLine = [who?.ip ? `IP ${who.ip}` : null, person].filter(Boolean) as string[];
   const others = who?.other_incidents_30d ?? 0;
-  const links = (alert.links ?? []).filter((link) => link?.label);
+  const links = (alert.links ?? []).filter((link) => link?.label && (link.kind !== "watch_ip" || (onWatchIp !== undefined && Boolean(link.ip))));
   const todo = [explanation?.assessment, explanation?.action].filter(Boolean) as string[];
   const urgent = alert.severity === "high" && !closed;
   const hasTech = whoLine.length > 0 || others > 0 || routes.length > 0 || statuses.length > 0 || links.length > 0;
-  const kindText = view?.head?.secondary;
+  const kindText = view?.head?.secondary ?? kindLabel(alert.kind);
 
   const openLink = (link: SecurityIncidentLink) => {
     const userId = link.user_id ?? who?.user?.id ?? alert.user?.id;
-    if (link.kind === "shield") void navigate({ to: "/admin/security", search: { tab: "shield" } } as never);
+    if (link.kind === "watch_ip") {
+      if (link.ip) onWatchIp?.(link.ip);
+    } else if (link.kind === "shield") void navigate({ to: "/admin/security", search: { tab: "shield" } } as never);
     else if (userId) {
       void navigate(
         link.kind === "sessions"
